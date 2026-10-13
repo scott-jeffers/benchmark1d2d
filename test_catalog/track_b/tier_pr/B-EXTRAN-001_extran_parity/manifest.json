@@ -40,7 +40,7 @@
       "path": "inputs/network.inp",
       "role": "network",
       "format": "inp",
-      "sha256": "2e1b02368752a4456258f931b01d5735a4d5ec1413bb77d1a3b79a085585561f"
+      "sha256": "02669e7ff42493e2dc665ac6ed57564efdb302fd401a25fd631cbd7207441402"
     }
   ],
   "reference": {

@@ -28,8 +28,10 @@ jobs:
           python -m pip install -e ".[dev]"
       - name: Build site
         run: |
+          # Scorecards optional for static catalog pages; do not fail the site build.
           python scripts/run_vertical_slice.py || true
           python site/build.py --scorecards out/vertical_slice
+          test -f site/dist/index.html
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

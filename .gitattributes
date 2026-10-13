@@ -1,0 +1,14 @@
+# Normalize text to LF so SHA-256 pins match on Windows and Linux CI.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.tif binary
+*.tiff binary
+*.parquet binary
+*.zip binary
+*.exe binary
+*.dll binary
+*.out binary
