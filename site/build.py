@@ -914,6 +914,8 @@ AUDIT = [
      "B-EXTRAN-001 now runs the real EXTRAN Example 1; B-RTC-001 is a pump-station network whose rules switch one pump 74 times in 36 h."),
     ("Gauges on cell faces mixed two cells", "A probe exactly between cells took depth from one cell and bed from another, producing ±4 cm level errors in a flat pond.",
      "Ties resolve to a single cell; regression test added."),
+    ("Signatures implied authorship", "All published cards were signed with development keys hard-coded in the repository, and the documented verify command checked manifests, not cards.",
+     "benchmark1d2d verify-card checks the content hash and says when a card carries a public development key; the site no longer presents those signatures as proof of origin."),
     ("Every pass was labelled A-V", "Validation and parity passes received verification or fixed B-1 % claims.",
      "Claims follow the case class (A-V, A-C, A-L, A-F) and the gating tolerance (B-x %)."),
 ]
@@ -936,10 +938,10 @@ def reports_page(manifests: list[dict], cards: dict) -> str:
     audit = "".join(f"<li><h3>{esc(t)}</h3><p><b>Found:</b> {esc(a)}</p><p><b>Now:</b> {esc(b)}</p></li>" for t, a, b in AUDIT)
     body = f"""
 <header class="page-head"><h1>Reports</h1>
-<p class="lede">Every score card is canonical JSON with a SHA-256 content hash and an Ed25519 signature, so a published result can be checked byte for byte.</p></header>
+<p class="lede">Every score card is canonical JSON with a SHA-256 content hash, so any change to a published result is detectable. Cards are also Ed25519-signed; the demo runs below use a development key published in the repository, so their signatures show integrity, not authorship. Certification runs will be signed with a key held by the maintainers.</p></header>
 <section><h2>Score cards</h2>
 <div class="table-scroll"><table class="data"><thead><tr><th>Case</th><th>Solver</th><th>Result</th><th>Claims</th><th class=num>Observed order</th><th>Content hash</th><th>File</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>
-<p class="small"><a href="data/scorecards.zip" download>Download every score card (.zip)</a>. Verify one with <code>benchmark1d2d verify path/to/card.json</code>.</p></section>
+<p class="small"><a href="data/scorecards.zip" download>Download every score card (.zip)</a>. Check one with <code>benchmark1d2d verify-card path/to/card.json</code>.</p></section>
 <section><h2>Audit log, 13 October 2026</h2>
 <p>An end-to-end review found the following defects. Each is fixed, covered by tests, and recorded here because earlier results published from this repository were affected.</p>
 <ol class="audit">{audit}</ol></section>"""

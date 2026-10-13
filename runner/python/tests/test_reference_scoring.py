@@ -132,3 +132,18 @@ def test_probe_on_a_cell_face_uses_one_cell_for_depth_and_bed(tmp_path: Path) ->
     finals = {r["id"]: r for r in card["criteria_results"]}
     assert finals["final_level_p1"]["observed"] == pytest.approx(0.0, abs=1e-9)
     assert finals["final_level_p2"]["observed"] == pytest.approx(0.0, abs=1e-9)
+
+
+def test_verify_card_detects_tampering_and_flags_dev_key(tmp_path: Path, capsys) -> None:
+    import json
+
+    from benchmark1d2d.cli.main import main as cli
+
+    card_path = REPO / "site/fixtures/scorecards/A2C-EA1_disconnected_water_body.scorecard.json"
+    assert cli(["verify-card", str(card_path)]) == 0
+    assert "development key" in capsys.readouterr().out
+    card = json.loads(card_path.read_text())
+    card["criteria_results"][0]["observed"] = 0.0
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps(card))
+    assert cli(["verify-card", str(bad)]) == 1
