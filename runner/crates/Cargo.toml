@@ -14,4 +14,4 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["OpenHydro"]
-description = "Placeholder Rust crates for hydrobench (ADR-0003)"
+description = "Placeholder Rust crates for benchmark1d2d (ADR-0003)"

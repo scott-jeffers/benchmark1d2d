@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openhydro.org/schemas/v1/network_1d.schema.json",
-  "title": "Hydrobench 1D Network",
+  "title": "Benchmark1d2d 1D Network",
   "description": "Minimal 1D pipe/channel network: nodes, links, cross-sections, rating/pump curves and controls. Used as a portable input alongside or instead of native .inp files.",
   "type": "object",
   "additionalProperties": false,

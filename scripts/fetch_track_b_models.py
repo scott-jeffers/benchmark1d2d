@@ -36,7 +36,7 @@ def fetch_one(model_id: str, expected_hash: str | None = None) -> Path:
         if _sha256(dest.read_bytes()) == expected_hash:
             return dest
     url = f"{UPSTREAM}/{collection}/{case}/model.inp"
-    req = urllib.request.Request(url, headers={"User-Agent": "hydrobench"})
+    req = urllib.request.Request(url, headers={"User-Agent": "benchmark1d2d"})
     with urllib.request.urlopen(req, timeout=120) as resp:
         data = resp.read()
     if expected_hash and _sha256(data) != expected_hash:

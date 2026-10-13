@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openhydro.org/schemas/v1/test_manifest.schema.json",
-  "title": "Hydrobench Test Manifest",
-  "description": "Main contract for a hydrobench V&V test case. Declares identity, physics, provenance, inputs, reference solution, simulation setup and scoring tolerances.",
+  "title": "Benchmark1d2d Test Manifest",
+  "description": "Main contract for a benchmark1d2d V&V test case. Declares identity, physics, provenance, inputs, reference solution, simulation setup and scoring tolerances.",
   "type": "object",
   "additionalProperties": false,
   "required": [

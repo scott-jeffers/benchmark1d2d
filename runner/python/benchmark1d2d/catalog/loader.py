@@ -1,4 +1,4 @@
-"""Locate the hydrobench repo root and load test manifests."""
+"""Locate the benchmark1d2d repo root and load test manifests."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def find_repo_root(start: Path | None = None) -> Path:
         if (candidate / "test_catalog").is_dir() and (candidate / "schemas").is_dir():
             return candidate
     raise FileNotFoundError(
-        "Could not locate hydrobench repo root (expected test_catalog/ and schemas/)."
+        "Could not locate benchmark1d2d repo root (expected test_catalog/ and schemas/)."
     )
 
 

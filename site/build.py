@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dependency-light static site generator for hydrobench.
+"""Dependency-light static site generator for benchmark1d2d.
 
 Discovers manifests under test_catalog/ and optional scorecards under out/
 (or --scorecards). Writes plain HTML into site/dist/.
@@ -192,13 +192,13 @@ def page_shell(title: str, body: str, *, root_href: str = ".") -> str:
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>{esc(title)} — hydrobench</title>
+  <title>{esc(title)} — benchmark1d2d</title>
   <link rel="stylesheet" href="{root_href}/style.css"/>
 </head>
 <body>
   <div class="wrap">
     <header class="site">
-      <h1>hydrobench</h1>
+      <h1>benchmark1d2d</h1>
       <p>Open V&amp;V benchmarks for water solvers</p>
       <nav class="site">
         <a href="{root_href}/index.html">Results</a>
@@ -277,7 +277,7 @@ def build_index(
 
     body = f"""
     <p class="lede">
-      Hydrobench certifies solvers on two independent axes. Track A asks whether
+      Benchmark1d2d certifies solvers on two independent axes. Track A asks whether
       the equations are solved correctly (verification / validation). Track B asks
       whether the solver matches a pinned industry reference engine (parity).
       A solver may pass one track and fail the other — every badge and table
@@ -468,7 +468,7 @@ def simple_md_to_html(text: str) -> str:
 
 def build_methodology(root: Path) -> str:
     method_dir = root / "docs" / "methodology"
-    parts: list[str] = ["<p class='lede'>How hydrobench sets tolerances and runs V&amp;V.</p>"]
+    parts: list[str] = ["<p class='lede'>How benchmark1d2d sets tolerances and runs V&amp;V.</p>"]
     if method_dir.is_dir():
         for path in sorted(method_dir.glob("*.md")):
             text = path.read_text(encoding="utf-8")
@@ -533,7 +533,7 @@ def build(root: Path, scorecards_dir: Path) -> dict[str, int]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build hydrobench static site")
+    parser = argparse.ArgumentParser(description="Build benchmark1d2d static site")
     parser.add_argument(
         "--scorecards",
         type=Path,

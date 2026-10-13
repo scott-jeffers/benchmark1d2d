@@ -19,9 +19,9 @@ sys.path.insert(0, str(_REPO / "runner" / "python"))
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from hydrobench.adapters.swmm5 import adapt_rpt_to_parquet
-from hydrobench.catalog import load_manifest
-from hydrobench.scoring.scorer import score_case
+from benchmark1d2d.adapters.swmm5 import adapt_rpt_to_parquet
+from benchmark1d2d.catalog import load_manifest
+from benchmark1d2d.scoring.scorer import score_case
 
 BIN = _REPO / "reference_engines" / "swmm-5.2.4" / "bin"
 EXE = BIN / "runswmm.exe"
@@ -90,8 +90,8 @@ def main() -> int:
     )
     # Force parity against the second run's adapted series by reusing identity
     # stub path — relative metrics on identical adapted tables.
-    from hydrobench.io.results import read_results_parquet
-    from hydrobench.metrics import relative_peak, relative_volume
+    from benchmark1d2d.io.results import read_results_parquet
+    from benchmark1d2d.metrics import relative_peak, relative_volume
     import numpy as np
 
     a = read_results_parquet(pq1)

@@ -39,8 +39,8 @@ jobs:
         continue-on-error: true
         run: |
           set -euo pipefail
-          if ! command -v hydrobench >/dev/null 2>&1; then
-            echo "hydrobench CLI not on PATH; skipping demo score"
+          if ! command -v benchmark1d2d >/dev/null 2>&1; then
+            echo "benchmark1d2d CLI not on PATH; skipping demo score"
             exit 0
           fi
           SOLVER="examples/demo_solver/solve.py"
@@ -49,9 +49,9 @@ jobs:
             exit 0
           fi
           mkdir -p out
-          hydrobench run A1F-010 --solver "$SOLVER" --adapter generic_parquet || true
+          benchmark1d2d run A1F-010 --solver "$SOLVER" --adapter generic_parquet || true
           if [ -f out/A1F-010.parquet ]; then
-            hydrobench score A1F-010 --results out/A1F-010.parquet
+            benchmark1d2d score A1F-010 --results out/A1F-010.parquet
           else
             echo "No results parquet produced; demo score skipped"
           fi

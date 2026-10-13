@@ -1,4 +1,4 @@
-"""Read/write the hydrobench results Parquet contract."""
+"""Read/write the benchmark1d2d results Parquet contract."""
 
 from __future__ import annotations
 

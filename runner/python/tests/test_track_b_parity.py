@@ -7,9 +7,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hydrobench.io.results import write_results_parquet
-from hydrobench.metrics import relative_peak, relative_volume
-from hydrobench.scoring.scorecard import build_scorecard
+from benchmark1d2d.io.results import write_results_parquet
+from benchmark1d2d.metrics import relative_peak, relative_volume
+from benchmark1d2d.scoring.scorecard import build_scorecard
 
 
 def _series_columns(h: np.ndarray, *, t: float = 1.0) -> dict[str, np.ndarray]:

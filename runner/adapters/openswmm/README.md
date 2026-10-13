@@ -2,9 +2,9 @@
 
 Placeholder for federating
 [HydroCouple/openswmm.engine.benchmarks](https://github.com/HydroCouple/openswmm.engine.benchmarks)
-result products into hydrobench Track B.
+result products into benchmark1d2d Track B.
 
-- Python stub: `runner/python/hydrobench/adapters/openswmm.py` (raises
+- Python stub: `runner/python/benchmark1d2d/adapters/openswmm.py` (raises
   `NotImplementedError`)
 - Registry name: `openswmm`
 

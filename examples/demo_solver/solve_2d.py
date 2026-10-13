@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Demo 2D writers for hydrobench Phase 5 (analytic / perturbed exact).
+"""Demo 2D writers for benchmark1d2d Phase 5 (analytic / perturbed exact).
 
 Two independent \"solvers\" for MVP scoring:
 
@@ -29,7 +29,7 @@ for p in (_PY, _REPO):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-from hydrobench.io.results import write_results_parquet  # noqa: E402
+from benchmark1d2d.io.results import write_results_parquet  # noqa: E402
 
 
 def _cartesian_grid(
@@ -257,7 +257,7 @@ def run_case(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="hydrobench demo 2D analytic writer")
+    parser = argparse.ArgumentParser(description="benchmark1d2d demo 2D analytic writer")
     parser.add_argument(
         "--case",
         choices=["thacker", "macdonald_2d", "oblique_jump"],

@@ -1,6 +1,6 @@
 [project]
-name = "hydrobench"
-version = "0.1.0"
+name = "benchmark1d2d"
+version = "0.2.1"
 requires-python = ">=3.10"
 dependencies = ["numpy", "scipy", "pandas", "pyarrow", "jsonschema", "cryptography", "matplotlib"]
 
@@ -8,7 +8,7 @@ dependencies = ["numpy", "scipy", "pandas", "pyarrow", "jsonschema", "cryptograp
 dev = ["pytest"]
 
 [project.scripts]
-hydrobench = "hydrobench.cli.main:main"
+benchmark1d2d = "benchmark1d2d.cli.main:main"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["runner/python", "."]
-include = ["hydrobench*", "references*"]
+include = ["benchmark1d2d*", "references*"]
 
 [tool.pytest.ini_options]
 testpaths = ["runner/python/tests", "references/tests", "schemas/v1/tests"]

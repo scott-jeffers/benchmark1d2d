@@ -1,6 +1,6 @@
 # Track B federation with HydroCouple / openswmm.engine.benchmarks
 
-Hydrobench **federates** the HydroCouple corpus — it does not fork the `.inp`
+Benchmark1d2d **federates** the HydroCouple corpus — it does not fork the `.inp`
 library. Model files stay in the upstream repo (or a hash-addressed cache);
 this suite records tags, provenance, and tier membership.
 
@@ -31,14 +31,14 @@ Groups (documentation only; tags are flat):
 
 ## Provenance fields mapped into `corpus_index.parquet`
 
-| HydroCouple `provenance.yaml` | hydrobench column |
+| HydroCouple `provenance.yaml` | benchmark1d2d column |
 |-------------------------------|-------------------|
 | `license` | `license` |
 | `source` / `origin` | `provenance_source` |
 | case id / path | `model_id`, `path` |
 | content hash of `model.inp` | `hash` |
 | tags from `metadata.yaml` | `tags` |
-| tier assignment (hydrobench) | `tier` (`pr` / `nightly` / `release`) |
+| tier assignment (benchmark1d2d) | `tier` (`pr` / `nightly` / `release`) |
 
 ## PR tier (~50 models)
 

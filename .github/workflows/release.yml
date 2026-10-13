@@ -43,7 +43,7 @@ jobs:
           TAG="${{ inputs.tag }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "hydrobench $TAG"
+          git tag -a "$TAG" -m "benchmark1d2d $TAG"
           git push origin "$TAG"
 
       - name: Build static site

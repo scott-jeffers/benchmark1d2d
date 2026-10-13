@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openhydro.org/schemas/v1/results.schema.json",
-  "title": "Hydrobench Results Parquet Contract",
+  "title": "Benchmark1d2d Results Parquet Contract",
   "description": "Documents the Arrow/Parquet column contract for solver output. Required columns are t, x, y, h, u, v, p. Optional Q and c are used for 1D pressurized/free-surface and water-quality cases. This schema describes the column metadata embedded in (or alongside) a Parquet file — it is not a row-oriented JSON results dump.",
   "type": "object",
   "additionalProperties": false,

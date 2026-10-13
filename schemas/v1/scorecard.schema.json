@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openhydro.org/schemas/v1/scorecard.schema.json",
-  "title": "Hydrobench Signed Score Card",
+  "title": "Benchmark1d2d Signed Score Card",
   "description": "Signed, reproducible output of a scoring run. One card = one test = one track. Track A and Track B are never collapsed into a single pass/fail badge; emit separate cards when both tracks are scored.",
   "type": "object",
   "additionalProperties": false,

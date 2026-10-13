@@ -1,6 +1,6 @@
-﻿# hb-exec
+# hb-exec
 
-Placeholder Rust crate for the eventual hydrobench runner port.
+Placeholder Rust crate for the eventual benchmark1d2d runner port.
 
 > Placeholder — port after schema v1 freeze (ADR-0003)
 

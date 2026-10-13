@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openhydro.org/schemas/v1/coupling_1d2d.schema.json",
-  "title": "Hydrobench 1D/2D Coupling Map",
+  "title": "Benchmark1d2d 1D/2D Coupling Map",
   "description": "Minimal SWMM (or other 1D) node ↔ 2D cell/face exchange map for coupled urban inundation tests.",
   "type": "object",
   "additionalProperties": false,

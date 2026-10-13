@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Demo 1D shallow-water / pressurized solver for hydrobench vertical slice.
+"""Demo 1D shallow-water / pressurized solver for benchmark1d2d vertical slice.
 
 Supports:
   - Ritter dry-bed and Stoker wet-bed dam break (first-order HLL FV)
@@ -23,7 +23,7 @@ for p in (_PY, _REPO):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-from hydrobench.io.results import write_results_parquet  # noqa: E402
+from benchmark1d2d.io.results import write_results_parquet  # noqa: E402
 
 
 def _physical_flux(h: float, hu: float, g: float) -> tuple[float, float]:
@@ -358,7 +358,7 @@ def run_case(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="hydrobench demo solver")
+    parser = argparse.ArgumentParser(description="benchmark1d2d demo solver")
     parser.add_argument("--case", choices=["ritter", "stoker", "macdonald", "joukowsky"], default=None)
     parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument("--dx", type=float, default=5.0)

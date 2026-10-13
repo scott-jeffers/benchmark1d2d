@@ -1,4 +1,4 @@
-"""Adapter: EPA SWMM 5.x text report (.rpt) → hydrobench results Parquet."""
+"""Adapter: EPA SWMM 5.x text report (.rpt) → benchmark1d2d results Parquet."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 
 import numpy as np
 
-from hydrobench.io.results import write_results_parquet
+from benchmark1d2d.io.results import write_results_parquet
 
 _NODE_DEPTH_HEADER = re.compile(r"^\s*Node\s+Depth\s+Summary\s*$", re.I)
 _LINK_FLOW_HEADER = re.compile(r"^\s*Link\s+Flow\s+Summary\s*$", re.I)

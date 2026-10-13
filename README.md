@@ -1,8 +1,8 @@
-# hydrobench — Open V&V Benchmarks for Water Solvers
+# Benchmark1d2d — Open V&V Benchmarks for Hydraulic Solvers
 
 [![Track A](https://img.shields.io/badge/Track%20A-verification-0A7-blue)](#the-two-tracks)
 [![Track B](https://img.shields.io/badge/Track%20B-parity-6B4-purple)](#the-two-tracks)
-[![catalog](https://img.shields.io/badge/catalog-v0.1.0-lightgrey)](CHANGELOG.md)
+[![catalog](https://img.shields.io/badge/catalog-v0.2.0-lightgrey)](CHANGELOG.md)
 [![schema](https://img.shields.io/badge/schema-v1.0.0-green)](schemas/v1/)
 [![DOI](https://img.shields.io/badge/DOI-pending-lightgrey)](CITATION.cff)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -10,6 +10,12 @@
 > An open, engine-agnostic suite for verifying and validating 1D, 2D and coupled
 > 1D/2D hydraulic solvers — C++, Rust, WebAssembly or neural surrogate — against
 > exact solutions, laboratory measurements and the EPA SWMM / EPANET reference engines.
+
+> **Not** the EMScience [HydroBench](https://emscience.github.io/HydroBenchJBook/HydroBenchIntroduction.html)
+> catchment-model diagnostic toolkit. This project benchmarks *hydraulic solvers*
+> (Saint-Venant / shallow water / SWMM / EPANET), not hydrological signature metrics.
+> The public product name may still be revised before certification freeze (v1.0).
+
 
 ## Why this exists
 
@@ -41,10 +47,10 @@ A solver may hold any combination; the score card shows each separately.
 
 ```bash
 python -m pip install -e .
-hydrobench catalog list --track A
-hydrobench run A1F-010 --solver examples/demo_solver/solve.py --adapter generic_parquet
-hydrobench score A1F-010 --results out/A1F-010.parquet
-hydrobench report --open
+benchmark1d2d catalog list --track A
+benchmark1d2d run A1F-010 --solver examples/demo_solver/solve.py --adapter generic_parquet
+benchmark1d2d score A1F-010 --results out/A1F-010.parquet
+benchmark1d2d report --open
 ```
 
 ## How a benchmark run works
@@ -76,7 +82,7 @@ Columns: `t, x, y, h, u, v, p` (plus `Q` and concentration `c` for 1D).
 | A1P-020 | Instant valve closure | Joukowsky (1900) | peak pressure | ± 2 % |
 | B-EXTRAN-001 | EXTRAN parity | SWMM 5.2.4 | peak depth / volume | ± 1 % |
 
-Full catalog: `hydrobench catalog list`.
+Full catalog: `benchmark1d2d catalog list`.
 
 ## Adding your solver
 
@@ -84,7 +90,7 @@ Adapters live under `runner/adapters/`. Implement a shim that writes the results
 contract, then:
 
 ```bash
-hydrobench run <TEST_ID> --solver ./my_solver --adapter generic_parquet
+benchmark1d2d run <TEST_ID> --solver ./my_solver --adapter generic_parquet
 ```
 
 Container and WASM modes are supported by the exec layer (stubs in v0.1).
@@ -113,7 +119,7 @@ Roache), not a single-mesh error threshold.
 
 See [`GOVERNANCE.md`](GOVERNANCE.md). ASCE/EPA reviewer packet: `docs/submission/`.
 
-## Citing hydrobench
+## Citing Benchmark1d2d
 
 See [`CITATION.cff`](CITATION.cff). Each test case also cites its original source;
 do not drop those citations when you publish a score.

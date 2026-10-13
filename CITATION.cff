@@ -1,14 +1,14 @@
 cff-version: 1.2.0
-title: "hydrobench — Open V&V Benchmarks for Water Solvers"
+title: "Benchmark1d2d — Open V&V Benchmarks for Hydraulic Solvers"
 message: "If you use this software, please cite it using the metadata from this file."
 type: software
 authors:
   - family-names: OpenHydro
     given-names: Contributors
     alias: "@Scott"
-repository-code: "https://github.com/openhydro/hydrobench"
+repository-code: "https://github.com/scott-jeffers/benchmark1d2d"
 license: Apache-2.0
-version: 0.2.0
+version: 0.2.1
 date-released: "2026-10-13"
 abstract: >-
   An open, engine-agnostic suite for verifying and validating 1D, 2D and

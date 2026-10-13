@@ -15,19 +15,19 @@
 
 1. Implement an adapter under `runner/adapters/<name>/` that writes the
    Arrow/Parquet results contract (`schemas/v1/results.schema.json`).
-2. Register it in `runner/python/hydrobench/adapters/__init__.py`.
+2. Register it in `runner/python/benchmark1d2d/adapters/__init__.py`.
 3. Add a fixture and a unit test.
 
 ## Adding a metric
 
-1. Implement the metric in `runner/python/hydrobench/metrics/`.
+1. Implement the metric in `runner/python/benchmark1d2d/metrics/`.
 2. Add it to the closed vocabulary in `test_manifest.schema.json`.
 3. Document units and pass/fail semantics in `docs/methodology/`.
 
 ## Development setup
 
 ```bash
-cd hydrobench
+cd benchmark1d2d
 python -m pip install -e ".[dev]"
 pytest
 python tools/validate_catalog.py --allow-placeholder-hash

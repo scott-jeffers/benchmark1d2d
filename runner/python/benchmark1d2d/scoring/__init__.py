@@ -1,6 +1,6 @@
 """Deterministic signed score cards and case scoring."""
 
-from hydrobench.scoring.scorecard import (
+from benchmark1d2d.scoring.scorecard import (
     build_scorecard,
     canonical_json,
     content_hash,
@@ -8,7 +8,7 @@ from hydrobench.scoring.scorecard import (
     sign_bytes,
     verify_scorecard,
 )
-from hydrobench.scoring.scorer import score_case
+from benchmark1d2d.scoring.scorer import score_case
 
 __all__ = [
     "canonical_json",

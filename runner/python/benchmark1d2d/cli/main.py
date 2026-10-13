@@ -1,4 +1,4 @@
-"""hydrobench CLI entry point."""
+"""benchmark1d2d CLI entry point."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ import sys
 import webbrowser
 from pathlib import Path
 
-from hydrobench.adapters import REGISTRY
-from hydrobench.catalog import find_repo_root, list_catalog, load_manifest
-from hydrobench.exec.runner import run_solver
-from hydrobench.scoring.scorer import score_case
+from benchmark1d2d.adapters import REGISTRY
+from benchmark1d2d.catalog import find_repo_root, list_catalog, load_manifest
+from benchmark1d2d.exec.runner import run_solver
+from benchmark1d2d.scoring.scorer import score_case
 
 
 def _cmd_catalog_list(args: argparse.Namespace) -> int:
@@ -174,10 +174,10 @@ def _cmd_report(args: argparse.Namespace) -> int:
     if args.open:
         html_path = score_dir / "report.html"
         lines = [
-            "<!DOCTYPE html><html><head><meta charset='utf-8'><title>hydrobench report</title>",
+            "<!DOCTYPE html><html><head><meta charset='utf-8'><title>benchmark1d2d report</title>",
             "<style>body{font-family:system-ui,sans-serif;margin:2rem}table{border-collapse:collapse}",
             "td,th{border:1px solid #ccc;padding:.4rem .8rem}</style></head><body>",
-            "<h1>hydrobench score summary</h1><table><tr><th>Test</th><th>Track</th><th>Passed</th></tr>",
+            "<h1>benchmark1d2d score summary</h1><table><tr><th>Test</th><th>Track</th><th>Passed</th></tr>",
         ]
         for r in rows:
             lines.append(
@@ -191,7 +191,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="hydrobench", description="Open V&V benchmarks for water solvers")
+    parser = argparse.ArgumentParser(prog="benchmark1d2d", description="Open V&V benchmarks for water solvers")
     sub = parser.add_subparsers(dest="command", required=True)
 
     cat = sub.add_parser("catalog", help="Browse the test catalog")

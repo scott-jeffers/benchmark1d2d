@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from hydrobench.catalog import find_repo_root, load_manifest
-from hydrobench.scoring.scorer import score_case
+from benchmark1d2d.catalog import find_repo_root, load_manifest
+from benchmark1d2d.scoring.scorer import score_case
 
 # Import demo solver helpers
 _REPO = Path(__file__).resolve().parents[3]

@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from hydrobench.io.terrain import (
+from benchmark1d2d.io.terrain import (
     read_terrain_savez,
     read_ugrid_lite,
     write_terrain_savez,
@@ -68,7 +68,7 @@ def test_ugrid_rejects_bad_face(tmp_path: Path):
 
 def test_read_geotiff_documents_dependency(tmp_path: Path):
     """Missing file raises FileNotFoundError before optional-dep logic."""
-    from hydrobench.io.terrain import read_geotiff
+    from benchmark1d2d.io.terrain import read_geotiff
 
     with pytest.raises(FileNotFoundError):
         read_geotiff(tmp_path / "missing.tif")

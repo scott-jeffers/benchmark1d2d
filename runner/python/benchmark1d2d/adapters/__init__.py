@@ -1,6 +1,6 @@
 """Output adapters that normalize solver products to the results contract."""
 
-from hydrobench.adapters import epanet22, generic_parquet, openswmm, swmm5
+from benchmark1d2d.adapters import epanet22, generic_parquet, openswmm, swmm5
 
 REGISTRY = {
     "generic_parquet": generic_parquet,

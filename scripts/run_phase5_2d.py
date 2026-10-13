@@ -24,8 +24,8 @@ sys.path.insert(0, str(_REPO / "examples" / "demo_solver"))
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from hydrobench.catalog import load_manifest
-from hydrobench.scoring.scorer import score_case
+from benchmark1d2d.catalog import load_manifest
+from benchmark1d2d.scoring.scorer import score_case
 from solve_2d import run_case
 
 # (short_id, case_key, modes_to_run)

@@ -3,15 +3,13 @@
 All notable changes to this suite are documented here.
 Suite releases are independent of schema semver (`schemas/v1`).
 
-## [Unreleased]
+## [0.2.1] — 2026-10-13
 
-### Added
+### Changed
 
-- Phase 5 (2D analytical): terrain I/O (GeoTIFF / numpy.savez / UGRID-lite),
-  `references.macdonald_2d` and `references.oblique_jump`, Thacker alias
-  `planar_oscillation`, demo 2D exact + O(dx)-perturbed writers, scorer support
-  for `(x,y,t)` analytic grids, and `scripts/run_phase5_2d.py`.
-- Promoted A2A-001, A2A-010, A2A-020 manifests from `draft` to `candidate`.
+- Renamed project from `hydrobench` to **Benchmark1d2d** (`benchmark1d2d` package/CLI)
+  to avoid collision with the EMScience HydroBench catchment diagnostic toolkit.
+  GitHub repo and Pages move to `scott-jeffers/benchmark1d2d`.
 
 ## [0.2.0] — 2026-10-13
 
@@ -38,7 +36,7 @@ Suite releases are independent of schema semver (`schemas/v1`).
 - `schemas/v1` contract: test manifest, results, scorecard, network_1d, terrain_2d, coupling_1d2d.
 - Catalog validator (schema, SHA-256, license register, optional Crossref DOI).
 - Track A 1D vertical slice: Ritter, Stoker, MacDonald, Joukowsky reference generators.
-- Python `hydrobench` CLI: `catalog`, `run`, `score`, `verify`, `report`.
+- Python `benchmark1d2d` CLI: `catalog`, `run`, `score`, `verify`, `report`.
 - Metrics (L1/L2/L∞, mass error, NSE, KGE, peak, arrival/front time, CSI) and GCI convergence.
 - Deterministic Ed25519-signed score cards.
 - Track B scaffolding: SWMM 5.2.4 Dockerfile placeholder, `.rpt` adapter, corpus index builder.

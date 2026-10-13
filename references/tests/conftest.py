@@ -1,1 +1,1 @@
-# Pytest configuration hooks for hydrobench.references tests.
+# Pytest configuration hooks for benchmark1d2d.references tests.

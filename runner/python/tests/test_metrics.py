@@ -1,9 +1,9 @@
-"""Unit tests for hydrobench.metrics."""
+"""Unit tests for benchmark1d2d.metrics."""
 
 import numpy as np
 from numpy.testing import assert_allclose
 
-from hydrobench.metrics import (
+from benchmark1d2d.metrics import (
     L1,
     L2,
     Linf,

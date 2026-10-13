@@ -38,7 +38,7 @@ SYNTHETIC_ROWS: list[dict[str, Any]] = [
         "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "tags": ["extran", "surcharge", "backwater", "combined_sewer"],
         "license": "Unlicense",
-        "provenance_source": "synthetic://hydrobench/B-EXTRAN-001",
+        "provenance_source": "synthetic://benchmark1d2d/B-EXTRAN-001",
         "model_id": "B-EXTRAN-001",
         "tier": "tier_pr",
         "path": "test_catalog/track_b/tier_pr/B-EXTRAN-001_extran_parity",
@@ -47,7 +47,7 @@ SYNTHETIC_ROWS: list[dict[str, Any]] = [
         "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "tags": ["rtc", "pump", "storage"],
         "license": "synthetic-internal",
-        "provenance_source": "synthetic://hydrobench/B-RTC-001",
+        "provenance_source": "synthetic://benchmark1d2d/B-RTC-001",
         "model_id": "B-RTC-001",
         "tier": "tier_pr",
         "path": "test_catalog/track_b/tier_pr/B-RTC-001_rtc_rules",
@@ -56,7 +56,7 @@ SYNTHETIC_ROWS: list[dict[str, Any]] = [
         "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "tags": ["weir", "orifice", "free_surface"],
         "license": "synthetic-internal",
-        "provenance_source": "synthetic://hydrobench/B-CONTROL-001",
+        "provenance_source": "synthetic://benchmark1d2d/B-CONTROL-001",
         "model_id": "B-CONTROL-001",
         "tier": "tier_pr",
         "path": "test_catalog/track_b/tier_pr/B-CONTROL-001_weir_orifice",
@@ -65,7 +65,7 @@ SYNTHETIC_ROWS: list[dict[str, Any]] = [
         "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "tags": ["pressurized", "sanitary"],
         "license": "synthetic-internal",
-        "provenance_source": "synthetic://hydrobench/B-FORCEMAIN-001",
+        "provenance_source": "synthetic://benchmark1d2d/B-FORCEMAIN-001",
         "model_id": "B-FORCEMAIN-001",
         "tier": "tier_pr",
         "path": "test_catalog/track_b/tier_pr/B-FORCEMAIN-001_forcemain",
@@ -74,7 +74,7 @@ SYNTHETIC_ROWS: list[dict[str, Any]] = [
         "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "tags": ["storm", "quality"],
         "license": "synthetic-internal",
-        "provenance_source": "synthetic://hydrobench/B-QUALITY-001",
+        "provenance_source": "synthetic://benchmark1d2d/B-QUALITY-001",
         "model_id": "B-QUALITY-001",
         "tier": "tier_pr",
         "path": "test_catalog/track_b/tier_pr/B-QUALITY-001_washoff",
@@ -82,7 +82,7 @@ SYNTHETIC_ROWS: list[dict[str, Any]] = [
 ]
 
 SCHEMA_DOC = {
-    "title": "hydrobench Track B corpus_index",
+    "title": "benchmark1d2d Track B corpus_index",
     "description": (
         "Index of Track B models. Tag vocabulary and provenance format are "
         "HydroCouple-compatible best-effort. "
@@ -97,7 +97,7 @@ SCHEMA_DOC = {
         "license": {"type": "string", "description": "DATA_LICENSES.md license id"},
         "provenance_source": {
             "type": "string",
-            "description": "org/repo, URL, or synthetic://hydrobench/<id>",
+            "description": "org/repo, URL, or synthetic://benchmark1d2d/<id>",
         },
         "model_id": {"type": "string", "description": "Stable model / case id"},
         "tier": {

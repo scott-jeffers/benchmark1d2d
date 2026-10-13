@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package openhydro.hydrobench.v1;
+package openhydro.benchmark1d2d.v1;
 
-option java_package = "org.openhydro.hydrobench.v1";
-option csharp_namespace = "OpenHydro.Hydrobench.V1";
+option java_package = "org.openhydro.benchmark1d2d.v1";
+option csharp_namespace = "OpenHydro.Benchmark1d2d.V1";
 
 // Mirror of schemas/v1/scorecard.schema.json — signed score card.
 // One ScoreCard = one test = one track.

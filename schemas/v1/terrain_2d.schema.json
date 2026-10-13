@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openhydro.org/schemas/v1/terrain_2d.schema.json",
-  "title": "Hydrobench 2D Terrain",
+  "title": "Benchmark1d2d 2D Terrain",
   "description": "Minimal 2D terrain description: mesh or raster elevation references, roughness, and boundary conditions.",
   "type": "object",
   "additionalProperties": false,

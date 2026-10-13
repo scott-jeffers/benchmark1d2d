@@ -79,7 +79,7 @@ def build_scorecard(
     notes: str | None = None,
     timestamp: str | None = None,
     private_key: Ed25519PrivateKey | bytes | str | None = None,
-    key_id: str = "hydrobench-dev",
+    key_id: str = "benchmark1d2d-dev",
     schema_version: str = "1.0.0",
 ) -> dict[str, Any]:
     """Build a signed score card. Same inputs + timestamp + key ⇒ identical JSON."""

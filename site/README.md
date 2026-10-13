@@ -1,4 +1,4 @@
-# hydrobench static site
+# benchmark1d2d static site
 
 Dependency-light Python generator. No Jinja, Next.js, or Astro — plain HTML
 written from catalog manifests and optional scorecards.

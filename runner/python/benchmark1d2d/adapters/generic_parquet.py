@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from hydrobench.io.results import read_results_parquet, write_results_parquet
+from benchmark1d2d.io.results import read_results_parquet, write_results_parquet
 
 
 def adapt(input_path: str | Path, output_path: str | Path) -> Path:

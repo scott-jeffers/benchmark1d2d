@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate hydrobench test_catalog manifests.
+"""Validate benchmark1d2d test_catalog manifests.
 
 Checks (per case under test_catalog/):
   1. JSON Schema (Draft 2020-12) against schemas/v1/test_manifest.schema.json
@@ -37,7 +37,7 @@ PLACEHOLDER_SHA256 = (
 )
 DRAFT_OR_CANDIDATE = frozenset({"draft", "candidate"})
 CROSSREF_URL = "https://api.crossref.org/works/{doi}"
-USER_AGENT = "hydrobench-validate-catalog/0.1 (mailto:openhydro@example.org)"
+USER_AGENT = "benchmark1d2d-validate-catalog/0.1 (mailto:openhydro@example.org)"
 
 
 @dataclass
@@ -360,7 +360,7 @@ def print_result(result: CheckResult) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Validate hydrobench test_catalog manifests."
+        description="Validate benchmark1d2d test_catalog manifests."
     )
     p.add_argument(
         "--allow-placeholder-hash",

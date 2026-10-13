@@ -1,9 +1,9 @@
-"""Unit tests for hydrobench.convergence (Roache GCI / ASME V&V 20)."""
+"""Unit tests for benchmark1d2d.convergence (Roache GCI / ASME V&V 20)."""
 
 import numpy as np
 from numpy.testing import assert_allclose
 
-from hydrobench.convergence import (
+from benchmark1d2d.convergence import (
     assess_convergence,
     gci,
     observed_order,

@@ -1,4 +1,4 @@
-"""Validate hydrobench test manifests against test_manifest.schema.json."""
+"""Validate benchmark1d2d test manifests against test_manifest.schema.json."""
 
 from __future__ import annotations
 

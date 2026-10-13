@@ -7,7 +7,7 @@ be promoted to `candidate` or `frozen` until a real license is recorded.
 
 | License ID | Dataset / corpus | Terms summary | Source |
 |---|---|---|---|
-| `Apache-2.0` | hydrobench code & schemas | Apache Software License 2.0 | [LICENSE](LICENSE) |
+| `Apache-2.0` | benchmark1d2d code & schemas | Apache Software License 2.0 | [LICENSE](LICENSE) |
 | `Unlicense` | 1729-SWMM5-Models (SWMMEnablement) | Public domain dedication | https://github.com/SWMMEnablement/1729-SWMM5-Models |
 | `Unlicense` | 1729-SWMM5-Models-2030 (Dickinson) | Public domain dedication | https://github.com/SWMMBobSWMM6/1729-SWMM5-Models-2030 |
 | `Unlicense` | openswmm.engine.benchmarks (HydroCouple) | Public domain dedication | https://github.com/HydroCouple/openswmm.engine.benchmarks |

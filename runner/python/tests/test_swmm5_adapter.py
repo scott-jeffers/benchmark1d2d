@@ -7,8 +7,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from hydrobench.adapters.swmm5 import adapt_rpt_to_parquet, parse_rpt
-from hydrobench.io.results import read_results_parquet
+from benchmark1d2d.adapters.swmm5 import adapt_rpt_to_parquet, parse_rpt
+from benchmark1d2d.io.results import read_results_parquet
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "sample.rpt"
 

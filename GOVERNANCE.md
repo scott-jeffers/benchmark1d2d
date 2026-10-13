@@ -33,6 +33,13 @@ Only manifests with `status: frozen` count toward certification levels
 - **HydroCouple** — Track B federates `openswmm.engine.benchmarks` tag vocabulary
   and provenance format; do not fork the corpus
 
+## Naming
+
+The public product name is **Benchmark1d2d** (Python/CLI package: `benchmark1d2d`).
+It is distinct from the EMScience HydroBench hydrological diagnostic toolkit.
+The display name may be revised before certification freeze (`v1.0.0` / Zenodo);
+after freeze, renames require a redirect alias so existing citations remain valid.
+
 ## Releases
 
 Suite releases are tagged `vX.Y.Z`. `v1.0.0` freezes the catalog and mints a

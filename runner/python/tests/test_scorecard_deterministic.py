@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from hydrobench.scoring.scorecard import build_scorecard, canonical_json
+from benchmark1d2d.scoring.scorecard import build_scorecard, canonical_json
 
 
 def test_scorecard_byte_identical_with_fixed_key_and_timestamp():

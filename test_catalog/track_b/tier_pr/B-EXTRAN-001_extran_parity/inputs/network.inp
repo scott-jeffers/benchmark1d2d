@@ -1,5 +1,5 @@
 [TITLE]
-hydrobench B-EXTRAN-001 minimal dynamic-wave parity case
+Benchmark1d2d B-EXTRAN-001 minimal dynamic-wave parity case
 
 [OPTIONS]
 FLOW_ROUTING         DYNWAVE

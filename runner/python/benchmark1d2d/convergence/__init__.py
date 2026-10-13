@@ -1,6 +1,6 @@
 """Grid-convergence (Roache GCI / ASME V&V 20) helpers."""
 
-from hydrobench.convergence.gci import (
+from benchmark1d2d.convergence.gci import (
     assess_convergence,
     gci,
     observed_order,

@@ -9,9 +9,9 @@ from typing import Any, Sequence
 import numpy as np
 import pandas as pd
 
-from hydrobench.convergence import assess_convergence
-from hydrobench.io.results import read_results_parquet
-from hydrobench.metrics import (
+from benchmark1d2d.convergence import assess_convergence
+from benchmark1d2d.io.results import read_results_parquet
+from benchmark1d2d.metrics import (
     L1,
     L2,
     Linf,
@@ -22,7 +22,7 @@ from hydrobench.metrics import (
     relative_peak,
     relative_volume,
 )
-from hydrobench.scoring.scorecard import build_scorecard
+from benchmark1d2d.scoring.scorecard import build_scorecard
 
 _NORM_FNS = {"L1": L1, "L2": L2, "Linf": Linf}
 
@@ -381,7 +381,7 @@ def score_case(
     private_key: Any = None,
     solver: dict[str, str] | None = None,
     catalog_version: str = "0.1.0",
-    key_id: str = "hydrobench-dev",
+    key_id: str = "benchmark1d2d-dev",
 ) -> dict[str, Any]:
     """Score one catalog case and return a signed scorecard dict."""
     results_path = Path(results_path)

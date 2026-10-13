@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: Contributing guide
-    url: https://github.com/openhydro/hydrobench/blob/main/CONTRIBUTING.md
+    url: https://github.com/scott-jeffers/benchmark1d2d/blob/master/CONTRIBUTING.md
     about: How to add a test case, adapter, or metric.

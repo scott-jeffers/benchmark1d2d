@@ -58,13 +58,13 @@ def run_solver(
 
 def run_container(*_args, **_kwargs) -> None:
     raise NotImplementedError(
-        "Container execution is not implemented in hydrobench v0.1; "
+        "Container execution is not implemented in benchmark1d2d v0.1; "
         "use run_solver with a local binary or Python demo solver."
     )
 
 
 def run_wasm(*_args, **_kwargs) -> None:
     raise NotImplementedError(
-        "WASM execution is not implemented in hydrobench v0.1; "
+        "WASM execution is not implemented in benchmark1d2d v0.1; "
         "use run_solver with a local binary or Python demo solver."
     )

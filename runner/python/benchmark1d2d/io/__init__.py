@@ -1,11 +1,11 @@
-"""Results Parquet and 2D terrain I/O for the hydrobench output contract."""
+"""Results Parquet and 2D terrain I/O for the benchmark1d2d output contract."""
 
-from hydrobench.io.results import (
+from benchmark1d2d.io.results import (
     read_results_parquet,
     validate_results_columns,
     write_results_parquet,
 )
-from hydrobench.io.terrain import (
+from benchmark1d2d.io.terrain import (
     HAS_RASTERIO,
     read_geotiff,
     read_terrain_savez,

@@ -1,4 +1,4 @@
-"""Analytic reference solution generators for hydrobench Track A.
+"""Analytic reference solution generators for benchmark1d2d Track A.
 
 Each submodule implements a classic closed-form (or semi-analytic) solution
 used as ground truth for verification benchmarks.

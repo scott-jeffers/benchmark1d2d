@@ -1,6 +1,6 @@
 """Scoring metrics for Track A (verification/validation) and Track B (parity)."""
 
-from hydrobench.metrics.hydro import (
+from benchmark1d2d.metrics.hydro import (
     arrival_time_error,
     csi,
     front_position_error,
@@ -9,8 +9,8 @@ from hydrobench.metrics.hydro import (
     nse,
     peak_error,
 )
-from hydrobench.metrics.norms import L1, L2, Linf
-from hydrobench.metrics.parity import (
+from benchmark1d2d.metrics.norms import L1, L2, Linf
+from benchmark1d2d.metrics.parity import (
     continuity_error,
     relative_peak,
     relative_volume,

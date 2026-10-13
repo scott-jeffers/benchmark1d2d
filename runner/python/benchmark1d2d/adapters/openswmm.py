@@ -8,5 +8,5 @@ from pathlib import Path
 def adapt(input_path: str | Path, output_path: str | Path) -> Path:
     raise NotImplementedError(
         "openswmm adapter is a Track B stub; wire openswmm.engine.benchmarks "
-        "result products to the hydrobench Parquet contract before use"
+        "result products to the benchmark1d2d Parquet contract before use"
     )
