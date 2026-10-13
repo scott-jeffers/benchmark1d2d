@@ -125,7 +125,7 @@ Roache), not a single-mesh error threshold.
   EPANET 2.2 in CI and fails if a committed reference drifts; a Windows job scores
   the official EPA binaries against the same references (cross-build parity).
 - A case whose reference is missing is **not scored** — never passed.
-- Score cards are canonical JSON, Ed25519-signed, and byte-identical across reruns.
+- Score cards are canonical JSON with a SHA-256 content hash and byte-identical across reruns; check one with `benchmark1d2d verify-card`. Demo cards are signed with a development key published in the repo, so their signatures show integrity, not authorship.
 - Releases mint a Zenodo DOI (pending for v0.1).
 
 ## Governance & review
