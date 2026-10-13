@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from references.ritter import depth_velocity, front_position
+from references.ritter import depth_contour_position, depth_velocity, front_position
 
 
 def test_front_position_at_t60():
@@ -45,3 +45,14 @@ def test_front_matches_depth_velocity():
 def test_negative_time_raises():
     with pytest.raises(ValueError):
         depth_velocity(np.array([0.0]), t=-1.0)
+
+
+def test_depth_contour_matches_solution():
+    """Iso-contour abscissa agrees with depth_velocity at that location."""
+    t, h0, x0, g = 60.0, 1.0, 1000.0, 9.81
+    h_thresh = 1e-3 * h0
+    xc = depth_contour_position(t, h_thresh, h0=h0, x0=x0, g=g)
+    tip = front_position(t, h0=h0, x0=x0, g=g)
+    assert xc < tip
+    sol = depth_velocity(np.array([xc]), t=t, h0=h0, x0=x0, g=g)
+    assert_allclose(sol["h"][0], h_thresh, rtol=1e-10)

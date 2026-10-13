@@ -8,7 +8,7 @@ authors:
     alias: "@Scott"
 repository-code: "https://github.com/openhydro/hydrobench"
 license: Apache-2.0
-version: 0.1.0
+version: 0.2.0
 date-released: "2026-10-13"
 abstract: >-
   An open, engine-agnostic suite for verifying and validating 1D, 2D and

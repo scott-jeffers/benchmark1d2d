@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0.0",
   "case_version": "0.1.0",
-  "status": "draft",
+  "status": "candidate",
   "track": "A",
   "test_id": "A2A-020_oblique_hydraulic_jump",
   "test_class": "verification_analytic",
   "title": "Oblique hydraulic jump",
-  "description": "Supercritical 2D shallow-water flow past a wall deflection producing an oblique hydraulic jump with analytic shock angle (Ippen).",
+  "description": "Supercritical 2D shallow-water flow past a wall deflection producing an oblique hydraulic jump with analytic shock angle and conjugate states (Ippen).",
   "physics": {
     "dimensionality": "2D",
     "flow_type": "free_surface",
@@ -37,17 +37,19 @@
       "path": "inputs/params.json",
       "role": "parameters",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "fb6fea16b6a81d74448c43a9e1985c0184bd8e649810b5d399646a5663b83e3e"
     }
   ],
   "reference": {
     "kind": "analytic",
     "generator": {
       "module": "references.oblique_jump",
-      "function": "shock_angle",
+      "function": "depth_velocity",
       "parameters": {
-        "Fr": 2.0,
-        "theta": 15.0
+        "Fr1": 2.5,
+        "theta_deg": 15.0,
+        "h1": 1.0,
+        "g": 9.81
       }
     }
   },
@@ -61,10 +63,10 @@
     ],
     "mesh_refinement": {
       "levels": [
-        20.0,
-        10.0,
-        5.0,
-        2.5
+        2.0,
+        1.0,
+        0.5,
+        0.25
       ],
       "fixed_courant": 0.5
     }
@@ -72,16 +74,16 @@
   "scoring": {
     "criteria": [
       {
-        "id": "shock_angle",
-        "metric": "front_position_error",
+        "id": "depth_L1",
+        "metric": "L1",
         "variable": "h",
         "threshold": {
           "op": "abs<=",
-          "value": 2.0,
-          "units": "deg"
+          "value": 0.05,
+          "units": "m"
         },
         "gating": true,
-        "rationale": "Oblique shock angle within 2\u00b0 of Ippen relation."
+        "rationale": "L1 depth within 0.05 m of the piecewise-constant Ippen oblique-jump field."
       },
       {
         "id": "mass",
@@ -93,7 +95,7 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "Mass conservation within 0.1%."
+        "rationale": "Mass conservation within 0.1% versus analytic field."
       }
     ],
     "convergence": {

@@ -26,24 +26,69 @@ for p in (_PY, _REPO):
 from hydrobench.io.results import write_results_parquet  # noqa: E402
 
 
+def _physical_flux(h: float, hu: float, g: float) -> tuple[float, float]:
+    if h < 1e-12:
+        return 0.0, 0.0
+    u = hu / h
+    return hu, hu * u + 0.5 * g * h * h
+
+
+def _exact_dry_flux(h_wet: float, hu_wet: float, g: float, *, dry_on_right: bool) -> tuple[float, float]:
+    """Exact Godunov flux for a wet–dry Riemann problem (Toro).
+
+    Samples the self-similar rarefaction at the interface (ξ = 0).
+    """
+    if h_wet < 1e-12:
+        return 0.0, 0.0
+    u = hu_wet / h_wet
+    c = np.sqrt(g * h_wet)
+    if dry_on_right:
+        # Rarefaction into vacuum on the right; vacuum tip at u + 2c.
+        SL = u - c
+        tip = u + 2.0 * c
+        if tip <= 0.0:
+            return 0.0, 0.0
+        if SL >= 0.0:
+            return _physical_flux(h_wet, hu_wet, g)
+        # Interface inside rarefaction: c_star = (u + 2c)/3, u_star = (u + 2c)/3
+        cs = (u + 2.0 * c) / 3.0
+        us = cs
+        hs = cs * cs / g
+        return _physical_flux(hs, hs * us, g)
+    # Dry on the left, wet on the right (mirror).
+    SR = u + c
+    tip = u - 2.0 * c
+    if tip >= 0.0:
+        return 0.0, 0.0
+    if SR <= 0.0:
+        return _physical_flux(h_wet, hu_wet, g)
+    cs = (-u + 2.0 * c) / 3.0
+    us = -cs
+    hs = cs * cs / g
+    return _physical_flux(hs, hs * us, g)
+
+
 def _hll_flux(hL, huL, hR, huR, g: float):
-    """HLL flux for 1D shallow water (wet cells)."""
-    # Depth floor
+    """HLL flux for wet–wet; exact Godunov flux for wet–dry interfaces."""
     eps = 1e-12
-    hL = max(hL, 0.0)
-    hR = max(hR, 0.0)
+    hL = max(float(hL), 0.0)
+    hR = max(float(hR), 0.0)
     if hL < eps and hR < eps:
         return 0.0, 0.0
+    if hL >= eps and hR < eps:
+        return _exact_dry_flux(hL, float(huL), g, dry_on_right=True)
+    if hL < eps and hR >= eps:
+        return _exact_dry_flux(hR, float(huR), g, dry_on_right=False)
 
-    uL = 0.0 if hL < eps else huL / hL
-    uR = 0.0 if hR < eps else huR / hR
-    cL = np.sqrt(g * hL) if hL >= eps else 0.0
-    cR = np.sqrt(g * hR) if hR >= eps else 0.0
+    uL = float(huL) / hL
+    uR = float(huR) / hR
+    cL = np.sqrt(g * hL)
+    cR = np.sqrt(g * hR)
     SL = min(uL - cL, uR - cR)
     SR = max(uL + cL, uR + cR)
 
-    FL0, FL1 = huL, huL * uL + 0.5 * g * hL * hL
-    FR0, FR1 = huR, huR * uR + 0.5 * g * hR * hR
+    FL0, FL1 = _physical_flux(hL, float(huL), g)
+    FR0, FR1 = _physical_flux(hR, float(huR), g)
 
     if SL >= 0.0:
         return FL0, FL1
@@ -53,6 +98,43 @@ def _hll_flux(hL, huL, hR, huR, g: float):
     F0 = (SR * FL0 - SL * FR0 + SL * SR * (hR - hL)) / denom
     F1 = (SR * FL1 - SL * FR1 + SL * SR * (huR - huL)) / denom
     return F0, F1
+
+
+def _minmod(a: float, b: float) -> float:
+    if a * b <= 0.0:
+        return 0.0
+    return a if abs(a) < abs(b) else b
+
+
+def _cell_slopes(q: np.ndarray) -> np.ndarray:
+    """Minmod slopes for each cell (transmissive ends)."""
+    n = len(q)
+    slopes = np.zeros(n)
+    if n >= 2:
+        slopes[0] = _minmod(q[1] - q[0], q[1] - q[0])
+        slopes[-1] = _minmod(q[-1] - q[-2], q[-1] - q[-2])
+    for i in range(1, n - 1):
+        slopes[i] = _minmod(q[i] - q[i - 1], q[i + 1] - q[i])
+    return slopes
+
+
+def _reconstruct_muscl(q: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Piecewise-linear limited reconstruction; returns interface L/R states."""
+    n = len(q)
+    slopes = _cell_slopes(q)
+    qL = np.empty(n + 1)
+    qR = np.empty(n + 1)
+    # Interface 0 (left boundary): transmissive
+    qL[0] = q[0]
+    qR[0] = q[0]
+    # Interior interfaces i = 1..n-1 between cells i-1 and i
+    for i in range(1, n):
+        qL[i] = q[i - 1] + 0.5 * slopes[i - 1]
+        qR[i] = q[i] - 0.5 * slopes[i]
+    # Interface n (right boundary): transmissive
+    qL[n] = q[n - 1]
+    qR[n] = q[n - 1]
+    return qL, qR
 
 
 def solve_dam_break(
@@ -65,9 +147,9 @@ def solve_dam_break(
     dx: float,
     t_end: float,
     g: float = 9.81,
-    cfl: float = 0.5,
+    cfl: float = 0.45,
 ) -> dict[str, np.ndarray]:
-    """First-order finite-volume HLL dam-break on a uniform grid."""
+    """Second-order MUSCL–HLL dam-break with dry-bed wave speeds."""
     nx = max(int(round((xmax - xmin) / dx)), 2)
     dx = (xmax - xmin) / nx
     x = xmin + (np.arange(nx) + 0.5) * dx
@@ -76,12 +158,12 @@ def solve_dam_break(
 
     t = 0.0
     while t < t_end - 1e-15:
-        # Speeds
         u = np.zeros(nx)
         wet = h > 1e-12
         u[wet] = hu[wet] / h[wet]
         c = np.sqrt(g * np.maximum(h, 0.0))
-        smax = float(np.max(np.abs(u) + c)) if nx else 0.0
+        # Include Ritter tip speed u+2c so CFL respects dry-bed wave estimate.
+        smax = float(np.max(np.abs(u) + 2.0 * c)) if nx else 0.0
         if smax < 1e-14:
             dt = t_end - t
         else:
@@ -89,24 +171,28 @@ def solve_dam_break(
         if t + dt > t_end:
             dt = t_end - t
 
-        # Ghost: transmissive
-        hL = np.empty(nx + 1)
-        hR = np.empty(nx + 1)
-        huL = np.empty(nx + 1)
-        huR = np.empty(nx + 1)
-        hL[0], huL[0] = h[0], hu[0]
-        hR[0], huR[0] = h[0], hu[0]
-        hL[-1], huL[-1] = h[-1], hu[-1]
-        hR[-1], huR[-1] = h[-1], hu[-1]
-        hL[1:-1] = h[:-1]
-        huL[1:-1] = hu[:-1]
-        hR[1:-1] = h[1:]
-        huR[1:-1] = hu[1:]
+        # MUSCL on wet–wet interiors; drop to first-order at wet–dry faces
+        # so the exact dry Riemann flux is not polluted by tiny reconstructed depths.
+        hL_i, hR_i = _reconstruct_muscl(h)
+        huL_i, huR_i = _reconstruct_muscl(hu)
+        hL_i = np.maximum(hL_i, 0.0)
+        hR_i = np.maximum(hR_i, 0.0)
+        for i in range(1, nx):
+            if h[i - 1] < 1e-12 or h[i] < 1e-12:
+                hL_i[i] = h[i - 1]
+                huL_i[i] = hu[i - 1]
+                hR_i[i] = h[i]
+                huR_i[i] = hu[i]
+        for i in range(len(hL_i)):
+            if hL_i[i] < 1e-12:
+                huL_i[i] = 0.0
+            if hR_i[i] < 1e-12:
+                huR_i[i] = 0.0
 
         F0 = np.empty(nx + 1)
         F1 = np.empty(nx + 1)
         for i in range(nx + 1):
-            F0[i], F1[i] = _hll_flux(hL[i], huL[i], hR[i], huR[i], g)
+            F0[i], F1[i] = _hll_flux(hL_i[i], huL_i[i], hR_i[i], huR_i[i], g)
 
         h -= (dt / dx) * (F0[1:] - F0[:-1])
         hu -= (dt / dx) * (F1[1:] - F1[:-1])

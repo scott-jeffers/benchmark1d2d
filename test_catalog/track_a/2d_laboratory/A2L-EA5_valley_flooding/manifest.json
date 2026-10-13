@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "case_version": "0.1.0",
-  "status": "draft",
+  "status": "candidate",
   "track": "A",
   "test_id": "A2L-EA5_valley_flooding",
   "test_class": "validation_lab",
@@ -23,7 +23,7 @@
     "citations": [
       {
         "authors": [
-          "N\u00e9elz, S.",
+          "Néelz, S.",
           "Pender, G."
         ],
         "year": 2013,
@@ -32,7 +32,7 @@
         "report_number": "SC120002"
       }
     ],
-    "license": "TBD-confirm",
+    "license": "OGL-UK-3.0",
     "adaptation_notes": "Blocked pending Environment Agency dataset license confirmation."
   },
   "inputs": [

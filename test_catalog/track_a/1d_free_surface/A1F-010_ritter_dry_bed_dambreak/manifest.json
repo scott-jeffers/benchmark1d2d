@@ -61,7 +61,7 @@
         "variable": "h",
         "threshold": {"op": "abs<=", "value": 2.5, "units": "m"},
         "gating": true,
-        "rationale": "Two finest cells; exact front at 1375.8 m."
+        "rationale": "Two finest cells (2×1.25 m). Exact iso-contour at h=0.001·h0 (~1358 m), not the vacuum tip (1375.8 m)."
       },
       {
         "id": "mass",

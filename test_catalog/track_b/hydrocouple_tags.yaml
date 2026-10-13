@@ -1,0 +1,95 @@
+# Tag vocabulary — the canonical classification for every corpus case.
+#
+# Tags are FLAT and a case carries as many as apply; the groups below are for
+# documentation only. Directory placement under corpus/<collection>/ is
+# organizational convenience and carries no semantic weight — suites,
+# manifests, and reports select cases by tag query, never by path.
+#
+# The vocabulary is controlled (harness/validate.py rejects unknown tags, which
+# keeps search and census meaningful) but cheap to extend: adding a tag is a
+# one-line PR with a description.
+
+tags:
+
+  # ── domain ────────────────────────────────────────────────────────────────
+  hydrology:          Runoff generation, infiltration, and catchment processes
+  hydraulics:         Conduit routing, structures, and network hydraulics
+  quality:            Water quality — pollutant generation, transport, treatment
+  lid:                Low Impact Development controls of any type
+  groundwater:        Groundwater / aquifer interaction
+  snowmelt:           Snow accumulation and melt
+  controls:           Control rules / real-time control
+  2d:                 Has a 2D surface-routing component or 1D-2D coupling
+  interop:            Converted from or compared against another modeling tool
+
+  # ── purpose ───────────────────────────────────────────────────────────────
+  regression:         Guards against unintended behavior change between engines
+  analytical:         Graded against an exact or manufactured solution
+  stability:          Stresses solver robustness (convergence, timestep, shocks)
+  performance:        Exists to measure runtime, not correctness
+  calibration:        Carries observed data for goodness-of-fit assessment
+
+  # ── features ──────────────────────────────────────────────────────────────
+  dynamic_wave:       FLOW_ROUTING DYNWAVE (full Saint-Venant, implicit Picard)
+  kinematic_wave:     FLOW_ROUTING KINWAVE
+  steady_flow:        FLOW_ROUTING STEADY
+  finite_volume: >-
+    FLOW_ROUTING FV — 1D explicit conservative finite volume (Godunov,
+    HLL/HLLC). Shock-capturing, so it is the 1D solver most relevant to
+    transitions and dam-break cases.
+  finite_volume_2d: >-
+    2D shallow-water finite-volume surface routing, declared by the [2D_*]
+    sections ([2D_OPTIONS], [2D_MESH_FILE], [2D_VERTICES]) rather than by
+    FLOW_ROUTING — a model may be 1D-FV, 2D, or coupled.
+  virtual_junctions: >-
+    [VIRTUAL_JUNCTIONS] — pass-through nodes fused so FV cell chains span them
+  surcharge:          Conduits surcharge during the simulation
+  flooding:           Nodes flood during the simulation
+  flow_instability:   Engine reports flow instability indexes
+  expected_high_continuity: >-
+    The model does not conserve mass, and that is a property of the MODEL, not
+    of any engine: the committed reference/legacy.rpt — written by an earlier,
+    unrecorded engine, long before the current one existed — already reports a
+    routing continuity error worse than 10%. Applied ONLY on that evidence.
+    Such a case is still run and still gated on parity; what the tag buys is
+    that it is excluded from the published mass-balance badge, which otherwise
+    reports the worst number in the corpus and is therefore set by whichever
+    deck is most pathological by design (allow-ponding-high-ce, at -104835% in
+    its own committed legacy report). The excluded count is disclosed on the
+    badge rather than hidden, the same way the verification badge discloses
+    its unchecked cases.
+  transition_pressurized: Open-channel <-> pressurized flow transition
+  force_main:         Force main conduits
+  transient:          Rapid transients — pump starts/stops, valve/gate operation
+  pump:               Pump links
+  weir:               Weir links
+  orifice:            Orifice links
+  outlet:             Outlet links
+  storage:            Storage nodes
+  divider:            Flow divider nodes
+  outfall_bc:         Non-trivial outfall boundary condition (tidal, timeseries)
+  irregular_xsect:    Irregular / transect cross sections
+  circular_xsect:     Circular cross sections
+  street_inlet:       Streets and inlets (dual drainage)
+  dual_drainage:      Coupled surface and subsurface drainage
+  rdii:               Rainfall-derived infiltration and inflow
+  dwf:                Dry weather flow
+  evaporation:        Evaporation processes
+  infiltration:       Soil infiltration (Horton, Green-Ampt, Curve Number)
+  pollutants:         One or more pollutants defined
+  buildup_washoff:    Land-use buildup / washoff functions
+  treatment:          Treatment expressions at nodes
+  lid_pollutants:     LID controls acting on pollutant loads
+  street_sweeping:    Street sweeping removal
+  rtc:                Real-time control rules driving structures
+  hotstart:           Uses or produces hot-start files
+  long_term:          Continuous / multi-year simulation
+
+  # ── provenance ────────────────────────────────────────────────────────────
+  real_world:         Derived from an actual drainage system
+  synthetic:          Constructed for testing, not a real system
+  textbook:           From published documentation or a manual
+  contributed:        Submitted by a community contributor
+  converted_xpswmm:   Converted from XPSWMM
+  converted_icm:      Converted from InfoWorks ICM
+  anonymized:         Passed through harness/anonymize.py

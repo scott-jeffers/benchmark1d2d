@@ -186,6 +186,16 @@ def assess_convergence(
     if len(spacings_l) != len(errors_l):
         raise ValueError("spacings and errors must have the same length")
 
+    # Exact (machine-zero) solutions on every mesh: order is formally satisfied.
+    if all(abs(e) < 1e-15 for e in errors_l):
+        return {
+            "observed_order": float(expected_order),
+            "gci_fine": 0.0,
+            "passed_order": True,
+            "expected_order": float(expected_order),
+            "min_observed_order": float(min_observed_order),
+        }
+
     p = observed_order(errors_l, spacings_l)
     r = spacings_l[1] / spacings_l[0]
     e1, e2 = abs(errors_l[0]), abs(errors_l[1])

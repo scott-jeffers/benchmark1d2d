@@ -3,7 +3,12 @@
 import numpy as np
 from numpy.testing import assert_allclose
 
-from references.thacker import angular_frequency, bed_elevation, depth_velocity
+from references.thacker import (
+    angular_frequency,
+    bed_elevation,
+    depth_velocity,
+    planar_oscillation,
+)
 
 
 def test_center_depth_at_t0():
@@ -53,3 +58,9 @@ def test_velocity_peaks_at_quarter_period():
     )
     u_expected = -(g * eta / (omega * L))  # sin(π/2) = 1
     assert_allclose(sol["u"], u_expected, rtol=1e-12)
+
+
+def test_planar_oscillation_alias():
+    assert planar_oscillation is depth_velocity
+    sol = planar_oscillation(0.0, 0.0, t=0.0, h0=0.1, L=1.0, eta=0.02)
+    assert_allclose(sol["h"], 0.1)

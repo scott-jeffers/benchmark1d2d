@@ -14,6 +14,14 @@ from __future__ import annotations
 
 import numpy as np
 
+# Default A2A-001 parameters (nondimensional bowl, mild amplitude).
+DEFAULT_PARAMS = {
+    "h0": 0.1,
+    "L": 1.0,
+    "eta": 0.05,
+    "g": 9.81,
+}
+
 
 def angular_frequency(h0: float, L: float, g: float = 9.81) -> float:
     """Natural frequency ``ω = sqrt(8 g h0) / L`` [rad/s]."""
@@ -98,3 +106,7 @@ def depth_velocity(
     v = np.zeros_like(h)
 
     return {"h": h, "u": u, "v": v, "zb": zb, "omega": omega}
+
+
+# Catalog / draft alias used in A2A-001 manifests and READMEs.
+planar_oscillation = depth_velocity

@@ -36,3 +36,8 @@ Thumbs.db
 *.hdf5
 *.nc
 data/raw/
+.cache/
+
+# Pinned SWMM binaries (hashes in SHA256SUMS; fetch via EPA release)
+reference_engines/**/bin/
+reference_engines/**/vendor/

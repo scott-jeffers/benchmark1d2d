@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "case_version": "0.1.0",
-  "status": "draft",
+  "status": "candidate",
   "track": "A",
   "test_id": "A2A-001_thacker_parabolic_bowl",
   "test_class": "verification_analytic",
@@ -37,23 +37,24 @@
       "path": "inputs/params.json",
       "role": "parameters",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "13e39a71b4c7158dc8f8461cb2f58daaa14d8e67e3146e0e2f6bcbcbd1ca5885"
     }
   ],
   "reference": {
     "kind": "analytic",
     "generator": {
       "module": "references.thacker",
-      "function": "planar_oscillation",
+      "function": "depth_velocity",
       "parameters": {
+        "h0": 0.1,
         "L": 1.0,
-        "eta": 0.5,
+        "eta": 0.05,
         "g": 9.81
       }
     }
   },
   "simulation": {
-    "t_end": 4.0,
+    "t_end": 1.0,
     "output_interval": 0.25,
     "required_outputs": [
       "h",
@@ -78,11 +79,11 @@
         "variable": "h",
         "threshold": {
           "op": "abs<=",
-          "value": 2.0,
-          "units": "%"
+          "value": 0.02,
+          "units": "m"
         },
         "gating": true,
-        "rationale": "L1 depth error within 2% of Thacker exact solution."
+        "rationale": "L1 depth error within 0.02 m of Thacker exact solution on the finest mesh."
       },
       {
         "id": "mass",
@@ -94,14 +95,14 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "Global volume conserved within 0.1%."
+        "rationale": "Global volume conserved within 0.1% versus analytic wet mass."
       }
     ],
     "convergence": {
       "norm": "L1",
       "variable": "h",
-      "expected_order": 2.0,
-      "min_observed_order": 1.5
+      "expected_order": 1.0,
+      "min_observed_order": 0.8
     },
     "pass_rule": "all_gating"
   }

@@ -1,2 +1,6 @@
-# PLACEHOLDER — regenerate in CI once binary is vendored
-swmm5  e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+# SWMM 5.2.4 pinned binaries ? USEPA release v5.2.4 (win64)
+# Source: https://github.com/USEPA/Stormwater-Management-Model/releases/tag/v5.2.4
+# Regenerated locally 2026-10-13; do not hand-edit hashes.
+runswmm.exe  0fe187282e8d90318ad029a5b5661143459d3591292995b7c5e3547953797bde
+swmm5.dll  7bac9983ec031415f04e8e6bdafc4878fd17cb7c3460d3323f41cad78f4a7a92
+swmm-output.dll  dcb73d4d6dfe683430b1bbfd775756f23891cda0439e15e33a99cef6305ebd70

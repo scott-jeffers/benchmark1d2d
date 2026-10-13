@@ -15,7 +15,7 @@ import numpy as np
 
 
 def front_position(t: float, h0: float = 1.0, x0: float = 1000.0, g: float = 9.81) -> float:
-    """Return the wet/dry front location at time ``t``.
+    """Return the vacuum tip (h = 0) location at time ``t``.
 
     Parameters
     ----------
@@ -31,6 +31,33 @@ def front_position(t: float, h0: float = 1.0, x0: float = 1000.0, g: float = 9.8
     if t < 0.0:
         raise ValueError("t must be non-negative")
     return float(x0 + 2.0 * t * np.sqrt(g * h0))
+
+
+def depth_contour_position(
+    t: float,
+    h_threshold: float,
+    h0: float = 1.0,
+    x0: float = 1000.0,
+    g: float = 9.81,
+) -> float:
+    """Exact abscissa where Ritter depth equals ``h_threshold`` (0 < h < h0).
+
+    Used when a numerical front is detected by a depth threshold rather than
+    the vacuum tip: compare like with like.
+    """
+    t = float(t)
+    h_threshold = float(h_threshold)
+    if t < 0.0:
+        raise ValueError("t must be non-negative")
+    if h_threshold <= 0.0:
+        return front_position(t, h0=h0, x0=x0, g=g)
+    if h_threshold >= h0:
+        c0 = np.sqrt(g * h0)
+        return float(x0 - t * c0)
+    c0 = np.sqrt(g * h0)
+    # h = (1/(9g)) (2 c0 - ξ)^2  ⇒  ξ = 2 c0 - 3 sqrt(g h)
+    xi = 2.0 * c0 - 3.0 * np.sqrt(g * h_threshold)
+    return float(x0 + xi * t)
 
 
 def depth_velocity(

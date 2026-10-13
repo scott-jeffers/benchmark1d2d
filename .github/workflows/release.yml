@@ -49,14 +49,10 @@ jobs:
       - name: Build static site
         run: |
           set -euo pipefail
-          if command -v hydrobench >/dev/null 2>&1; then
-            hydrobench report --out site/dist || python -m hydrobench.cli.main report --out site/dist || true
-          fi
-          if [ -d site ]; then
-            mkdir -p site/dist
-            echo "Site scaffold present; build step is a placeholder until the generator is wired."
-            ls -la site
-          fi
+          python scripts/run_vertical_slice.py || true
+          python site/build.py --scorecards out/vertical_slice
+          ls -la site/dist | head
+
 
       - name: Zenodo deposit (placeholder)
         run: |

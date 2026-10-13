@@ -14,6 +14,11 @@ from references.joukowsky import delta_p as joukowsky_delta_p
 from references.joukowsky import pressure_wave as joukowsky_pressure_wave
 from references.thacker import depth_velocity as thacker_depth_velocity
 from references.thacker import bed_elevation as thacker_bed_elevation
+from references.thacker import planar_oscillation as thacker_planar_oscillation
+from references.macdonald_2d import depth_velocity as macdonald_2d_depth_velocity
+from references.macdonald_2d import depth_2d as macdonald_depth_2d
+from references.oblique_jump import depth_velocity as oblique_jump_depth_velocity
+from references.oblique_jump import shock_angle as oblique_jump_shock_angle
 
 __all__ = [
     "ritter_depth_velocity",
@@ -26,4 +31,9 @@ __all__ = [
     "joukowsky_pressure_wave",
     "thacker_depth_velocity",
     "thacker_bed_elevation",
+    "thacker_planar_oscillation",
+    "macdonald_2d_depth_velocity",
+    "macdonald_depth_2d",
+    "oblique_jump_depth_velocity",
+    "oblique_jump_shock_angle",
 ]

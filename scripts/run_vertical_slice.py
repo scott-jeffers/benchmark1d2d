@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Run four Track A cases with the demo solver and score them (gate script)."""
+"""Run four Track A cases with the demo solver and score them (gate script).
+
+Verification cases with ``mesh_refinement.levels`` are solved on every level;
+scoring uses the finest result for gating criteria and all levels for GCI /
+observed order (ASME V&V 20).
+"""
 
 from __future__ import annotations
 
@@ -19,11 +24,19 @@ from hydrobench.scoring.scorer import score_case
 from solve import run_case
 
 CASES = [
-    ("A1F-010", "ritter", 10.0),
-    ("A1F-011", "stoker", 10.0),
-    ("A1F-001", "macdonald", 20.0),
-    ("A1P-020", "joukowsky", 10.0),
+    ("A1F-010", "ritter"),
+    ("A1F-011", "stoker"),
+    ("A1F-001", "macdonald"),
+    ("A1P-020", "joukowsky"),
 ]
+
+
+def _refinement_levels(manifest: dict) -> list[float]:
+    mr = (manifest.get("simulation") or {}).get("mesh_refinement") or {}
+    levels = mr.get("levels")
+    if levels:
+        return [float(x) for x in levels]
+    return [10.0]
 
 
 def main() -> int:
@@ -33,15 +46,28 @@ def main() -> int:
     timestamp = "2024-01-01T00:00:00Z"
     results = []
 
-    for test_id, case, dx in CASES:
+    for test_id, case in CASES:
         manifest = load_manifest(test_id, repo=_REPO)
-        parquet = out_dir / f"{manifest['test_id']}.parquet"
-        print(f"==> solving {manifest['test_id']} ({case}, dx={dx})")
-        run_case(case, dx=dx, t_end=None, out=parquet, manifest=manifest)
+        levels = _refinement_levels(manifest)
+        # Coarse → fine for discovery; score with fine as primary.
+        levels_sorted = sorted(levels, reverse=True)
+        paths: list[Path] = []
+        print(f"==> solving {manifest['test_id']} ({case}, levels={levels_sorted})")
+        for dx in levels_sorted:
+            parquet = out_dir / f"{manifest['test_id']}_dx{dx}.parquet"
+            run_case(case, dx=dx, t_end=None, out=parquet, manifest=manifest)
+            paths.append(parquet)
 
+        finest = paths[-1]  # smallest dx after reverse-sort
+        # Also write canonical name expected by the site builder.
+        canonical = out_dir / f"{manifest['test_id']}.parquet"
+        canonical.write_bytes(finest.read_bytes())
+
+        refinement = paths if len(paths) >= 2 else None
         card = score_case(
             manifest,
-            parquet,
+            finest,
+            refinement_results=refinement,
             timestamp=timestamp,
             private_key=key,
             solver={"name": "demo", "version": "0.1.0", "adapter": "generic_parquet"},
@@ -55,13 +81,25 @@ def main() -> int:
         for c in card["criteria_results"]:
             mark = "PASS" if c["passed"] else "FAIL"
             print(f"      [{mark}] {c['id']}: observed={c['observed']}")
+        if card.get("convergence_result"):
+            cr = card["convergence_result"]
+            mark = "PASS" if cr.get("passed") else "FAIL"
+            print(
+                f"      [{mark}] convergence: p={cr.get('observed_order')} "
+                f"gci={cr.get('gci')} (min_p={cr.get('min_observed_order')})"
+            )
         results.append((manifest["test_id"], card["passed"]))
 
     print("\nSummary:")
     for tid, ok in results:
         print(f"  {tid}: {'PASS' if ok else 'FAIL'}")
-    # Gate: all four must produce scorecards; macdonald + joukowsky should pass.
     assert len(results) == 4
+    # Gate: all four verification cases must pass with multi-mesh evidence.
+    failed = [tid for tid, ok in results if not ok]
+    if failed:
+        print(f"GATE FAIL: {failed}")
+        return 1
+    print("GATE PASS: all four cases passed")
     return 0
 
 

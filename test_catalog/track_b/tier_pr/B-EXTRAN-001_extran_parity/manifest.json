@@ -10,8 +10,15 @@
   "physics": {
     "dimensionality": "1D",
     "flow_type": "mixed",
-    "governing_equations": ["saint_venant_dynamic", "pressurized_pipe"],
-    "phenomena": ["surcharge", "backwater", "network_routing"]
+    "governing_equations": [
+      "saint_venant_dynamic",
+      "pressurized_pipe"
+    ],
+    "phenomena": [
+      "surcharge",
+      "backwater",
+      "network_routing"
+    ]
   },
   "provenance": {
     "citations": [
@@ -33,19 +40,22 @@
       "path": "inputs/network.inp",
       "role": "network",
       "format": "inp",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "2e1b02368752a4456258f931b01d5735a4d5ec1413bb77d1a3b79a085585561f"
     }
   ],
   "reference": {
     "kind": "pinned_engine",
     "engine": "SWMM",
     "version": "5.2.4",
-    "binary_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "binary_sha256": "7bac9983ec031415f04e8e6bdafc4878fd17cb7c3460d3323f41cad78f4a7a92"
   },
   "simulation": {
     "t_end": 21600,
     "output_interval": 60,
-    "required_outputs": ["h", "Q"]
+    "required_outputs": [
+      "h",
+      "Q"
+    ]
   },
   "scoring": {
     "criteria": [
@@ -53,7 +63,11 @@
         "id": "peak_depth",
         "metric": "relative_peak",
         "variable": "h",
-        "threshold": {"op": "abs<=", "value": 1.0, "units": "%"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 1.0,
+          "units": "%"
+        },
         "gating": true,
         "rationale": "Within SWMM 5.2.4 self-consistency band on EXTRAN cases."
       },
@@ -61,9 +75,13 @@
         "id": "volume",
         "metric": "relative_volume",
         "variable": "volume",
-        "threshold": {"op": "abs<=", "value": 1.0, "units": "%"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 1.0,
+          "units": "%"
+        },
         "gating": true,
-        "rationale": "Hydrograph volume within ±1% of pinned SWMM 5.2.4 reference."
+        "rationale": "Hydrograph volume within Â±1% of pinned SWMM 5.2.4 reference."
       }
     ],
     "pass_rule": "all_gating"

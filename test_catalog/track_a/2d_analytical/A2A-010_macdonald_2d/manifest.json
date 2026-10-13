@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0.0",
   "case_version": "0.1.0",
-  "status": "draft",
+  "status": "candidate",
   "track": "A",
   "test_id": "A2A-010_macdonald_2d",
   "test_class": "verification_analytic",
-  "title": "MacDonald 2D analytic channel",
-  "description": "2D extension of the MacDonald open-channel analytic benchmark for steady free-surface flow with friction and topography.",
+  "title": "MacDonald 2D manufactured channel",
+  "description": "2D manufactured steady free-surface depth over a known bed (MacDonald-style), with mild spanwise modulation, for shallow-water verification.",
   "physics": {
     "dimensionality": "2D",
     "flow_type": "free_surface",
@@ -15,7 +15,7 @@
     ],
     "phenomena": [
       "backwater",
-      "friction",
+      "manufactured",
       "topography"
     ]
   },
@@ -40,16 +40,22 @@
       "path": "inputs/params.json",
       "role": "parameters",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "02fd536f9a8d3f0ee6a89b90332c291b7c867b43a76c5445e204e80672b6ac1c"
     }
   ],
   "reference": {
     "kind": "analytic",
     "generator": {
-      "module": "references.macdonald",
-      "function": "depth_2d",
+      "module": "references.macdonald_2d",
+      "function": "depth_velocity",
       "parameters": {
-        "q": 2.0,
+        "L": 1000.0,
+        "W": 100.0,
+        "amp": 0.25,
+        "k": 16.0,
+        "span_amp": 0.05,
+        "qx": 0.2,
+        "qy": 0.0,
         "g": 9.81
       }
     }
@@ -64,10 +70,10 @@
     ],
     "mesh_refinement": {
       "levels": [
+        40.0,
         20.0,
         10.0,
-        5.0,
-        2.5
+        5.0
       ],
       "fixed_courant": 0.5
     }
@@ -80,11 +86,11 @@
         "variable": "h",
         "threshold": {
           "op": "abs<=",
-          "value": 1.0,
-          "units": "%"
+          "value": 0.01,
+          "units": "m"
         },
         "gating": true,
-        "rationale": "L1 depth within 1% of MacDonald analytic profile."
+        "rationale": "L1 depth within 0.01 m of the manufactured MacDonald-style 2D profile."
       },
       {
         "id": "mass",
@@ -96,7 +102,7 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "Volume conservation within 0.1%."
+        "rationale": "Volume conservation within 0.1% versus analytic field."
       }
     ],
     "convergence": {

@@ -1,21 +1,15 @@
 #!/usr/bin/env python3
-"""Build Track B ``corpus_index.parquet`` from synthetic / CSV rows.
+"""Build Track B ``corpus_index.parquet`` from CSV rows or the PR-tier selection.
 
-Tag vocabulary and provenance format: HydroCouple-compatible best-effort.
-# TODO(verify against openswmm.engine.benchmarks)
+Tag vocabulary and provenance format are **federated** from HydroCouple
+``openswmm.engine.benchmarks`` (verified 2026-10-13):
 
-HydroCouple / openswmm.engine.benchmarks uses free-form string tags on models
-(e.g. phenomenon and facility labels). hydrobench records the same spirit as a
-list of lowercase tokens. Provenance is a source URI or repo slug plus license
-id from ``DATA_LICENSES.md`` — not a fork of the upstream schema.
+- Tags: ``test_catalog/track_b/hydrocouple_tags.yaml`` (mirror of
+  ``harness/schemas/tags.yaml``)
+- Provenance: ``hydrocouple_provenance.schema.yaml``
+- Docs: ``HYDROCOUPLE_FEDERATION.md``
 
-Best-effort tag vocabulary (extend as corpus grows):
-  extran, surcharge, backwater, rtc, pump, weir, orifice, storage,
-  combined_sewer, sanitary, storm, pressurized, free_surface, quality
-
-Provenance format (best-effort):
-  provenance_source := "<org>/<repo>" | "<url>" | "synthetic://hydrobench/<id>"
-  license           := license id registered in DATA_LICENSES.md
+Models are not forked; ``scripts/fetch_track_b_models.py`` pulls by hash.
 """
 
 from __future__ import annotations

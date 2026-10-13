@@ -3,7 +3,12 @@
 ## Physics
 
 Supercritical shallow-water flow deflected by a wall produces an oblique
-hydraulic jump. Shock angle and conjugate depth follow Ippen (1951).
+hydraulic jump. Shock angle `β(Fr₁, θ)` and conjugate depth follow Ippen
+(1951). The catalog reference is a piecewise-constant field on either side of
+the straight shock.
+
+Analytic generators: `references.oblique_jump.shock_angle`,
+`references.oblique_jump.depth_velocity`.
 
 ## Citation
 
@@ -12,4 +17,4 @@ Ippen, A. T. (1951). "Mechanics of supercritical flow." *Trans. ASCE*, 116,
 
 ## Status
 
-Draft scaffold.
+**candidate** — Phase 5.

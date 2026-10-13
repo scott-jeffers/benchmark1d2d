@@ -32,7 +32,16 @@ def _final_slice(df: pd.DataFrame) -> pd.DataFrame:
     sl = df[np.isclose(df["t"].to_numpy(dtype=float), t_max)].copy()
     if sl.empty:
         sl = df.loc[df["t"] == df["t"].max()].copy()
+    if _is_2d_frame(sl):
+        return sl.sort_values(["y", "x"])
     return sl.sort_values("x")
+
+
+def _is_2d_frame(df: pd.DataFrame) -> bool:
+    if "y" not in df.columns:
+        return False
+    y = df["y"].to_numpy(dtype=float)
+    return bool(np.any(np.isfinite(y))) and float(np.nanmax(y) - np.nanmin(y)) > 0.0
 
 
 def _load_generator(manifest: dict[str, Any]):
@@ -46,12 +55,30 @@ def _load_generator(manifest: dict[str, Any]):
     return fn, params
 
 
-def _call_reference(fn, params: dict[str, Any], x: np.ndarray, t: float, manifest: dict):
-    """Invoke analytic generator; handle depth_profile(x-only) vs depth_velocity(x,t)."""
+def _call_reference(
+    fn,
+    params: dict[str, Any],
+    x: np.ndarray,
+    t: float,
+    manifest: dict,
+    y: np.ndarray | None = None,
+):
+    """Invoke analytic generator; handle 1D (x,t) and 2D (x,y,t) signatures."""
     module = (manifest.get("reference") or {}).get("generator", {}).get("module", "")
     name = (manifest.get("reference") or {}).get("generator", {}).get("function", "")
+    mod_base = module.rsplit(".", 1)[-1] if module else ""
 
-    if name == "depth_profile" or module.endswith("macdonald"):
+    # --- 2D analytic generators (x, y, t, ...) ---
+    if mod_base in {"thacker", "macdonald_2d", "oblique_jump"} or name in {
+        "planar_oscillation",
+        "depth_2d",
+    }:
+        if y is None:
+            raise ValueError(f"2D reference {module}.{name} requires y coordinates")
+        kwargs = {k: v for k, v in params.items() if k not in {"x", "y", "t"}}
+        return fn(x, y, t, **kwargs)
+
+    if name == "depth_profile" or mod_base == "macdonald":
         # depth_profile(x, case=..., g=...)
         kwargs = {k: v for k, v in params.items() if k != "x"}
         h = fn(x, **kwargs)
@@ -65,10 +92,10 @@ def _call_reference(fn, params: dict[str, Any], x: np.ndarray, t: float, manifes
         u = Q / (B * np.asarray(h, dtype=float))
         return {"h": np.asarray(h, dtype=float), "u": u}
 
-    if name == "pressure_wave" or module.endswith("joukowsky"):
+    if name == "pressure_wave" or mod_base == "joukowsky":
         return fn(x, t, **params)
 
-    # depth_velocity(x, t, ...)
+    # depth_velocity(x, t, ...) — 1D default
     return fn(x, t, **params)
 
 
@@ -109,6 +136,7 @@ def _eval_criterion(
     x = sim["x"].to_numpy(dtype=float)
     h_sim = sim["h"].to_numpy(dtype=float)
     u_sim = sim["u"].to_numpy(dtype=float)
+    cell = float(dx)
 
     if metric in _NORM_FNS:
         field_sim = sim[variable].to_numpy(dtype=float) if variable in sim.columns else h_sim
@@ -118,26 +146,30 @@ def _eval_criterion(
         if metric == "Linf":
             observed = Linf(field_sim, field_ref)
         else:
-            observed = _NORM_FNS[metric](field_sim, field_ref, dx=dx)
+            observed = _NORM_FNS[metric](field_sim, field_ref, dx=cell)
     elif metric == "front_position_error":
-        from references.ritter import front_position as ritter_front
+        from references.ritter import depth_contour_position
 
         params = ((manifest.get("reference") or {}).get("generator") or {}).get("parameters") or {}
         t_end = float(manifest["simulation"]["t_end"])
-        exact = ritter_front(
+        h0 = float(params.get("h0", 1.0))
+        # Wet threshold: small fraction of upstream depth. Exact reference is
+        # the matching iso-contour (not the vacuum tip), so detection bias
+        # does not masquerade as solver error.
+        h_thresh = 1e-3 * h0
+        exact = depth_contour_position(
             t_end,
-            h0=float(params.get("h0", 1.0)),
+            h_thresh,
+            h0=h0,
             x0=float(params.get("x0", 1000.0)),
             g=float(params.get("g", 9.81)),
         )
-        # Wet threshold: small fraction of upstream depth
-        h_thresh = 1e-3 * float(params.get("h0", 1.0))
         observed = front_position_error(x, h_sim, h_thresh, exact)
     elif metric == "global_mass_error":
-        # Cell-centered volumes ~ h * dx (unit width).
-        vol_sim = float(np.sum(h_sim) * dx)
+        # Cell-centered volumes ~ h * dx (1D unit width) or h * dA (2D).
+        vol_sim = float(np.sum(h_sim) * cell)
         h_ref = np.asarray(ref.get("h", h_sim), dtype=float)
-        vol_ref = float(np.sum(h_ref) * dx)
+        vol_ref = float(np.sum(h_ref) * cell)
         observed = global_mass_error(vol_sim, vol_ref)
     elif metric == "peak_error":
         field_sim = sim[variable].to_numpy(dtype=float)
@@ -191,6 +223,24 @@ def _estimate_dx(x: np.ndarray) -> float:
     return float(np.median(d)) if len(d) else 1.0
 
 
+def _estimate_cell_measure(sim: pd.DataFrame) -> float:
+    """1D spacing ``dx`` or 2D cell area ``dx*dy`` for discrete norms / mass."""
+    x = sim["x"].to_numpy(dtype=float)
+    dx = _estimate_dx(x)
+    if not _is_2d_frame(sim):
+        return dx
+    y = sim["y"].to_numpy(dtype=float)
+    dy = _estimate_dx(y)
+    return float(dx * dy)
+
+
+def _sim_xy(sim: pd.DataFrame) -> tuple[np.ndarray, np.ndarray | None]:
+    x = sim["x"].to_numpy(dtype=float)
+    if _is_2d_frame(sim):
+        return x, sim["y"].to_numpy(dtype=float)
+    return x, None
+
+
 def _score_analytic(
     manifest: dict[str, Any],
     results_path: Path,
@@ -202,15 +252,15 @@ def _score_analytic(
 
     df = read_results_parquet(results_path)
     sim = _final_slice(df)
-    x = sim["x"].to_numpy(dtype=float)
+    x, y = _sim_xy(sim)
     t_end = float(manifest["simulation"]["t_end"])
     # Prefer actual final time in results when present.
     t_sim = float(sim["t"].iloc[0]) if len(sim) else t_end
-    ref = _call_reference(fn, params, x, t_sim, manifest)
-    dx = _estimate_dx(x)
+    ref = _call_reference(fn, params, x, t_sim, manifest, y=y)
+    cell = _estimate_cell_measure(sim)
 
     criteria_results = [
-        _eval_criterion(c, sim, ref, manifest, dx) for c in manifest["scoring"]["criteria"]
+        _eval_criterion(c, sim, ref, manifest, cell) for c in manifest["scoring"]["criteria"]
     ]
 
     convergence_result = None
@@ -232,15 +282,19 @@ def _score_analytic(
         for pth in paths:
             rdf = read_results_parquet(pth)
             rsim = _final_slice(rdf)
-            rx = rsim["x"].to_numpy(dtype=float)
+            rx, ry = _sim_xy(rsim)
+            # Use linear spacing (dx) for observed-order / GCI, even in 2D.
             rdx = _estimate_dx(rx)
-            rref = _call_reference(fn, params, rx, float(rsim["t"].iloc[0]), manifest)
+            rcell = _estimate_cell_measure(rsim)
+            rref = _call_reference(
+                fn, params, rx, float(rsim["t"].iloc[0]), manifest, y=ry
+            )
             field_sim = rsim[var].to_numpy(dtype=float)
             field_ref = np.asarray(rref[var], dtype=float)
             if norm_name == "Linf":
                 err = Linf(field_sim, field_ref)
             else:
-                err = norm_fn(field_sim, field_ref, dx=rdx)
+                err = norm_fn(field_sim, field_ref, dx=rcell)
             spacings.append(rdx)
             errors.append(err)
         # Sort fine → coarse (ascending spacing)
