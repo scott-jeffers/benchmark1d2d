@@ -236,6 +236,16 @@ def run_swmm(inp: str | Path, workdir: str | Path) -> tuple[Path, Path]:
     return rpt, out
 
 
+def _clean_name(name: str) -> str:
+    """Element names are raw bytes in the .out file; Latin-1 bytes (e.g. "ó")
+    reach Python as surrogate escapes, which cannot be written to Parquet."""
+    try:
+        name.encode("utf-8")
+        return name
+    except UnicodeEncodeError:
+        return name.encode("utf-8", "surrogateescape").decode("latin-1")
+
+
 def read_out(out_path: str | Path) -> dict[str, Any]:
     """Read node depth and link flow/velocity series from a SWMM binary .out."""
     from swmm.toolkit import output, shared_enum
@@ -249,12 +259,12 @@ def read_out(out_path: str | Path) -> dict[str, Any]:
         t = np.arange(1, n_per + 1, dtype=np.float64) * float(step)
         nodes, links = {}, {}
         for i in range(n_node):
-            name = output.get_elem_name(handle, shared_enum.ElementType.NODE, i)
+            name = _clean_name(output.get_elem_name(handle, shared_enum.ElementType.NODE, i))
             nodes[name] = np.asarray(
                 output.get_node_series(handle, i, shared_enum.NodeAttribute.INVERT_DEPTH, 0, n_per - 1), dtype=np.float64
             )
         for i in range(n_link):
-            name = output.get_elem_name(handle, shared_enum.ElementType.LINK, i)
+            name = _clean_name(output.get_elem_name(handle, shared_enum.ElementType.LINK, i))
             q = output.get_link_series(handle, i, shared_enum.LinkAttribute.FLOW_RATE, 0, n_per - 1)
             v = output.get_link_series(handle, i, shared_enum.LinkAttribute.FLOW_VELOCITY, 0, n_per - 1)
             links[name] = (np.asarray(q, dtype=np.float64), np.asarray(v, dtype=np.float64))

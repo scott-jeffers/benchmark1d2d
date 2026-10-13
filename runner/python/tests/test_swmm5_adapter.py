@@ -37,3 +37,11 @@ def test_adapt_rpt_to_parquet(tmp_path: Path):
     assert np.allclose(df["h"].to_numpy()[:3], [1.25, 2.1, 0.8])
     # Link max flows in Q for the last two rows
     assert np.allclose(df["Q"].to_numpy()[3:], [3.5, 2.75])
+
+
+def test_latin1_element_names_survive() -> None:
+    from benchmark1d2d.adapters.swmm5 import _clean_name
+
+    raw = b"Cami\xf3n".decode("utf-8", "surrogateescape")  # what the reader returns for Latin-1 bytes
+    assert _clean_name(raw) == "Camión"
+    assert _clean_name("plain") == "plain"
