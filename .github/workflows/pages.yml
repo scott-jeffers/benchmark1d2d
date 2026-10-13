@@ -21,6 +21,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # SWMM 5.1.15 (swmm-toolkit 0.10.0) needs Python 3.10. Set it up first so
+      # the 3.12 setup below stays the default `python` for every other step.
+      - uses: actions/setup-python@v5
+        id: py310
+        with:
+          python-version: "3.10"
+      - name: Install SWMM 5.1.15 for the Track B demo
+        run: ${{ steps.py310.outputs.python-path }} -m pip install -q "swmm-toolkit==0.10.0"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -44,13 +53,8 @@ jobs:
           python scripts/run_demo_2d.py A2A-001 A2C-EA1 A2C-EA2 A2C-EA4 A2C-EA5 || true
 
       # Track B demonstration: older engine releases scored against the pinned references.
-      - uses: actions/setup-python@v5
-        id: py310
-        with:
-          python-version: "3.10"
       - name: Track B demo runs (SWMM 5.1.15, EPANET 2.0)
         run: |
-          ${{ steps.py310.outputs.python-path }} -m pip install -q "swmm-toolkit==0.10.0"
           python scripts/run_track_b.py --swmm51-python "${{ steps.py310.outputs.python-path }}"
 
       - name: Build site
