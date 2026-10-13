@@ -11,11 +11,6 @@
 > 1D/2D hydraulic solvers — C++, Rust, WebAssembly or neural surrogate — against
 > exact solutions, laboratory measurements and the EPA SWMM / EPANET reference engines.
 
-> **Not** the EMScience [HydroBench](https://emscience.github.io/HydroBenchJBook/HydroBenchIntroduction.html)
-> catchment-model diagnostic toolkit. This project benchmarks *hydraulic solvers*
-> (Saint-Venant / shallow water / SWMM / EPANET), not hydrological signature metrics.
-> The public product name may still be revised before certification freeze (v1.0).
-
 
 ## Why this exists
 
