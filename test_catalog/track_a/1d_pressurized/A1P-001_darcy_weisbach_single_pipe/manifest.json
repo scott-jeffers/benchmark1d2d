@@ -1,12 +1,12 @@
 {
   "schema_version": "1.1.0",
-  "case_version": "0.1.0",
-  "status": "draft",
+  "case_version": "1.0.0",
+  "status": "candidate",
   "track": "A",
   "test_id": "A1P-001_darcy_weisbach_single_pipe",
   "test_class": "verification_analytic",
   "title": "Darcy–Weisbach single pipe",
-  "description": "Steady pressurized flow in a single pipe with Darcy–Weisbach friction; head loss compared to the closed-form Δh = f (L/D) V²/(2g).",
+  "description": "Steady flow through a 1 km, 300 mm pipe at 1 m/s. The friction factor follows from Colebrook–White, so the exact head loss Δh = f (L/D) V²/(2g) = 3.09 m checks both the friction law a solver uses and how it applies it.",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "pressurized",
@@ -38,7 +38,7 @@
       "path": "inputs/params.json",
       "role": "case_parameters",
       "format": "json",
-      "sha256": "83f7fac770544ad33f605e140fc19b49c42d991a480de39b3a61ce3b2699cb70"
+      "sha256": "60886c40a73717c5130318da3c03ef74bfb27102726d9ff8c4c73e55e13bb961"
     }
   ],
   "reference": {
@@ -49,8 +49,10 @@
       "parameters": {
         "L": 1000.0,
         "D": 0.3,
-        "f": 0.02,
         "V": 1.0,
+        "f": null,
+        "roughness": 0.00015,
+        "nu": 1e-06,
         "g": 9.81,
         "H0": 100.0
       }
@@ -60,51 +62,40 @@
     "t_end": 1.0,
     "output_interval": 1.0,
     "required_outputs": [
-      "p",
+      "h",
       "Q"
     ],
-    "mesh_refinement": {
-      "levels": [
-        20.0,
-        10.0,
-        5.0,
-        2.5
-      ],
-      "fixed_courant": 0.5
-    }
+    "steady": true
   },
   "scoring": {
     "criteria": [
       {
         "id": "head_loss",
-        "metric": "L2",
-        "variable": "p",
+        "metric": "relative_head_loss",
+        "variable": "h",
         "threshold": {
           "op": "abs<=",
           "value": 1.0,
           "units": "%"
         },
         "gating": true,
-        "rationale": "Steady head loss within 1% of Darcy–Weisbach closed form."
+        "rationale": "Exact Colebrook–White head loss within 1 %: the accuracy Swamee & Jain (1976) give for their explicit approximation over 5e3 < Re < 1e8, so a solver using any standard explicit friction formula passes and a wrong friction law or a units error fails."
       },
       {
-        "id": "mass",
-        "metric": "continuity_error",
-        "variable": "Q",
+        "id": "head_profile",
+        "metric": "L2",
+        "variable": "h",
         "threshold": {
           "op": "abs<=",
-          "value": 0.1,
-          "units": "%"
+          "value": 0.05,
+          "units": "m"
         },
         "gating": true,
-        "rationale": "Mass continuity on a single pipe."
+        "rationale": "Heads along the pipe within 5 cm of the linear exact profile: catches a correct total loss distributed wrongly."
       }
     ],
     "convergence": {
-      "norm": "L1",
-      "variable": "p",
-      "expected_order": 1.0,
-      "min_observed_order": 0.8
+      "not_applicable": "Steady closed-form pipe flow: a network solver has no grid to refine, so observed order of accuracy does not apply."
     },
     "pass_rule": "all_gating"
   }

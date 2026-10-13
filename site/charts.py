@@ -111,6 +111,9 @@ class Chart:
         ys += [np.array([h[0]]) for h in self.hlines]
         x0, x1 = self._extent(self.x, xs)
         y0, y1 = self._extent(self.y, ys)
+        yt = self.y.ticks or (_log_ticks(y0, y1) if self.y.log else nice_ticks(y0, y1, 5))
+        widest = max((len(fmt(t)) for t in yt if y0 <= t <= y1), default=4)
+        PAD_L = max(64, int(30 + 7.4 * widest))  # room for tick labels plus the rotated axis title
         iw = self.width - PAD_L - PAD_R
         ih = self.height - PAD_T - PAD_B
 
@@ -132,7 +135,6 @@ class Chart:
         ]
         # grid + ticks
         xt = self.x.ticks or (_log_ticks(x0, x1) if self.x.log else nice_ticks(x0, x1, 6))
-        yt = self.y.ticks or (_log_ticks(y0, y1) if self.y.log else nice_ticks(y0, y1, 5))
         out.append('<g class="grid">')
         for t in yt:
             if y0 <= t <= y1:

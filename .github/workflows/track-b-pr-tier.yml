@@ -42,6 +42,8 @@ jobs:
           git fetch -q --depth 1 origin "$COMMIT" && git checkout -q FETCH_HEAD
       - name: Every PR-tier model must run cleanly
         run: python scripts/corpus_census.py --corpus hc/corpus --only test_catalog/track_b/tier_pr/selection.json --timeout 60 --fail-on-error --out out/pr_census.parquet
+      - name: Parity harness self-check (reference against itself must be exactly 0)
+        run: python scripts/corpus_parity.py --corpus hc/corpus --tier pr --label self --expect-identical
 
   cross-build:
     name: Official Windows SWMM 5.2.4 build vs reference

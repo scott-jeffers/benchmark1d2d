@@ -98,6 +98,28 @@
     },
     "scoring": {
       "$ref": "#/$defs/scoring"
+    },
+    "review": {
+      "type": "object",
+      "description": "Maintainer sign-off required to freeze a case (docs/methodology/promotion.md).",
+      "additionalProperties": false,
+      "required": [
+        "by",
+        "date"
+      ],
+      "properties": {
+        "by": {
+          "type": "string",
+          "minLength": 2
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
     }
   },
   "allOf": [
@@ -173,49 +195,80 @@
         ]
       },
       "then": {
-        "properties": {
-          "simulation": {
-            "type": "object",
-            "required": [
-              "mesh_refinement"
-            ],
+        "anyOf": [
+          {
             "properties": {
-              "mesh_refinement": {
+              "simulation": {
                 "type": "object",
                 "required": [
-                  "levels"
+                  "mesh_refinement"
                 ],
                 "properties": {
-                  "levels": {
-                    "type": "array",
-                    "minItems": 3,
-                    "items": {
-                      "type": "number"
+                  "mesh_refinement": {
+                    "type": "object",
+                    "required": [
+                      "levels"
+                    ],
+                    "properties": {
+                      "levels": {
+                        "type": "array",
+                        "minItems": 3,
+                        "items": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "scoring": {
+                "type": "object",
+                "required": [
+                  "convergence"
+                ],
+                "properties": {
+                  "convergence": {
+                    "type": "object",
+                    "required": [
+                      "expected_order",
+                      "min_observed_order"
+                    ]
+                  }
+                }
+              }
+            },
+            "required": [
+              "simulation",
+              "scoring"
+            ]
+          },
+          {
+            "properties": {
+              "scoring": {
+                "type": "object",
+                "required": [
+                  "convergence"
+                ],
+                "properties": {
+                  "convergence": {
+                    "type": "object",
+                    "required": [
+                      "not_applicable"
+                    ],
+                    "properties": {
+                      "not_applicable": {
+                        "type": "string",
+                        "minLength": 20
+                      }
                     }
                   }
                 }
               }
-            }
-          },
-          "scoring": {
-            "type": "object",
+            },
             "required": [
-              "convergence"
-            ],
-            "properties": {
-              "convergence": {
-                "type": "object",
-                "required": [
-                  "expected_order",
-                  "min_observed_order"
-                ]
-              }
-            }
+              "scoring"
+            ]
           }
-        },
-        "required": [
-          "simulation",
-          "scoring"
         ]
       }
     },
@@ -759,7 +812,8 @@
               "v",
               "p",
               "Q",
-              "c"
+              "c",
+              "z"
             ]
           }
         },
@@ -776,6 +830,10 @@
           "type": "object",
           "description": "Optional solver parameters the adapter may expose.",
           "additionalProperties": true
+        },
+        "steady": {
+          "type": "boolean",
+          "description": "The reference is a steady state; t_end only bounds a time-marching solver."
         }
       }
     },
@@ -906,7 +964,9 @@
             "relative_volume",
             "timing_error",
             "continuity_error",
-            "expected_state_error"
+            "expected_state_error",
+            "relative_head_loss",
+            "storage_balance_error"
           ]
         },
         "variable": {
@@ -973,12 +1033,6 @@
     "convergence": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "norm",
-        "variable",
-        "expected_order",
-        "min_observed_order"
-      ],
       "properties": {
         "norm": {
           "type": "string",
@@ -999,8 +1053,42 @@
         "min_observed_order": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "not_applicable": {
+          "type": "string",
+          "minLength": 20,
+          "description": "Why observed order of accuracy does not apply to this case (the reference is closed-form and the candidate has no discretization to refine)."
         }
-      }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "norm",
+            "variable",
+            "expected_order",
+            "min_observed_order"
+          ]
+        },
+        {
+          "required": [
+            "not_applicable"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "norm"
+                ]
+              },
+              {
+                "required": [
+                  "expected_order"
+                ]
+              }
+            ]
+          }
+        }
+      ]
     },
     "reference_intercomparison": {
       "type": "object",

@@ -183,6 +183,82 @@ def build_ea(manifest, dx_override: float | None = None) -> tuple[Case, list[flo
     return case, hours, float(prm["outputs"]["probe_interval_s"])
 
 
+def build_macdonald_2d(manifest, dx: float) -> tuple[Case, list[float], float | None]:
+    """A2A-010: channel with slip walls, inflow discharge west, exact depth east; starts at uniform depth."""
+    from references.macdonald_2d import bed_elevation, depth_profile
+
+    prm = manifest["reference"]["generator"]["parameters"]
+    L, W, q, n, g = prm["L"], prm["W"], prm["q"], prm["n_manning"], prm.get("g", 9.81)
+    nx, ny = int(round(L / dx)), max(int(round(W / dx)), 1)
+    x = dx * (np.arange(nx) + 0.5)
+    y = (W / ny) * (np.arange(ny) + 0.5)
+    X, _ = np.meshgrid(x, y)
+    z = bed_elevation(X, L=L, q=q, n_manning=n, g=g)
+    h_out = float(depth_profile(L, g=g))
+    h0 = np.full_like(z, h_out)  # uniform start: the steady profile must emerge from the scheme
+    zw, ze = float(bed_elevation(-0.5 * dx, L=L, q=q, n_manning=n, g=g)), float(bed_elevation(L + 0.5 * dx, L=L, q=q, n_manning=n, g=g))
+    hw_e = float(depth_profile(L + 0.5 * dx, g=g))
+
+    def ghost(t, H, U, V, Z):
+        # West: discharge q imposed, depth extrapolated (subcritical inflow).
+        Z[1:-1, 0] = zw
+        H[1:-1, 0] = H[1:-1, 1]
+        U[1:-1, 0] = q / np.maximum(H[1:-1, 1], 1e-9)
+        V[1:-1, 0] = 0.0
+        # East: exact depth imposed, velocity extrapolated (subcritical outflow).
+        Z[1:-1, -1] = ze
+        H[1:-1, -1] = hw_e
+        U[1:-1, -1] = U[1:-1, -2]
+        V[1:-1, -1] = 0.0
+
+    grid = Grid(x, y, z, np.ones_like(z, dtype=bool))
+    case = Case(grid, h0, h0 * (q / h0), np.zeros_like(z), manning_n=n, t_end=float(manifest["simulation"]["t_end"]), ghost=ghost)
+    return case, [], None
+
+
+def build_oblique_jump(manifest, dx: float) -> tuple[Case, list[float], float | None]:
+    """A2A-020: slip wall on the south edge; upstream state imposed west and north; free outflow east."""
+    from references.oblique_jump import states
+
+    prm = manifest["reference"]["generator"]["parameters"]
+    dom = json.loads((Path(manifest["_case_dir"]) / "inputs/params.json").read_text())["domain"]
+    st = states(prm["Fr1"], prm["theta_deg"], prm["h1"], prm.get("g", 9.81))
+    nx, ny = int(round((dom["xmax"] - dom["xmin"]) / dx)), int(round((dom["ymax"] - dom["ymin"]) / dx))
+    x = dom["xmin"] + dx * (np.arange(nx) + 0.5)
+    y = dom["ymin"] + dx * (np.arange(ny) + 0.5)
+    z = np.zeros((ny, nx))
+    h1, u1, v1 = st["h1"], st["u1"], st["v1"]
+
+    def ghost(t, H, U, V, Z):
+        for sl in ((slice(1, -1), 0), (-1, slice(None))):  # west column, north row
+            Z[sl] = 0.0
+            H[sl] = h1
+            U[sl] = u1
+            V[sl] = v1
+        Z[1:-1, -1] = 0.0  # east: zero-gradient (supercritical outflow)
+        H[1:-1, -1] = H[1:-1, -2]
+        U[1:-1, -1] = U[1:-1, -2]
+        V[1:-1, -1] = V[1:-1, -2]
+
+    grid = Grid(x, y, z, np.ones_like(z, dtype=bool))
+    h0 = np.full_like(z, h1)
+    case = Case(grid, h0, h0 * u1, h0 * v1, t_end=float(manifest["simulation"]["t_end"]), ghost=ghost)
+    return case, [], None
+
+
+def run_refined(short: str, builder) -> dict:
+    m = load_manifest(short, repo=REPO)
+    paths = []
+    for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
+        case, ft, pi = builder(m, dx)
+        t0 = time.perf_counter()
+        cols = run(case, ft, pi)
+        p = to_parquet(cols, OUT / f"{short}_dx{dx}.parquet")
+        print(f"  {short} dx={dx}: {cols['steps']} steps in {time.perf_counter() - t0:.1f}s")
+        paths.append(p)
+    return score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY, solver=SOLVER)
+
+
 # ── driver ──────────────────────────────────────────────────────────────────
 
 
@@ -228,11 +304,18 @@ def run_ea(prefix: str) -> dict:
 
 def main(argv: list[str]) -> int:
     OUT.mkdir(parents=True, exist_ok=True)
-    wanted = argv or ["A2A-001", "A2C-EA1", "A2C-EA4", "A2C-EA2", "A2C-EA5"]
+    wanted = argv or ["A2A-001", "A2A-010", "A2A-020", "A2C-EA1", "A2C-EA4", "A2C-EA2", "A2C-EA5"]
     ok = True
     for tid in wanted:
         try:
-            card = run_thacker() if tid.startswith("A2A-001") else run_ea(tid)
+            if tid.startswith("A2A-001"):
+                card = run_thacker()
+            elif tid.startswith("A2A-010"):
+                card = run_refined("A2A-010", build_macdonald_2d)
+            elif tid.startswith("A2A-020"):
+                card = run_refined("A2A-020", build_oblique_jump)
+            else:
+                card = run_ea(tid)
         except ReferenceUnavailable as exc:
             print(f"NOT SCORED {tid}: {exc}")
             ok = False

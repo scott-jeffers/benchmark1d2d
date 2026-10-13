@@ -42,6 +42,8 @@ NIGHTLY_TARGET = 500
 MAX_ABS_CONTINUITY_PCT = 5.0
 NIGHTLY_MAX_RUNTIME_S = 10.0
 PR_MAX_RUNTIME_S = 5.0
+PR_TARGET = 40
+PR_MIN_RTC = 5
 # Catalog-level Track B cases (in this repo) that always gate PRs.
 CATALOG_PR_CASES = ["B-EXTRAN-001", "B-RTC-001", "B-EPANET-001"]
 
@@ -125,16 +127,13 @@ def main() -> int:
     runnable = df[(df["status"] == "ran") & (df["license"] != "TBD-confirm") & df["continuity_ok"]]
 
     old_pr = json.loads((HERE / "tier_pr" / "selection.json").read_text(encoding="utf-8")).get("model_ids", [])
-    seed = [m for m in old_pr if "/" in m]
     fast = runnable[runnable["runtime_s"] <= PR_MAX_RUNTIME_S]
-    pr_corpus = [m for m in seed if m in set(fast["model_id"])]
-    rtc_fast = fast[fast["tags"].apply(lambda t: "controls" in t)].sort_values("runtime_s")["model_id"].tolist()
-    for m in rtc_fast:
-        if sum(1 for x in pr_corpus if x in set(rtc_fast)) >= 5:
-            break
-        if m not in pr_corpus:
-            pr_corpus.append(m)
-    dropped = [m for m in seed if m not in pr_corpus]
+    # Feature coverage first: the same greedy tag-balancing as the nightly tier,
+    # seeded with the fastest control-rule (RTC) models and EXTRAN Example 1.
+    rtc_fast = fast[fast["tags"].apply(lambda t: "controls" in t)].sort_values(["runtime_s", "model_id"])["model_id"].tolist()
+    must = [m for m in ("owa-extran/extran1",) if m in set(fast["model_id"])] + rtc_fast[:PR_MIN_RTC]
+    pr_corpus = balanced_pick(fast, PR_TARGET, must)
+    dropped = [m for m in old_pr if m not in pr_corpus]
 
     nightly_pool = runnable[runnable["runtime_s"] <= NIGHTLY_MAX_RUNTIME_S]
     nightly = balanced_pick(nightly_pool, NIGHTLY_TARGET, pr_corpus)
@@ -149,7 +148,7 @@ def main() -> int:
     common = {"upstream": f"https://github.com/{UPSTREAM}", "upstream_commit": commit,
               "engine": "EPA SWMM", "engine_version": str(census["engine_version"].iloc[0])}
     write_selection("pr", {"tier": "pr", **common,
-                           "description": "Fast PR gate: catalog Track B cases plus corpus models that run on SWMM 5.2.4 in ≤ 5 s, including ≥ 5 control-rule (RTC) models.",
+                           "description": f"Fast PR gate: catalog Track B cases plus {PR_TARGET} corpus models that run on SWMM 5.2.4 in ≤ {PR_MAX_RUNTIME_S:g} s, picked greedily to cover as many feature tags as possible, including ≥ {PR_MIN_RTC} control-rule (RTC) models.",
                            "catalog_cases": CATALOG_PR_CASES, "count": len(pr_corpus), "model_ids": pr_corpus,
                            "dropped_from_previous": dropped})
     write_selection("nightly", {"tier": "nightly", **common,

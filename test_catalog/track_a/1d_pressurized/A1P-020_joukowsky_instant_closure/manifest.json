@@ -1,12 +1,12 @@
 {
   "schema_version": "1.1.0",
   "test_id": "A1P-020_joukowsky_instant_closure",
-  "case_version": "2.0.0",
+  "case_version": "3.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "verification_analytic",
   "title": "Joukowsky instant valve closure",
-  "description": "Frictionless pipe water hammer after instantaneous full valve closure; classic Joukowsky pressure rise before the first reflection. Convergence expectation: the pressure front is a discontinuity carried by a linear wave equation, so a p-th order fixed-grid scheme converges in L1 only as dx^(p/(p+1)) — 0.5 for first-order methods such as MOC with space-line interpolation (case v1 demanded 0.8, which no honest first-order fixed-grid solver can reach).",
+  "description": "Frictionless pipe after an instantaneous valve closure: the classic Joukowsky pressure rise ρaV₀ travels upstream as a sharp front until it reaches the reservoir. Because the front is a discontinuity carried by a linear wave equation, a first-order fixed-grid scheme converges in L1 only at order ½ (p/(p+1) for order p), which sets the convergence target; the storage balance checks mass exactly.",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "pressurized",
@@ -86,16 +86,16 @@
         "rationale": "Peak pressure within ±2% of Joukowsky rise Δp = ρ a V0."
       },
       {
-        "id": "continuity",
-        "metric": "continuity_error",
-        "variable": "u",
+        "id": "storage_balance",
+        "metric": "storage_balance_error",
+        "variable": "p",
         "threshold": {
           "op": "abs<=",
           "value": 1.0,
           "units": "%"
         },
         "gating": true,
-        "rationale": "Mass continuity behind the closed-end front before first reflection."
+        "rationale": "Mass balance with no free parameter: until the first reflection the reservoir keeps delivering V0 while the valve is shut, and the pipe must store exactly that volume by compression, so ∫Δp dx = ρa²V0t. A conservative scheme meets it to round-off; 1 % allows non-conservative interpolation schemes that are otherwise accurate."
       }
     ],
     "convergence": {

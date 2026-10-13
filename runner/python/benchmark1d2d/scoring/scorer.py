@@ -52,6 +52,10 @@ def _load_generator(manifest: dict[str, Any]):
     mod = importlib.import_module(gen["module"])
     fn = getattr(mod, gen["function"])
     params = dict(gen.get("parameters") or {})
+    case_dir = manifest.get("_case_dir")
+    for k, v in list(params.items()):
+        if k.endswith("_path") and isinstance(v, str) and case_dir and not Path(v).is_absolute():
+            params[k] = str(Path(case_dir) / v)
     return fn, params
 
 
@@ -99,6 +103,24 @@ def _call_reference(
     return fn(x, t, **params)
 
 
+def _align_elements(sim: pd.DataFrame, ref: dict) -> tuple[pd.DataFrame, dict]:
+    """Match a network reference keyed by element id to the solver's rows."""
+    if "element_id" not in sim.columns:
+        raise ValueError("this case's reference is keyed by node/link id; add an element_id column to your results")
+    # Nodes and links have separate namespaces (EPANET allows node "1" and pipe "1").
+    types = ref.get("element_type")
+    keys = [(str(t) if types is not None else "", str(e)) for t, e in zip(types if types is not None else [""] * len(ref["element_id"]), ref["element_id"])]
+    sim = sim.assign(element_id=sim["element_id"].astype(str))
+    sim["_k"] = list(zip(sim["element_type"].astype(str) if types is not None and "element_type" in sim.columns else [""] * len(sim), sim["element_id"]))
+    missing = [k for k in keys if k not in set(sim["_k"])]
+    if missing:
+        raise ValueError(f"results lack {len(missing)} reference elements, e.g. {missing[0][0]} {missing[0][1]!r}")
+    sim = sim.drop_duplicates("_k").set_index("_k").loc[keys].reset_index(drop=True)
+    out = {k: (np.asarray(v, dtype=float) if k not in ("element_id", "element_type") else v) for k, v in ref.items()
+           if k in ("element_id", "element_type") or (np.ndim(v) == 1 and len(v) == len(keys))}
+    return sim, out
+
+
 def _threshold_passes(observed: float, threshold: dict[str, Any]) -> bool:
     op = threshold["op"]
     value = float(threshold["value"])
@@ -143,10 +165,18 @@ def _eval_criterion(
         if variable not in ref:
             raise KeyError(f"reference missing variable {variable!r}")
         field_ref = np.asarray(ref[variable], dtype=float)
+        ok = np.isfinite(field_ref)  # element-keyed references leave NaN where a variable does not apply
+        field_sim, field_ref = field_sim[ok], field_ref[ok]
         if metric == "Linf":
             observed = Linf(field_sim, field_ref)
         else:
             observed = _NORM_FNS[metric](field_sim, field_ref, dx=cell)
+        if thr.get("units", "").strip() == "%":
+            # Relative norm: the same norm of the error over the same norm of the reference.
+            zero = np.zeros_like(field_ref)
+            scale = Linf(field_ref, zero) if metric == "Linf" else _NORM_FNS[metric](field_ref, zero, dx=cell)
+            observed = 100.0 * observed / max(scale, 1e-300)
+            detail = f"{metric} error relative to the {metric} norm of the reference"
     elif metric == "front_position_error":
         from references.ritter import depth_contour_position
 
@@ -166,11 +196,34 @@ def _eval_criterion(
         )
         observed = front_position_error(x, h_sim, h_thresh, exact)
     elif metric == "global_mass_error":
-        # Cell-centered volumes ~ h * dx (1D unit width) or h * dA (2D).
-        vol_sim = float(np.sum(h_sim) * cell)
-        h_ref = np.asarray(ref.get("h", h_sim), dtype=float)
-        vol_ref = float(np.sum(h_ref) * cell)
-        observed = global_mass_error(vol_sim, vol_ref)
+        # Cell-centred integrals: h (water volume) by default, or the named
+        # conserved quantity (e.g. tracer concentration c) when given.
+        q = variable if variable not in ("volume", "h") and variable in sim.columns else "h"
+        q_sim = sim[q].to_numpy(dtype=float)
+        q_ref = np.asarray(ref.get(q, q_sim), dtype=float)
+        observed = global_mass_error(float(np.sum(q_sim) * cell), float(np.sum(q_ref) * cell))
+    elif metric == "relative_head_loss":
+        # Head drop from the most upstream to the most downstream point (by x).
+        order = np.argsort(x)
+        hs = sim[variable].to_numpy(dtype=float)[order]
+        hr = np.asarray(ref[variable], dtype=float)[order]
+        drop_sim, drop_ref = hs[0] - hs[-1], hr[0] - hr[-1]
+        observed = 100.0 * (drop_sim - drop_ref) / max(abs(drop_ref), 1e-300)
+        detail = f"head loss {drop_sim:.4f} m vs exact {drop_ref:.4f} m"
+    elif metric == "storage_balance_error":
+        # Water hammer before the first reflection: the reservoir keeps feeding
+        # V0 while the valve is shut, and the pipe stores that volume by
+        # compression, so the integral of the pressure rise must equal rho a^2 V0 t.
+        params = ((manifest.get("reference") or {}).get("generator") or {}).get("parameters") or {}
+        rho, a, V0 = float(params.get("rho", 1000.0)), float(params["a"]), float(params["V0"])
+        p0 = float(params.get("p0", 0.0))
+        t_now = float(sim["t"].iloc[0])
+        order = np.argsort(x)
+        dp = sim["p"].to_numpy(dtype=float)[order] - p0
+        stored = float(np.trapezoid(dp, x[order]))  # trapezoid: exact for node-based output, O(dx²) for cell centres
+        expected = rho * a * a * V0 * t_now
+        observed = 100.0 * (stored - expected) / expected
+        detail = f"packed volume {stored / (rho * a * a):.6g} m per unit area vs inflow V0 t = {V0 * t_now:.6g} m"
     elif metric == "peak_error":
         field_sim = sim[variable].to_numpy(dtype=float)
         field_ref = np.asarray(ref[variable], dtype=float)
@@ -257,6 +310,8 @@ def _score_analytic(
     # Prefer actual final time in results when present.
     t_sim = float(sim["t"].iloc[0]) if len(sim) else t_end
     ref = _call_reference(fn, params, x, t_sim, manifest, y=y)
+    if "element_id" in ref:
+        sim, ref = _align_elements(sim, ref)
     cell = _estimate_cell_measure(sim)
 
     criteria_results = [
@@ -266,6 +321,8 @@ def _score_analytic(
     convergence_result = None
     scoring = manifest.get("scoring") or {}
     conv_cfg = scoring.get("convergence")
+    if conv_cfg and conv_cfg.get("not_applicable"):
+        conv_cfg = None
     paths: list[Path] = []
     if refinement_results:
         paths = [Path(p) for p in refinement_results]

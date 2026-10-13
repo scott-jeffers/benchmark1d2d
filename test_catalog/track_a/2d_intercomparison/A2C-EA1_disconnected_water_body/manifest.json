@@ -186,7 +186,7 @@
           "units": "m"
         },
         "gating": true,
-        "rationale": "As P1."
+        "rationale": "Same pond as P1, so it must settle at the same 10.25 m crest level; a second point catches a solver that leaves the pond tilted or partly drained."
       },
       {
         "id": "peak_level",

@@ -77,6 +77,8 @@ def steady_network(x=None, t: float = 0.0, network_path: str | None = None, netw
     sol = solve_network(net)
     return {
         "element_id": sol["nodes"] + sol["pipes"],
+        "element_type": ["node"] * len(sol["nodes"]) + ["link"] * len(sol["pipes"]),
         "H": np.concatenate([sol["head"], np.full(len(sol["pipes"]), np.nan)]),
+        "h": np.concatenate([sol["head"], np.full(len(sol["pipes"]), np.nan)]),
         "Q": np.concatenate([np.full(len(sol["nodes"]), np.nan), sol["flow"]]),
     }

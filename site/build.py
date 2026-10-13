@@ -37,7 +37,8 @@ from charts import Axis, Chart, Series, esc, fmt, hbars, legend  # noqa: E402
 
 DIST = SITE / "dist"
 REPO_URL = "https://github.com/scott-jeffers/benchmark1d2d"
-BLOB = REPO_URL + "/blob/main/"
+BLOB = REPO_URL + "/blob/master/"
+TREE = REPO_URL + "/tree/master/"
 
 COMPONENTS = [
     ("A1P", "1D pressurized", "Pipe networks, water hammer and transport, checked against exact solutions."),
@@ -130,7 +131,7 @@ def size_text(n: int) -> str:
 NAV = [
     ("index.html", "Overview"),
     ("catalog.html", "Catalog"),
-    ("corpus.html", "Track B corpus"),
+    ("corpus.html", "SWMM corpus"),
     ("reports.html", "Reports"),
     ("downloads.html", "Downloads"),
     ("method.html", "Method"),
@@ -165,7 +166,8 @@ def layout(title: str, body: str, active: str, depth: int = 0, description: str 
       <svg viewBox="0 0 40 24" aria-hidden="true"><path class="wm-bed" d="M0 22 L40 22"/><path class="wm-water" d="M0 6 L12 6 C18 6 22 18 40 18"/></svg>
       Benchmark1d2d
     </a>
-    <nav class="nav" aria-label="Main">{nav}<a class="gh" href="{REPO_URL}">GitHub</a></nav>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="nav" id="site-nav" aria-label="Main">{nav}<a class="gh" href="{REPO_URL}">GitHub</a></nav>
   </div>
 </header>
 <main id="main" class="wrap">
@@ -196,21 +198,43 @@ def verdict(card: dict | None) -> str:
     return '<span class="verdict v-pass">Pass</span>' if card.get("passed") else '<span class="verdict v-fail">Fail</span>'
 
 
-def md(text: str) -> str:
+def md(text: str, drop_h1: bool = True) -> str:
+    """Markdown to HTML with LaTeX kept intact for KaTeX.
+
+    Python-Markdown treats ``\\(`` as an escaped parenthesis and drops the
+    backslash, so math spans are swapped for placeholders first.
+    """
+    import re
+
     import markdown
 
-    return markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists"])
+    keep: list[str] = []
+
+    def stash(mt: "re.Match[str]") -> str:
+        keep.append(mt.group(0))
+        return f"\u0000M{len(keep) - 1}\u0000"
+
+    protected = re.sub(r"\$\$.+?\$\$|\\\[.+?\\\]|\\\(.+?\\\)", stash, text, flags=re.S)
+    html_text = markdown.markdown(protected, extensions=["tables", "fenced_code", "sane_lists", "toc"])
+    html_text = re.sub("\u0000M(\\d+)\u0000", lambda mt: esc(keep[int(mt.group(1))]), html_text)
+    if drop_h1 and html_text.startswith("<h1"):
+        html_text = html_text.split("</h1>", 1)[1]
+    return html_text
 
 
 # ── figures ─────────────────────────────────────────────────────────────────
 
 
 def _results_for(test_id: str, result_dirs: list[Path]) -> Path | None:
+    """The run a case's score card was made from: the named file, else the finest grid level."""
     sid = short_id(test_id)
     for d in result_dirs:
-        for cand in (d / f"{test_id}.parquet", d / f"{sid}.parquet"):
+        for cand in (d / f"{test_id}.parquet", d / f"{sid}.parquet", *sorted(d.glob(f"{test_id}.*.parquet"))):
             if cand.is_file():
                 return cand
+        levels = sorted(d.glob(f"{sid}_*dx*.parquet"), key=lambda p: float(p.stem.rsplit("dx", 1)[1]))
+        if levels:
+            return levels[0]
     return None
 
 
@@ -266,28 +290,112 @@ def fig_analytic_1d(m: dict, result_dirs: list[Path]) -> str:
         return Chart("Pressure wave travelling upstream from the closed valve", Axis("Distance from reservoir x (m)"), Axis("Pressure rise (kPa)"), series,
                      note="Joukowsky rise ρaV₀ = 1 MPa behind a sharp front; the fixed-grid solver smears the front.").render()
     if tid.startswith("A1P-030"):
-        x = np.linspace(0, 1000, 801)
-        series = [Series(x, fn(x, t, **prm)["c"], f"t = {t / 3600:g} h", css=f"s-time s-t{k}") for k, t in enumerate([900, 1800, 2700, 3600])]
-        return Chart("Tracer concentration, Ogata–Banks", Axis("Distance x (m)"), Axis("c / c₀", lo=0, hi=1.05), series).render()
+        x = np.linspace(0, 1000, 1601)
+        series = [Series(x, fn(x, t, **prm)["c"], f"Exact, t = {t / 3600:g} h", css=f"s-time s-t{k}") for k, t in enumerate([900, 1800, 2700, 3600])]
+        if demo is not None:
+            near = demo[(demo["x"] > 250) & (demo["x"] < 480)]
+            step = max(1, len(near) // 60)
+            series.append(Series(near["x"].to_numpy()[::step], near["c"].to_numpy()[::step], "Demo solver, t = 1 h", css="s-solver", kind="dots"))
+        return Chart("Tracer concentration, Ogata–Banks", Axis("Distance x (m)", lo=0, hi=600), Axis("c / c₀", lo=0, hi=1.05), series,
+                     note="Exact profile every 15 min; dots are the demo solver (MUSCL advection, central diffusion) on its finest grid, around the front at 1 h.").render()
     if tid.startswith("A1P-001"):
         x = np.linspace(0, prm.get("L", 1000.0), 101)
         r = fn(x, **prm)
-        return Chart("Hydraulic grade line along the pipe", Axis("Distance x (m)"), Axis("Head H (m)"), [Series(x, r["H"], "Exact HGL", css="s-water")],
-                     note=f"Total loss {r['head_loss_total']:.3f} m with f = {r['friction_factor']}.").render()
+        series = [Series(x, r["H"], "Exact hydraulic grade line", css="s-water", width=2.4)]
+        if demo is not None:
+            series.append(Series(demo["x"], demo["h"], "EPA EPANET 2.2 nodal heads", css="s-solver", kind="dots"))
+        return Chart("Hydraulic grade line along the pipe", Axis("Distance x (m)"), Axis("Head (m)"), series,
+                     note=f"Colebrook–White gives f = {r['friction_factor']:.5f} and a total loss of {r['head_loss_total']:.3f} m. EPANET uses the Swamee–Jain approximation, which is expected to sit about 0.6 % high here.").render()
     if tid.startswith("A1F-020"):
         x = np.linspace(0, 100, 801)
         r = fn(x, **prm)
-        return Chart("Conjugate depths across the jump", Axis("Distance x (m)"), Axis("Depth h (m)", lo=0), [Series(x, r["h"], "Bélanger sequent depths", css="s-water", kind="step")],
-                     note=f"h₁ = {r['h1']:.3f} m, h₂ = {r['h2']:.3f} m, energy loss {r['energy_loss']:.3f} m. The jump position is neutral on a frictionless bed.").render()
+        series = [Series(x, r["h"], "Exact (stationary Bélanger jump)", css="s-water", kind="step", width=2.2)]
+        if demo is not None:
+            near = demo[(demo["x"] > 40) & (demo["x"] < 60)]
+            series.append(Series(near["x"], near["h"], "Demo solver after 200 s", css="s-solver", kind="dots"))
+        return Chart("Depth across the jump", Axis("Distance x (m)", lo=40, hi=60), Axis("Depth h (m)", lo=0), series,
+                     note=f"h₁ = {r['h1']:.3f} m, h₂ = {r['h2']:.3f} m, energy loss {r['energy_loss']:.3f} m. The jump must stay at x = 50 m; the first-order scheme spreads it over about two cells.").render()
     if tid.startswith("A1P-010"):
         from references.todini import solve_network
 
         net = json.loads((m["_case_dir"] / "inputs/network.json").read_text())
         sol = solve_network(net)
-        rows = "".join(f"<tr><td>{esc(n)}</td><td class=num>{h:.3f}</td></tr>" for n, h in zip(sol["nodes"], sol["head"]))
-        rows2 = "".join(f"<tr><td>{esc(p)}</td><td class=num>{q * 3600:.2f}</td></tr>" for p, q in zip(sol["pipes"], sol["flow"]))
-        return f'<div class="split"><table class="data"><caption>Reference nodal heads</caption><thead><tr><th>Node</th><th class=num>Head (m)</th></tr></thead><tbody>{rows}</tbody></table><table class="data"><caption>Reference pipe flows</caption><thead><tr><th>Pipe</th><th class=num>Flow (m³/h)</th></tr></thead><tbody>{rows2}</tbody></table></div>'
+        got_h: dict[str, float] = {}
+        got_q: dict[str, float] = {}
+        p = _results_for(tid, result_dirs)
+        if p is not None:
+            d = pd.read_parquet(p)
+            got_h = {str(r.element_id): float(r.h) for r in d[d["element_type"] == "node"].itertuples()}
+            got_q = {str(r.element_id): float(r.Q) for r in d[d["element_type"] == "link"].itertuples()}
+        rows = "".join(f"<tr><td>{esc(n)}</td><td class=num>{h:.3f}</td><td class=num>{(f'{got_h[n]:.3f}' if n in got_h else '–')}</td>"
+                       f"<td class=num>{(f'{(got_h[n] - h) * 1000:+.1f}' if n in got_h else '–')}</td></tr>" for n, h in zip(sol["nodes"], sol["head"]))
+        rows2 = "".join(f"<tr><td>{esc(p_)}</td><td class=num>{q * 3600:.2f}</td><td class=num>{(f'{got_q[p_] * 3600:.2f}' if p_ in got_q else '–')}</td></tr>" for p_, q in zip(sol["pipes"], sol["flow"]))
+        return (f'<div class="split"><div class="table-scroll"><table class="data"><caption>Junction heads</caption><thead><tr><th>Node</th><th class=num>Exact (m)</th><th class=num>EPANET 2.2 (m)</th><th class=num>Diff (mm)</th></tr></thead><tbody>{rows}</tbody></table></div>'
+                f'<div class="table-scroll"><table class="data"><caption>Pipe flows</caption><thead><tr><th>Pipe</th><th class=num>Exact (m³/h)</th><th class=num>EPANET 2.2 (m³/h)</th></tr></thead><tbody>{rows2}</tbody></table></div></div>')
     return ""
+
+
+def fig_macdonald_2d(m: dict, result_dirs: list[Path]) -> str:
+    from references.macdonald_2d import bed_elevation, depth_profile
+
+    prm = m["reference"]["generator"]["parameters"]
+    x = np.linspace(0, prm["L"], 801)
+    zb = bed_elevation(x, L=prm["L"], q=prm["q"], n_manning=prm["n_manning"])
+    series = [Series(x, zb + depth_profile(x), "Exact water surface", css="s-water", width=2.4)]
+    p = _results_for(m["test_id"], result_dirs)
+    if p is not None:
+        df = pd.read_parquet(p)
+        df = df[np.isclose(df["t"], df["t"].max())]
+        ymid = np.unique(df["y"])[len(np.unique(df["y"])) // 2]
+        row = df[np.isclose(df["y"], ymid)].sort_values("x")
+        series.append(Series(row["x"], row["h"] + row["z"], f"Demo solver, centreline, t = {row['t'].iloc[0] / 3600:g} h", css="s-solver", kind="dots"))
+    return Chart("Steady water surface along the channel", Axis("Distance x (m)"), Axis("Elevation (m)"), series, floor=[(x, zb)],
+                 note="Ochre: the bed built so that this surface is exact. The solver starts from a uniform depth and must settle onto it.").render()
+
+
+def fig_oblique_jump(m: dict, result_dirs: list[Path], assets: Path) -> str:
+    from references.oblique_jump import depth_velocity, states
+
+    prm = m["reference"]["generator"]["parameters"]
+    st = states(prm["Fr1"], prm["theta_deg"], prm["h1"], prm.get("g", 9.81))
+    p = _results_for(m["test_id"], result_dirs)
+    parts = []
+    if p is not None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        df = pd.read_parquet(p)
+        df = df[np.isclose(df["t"], df["t"].max())]
+        xs, ys = np.unique(df["x"]), np.unique(df["y"])
+        grid = df.pivot_table(index="y", columns="x", values="h").to_numpy()
+        fig, ax = plt.subplots(figsize=(7.6, 5.0), dpi=150)
+        im = ax.imshow(grid, origin="lower", extent=[xs[0], xs[-1], ys[0], ys[-1]], cmap="Blues", vmin=0.8, vmax=2.0, interpolation="nearest")
+        xl = np.array([0, xs[-1]])
+        ax.plot(xl, xl * np.tan(np.deg2rad(st["jump_to_wall_deg"])), color="#b23a2c", lw=1.6, ls="--", label=f"exact jump, {st['jump_to_wall_deg']:.2f}° to the wall")
+        ax.axhline(0, color="#12263a", lw=3)
+        cb = fig.colorbar(im, ax=ax, fraction=0.03, pad=0.01)
+        cb.set_label("Depth (m)", fontsize=8)
+        cb.ax.tick_params(labelsize=7)
+        ax.legend(loc="upper left", fontsize=8, frameon=False)
+        ax.set_title("Depth from the demo solver (finest grid); flow enters from the west and north", fontsize=9, loc="left")
+        ax.set_aspect("equal")
+        ax.tick_params(labelsize=7)
+        fig.tight_layout()
+        out = assets / f"{short_id(m['test_id'])}-map.png"
+        fig.savefig(out, facecolor="white")
+        plt.close(fig)
+        parts.append(f'<figure class="figure map"><img src="../assets/{out.name}" alt="Depth map of the oblique jump with the exact jump line" loading="lazy"></figure>')
+        xc = float(xs[np.argmin(np.abs(xs - 30.0))])
+        sec = df[np.isclose(df["x"], xc)].sort_values("y")
+        yy = np.linspace(0, ys[-1], 600)
+        ex = depth_velocity(np.full_like(yy, xc), yy, **{k: prm[k] for k in ("Fr1", "theta_deg", "h1")})["h"]
+        parts.append(Chart(f"Cross-section at x = {xc:g} m", Axis("Distance from the wall y (m)", lo=0), Axis("Depth h (m)", lo=0), [
+            Series(yy, ex, "Exact", css="s-water", kind="step", width=2.2),
+            Series(sec["y"], sec["h"], "Demo solver", css="s-solver", kind="dots")],
+            note=f"Upstream depth {st['h1']:g} m, downstream {st['h2']:.3f} m (Fr₂ = {st['Fr2']:.2f}); the jump angle is {st['beta_deg']:.2f}° to the incoming flow.").render())
+    return "".join(parts)
 
 
 def fig_thacker(m: dict, result_dirs: list[Path]) -> str:
@@ -422,8 +530,8 @@ def _terrain_map(m: dict, df: pd.DataFrame | None, assets: Path) -> str:
         ax.imshow(shade, extent=ext, cmap="gray", alpha=0.45)
         title = "Terrain"
     else:
-        ax.add_patch(plt.Rectangle((0, 0), ext[1], ext[3], color="#e8dcc6"))
-        title = "Flat floodplain at 0 m"
+        ax.add_patch(plt.Rectangle((0, 0), ext[1], ext[3], color="#e8dcc6", zorder=0))
+        title = "Flat floodplain"
     ax.set_xlim(ext[0], ext[1]); ax.set_ylim(ext[2], ext[3])
     if df is not None:
         last = df[df["t"] == df["t"].max()]
@@ -434,13 +542,13 @@ def _terrain_map(m: dict, df: pd.DataFrame | None, assets: Path) -> str:
             grid = np.full((len(gy), len(gx)), np.nan)
             ii = np.rint((last["x"].to_numpy() - gx[0]) / dx_).astype(int); jj = np.rint((last["y"].to_numpy() - gy[0]) / dy_).astype(int)
             grid[jj, ii] = np.where(last["h"].to_numpy() > 0.005, last["h"].to_numpy(), np.nan)
-            im = ax.imshow(grid, origin="lower", extent=[gx[0] - dx_ / 2, gx[-1] + dx_ / 2, gy[0] - dy_ / 2, gy[-1] + dy_ / 2], cmap="Blues", vmin=0, alpha=0.9, interpolation="nearest")
+            im = ax.imshow(grid, origin="lower", extent=[gx[0] - dx_ / 2, gx[-1] + dx_ / 2, gy[0] - dy_ / 2, gy[-1] + dy_ / 2], cmap="Blues", vmin=0, alpha=0.9, interpolation="nearest", zorder=2)
             cb = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.01)
             cb.set_label("Depth at end of run (m)", fontsize=7)
             cb.ax.tick_params(labelsize=7)
-            title += ", water depth at the end of the run (demo solver)"
+            title += "\nwater depth at the end of the run (demo solver)"
     for p in m["simulation"].get("probes") or []:
-        ax.plot(p["x"], p.get("y", 0), marker="o", ms=5, mfc="white", mec="#12263a")
+        ax.plot(p["x"], p.get("y", 0), marker="o", ms=5, mfc="white", mec="#12263a", zorder=3)
         ax.annotate(p["id"], (p["x"], p.get("y", 0)), xytext=(4, 4), textcoords="offset points", fontsize=7, color="#12263a")
     bnd = prm_all.get("boundaries")
     line = ((bnd.get("inflow") or {}).get("line")) if isinstance(bnd, dict) else None
@@ -540,6 +648,10 @@ def criteria_table(m: dict, card: dict | None) -> str:
             f"{got}<td class=rationale>{esc(c.get('rationale', ''))}</td></tr>"
         )
     conv = m["scoring"].get("convergence")
+    if conv and conv.get("not_applicable"):
+        rows.append(f'<tr><td><b>convergence</b><div class=muted>not applicable</div></td><td class="num muted">–</td><td class="num muted">–</td><td></td>'
+                    f"<td class=rationale>{esc(conv['not_applicable'])}</td></tr>")
+        conv = None
     if conv:
         cr = (card or {}).get("convergence_result") or {}
         if cr:
@@ -577,7 +689,9 @@ def inputs_table(m: dict) -> str:
             + "".join(rows) + "</tbody></table></div>")
 
 
-def run_length(t: float) -> str:
+def run_length(t: float, steady: bool = False) -> str:
+    if steady:
+        return "steady state"
     if t >= 3600:
         return f"{t / 3600:g} h"
     if t >= 60:
@@ -597,7 +711,35 @@ def citation_text(c: dict) -> str:
     return f"{esc(authors)} ({esc(year)}). <i>{esc(c['title'])}</i>.{extra}{link}"
 
 
-def test_page(m: dict, card: dict | None, result_dirs: list[Path], assets: Path) -> str:
+REF_SHORT = {
+    "analytic": "Exact solution",
+    "intercomparison": "Objective expected states",
+    "measured": "Measurements",
+    "pinned_engine": "Pinned engine output",
+}
+
+
+def _dedupe_paragraphs(html_text: str, known: list[str]) -> str:
+    """Drop README paragraphs that repeat the manifest description or notes word for word."""
+    import re
+
+    norm = lambda t: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", t)).strip().lower()  # noqa: E731
+    seen = {norm(k) for k in known if k}
+    return re.sub(r"<p>(.*?)</p>", lambda mt: "" if norm(mt.group(1)) in seen else mt.group(0), html_text, flags=re.S)
+
+
+def checklist_html(items: list[dict]) -> str:
+    li = []
+    for it in items:
+        cls, mark = ("met", "✓") if it["met"] else ("unmet", "✗")
+        li.append(f'<li class="{cls}"><span class="mark" aria-label="{"met" if it["met"] else "not met"}">{mark}</span>'
+                  f'<span><b>{esc(it["label"])}</b><span class="stage">for {esc(it["stage"])}</span><span class="detail">{esc(it["detail"])}</span></span></li>')
+    return '<ul class="checklist">' + "".join(li) + "</ul>"
+
+
+def test_page(m: dict, card: dict | None, result_dirs: list[Path], assets: Path, evidence: list[dict] | None = None) -> str:
+    from benchmark1d2d.catalog.promotion import checklist, next_stage
+
     tid = m["test_id"]
     comp = dict((c[0], c[1]) for c in COMPONENTS)[m["_component"]]
     kind = m["reference"]["kind"]
@@ -605,6 +747,10 @@ def test_page(m: dict, card: dict | None, result_dirs: list[Path], assets: Path)
     try:
         if kind == "analytic" and tid.startswith("A2A-001"):
             figs = fig_thacker(m, result_dirs)
+        elif kind == "analytic" and tid.startswith("A2A-010"):
+            figs = fig_macdonald_2d(m, result_dirs)
+        elif kind == "analytic" and tid.startswith("A2A-020"):
+            figs = fig_oblique_jump(m, result_dirs, assets)
         elif kind == "analytic" and m["physics"]["dimensionality"] == "1D":
             figs = fig_analytic_1d(m, result_dirs)
         elif kind == "intercomparison" or (tid.startswith("A2L-EA6A")):
@@ -621,10 +767,10 @@ def test_page(m: dict, card: dict | None, result_dirs: list[Path], assets: Path)
     }[kind]
     states = ""
     if kind == "intercomparison":
-        states = '<table class="data"><thead><tr><th>Expected state</th><th class=num>Value</th><th>Why it must hold</th></tr></thead><tbody>' + "".join(
+        states = '<div class="table-scroll"><table class="data"><thead><tr><th>Expected state</th><th class=num>Value</th><th>Why it must hold</th></tr></thead><tbody>' + "".join(
             f"<tr><td><b>{esc(s['id'])}</b><div class=muted>{esc(s['variable'])}{(' at ' + esc(s['where'])) if s.get('where') else ''}</div></td>"
             f"<td class=num>{fmt(s['value'])} {esc(s['units'])}</td><td>{esc(s['derivation'])}</td></tr>"
-            for s in m["reference"]["expected_states"]) + "</tbody></table>"
+            for s in m["reference"]["expected_states"]) + "</tbody></table></div>"
         ens = m["reference"]["ensemble"]
         states += f'<p class="callout">Published package results: {esc(ens["availability"].replace("_", " "))}. {esc(ens.get("notes", ""))}</p>'
     pending = [e for e in m["inputs"] if e.get("pending")]
@@ -636,8 +782,10 @@ def test_page(m: dict, card: dict | None, result_dirs: list[Path], assets: Path)
         missing = f'<section class="callout warn"><h2>What this case still needs</h2><ul>{items}</ul></section>'
     readme = m["_case_dir"] / "README.md"
     readme_html = md(readme.read_text(encoding="utf-8")) if readme.is_file() else ""
-    if readme_html.startswith("<h1"):
-        readme_html = readme_html.split("</h1>", 1)[1]
+    notes = m["provenance"].get("adaptation_notes", "")
+    readme_html = _dedupe_paragraphs(readme_html, [m.get("description", ""), notes]).strip()
+    if readme_html and not readme_html.startswith("<h2"):
+        readme_html = "<h2>About this case</h2>" + readme_html
     sid = short_id(tid)
     downloads = [f'<li><a href="../data/cases/{sid}.zip" download>Case bundle (.zip)</a> <span class=muted>manifest, README, committed inputs</span></li>',
                  f'<li><a href="../data/cases/{sid}/manifest.json">manifest.json</a></li>']
@@ -646,22 +794,55 @@ def test_page(m: dict, card: dict | None, result_dirs: list[Path], assets: Path)
     if card:
         downloads.append(f'<li><a href="../data/scorecards/{esc(card["_path"].name)}" download>Latest score card (.json)</a></li>')
     conv = fig_convergence(card) if card else ""
-    score_block = ""
     if card:
         claims = ", ".join(card.get("certification_claims") or []) or "none"
         score_block = (f'<p class="lede">Latest run: {verdict(card)} by <b>{esc(card["solver"]["name"])}</b> {esc(card["solver"].get("version", ""))}. '
                        f'Certification claims: <b>{esc(claims)}</b>.</p>')
     else:
         score_block = '<p class="lede">No solver has been scored on this case yet.</p>'
+    cards_for = ([card] if card else []) + list(evidence or [])
+    items = checklist(m, cards_for)
+    nxt = next_stage(m, cards_for)
+    if nxt["next"]:
+        need = [b["label"].lower() for b in nxt["blockers"]]
+        next_html = (f'Ready to become <b>{esc(nxt["next"])}</b> pending review' if not need else
+                     f'To become <b>{esc(nxt["next"])}</b>:<small>{esc("; ".join(need))}</small>')
+    else:
+        next_html = "Frozen: counts toward certification"
+    latest = (f'{verdict(card)} <small>{esc(card["solver"]["name"].split(" (")[0])}</small>' if card else
+              '<span class="verdict v-none">Not scored</span><small>no published run yet</small>')
+    glance = f"""<div class="glance" role="region" aria-label="At a glance">
+  <div><span class="k">Status</span><span class="v">{chip(m['status'])}<small>{esc(STATUS_TEXT.get(m['status'], ''))}</small></span></div>
+  <div><span class="k">Truth</span><span class="v">{esc(REF_SHORT.get(kind, kind))}<small>{esc(CLASS_NAMES.get(m['test_class'], m['test_class']))}</small></span></div>
+  <div><span class="k">Latest run</span><span class="v">{latest}</span></div>
+  <div><span class="k">Next step</span><span class="v">{next_html}</span></div>
+</div>"""
+    sections = [("reference", "Reference"), ("scoring", "Scoring"), ("status", "Status"), ("inputs", "Inputs")]
+    if readme_html:
+        sections.append(("about", "About"))
+    sections.append(("sources", "Sources"))
+    toc = '<ul class="toc" aria-label="On this page">' + "".join(f'<li><a href="#{a}">{esc(b)}</a></li>' for a, b in sections) + "</ul>"
+    xb = ""
+    if kind == "pinned_engine":
+        rb = [c for c in (evidence or []) if "official" in str(c.get("solver", {}).get("name", ""))]
+        if rb:
+            c = rb[0]
+            worst = "; ".join(f"{r['id']} {fmt(r['observed'])} {r['threshold']['units']}" for r in c["criteria_results"])
+            xb = (f'<p class="callout{"" if c["passed"] else " warn"}"><b>Second build of the reference.</b> The official EPA {esc(c["solver"]["name"].replace("EPA ", ""))} binaries, '
+                  f'run on this input and scored against the reference: {verdict(c)} ({esc(worst)}). '
+                  + ("Both builds agree, so the reference does not depend on the compiler." if c["passed"] else
+                     "The two builds of the same version disagree beyond this case's tolerances; see the case history below.") + "</p>")
     phen = ", ".join(p.replace("_", " ") for p in m["physics"]["phenomena"])
     eqs = ", ".join(p.replace("_", " ") for p in m["physics"]["governing_equations"])
     cites = "".join(f"<li>{citation_text(c)}</li>" for c in m["provenance"]["citations"])
     body = f"""
-<nav class="crumbs"><a href="../catalog.html">Catalog</a> / {esc(comp)}</nav>
+<nav class="crumbs"><a href="../catalog.html">Catalog</a> / <a href="../catalog.html#{esc(m['_component'])}">{esc(comp)}</a></nav>
 <header class="page-head">
   <p class="test-id">{esc(sid)} {chip(m['status'])}</p>
   <h1>{esc(m.get('title', tid))}</h1>
   <p class="lede">{esc(m.get('description', ''))}</p>
+  {glance}
+  {toc}
 </header>
 <div class="test-layout">
   <aside class="facts">
@@ -673,19 +854,22 @@ def test_page(m: dict, card: dict | None, result_dirs: list[Path], assets: Path)
       <dt>Phenomena</dt><dd>{esc(phen)}</dd>
       <dt>Data licence</dt><dd><a href="{BLOB}DATA_LICENSES.md">{esc(m['provenance']['license'])}</a></dd>
       <dt>Case version</dt><dd>{esc(m['case_version'])}</dd>
-      <dt>Run length</dt><dd>{run_length(float(m['simulation']['t_end']))}</dd>
+      <dt>Run length</dt><dd>{run_length(float(m['simulation']['t_end']), bool(m['simulation'].get('steady')))}</dd>
     </dl>
     <h2 class="h-small">Downloads</h2>
     <ul class="downloads">{''.join(downloads)}</ul>
-    <p class="small"><a href="{BLOB}{esc(m['_rel'])}">View this case on GitHub</a></p>
+    <p class="small"><a href="{TREE}{esc(m['_rel'])}">View this case on GitHub</a></p>
   </aside>
   <article class="test-main">
     {missing}
-    <section><h2>Reference</h2><p>{ref_desc}</p>{states}{figs}</section>
-    <section><h2>Scoring</h2>{score_block}{criteria_table(m, card)}{conv}</section>
-    <section><h2>Inputs</h2>{inputs_table(m)}</section>
-    <section class="prose">{readme_html}<p class="small">{esc(m['provenance'].get('adaptation_notes', ''))}</p></section>
-    <section><h2>Sources</h2><ul class="cites">{cites}</ul></section>
+    <section id="reference"><h2>Reference</h2><p>{ref_desc}</p>{states}{figs}</section>
+    <section id="scoring"><h2>Scoring</h2>{score_block}{criteria_table(m, card)}{conv}{xb}</section>
+    <section id="status"><h2>Status and next steps</h2>
+      <p>Only frozen cases count toward certification. The rules are in the <a href="../method.html#promoting-a-case-draft-candidate-frozen">method</a>; this list is computed from the manifest and the published score cards.</p>
+      {checklist_html(items)}</section>
+    <section id="inputs"><h2>Inputs</h2>{inputs_table(m)}</section>
+    {f'<section id="about" class="prose">{readme_html}' + (f'<p class="small">{esc(notes)}</p>' if notes else "") + "</section>" if readme_html else ""}
+    <section id="sources"><h2>Sources</h2><ul class="cites">{cites}</ul></section>
   </article>
 </div>"""
     return layout(m.get("title", tid), body, "catalog.html", depth=1, description=m.get("description", ""))
@@ -701,15 +885,21 @@ def coverage_matrix(manifests: list[dict], cards: dict) -> str:
             f'<span>{esc(short_id(m["test_id"]).split("-", 1)[1] if "-" in short_id(m["test_id"]) else short_id(m["test_id"]))}</span></a>'
             for m in ms
         )
-        rows.append(f'<div class="cov-row"><div class="cov-name"><b>{esc(name)}</b><span>{esc(blurb)}</span></div><div class="cov-cells">{cells}</div></div>')
+        rows.append(f'<div class="cov-row" id="{esc(code)}"><div class="cov-name"><b>{esc(name)}</b><span>{esc(blurb)}</span></div><div class="cov-cells">{cells}</div></div>')
     key = legend([("Frozen", "st-frozen"), ("Candidate", "st-candidate"), ("Draft", "st-draft")])
     return f'<div class="coverage">{"".join(rows)}</div><div class="cov-key">{key}<span class="muted">A dot marks a scored case: filled for pass, ringed for fail.</span></div>'
 
 
-def catalog_page(manifests: list[dict], cards: dict) -> str:
+def catalog_page(manifests: list[dict], cards: dict, evidence: dict[str, list[dict]] | None = None) -> str:
+    from benchmark1d2d.catalog.promotion import next_stage
+
     rows = []
     for m in manifests:
         c = cards.get(m["test_id"])
+        nxt = next_stage(m, ([c] if c else []) + (evidence or {}).get(m["test_id"], []))
+        short = {"licence": "licence", "inputs": "inputs", "reference": "reference data", "rationale": "tolerance rationale",
+                 "passing_run": "a passing run", "order": "convergence evidence", "independent": "second code", "review": "review"}
+        blockers = ", ".join(short[b["id"]] for b in nxt["blockers"]) or "–"
         comp = dict((x[0], x[1]) for x in COMPONENTS)[m["_component"]]
         rows.append(
             f'<tr data-track="{esc(m["track"])}" data-status="{esc(m["status"])}" data-comp="{esc(m["_component"])}" '
@@ -717,7 +907,7 @@ def catalog_page(manifests: list[dict], cards: dict) -> str:
             f'<td><a href="{page_name(m["test_id"])}"><b>{esc(short_id(m["test_id"]))}</b></a></td>'
             f'<td><a href="{page_name(m["test_id"])}">{esc(m.get("title", ""))}</a><div class=muted>{esc(comp)}</div></td>'
             f"<td>{esc(CLASS_NAMES.get(m['test_class'], m['test_class']))}</td><td>{chip(m['status'])}</td>"
-            f"<td><code>{esc(m['provenance']['license'])}</code></td><td>{verdict(c)}</td></tr>"
+            f"<td>{verdict(c)}</td><td class=blockers>{esc(blockers)}</td></tr>"
         )
     comp_opts = "".join(f'<option value="{c}">{esc(n)}</option>' for c, n, _ in COMPONENTS)
     counts = Counter(m["status"] for m in manifests)
@@ -726,6 +916,12 @@ def catalog_page(manifests: list[dict], cards: dict) -> str:
   <h1>Test catalog</h1>
   <p class="lede">{len(manifests)} cases: {counts.get('frozen', 0)} frozen, {counts.get('candidate', 0)} candidate, {counts.get('draft', 0)} draft. Each one has a manifest that fixes its inputs by SHA-256, its reference, and every tolerance with the reason for it.</p>
 </header>
+<div class="status-explain">
+  <div><b>{counts.get('frozen', 0)}</b>{chip('frozen')}<p class="small">Reviewed, passed by two independent codes, and fixed. Only these count toward certification claims.</p></div>
+  <div><b>{counts.get('candidate', 0)}</b>{chip('candidate')}<p class="small">Complete: inputs, reference and justified tolerances. Scored and waiting for a second code and a review.</p></div>
+  <div><b>{counts.get('draft', 0)}</b>{chip('draft')}<p class="small">Defined but blocked, usually on a data licence or measurements still to be obtained from the authors.</p></div>
+</div>
+<p class="small">Promotion rules: <a href="method.html#promoting-a-case-draft-candidate-frozen">draft → candidate → frozen</a>. Each case page shows its own checklist.</p>
 <section><h2>Coverage</h2>{coverage_matrix(manifests, cards)}</section>
 <section>
   <h2>All cases</h2>
@@ -737,7 +933,7 @@ def catalog_page(manifests: list[dict], cards: dict) -> str:
     <output id="count" aria-live="polite"></output>
   </form>
   <div class="table-scroll"><table class="data catalog" id="catalog">
-    <thead><tr><th>ID</th><th>Case</th><th>Class</th><th>Status</th><th>Data licence</th><th>Latest run</th></tr></thead>
+    <thead><tr><th>ID</th><th>Case</th><th>Class</th><th>Status</th><th>Latest run</th><th>Still needs</th></tr></thead>
     <tbody>{''.join(rows)}</tbody>
   </table></div>
   <p class="small">Download the whole catalog as <a href="data/catalog.json">JSON</a> or <a href="data/catalog.csv">CSV</a>.</p>
@@ -787,12 +983,21 @@ def index_page(manifests: list[dict], cards: dict, census: pd.DataFrame | None, 
         f'<td class=num>{fmt(c["convergence_result"]["observed_order"]) if c.get("convergence_result") and c["convergence_result"].get("observed_order") is not None else "–"}</td></tr>'
         for c in scored
     )
+    n_scored = len(scored)
+    n_pass = sum(1 for c in scored if c.get("passed"))
+    counts = Counter(m["status"] for m in manifests)
+    stats = f"""<div class="stats">
+  <div><b>{len(manifests)}</b><span>test cases ({counts.get('candidate', 0)} candidate, {counts.get('draft', 0)} draft, {counts.get('frozen', 0)} frozen)</span></div>
+  <div><b>{n_pass} / {n_scored}</b><span>scored cases with a passing published run</span></div>
+  <div><b>{(int((census["status"] == "ran").sum()) if census is not None else 0):,}</b><span>SWMM corpus models that run on the reference engine</span></div>
+  <div><b>2</b><span>pinned reference engines: EPA SWMM 5.2.4, EPANET 2.2</span></div>
+</div>"""
     n_ran = int((census["status"] == "ran").sum()) if census is not None else 0
     n_models = len(census) if census is not None else 0
     corpus_block = (
         f"""<section>
   <h2>Track B corpus</h2>
-  <p>{n_models:,} SWMM models federated from HydroCouple's <code>openswmm.engine.benchmarks</code>, pinned to one commit. {n_ran:,} of them run cleanly on EPA SWMM 5.2.4; those form the nightly and release tiers. <a href="corpus.html">Explore the corpus</a>.</p>
+  <p>{n_models:,} SWMM models federated from HydroCouple's <code>openswmm.engine.benchmarks</code>, pinned to one commit. {n_ran:,} of them run cleanly on EPA SWMM 5.2.4; those form the PR, nightly and release tiers, and any SWMM-compatible engine can be scored against 5.2.4 across a whole tier. <a href="corpus.html">See the corpus and the SWMM 5.1.15 parity results</a>.</p>
 </section>"""
         if census is not None
         else ""
@@ -813,6 +1018,18 @@ def index_page(manifests: list[dict], cards: dict, census: pd.DataFrame | None, 
   <figure class="hero-fig">{hero_svg(cards, result_dirs)}
     <figcaption>Ritter (1892): a dam holding 1 m of water vanishes at t = 0. Shaded profiles are the exact solution every 15 s. {esc(ritter_line)} <a href="{page_name('A1F-010')}">See test A1F-010</a>.</figcaption>
   </figure>
+</section>
+{stats}
+<section>
+  <h2>Start here</h2>
+  <div class="paths">
+    <a class="path" href="get-started.html"><h3>I develop a solver</h3><p>Run a case, write results in the common format, and get a signed score card.</p>
+      <ul><li>Install and score in five commands</li><li>Results contract (Parquet)</li></ul></a>
+    <a class="path" href="reports.html"><h3>I review results</h3><p>Check what each score means, how tolerances were set, and what was found wrong and fixed.</p>
+      <ul><li>Score cards and the audit log</li><li>Method and tolerance rationale</li></ul></a>
+    <a class="path" href="downloads.html"><h3>I want the data</h3><p>Download a case, the whole catalog, reference results or the SWMM corpus index, each with a hash.</p>
+      <ul><li>Which file do I need?</li><li>Case bundles and schemas</li></ul></a>
+  </div>
 </section>
 <section class="tracks">
   <h2>Two tracks, kept apart on purpose</h2>
@@ -835,7 +1052,7 @@ def index_page(manifests: list[dict], cards: dict, census: pd.DataFrame | None, 
 </section>
 <section>
   <h2>Latest scored runs</h2>
-  <p>These runs use the demo solvers shipped in <code>examples/</code>: deliberately plain first- and second-order schemes that show the scoring at work. They are not certification claims for any product.</p>
+  <p>Track A runs use the demo solvers shipped in <code>examples/</code> (deliberately plain first- and second-order schemes) and EPA EPANET 2.2 for the pipe networks. Track B runs score an older engine release, EPA SWMM 5.1.15 and EPANET 2.0, against the pinned references. None of these is a certification claim for any product.</p>
   <div class="table-scroll"><table class="data"><thead><tr><th>Case</th><th>Title</th><th>Solver</th><th>Result</th><th class=num>Observed order</th></tr></thead><tbody>{scored_rows}</tbody></table></div>
   <p><a href="reports.html">All score cards and the audit log</a></p>
 </section>
@@ -843,7 +1060,64 @@ def index_page(manifests: list[dict], cards: dict, census: pd.DataFrame | None, 
     return layout("Open V&V benchmarks for water solvers", body, "index.html")
 
 
-def corpus_page(index: pd.DataFrame | None, census: pd.DataFrame | None) -> str:
+PARITY_DIR = ROOT / "test_catalog" / "track_b" / "parity"
+
+
+def load_parity() -> list[tuple[dict, pd.DataFrame]]:
+    out = []
+    for tier in ("pr", "nightly", "release"):
+        for summ in sorted(PARITY_DIR.glob(f"{tier}_*.summary.json")):
+            df_path = summ.with_name(summ.name.replace(".summary.json", ".parquet"))
+            if df_path.is_file():
+                out.append((json.loads(summ.read_text(encoding="utf-8")), pd.read_parquet(df_path)))
+    return out
+
+
+def parity_section(parity: list[tuple[dict, pd.DataFrame]]) -> str:
+    if not parity:
+        return ""
+    names = {"pr": "PR tier", "nightly": "Nightly tier", "release": "Release tier"}
+    rows, tables = [], []
+    for summ, df in parity:
+        sc = df[df["status"] == "scored"]
+        w = sc["worst_pct"].abs()
+        buckets = [
+            (int((w == 0).sum()), "st-frozen", "Identical"),
+            (int(((w > 0) & (w <= 1)).sum()), "st-candidate", "Within 1 %"),
+            (int(((w > 1) & (w <= 5)).sum()), "st-release", "1–5 %"),
+            (int((w > 5).sum()), "st-fail", "Over 5 %"),
+            (int(df["status"].isin(["candidate_error", "candidate_timeout"]).sum()), "st-draft", "Candidate could not run it"),
+        ]
+        rows.append((f"{names.get(summ['tier'], summ['tier'])} ({summ['models']})", buckets))
+        top = sc.assign(a=w).sort_values("a", ascending=False).head(12)
+        trs = "".join(
+            f"<tr><td><code>{esc(r.model_id)}</code></td><td class=num>{fmt(r.worst_pct)} %</td>"
+            f"<td class=small>{esc(str(r.peak_depth_detail) if isinstance(r.peak_depth_detail, str) else '–')}</td>"
+            f"<td class=small>{esc(str(r.volume_detail) if isinstance(r.volume_detail, str) else '–')}</td></tr>"
+            for r in top.itertuples() if r.a > 0)
+        errs = df[df["status"].isin(["candidate_error", "candidate_timeout"])]
+        err_txt = (f"<p class=small>{len(errs)} model(s) the candidate could not run: "
+                   + ", ".join(f"<code>{esc(x)}</code>" for x in errs["model_id"].head(8)) + (" …" if len(errs) > 8 else "")
+                   + ". Most use input syntax added after 5.1 (inlets, newer options), which an older engine rejects with ERROR 200.</p>") if len(errs) else ""
+        tables.append(f"""<h3>{esc(names.get(summ['tier'], summ['tier']))}: largest differences</h3>
+<div class="table-scroll"><table class="data"><thead><tr><th>Model</th><th class=num>Worst</th><th>Peak depth (worst node)</th><th>Volume (worst link)</th></tr></thead><tbody>{trs or '<tr><td colspan=4>No differences.</td></tr>'}</tbody></table></div>{err_txt}""")
+    first = parity[0][0]
+    bars = hbars(f"{first['candidate'].replace('swmm-', 'EPA SWMM ')} against EPA SWMM 5.2.4: worst element per model", rows, unit=" models")
+    return f"""<section id="parity"><h2>Does another engine match SWMM 5.2.4?</h2>
+<p>Any SWMM-compatible engine can be scored against the reference across a whole tier with <code>scripts/corpus_parity.py</code>: both engines run every model, and each model gets the worst node (relative peak depth) and worst link (relative volume of |Q|) — the same metrics as the catalog's Track B cases. As a demonstration the candidate here is the previous release, <b>EPA SWMM 5.1.15</b> (OWA build in <code>swmm-toolkit</code> 0.10.0).</p>
+{bars}
+{legend([("Identical", "st-frozen"), ("Within 1 %", "st-candidate"), ("1–5 %", "st-release"), ("Over 5 %", "st-fail"), ("Candidate could not run it", "st-draft")])}
+<div class="findings" style="margin-top:18px">
+  <div class="finding"><b>Most legacy models are bit-identical.</b> On the EXTRAN examples 5.1.15 and 5.2.4 produce the same numbers to every stored digit, so a tier made only of them cannot detect most engine changes. The PR tier is therefore picked for feature coverage.</div>
+  <div class="finding"><b>Differences cluster in features that changed.</b> Low-impact development, groundwater, seepage and some hydrology models differ by tens to hundreds of percent at their worst element: these are real behaviour changes between releases, not noise.</div>
+  <div class="finding"><b>A difference is not a defect.</b> Track B says how far a candidate is from the reference engine, not which one is right. Whether 5.2.4 is physically better is a Track A question.</div>
+</div>
+{''.join(tables)}
+<p class="small">The self-check (5.2.4 scored against itself) must give exactly 0 on every PR-tier model; CI runs it on every pull request.</p>
+</section>"""
+
+
+def corpus_page(index: pd.DataFrame | None, census: pd.DataFrame | None, parity: list | None = None) -> str:
     if index is None or census is None:
         return layout("Track B corpus", "<header class=page-head><h1>Track B corpus</h1><p class=lede>The corpus census has not been run yet.</p></header>", "corpus.html")
     st = index["status"].value_counts()
@@ -877,21 +1151,23 @@ def corpus_page(index: pd.DataFrame | None, census: pd.DataFrame | None) -> str:
   <h1>Track B corpus</h1>
   <p class="lede">{len(index):,} EPA SWMM models from <a href="https://github.com/HydroCouple/openswmm.engine.benchmarks/tree/{commit}">HydroCouple openswmm.engine.benchmarks</a> at commit <code>{commit[:12]}</code>, each run on the pinned EPA SWMM {esc(str(census['engine_version'].iloc[0]))} engine. Models are not copied here: the index records each file's URL at that commit and its SHA-256.</p>
 </header>
-<section><h2>Does each model run on the reference engine?</h2>{bars}
+<ul class="toc" aria-label="On this page"><li><a href="#census">Does it run?</a></li><li><a href="#tiers">Tiers</a></li><li><a href="#parity">Parity results</a></li><li><a href="#coverage">Coverage</a></li><li><a href="#continuity">Continuity</a></li><li><a href="#data">Data</a></li></ul>
+<section id="census"><h2>Does each model run on the reference engine?</h2>{bars}
 <p>A model joins a tier only if it runs cleanly <b>and</b> SWMM's own continuity error stays within ±5 %: a reference that loses or creates water cannot anchor parity. {int(st.get('input_error', 0)) + int(st.get('engine_error', 0))} models stop with input or engine errors (mostly older-version syntax: ERROR 205, 207, 209, 211, 235, and 32 missing rainfall files, ERROR 317), {int(st.get('timeout', 0))} exceed the 60 s census limit, and {int(((index['status'] == 'ran') & ~index['continuity_ok']).sum())} run but fail the continuity rule. All stay in the index so upstream maintainers can see them.</p></section>
-<section><h2>Tiers</h2>
+<section id="tiers"><h2>Tiers</h2>
 <div class="table-scroll"><table class="data"><thead><tr><th>Tier</th><th class=num>Models</th><th>Selection rule</th><th>Download</th></tr></thead><tbody>
-<tr><td>PR</td><td class=num>{int(tiers.get('tier_pr', 0))} + 3 catalog cases</td><td>Runs in ≤ 5 s, includes at least five control-rule models, gates every pull request</td><td><a href="data/track_b/tier_pr.json">selection.json</a></td></tr>
+<tr><td>PR</td><td class=num>{int(tiers.get('tier_pr', 0))} + 3 catalog cases</td><td>Runs in ≤ 5 s, picked for feature-tag coverage across collections, at least five control-rule models; gates every pull request</td><td><a href="data/track_b/tier_pr.json">selection.json</a></td></tr>
 <tr><td>Nightly</td><td class=num>{int(tiers.get('tier_nightly', 0)) + int(tiers.get('tier_pr', 0))}</td><td>Runs in ≤ 10 s, picked greedily so every tag is covered</td><td><a href="data/track_b/tier_nightly.json">selection.json</a></td></tr>
 <tr><td>Release</td><td class=num>{int((index['tier'] != 'none').sum())}</td><td>Every model that runs, keeps continuity within ±5 % and has a verified licence</td><td><a href="data/track_b/tier_release.json">selection.json</a></td></tr>
 </tbody></table></div></section>
+{parity_section(parity or [])}
 <section><h2>Runtime</h2>{rt_bars}</section>
-<section><h2>What the tiers cover</h2>{tag_bars}{legend([("PR", "st-frozen"), ("Nightly", "st-candidate"), ("Release only", "st-release"), ("Not in a tier", "st-draft")])}</section>
-<section><h2>Largest routing continuity errors on SWMM 5.2.4</h2>
+<section id="coverage"><h2>What the tiers cover</h2>{tag_bars}{legend([("PR", "st-frozen"), ("Nightly", "st-candidate"), ("Release only", "st-release"), ("Not in a tier", "st-draft")])}</section>
+<section id="continuity"><h2>Largest routing continuity errors on SWMM 5.2.4</h2>
 <p>Continuity error is SWMM's own mass-balance check. Models beyond ±5 % are excluded from every tier: their reference results are not physically meaningful, so agreeing with them proves nothing.</p>
 <div class="table-scroll"><table class="data"><thead><tr><th>Model</th><th class=num>Routing continuity</th><th class=num>Runtime</th></tr></thead><tbody>{worst_rows}</tbody></table></div>
 <p class="small">Median absolute routing continuity error across models that ran: {cont.median():.3f} %.</p></section>
-<section><h2>Data</h2><p>Download the full index as <a href="data/track_b/corpus_index.csv">CSV</a> or <a href="data/track_b/corpus_index.parquet">Parquet</a>. Fetch models with <code>python scripts/fetch_track_b_models.py --tier nightly</code>; every file is checked against its hash.</p></section>"""
+<section id="data"><h2>Data</h2><p>Download the full index as <a href="data/track_b/corpus_index.csv">CSV</a> or <a href="data/track_b/corpus_index.parquet">Parquet</a>. Fetch models with <code>python scripts/fetch_track_b_models.py --tier nightly</code>; every file is checked against its hash.</p></section>"""
     return layout("Track B corpus", body, "corpus.html")
 
 
@@ -923,31 +1199,67 @@ AUDIT = [
 ]
 
 
-def reports_page(manifests: list[dict], cards: dict) -> str:
+AUDIT_2 = [
+    ("Six exact-solution cases had never been scored, and their specifications could not be met", "Darcy–Weisbach, Todini network, Ogata–Banks tracer, Bélanger jump, MacDonald 2D and oblique jump had references but no runs. The pipe cases asked for grid convergence of a steady closed-form solution, and their \"1 %\" tolerances were compared against absolute errors in pascals.",
+     "Each case is re-specified for its physics: relative norms when a tolerance is in %, a head-loss metric, element-keyed network references, and \"convergence not applicable\" where nothing is discretised. EPA EPANET 2.2 passes both pipe cases (head loss 0.60 % high, the Swamee–Jain offset theory predicts); new demo solvers pass the tracer (order 1.67), the jump (1.00), MacDonald 2D (1.02) and the oblique jump (0.91)."),
+    ("The MacDonald 2D reference was not a solution of the shallow-water equations", "It held the free surface flat while water flowed at 0.2 m²/s without friction, which momentum forbids; the module's docstring admitted that a solver copying the field would pass.",
+     "Rebuilt by MacDonald's method: A1F-001's profile on a 2D grid with Manning friction and a bed constructed so the steady equations hold exactly (momentum residual tested). Case version 2.0.0."),
+    ("The oblique-jump reference used the wrong jump relation and the wrong side", "It solved the gas-dynamics θ–β–M relation (jump at 34.0° instead of the shallow-water 39.6° for Fr₁ = 2.5, θ = 15°) and labelled the region between wall and jump as upstream.",
+     "Rewritten from the exact shallow-water Rankine–Hugoniot conditions, with tests for mass, normal momentum and tangential velocity across the jump. Case version 2.0.0."),
+    ("The Joukowsky \"continuity\" check measured front smearing, not mass", "Mean |u| where p exceeds half the rise grows with the smeared zone, so accurate first-order schemes failed (1.87 %) while a non-conserving sharp scheme could pass.",
+     "Replaced by an exact storage balance: the packed volume ∫Δp dx must equal ρa²V₀t. The method-of-characteristics demo conserves it to round-off. Case version 3.0.0."),
+    ("Two builds of SWMM 5.2.4 disagree on the control-rule case", "The official win64 binaries and the swmm-toolkit build match EXTRAN Example 1 exactly, but on B-RTC-001 differ by −3.7 % peak depth and move a pump-cycle peak by 92,400 s.",
+     "Reported every run by the cross-build job; B-RTC-001 cannot be frozen until its tolerances or timing metric are revised (decision recorded in the case README)."),
+    ("The PR corpus tier tested one collection only", "All 38 PR-tier models were legacy EXTRAN examples, on which SWMM 5.1.15 and 5.2.4 give bit-identical output, so the gate could not see most engine changes.",
+     "The PR tier is now 40 models picked to cover feature tags (9 collections, ≥ 5 control-rule models). A corpus parity runner scores any SWMM build against 5.2.4 across a tier; a self-check requires exactly zero against itself on every PR run."),
+    ("Nothing said how a case becomes frozen", "Only frozen cases count, but there was no rule for getting there, so no case could ever be frozen on evidence.",
+     "Eight promotion rules, seven computed from the manifest and score cards; every case page shows its checklist and the catalog lists what each case still needs."),
+]
+
+
+def reports_page(manifests: list[dict], cards: dict, evidence: dict[str, list[dict]] | None = None) -> str:
     rows = []
     for m in manifests:
         c = cards.get(m["test_id"])
         if not c:
             continue
         conv = c.get("convergence_result") or {}
+        text = f'{m["test_id"]} {m.get("title", "")} {c["solver"]["name"]}'.lower()
         rows.append(
-            f'<tr><td><a href="{page_name(m["test_id"])}">{esc(short_id(m["test_id"]))}</a></td><td>{esc(c["solver"]["name"])}</td><td>{verdict(c)}</td>'
+            f'<tr data-text="{esc(text)}" data-result="{"pass" if c.get("passed") else "fail"}"><td><a href="{page_name(m["test_id"])}">{esc(short_id(m["test_id"]))}</a><div class=muted>{esc(m.get("title", ""))}</div></td><td>{esc(c["solver"]["name"])}</td><td>{verdict(c)}</td>'
             f'<td>{esc(", ".join(c.get("certification_claims") or []) or "–")}</td>'
             f'<td class=num>{fmt(conv["observed_order"]) if conv.get("observed_order") is not None else "–"}</td>'
-            f'<td><code title="{esc(c.get("content_hash", ""))}">{esc(c.get("content_hash", "")[:12])}…</code></td>'
+            f'<td><code class="hash" title="{esc(c.get("content_hash", ""))}" data-copy="{esc(c.get("content_hash", ""))}" data-label="content hash">{esc(c.get("content_hash", "")[:10])}…</code></td>'
             f'<td><a href="data/scorecards/{esc(c["_path"].name)}" download>JSON</a></td></tr>'
         )
     audit = "".join(f"<li><h3>{esc(t)}</h3><p><b>Found:</b> {esc(a)}</p><p><b>Now:</b> {esc(b)}</p></li>" for t, a, b in AUDIT)
+    audit2 = "".join(f"<li><h3>{esc(t)}</h3><p><b>Found:</b> {esc(a)}</p><p><b>Now:</b> {esc(b)}</p></li>" for t, a, b in AUDIT_2)
+    xb_rows = "".join(
+        f'<tr><td><a href="{page_name(c["test_id"])}">{esc(short_id(c["test_id"]))}</a></td><td>{esc(c["solver"]["name"])}</td><td>{verdict(c)}</td>'
+        f'<td>{esc("; ".join(r["id"] + " " + fmt(r["observed"]) + " " + r["threshold"]["units"] for r in c["criteria_results"]))}</td></tr>'
+        for lst in (evidence or {}).values() for c in lst)
     body = f"""
 <header class="page-head"><h1>Reports</h1>
 <p class="lede">Every score card is canonical JSON with a SHA-256 content hash, so any change to a published result is detectable. Cards are also Ed25519-signed; the demo runs below use a development key published in the repository, so their signatures show integrity, not authorship. Certification runs will be signed with a key held by the maintainers.</p></header>
 <section><h2>Score cards</h2>
-<div class="table-scroll"><table class="data"><thead><tr><th>Case</th><th>Solver</th><th>Result</th><th>Claims</th><th class=num>Observed order</th><th>Content hash</th><th>File</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>
+<form class="filters" role="search" onsubmit="return false">
+  <label>Search <input type="search" id="rq" placeholder="Case, title or solver"></label>
+  <label>Result <select id="rq-result"><option value="">Any</option><option value="pass">Pass</option><option value="fail">Fail</option></select></label>
+  <output id="rq-count" aria-live="polite"></output>
+</form>
+<div class="table-scroll"><table class="data" data-filter="rq"><thead><tr><th>Case</th><th>Solver</th><th>Result</th><th>Claims</th><th class=num>Observed order</th><th>Content hash</th><th>File</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>
 <p class="small"><a href="data/scorecards.zip" download>Download every score card (.zip)</a>. Check one with <code>benchmark1d2d verify-card path/to/card.json</code>.</p></section>
-<section><h2>Audit log, 13 October 2026</h2>
-<p>An end-to-end review found the following defects. Each is fixed, covered by tests, and recorded here because earlier results published from this repository were affected.</p>
+{f"""<section><h2>Second build of the reference engine</h2>
+<p>The official EPA SWMM 5.2.4 Windows binaries run on each SWMM catalog input and are scored against the reference built from the same source in <code>swmm-toolkit</code>. Agreement shows a parity reference does not depend on the compiler.</p>
+<div class="table-scroll"><table class="data"><thead><tr><th>Case</th><th>Build</th><th>Result</th><th>Worst element per criterion</th></tr></thead><tbody>{xb_rows}</tbody></table></div></section>""" if xb_rows else ""}
+<section><h2>Audit log</h2>
+<p>End-to-end reviews found the following defects. Each is fixed, covered by tests, and recorded here because earlier results published from this repository were affected.</p>
+<h3>Second review, 14 October 2026</h3>
+<ol class="audit">{audit2}</ol>
+<h3>First review, 13 October 2026</h3>
 <ol class="audit">{audit}</ol></section>"""
     return layout("Reports", body, "reports.html")
+
 
 
 def downloads_page(files: list[tuple[str, str, Path]]) -> str:
@@ -958,12 +1270,21 @@ def downloads_page(files: list[tuple[str, str, Path]]) -> str:
     for g, items in groups.items():
         rows = "".join(
             f'<tr><td><a href="{esc(p.relative_to(DIST).as_posix())}" download>{esc(label)}</a></td><td class=num>{size_text(p.stat().st_size)}</td>'
-            f'<td><code title="{esc(sha256(p))}">{esc(sha256(p)[:16])}…</code></td></tr>'
+            f'<td><code class="hash" title="{esc(sha256(p))}" data-copy="{esc(sha256(p))}" data-label="SHA-256 of {esc(label)}">{esc(sha256(p)[:12])}…</code></td></tr>'
             for label, p in items
         )
         sections.append(f'<section><h2>{esc(g)}</h2><div class="table-scroll"><table class="data"><thead><tr><th>File</th><th class=num>Size</th><th>SHA-256</th></tr></thead><tbody>{rows}</tbody></table></div></section>')
     body = f"""<header class="page-head"><h1>Downloads</h1>
-<p class="lede">Everything the site shows, as files. Hashes let you confirm a download matches what CI built.</p></header>
+<p class="lede">Everything the site shows, as files. Hashes let you confirm a download matches what CI built; click Copy next to one and compare it with <code>sha256sum</code>.</p></header>
+<section><h2>Which file do I need?</h2>
+<div class="table-scroll"><table class="data guide"><tbody>
+<tr><td>Run one case with my solver</td><td>The case bundle from its page (<a href="catalog.html">catalog</a>), then <code>python scripts/fetch_inputs.py &lt;ID&gt;</code> for any large input fetched by hash.</td></tr>
+<tr><td>Run every case</td><td><a href="data/benchmark1d2d-catalog.zip" download>Every case (.zip)</a>, or clone the repository.</td></tr>
+<tr><td>List or filter cases in a script</td><td><a href="data/catalog.csv" download>catalog.csv</a> (one row per case) or <a href="data/catalog.json" download>catalog.json</a> (full manifests).</td></tr>
+<tr><td>Write results the scorer accepts</td><td><a href="data/schemas/results.schema.json" download>results.schema.json</a>; score cards follow <a href="data/schemas/scorecard.schema.json" download>scorecard.schema.json</a>.</td></tr>
+<tr><td>Compare my SWMM engine with 5.2.4 node by node</td><td>The reference results (.parquet) below, or the <a href="corpus.html">corpus tiers</a> with <code>scripts/corpus_parity.py</code>.</td></tr>
+<tr><td>Cite the sources</td><td><a href="data/citations.bib" download>citations.bib</a></td></tr>
+</tbody></table></div></section>
 {''.join(sections)}
 <section><h2>Large inputs</h2><p>DEMs and corpus models are not mirrored here. Fetch and verify them with <code>python scripts/fetch_inputs.py</code> and <code>python scripts/fetch_track_b_models.py</code>; both refuse any file whose SHA-256 differs from the manifest.</p></section>"""
     return layout("Downloads", body, "downloads.html")
@@ -1068,6 +1389,9 @@ def write_bundles(manifests: list[dict], cards: dict, index: pd.DataFrame | None
             shutil.copy2(ROOT / f"test_catalog/track_b/tier_{tier}/selection.json", tb / f"tier_{tier}.json")
         files += [("Track B corpus", "corpus_index.csv", tb / "corpus_index.csv"), ("Track B corpus", "corpus_index.parquet", tb / "corpus_index.parquet")]
         files += [("Track B corpus", f"tier_{t}.json", tb / f"tier_{t}.json") for t in ("pr", "nightly", "release")]
+        for pq in sorted(PARITY_DIR.glob("*.parquet")):
+            shutil.copy2(pq, tb / f"parity_{pq.name}")
+            files.append(("Track B corpus", f"Parity results {pq.stem.replace('_', ', ')} (.parquet)", tb / f"parity_{pq.name}"))
     return files
 
 
@@ -1079,8 +1403,8 @@ def main() -> int:
     ap.add_argument("--scorecards", action="append", default=[], help="directories with *.scorecard.json (later wins)")
     ap.add_argument("--results", action="append", default=[], help="directories with demo results Parquet")
     args = ap.parse_args()
-    score_dirs = [Path(p) for p in (args.scorecards or ["site/fixtures/scorecards", "out/track_b", "out/vertical_slice", "out/demo_2d"])]
-    result_dirs = [Path(p) for p in (args.results or ["out/vertical_slice", "out/demo_2d"])]
+    score_dirs = [Path(p) for p in (args.scorecards or ["site/fixtures/scorecards", "out/track_b", "out/vertical_slice", "out/networks", "out/demo_2d"])]
+    result_dirs = [Path(p) for p in (args.results or ["out/vertical_slice", "out/networks", "out/demo_2d"])]
     score_dirs = [p if p.is_absolute() else ROOT / p for p in score_dirs]
     result_dirs = [p if p.is_absolute() else ROOT / p for p in result_dirs]
 
@@ -1102,18 +1426,24 @@ def main() -> int:
     census_path = ROOT / "test_catalog/track_b/corpus_census.parquet"
     census = pd.read_parquet(census_path) if census_path.is_file() else None
 
+    evidence: dict[str, list[dict]] = defaultdict(list)  # second builds of reference engines (cross-build job)
+    for p in sorted((SITE / "fixtures" / "cross_build").glob("*.json")) + sorted((ROOT / "out" / "cross_build").glob("*.cross_build.scorecard.json")):
+        c = json.loads(p.read_text(encoding="utf-8"))
+        c["_path"] = p
+        evidence[c["test_id"]] = [c]  # later (fresh CI output) wins
+    parity = load_parity()
     files = write_bundles(manifests, cards, index)
     pages = {
         "index.html": index_page(manifests, cards, census, result_dirs),
-        "catalog.html": catalog_page(manifests, cards),
-        "corpus.html": corpus_page(index, census),
-        "reports.html": reports_page(manifests, cards),
-        "method.html": doc_page("Method", "method.html", [ROOT / "docs/methodology/vv_plan.md", ROOT / "docs/methodology/tolerance_rationale.md", ROOT / "docs/bibliography.md"],
+        "catalog.html": catalog_page(manifests, cards, evidence),
+        "corpus.html": corpus_page(index, census, parity),
+        "reports.html": reports_page(manifests, cards, evidence),
+        "method.html": doc_page("Method", "method.html", [ROOT / "docs/methodology/vv_plan.md", ROOT / "docs/methodology/promotion.md", ROOT / "docs/methodology/tolerance_rationale.md", ROOT / "docs/bibliography.md"],
                                 '<p class="lede">How cases are verified and validated, how tolerances are chosen, and the literature behind every test.</p>'),
         "get-started.html": doc_page("Get started", "get-started.html", [ROOT / "docs/get_started.md"]),
     }
     for m in manifests:
-        pages[page_name(m["test_id"])] = test_page(m, cards.get(m["test_id"]), result_dirs, assets)
+        pages[page_name(m["test_id"])] = test_page(m, cards.get(m["test_id"]), result_dirs, assets, evidence.get(m["test_id"], []))
     pages["downloads.html"] = downloads_page(files)
     for name, html_text in pages.items():
         (DIST / name).write_text(html_text, encoding="utf-8")

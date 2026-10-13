@@ -9,8 +9,8 @@ the suite exists to test, not a production code:
   rest exactly and depths non-negative across wet/dry fronts
 - semi-implicit Manning friction
 - closed walls (cells outside the active area act as walls), discharge
-  inflow along a polyline (volume source), or a water-level boundary on the
-  west edge
+  inflow along a polyline (volume source), a water-level boundary on the
+  west edge, or any open boundary through a ghost-cell hook
 - explicit Euler in time, CFL 0.45
 
 First-order in space and time, so smooth solutions converge at ~1 and
@@ -65,6 +65,9 @@ class Case:
     inflow_cells: np.ndarray | None = None  # bool mask
     west_level: Callable[[float], float] | None = None  # water level on west edge
     probes: dict[str, tuple[int, int]] = field(default_factory=dict)  # id -> (j, i)
+    # Optional open boundaries: ghost(t, H, U, V, Z) edits the padded ghost ring
+    # (row 0 = south, row -1 = north, column 0 = west, column -1 = east) in place.
+    ghost: Callable[[float, np.ndarray, np.ndarray, np.ndarray, np.ndarray], None] | None = None
 
 
 def _hll(hL, uL, vL, hR, uR, vR):
@@ -128,6 +131,8 @@ def step(case: Case, h, hu, hv, t: float, cfl: float = 0.45) -> tuple[np.ndarray
         H[1:-1, 0] = np.maximum(0.0, eta - gr.z[:, 0]) * gr.active[:, 0]
         U[1:-1, 0] = u[:, 0]
         V[1:-1, 0] = 0.0
+    if case.ghost is not None:
+        case.ghost(t, H, U, V, Z)
 
     # x-faces (ny, nx+1)
     fh, fuL, fuR, fv = _face_fluxes(H[1:-1, :-1], U[1:-1, :-1], V[1:-1, :-1], Z[1:-1, :-1],

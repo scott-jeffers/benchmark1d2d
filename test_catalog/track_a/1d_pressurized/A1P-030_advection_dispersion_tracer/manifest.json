@@ -1,12 +1,12 @@
 {
   "schema_version": "1.1.0",
-  "case_version": "0.1.0",
-  "status": "draft",
+  "case_version": "1.0.0",
+  "status": "candidate",
   "track": "A",
   "test_id": "A1P-030_advection_dispersion_tracer",
   "test_class": "verification_analytic",
   "title": "Advection–dispersion tracer (Ogata–Banks)",
-  "description": "1D pipe / porous-media tracer transport with constant velocity and longitudinal dispersion; exact Ogata–Banks concentration profile.",
+  "description": "A tracer is released continuously at x = 0 into a uniform flow (u = 0.1 m/s, D = 0.01 m²/s); after one hour the front is 360 m downstream. Ogata & Banks (1961) give the exact profile, which tests both advection and dispersion and penalises numerical diffusion.",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "pressurized",
@@ -61,10 +61,10 @@
     ],
     "mesh_refinement": {
       "levels": [
-        20.0,
-        10.0,
-        5.0,
-        2.5
+        4.0,
+        2.0,
+        1.0,
+        0.5
       ],
       "fixed_courant": 0.5
     }
@@ -81,7 +81,7 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "L1 concentration error within 2% of Ogata–Banks solution."
+        "rationale": "Concentration L1 error within 2 % of the L1 norm of the Ogata–Banks profile on the finest grid. The front is 8.5 m wide (2√(Dt)) and moves 360 m, so a scheme with numerical diffusion comparable to D (first-order upwind at u·dx/2 = 0.025 m²/s, 2.5×D) visibly smears it and fails."
       },
       {
         "id": "mass",
@@ -93,14 +93,14 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "Conserved tracer mass within 0.5%."
+        "rationale": "Tracer mass in the domain within 0.5 % of the exact integral: a conservative scheme meets it to quadrature error."
       }
     ],
     "convergence": {
       "norm": "L1",
       "variable": "c",
-      "expected_order": 1.0,
-      "min_observed_order": 0.8
+      "expected_order": 2.0,
+      "min_observed_order": 1.6
     },
     "pass_rule": "all_gating"
   }

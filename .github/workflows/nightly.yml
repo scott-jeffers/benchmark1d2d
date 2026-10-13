@@ -35,8 +35,16 @@ jobs:
   corpus-nightly-tier:
     name: Nightly-tier corpus on SWMM 5.2.4
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+      # SWMM 5.1.15 (the parity demonstration candidate) needs Python 3.10; set it
+      # up first so 3.12 stays the default interpreter.
+      - uses: actions/setup-python@v5
+        id: py310
+        with:
+          python-version: "3.10"
+      - run: ${{ steps.py310.outputs.python-path }} -m pip install -q "swmm-toolkit==0.10.0"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -50,8 +58,12 @@ jobs:
           git remote add origin https://github.com/HydroCouple/openswmm.engine.benchmarks
           git fetch -q --depth 1 origin "$COMMIT" && git checkout -q FETCH_HEAD
       - run: python scripts/corpus_census.py --corpus hc/corpus --only test_catalog/track_b/tier_nightly/selection.json --timeout 60 --workers 4 --fail-on-error --out out/nightly_census.parquet
+      - name: Parity of SWMM 5.1.15 against 5.2.4 across the tier (a finding, not a gate)
+        run: python scripts/corpus_parity.py --corpus hc/corpus --tier nightly --candidate-python "${{ steps.py310.outputs.python-path }}" --label swmm-5.1.15 --workers 4 --timeout 90 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: nightly-census
-          path: out/nightly_census.parquet
+          path: |
+            out/nightly_census.parquet
+            out/corpus_parity/*

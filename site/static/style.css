@@ -139,7 +139,7 @@ table.catalog td:first-child { white-space: nowrap; font-family: var(--mono); fo
 .v-none { color: var(--pending); font-weight: 600; } .v-none::before { border: 1.5px solid var(--pending); width: 7px; height: 7px; }
 
 /* test page */
-.test-layout { display: grid; gap: 40px; grid-template-columns: 1fr; margin-top: 24px; }
+.test-layout { display: grid; gap: 40px; grid-template-columns: minmax(0, 1fr); margin-top: 24px; }
 @media (min-width: 980px) { .test-layout { grid-template-columns: 270px minmax(0, 1fr); } .facts { position: sticky; top: 84px; align-self: start; } }
 .facts dl { margin: 0; display: grid; grid-template-columns: 1fr; gap: 2px; font-size: 15px; }
 .facts dt { color: var(--ink-2); font-size: 13px; margin-top: 10px; }
@@ -246,3 +246,66 @@ table.catalog td:first-child { white-space: nowrap; font-family: var(--mono); fo
 .key.s-violet { background: var(--violet); } .key.s-time { background: var(--water); }
 .key.s-t0 { opacity: .3; } .key.s-t1 { opacity: .45; } .key.s-t2 { opacity: .6; } .key.s-t3 { opacity: .78; }
 table.data code { white-space: nowrap; }
+
+/* ── usability additions ─────────────────────────────────────────────── */
+.prose, .cites, .callout, .facts, .small, .lede { overflow-wrap: anywhere; }
+.nav-toggle { display: none; font: 600 15px var(--sans); color: var(--ink); background: transparent; border: 1.5px solid var(--rule); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+@media (max-width: 760px) {
+  .masthead-inner { flex-wrap: nowrap; }
+  .nav-toggle { display: inline-block; }
+  .nav { display: none; position: absolute; left: 0; right: 0; top: 60px; background: var(--sheet); border-bottom: 1px solid var(--rule); flex-direction: column; gap: 0; padding: 6px 16px 12px; box-shadow: 0 8px 18px rgba(0,0,0,.08); }
+  .nav.open { display: flex; }
+  .nav a { padding: 10px 0; border-bottom: 1px solid var(--rule-2); }
+  .nav a[aria-current="page"] { border-bottom-color: var(--rule-2); color: var(--water); }
+  .masthead { position: sticky; }
+}
+pre { position: relative; }
+.copy { position: absolute; top: 6px; right: 6px; font: 600 12px var(--sans); color: var(--ink-2); background: var(--sheet); border: 1px solid var(--rule); border-radius: 5px; padding: 3px 8px; cursor: pointer; opacity: .85; }
+.copy:hover { color: var(--water); border-color: var(--water); opacity: 1; }
+.copy.inline { position: static; margin-left: 6px; padding: 1px 6px; }
+.hash { font-family: var(--mono); font-size: 13px; }
+
+/* at a glance (test pages) */
+.glance { display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); background: var(--rule); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; margin: 22px 0 8px; }
+.glance > div { background: var(--sheet); padding: 14px 16px; }
+.glance .k { display: block; font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); margin-bottom: 4px; font-weight: 600; }
+.glance .v { font-size: 16px; }
+.glance .v small { display: block; color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
+.checklist { list-style: none; padding: 0; margin: 8px 0 0; font-size: 15px; }
+.checklist li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--rule-2); }
+.checklist li:last-child { border-bottom: 0; }
+.checklist .mark { font-weight: 800; }
+.checklist .met .mark { color: var(--pass); }
+.checklist .unmet .mark { color: var(--fail); }
+.checklist .detail { display: block; color: var(--ink-2); font-size: 13.5px; }
+.checklist .stage { font-size: 12px; color: var(--ink-2); border: 1px solid var(--rule); border-radius: 999px; padding: 0 7px; margin-left: 6px; white-space: nowrap; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 0; padding: 0; list-style: none; font-size: 14px; }
+.toc a { display: inline-block; padding: 4px 11px; border-radius: 999px; background: var(--rule-2); color: var(--ink); text-decoration: none; }
+.toc a:hover { background: var(--water-soft); color: var(--water); }
+.test-main section { scroll-margin-top: 80px; }
+.blockers { font-size: 13.5px; color: var(--ink-2); }
+
+/* overview */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; margin: 8px 0 0; }
+.stats > div { background: var(--sheet); padding: 16px 18px; }
+.stats b { display: block; font-size: 30px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+.stats span { font-size: 14px; color: var(--ink-2); }
+.paths { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.path { display: block; background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 18px 14px; text-decoration: none; color: var(--ink); }
+.path:hover { border-color: var(--water); box-shadow: 0 2px 10px rgba(31,111,168,.12); }
+.path h3 { color: var(--water); font-size: 17px; margin-bottom: 6px; }
+.path p { font-size: 15px; color: var(--ink-2); margin: 0 0 8px; }
+.path ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+.status-explain { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 6px 0 18px; }
+.status-explain > div { background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; font-size: 14.5px; }
+.status-explain b { font-size: 22px; margin-right: 6px; }
+.findings { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.finding { background: var(--sheet); border: 1px solid var(--rule); border-left: 4px solid var(--violet); border-radius: 0 8px 8px 0; padding: 12px 14px; font-size: 15px; }
+.finding b { display: block; margin-bottom: 4px; }
+.guide td:first-child { font-weight: 600; width: 34%; }
+.katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; max-width: 100%; }
+.prose .katex-display > .katex { white-space: nowrap; }
+@media (max-width: 640px) {
+  .figure:has(.bars) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .figure .bars { min-width: 560px; }
+}

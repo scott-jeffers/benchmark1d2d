@@ -1,7 +1,7 @@
 {
   "schema_version": "1.1.0",
-  "case_version": "0.1.0",
-  "status": "draft",
+  "case_version": "1.0.0",
+  "status": "candidate",
   "track": "A",
   "test_id": "A1P-010_todini_multiloop",
   "test_class": "verification_analytic",
@@ -65,32 +65,24 @@
     "t_end": 1.0,
     "output_interval": 1.0,
     "required_outputs": [
-      "p",
+      "h",
       "Q"
     ],
-    "mesh_refinement": {
-      "levels": [
-        20.0,
-        10.0,
-        5.0,
-        2.5
-      ],
-      "fixed_courant": 0.5
-    }
+    "steady": true
   },
   "scoring": {
     "criteria": [
       {
         "id": "nodal_head",
-        "metric": "L2",
-        "variable": "p",
+        "metric": "Linf",
+        "variable": "h",
         "threshold": {
           "op": "abs<=",
-          "value": 0.5,
-          "units": "%"
+          "value": 0.05,
+          "units": "m"
         },
         "gating": true,
-        "rationale": "Nodal heads within 0.5% of Todini–Pilati reference."
+        "rationale": "Worst junction head within 5 cm. The SI Hazen–Williams coefficients in use differ by up to 0.1 % (10.667 here, ≈10.67 from EPANET's US-unit 4.727), which moves heads by at most 0.03 m on this network's 26 m of loss; single-precision output adds about 2 mm at 200 m."
       },
       {
         "id": "link_flow",
@@ -98,18 +90,15 @@
         "variable": "Q",
         "threshold": {
           "op": "abs<=",
-          "value": 1.0,
+          "value": 0.1,
           "units": "%"
         },
         "gating": true,
-        "rationale": "Link flows within 1% of reference balance."
+        "rationale": "Pipe flows within 0.1 % (relative L2). Flows do not depend on the Hazen–Williams coefficient's absolute value, only on continuity and loop balance; 0.1 % is the default EPANET convergence criterion (sum of flow changes over total flow ≤ 0.001)."
       }
     ],
     "convergence": {
-      "norm": "L1",
-      "variable": "p",
-      "expected_order": 1.0,
-      "min_observed_order": 0.8
+      "not_applicable": "Steady looped network with a closed-form-equivalent reference: there is no grid or time step to refine."
     },
     "pass_rule": "all_gating"
   }

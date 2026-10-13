@@ -21,7 +21,7 @@ jobs:
         run: python -m pytest -q
 
   demo:
-    name: Demo solvers end to end (report, not gate)
+    name: Demo solvers and EPANET 2.2 end to end
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,21 +30,25 @@ jobs:
           python-version: "3.12"
       - run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -e ".[dev,engines]"
       - uses: actions/cache@v4
         with:
           path: .cache/sources
           key: sources-${{ hashFiles('test_catalog/**/manifest.json') }}
       - run: python scripts/fetch_inputs.py
-      # The demo solvers are deliberately simple; a FAIL here is a finding about the
-      # solver or the case, reported as a warning, not a broken build.
-      - name: 1D vertical slice
-        run: python scripts/run_vertical_slice.py || echo "::warning::A 1D demo case failed its criteria; see the job log and the score cards"
-      - name: 2D demo (Thacker, EA 1, 2, 4)
-        run: python scripts/run_demo_2d.py A2A-001 A2C-EA1 A2C-EA2 A2C-EA4 || echo "::warning::A 2D demo case failed its criteria"
+      # Every scored Track A case has a run that passes it; a failure here means
+      # the scorer, a reference or a demo solver regressed.
+      - name: 1D cases (dam breaks, backwater, jump, water hammer, tracer)
+        run: python scripts/run_vertical_slice.py
+      - name: Pipe networks on EPA EPANET 2.2
+        run: python scripts/run_network_cases.py
+      - name: 2D cases (Thacker, MacDonald 2D, oblique jump, EA 1, 2, 4, 5)
+        run: python scripts/run_demo_2d.py
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: track-a-scorecards
           path: |
             out/vertical_slice/*.scorecard.json
+            out/networks/*.scorecard.json
             out/demo_2d/*.scorecard.json

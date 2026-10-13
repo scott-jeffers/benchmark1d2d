@@ -48,12 +48,16 @@ benchmark1d2d catalog list --track A
 benchmark1d2d engines
 benchmark1d2d run A1F-010 --solver examples/demo_solver/solve.py --adapter generic_parquet
 benchmark1d2d score A1F-010 --results out/A1F-010.parquet
-python scripts/run_vertical_slice.py     # 1D demo solvers, all refinement levels, score cards
-python scripts/run_demo_2d.py            # 2D finite-volume demo: Thacker and EA Tests 1, 2, 4, 5
+python scripts/run_vertical_slice.py     # 1D demo solvers on every refinement level
+python scripts/run_network_cases.py      # EPA EPANET 2.2 on the pipe-network cases
+python scripts/run_demo_2d.py            # 2D finite-volume demo on every 2D analytic and EA case
+python scripts/corpus_parity.py --corpus hc/corpus --tier pr --candidate-python <py> --label <name>
 python site/build.py                     # open site/dist/index.html
 ```
 
-Public site: Home, Catalog, Get started, Engines (pinned SWMM 5.2.4), Methodology.
+Public site: [scott-jeffers.github.io/benchmark1d2d](https://scott-jeffers.github.io/benchmark1d2d/) —
+catalog with a page per case (reference, tolerances, latest run, promotion
+checklist), SWMM corpus and parity results, reports and audit log, downloads.
 
 ## How a benchmark run works
 
@@ -85,9 +89,14 @@ shows each one with its reference, tolerances and latest score. Highlights:
 |---|---|---|---|
 | A1F-010 / 011 | 1D dam break, dry and wet bed | Ritter (1892), Stoker (1957) | front position or L1(h); observed order ≥ 0.8 |
 | A1F-001 | 1D steady backwater | MacDonald et al. (1997) manufactured bed | L1(h); observed order ≥ 0.8 |
-| A1P-010 | Two-loop pipe network | Todini–Pilati solve, cross-checked against EPANET 2.2 | nodal head, link flow |
-| A1P-020 | Instant valve closure | Joukowsky (1900) | peak pressure; observed order ≥ 0.4 (discontinuity) |
+| A1F-020 | Stationary hydraulic jump | Bélanger sequent depths | L1(h), no drift; observed order ≥ 0.8 |
+| A1P-001 | Single pipe, Colebrook friction | Darcy–Weisbach, Colebrook–White | head loss within 1 % |
+| A1P-010 | Two-loop pipe network | Todini–Pilati solve to 1e-12 m | nodal head, link flow |
+| A1P-020 | Instant valve closure | Joukowsky (1900) | peak pressure, exact storage balance; observed order ≥ 0.4 |
+| A1P-030 | Tracer advection–dispersion | Ogata & Banks (1961) | relative L1(c), mass; observed order ≥ 1.6 |
 | A2A-001 | 2D bowl with moving shoreline | Thacker (1981), corrected in v0.3 | L1(h), mass; observed order ≥ 0.8 |
+| A2A-010 | 2D steady channel with friction | MacDonald construction on a 2D grid | L1(h), mass; observed order ≥ 0.8 |
+| A2A-020 | Oblique hydraulic jump | Exact shallow-water jump conditions | L1(h), mass; observed order ≥ 0.8 |
 | A2C-EA1…EA5 | EA 2D inter-comparison tests | Settled pond level, mass conservation | from the official EA archive, fetched by hash |
 | B-EXTRAN-001, B-RTC-001 | Sewer routing, control rules | EPA SWMM 5.2.4 | peak, volume, timing at every element |
 | B-EPANET-001 | Water distribution (Net1) | EPANET 2.2 | peak pressure, volume at every element |
@@ -104,6 +113,17 @@ benchmark1d2d run <TEST_ID> --solver ./my_solver --adapter generic_parquet
 ```
 
 Container and WASM modes are supported by the exec layer (stubs in v0.1).
+
+## Promoting a case
+
+Only `frozen` cases count toward certification. A case moves from `draft` to
+`candidate` to `frozen` by meeting the rules in
+[`docs/methodology/promotion.md`](docs/methodology/promotion.md): verified
+licence, available inputs and reference, a justified tolerance for every
+criterion, a passing published run with convergence evidence, two independent
+codes passing (for parity cases, a second build of the reference engine), and a
+recorded maintainer review. Seven of the eight rules are computed; each case
+page shows its checklist.
 
 ## Adding a test case
 

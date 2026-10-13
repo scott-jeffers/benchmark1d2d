@@ -8,8 +8,8 @@ authors:
     alias: "@Scott"
 repository-code: "https://github.com/scott-jeffers/benchmark1d2d"
 license: Apache-2.0
-version: 0.2.1
-date-released: "2026-10-13"
+version: "0.4.0"
+date-released: "2026-10-14"
 abstract: >-
   An open, engine-agnostic suite for verifying and validating 1D, 2D and
   coupled 1D/2D hydraulic solvers against exact solutions, laboratory

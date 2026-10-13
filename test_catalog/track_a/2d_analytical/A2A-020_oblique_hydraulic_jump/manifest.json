@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0.0",
-  "case_version": "0.1.0",
+  "case_version": "2.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A2A-020_oblique_hydraulic_jump",
   "test_class": "verification_analytic",
   "title": "Oblique hydraulic jump",
-  "description": "Supercritical 2D shallow-water flow past a wall deflection producing an oblique hydraulic jump with analytic shock angle and conjugate states (Ippen).",
+  "description": "Supercritical flow (Fr₁ = 2.5) meets a straight wall at 15° and is turned through an oblique hydraulic jump. The exact solution has two uniform states separated by a straight jump at 39.58° to the incoming flow, with depth ratio 1.81. It tests shock capturing in 2D and directional accuracy on a Cartesian grid.",
   "physics": {
     "dimensionality": "2D",
     "flow_type": "free_surface",
@@ -37,7 +37,7 @@
       "path": "inputs/params.json",
       "role": "parameters",
       "format": "json",
-      "sha256": "d626ddb77c33d9ca94b0c4dc933b6f462655dc6e467364fed9b999bdbb858202"
+      "sha256": "371f5f6bef6c7b1c2b017930dac620783ddedfd687b90519df82dbc6a20ac221"
     }
   ],
   "reference": {
@@ -68,7 +68,7 @@
         0.5,
         0.25
       ],
-      "fixed_courant": 0.5
+      "fixed_courant": 0.45
     }
   },
   "scoring": {
@@ -83,7 +83,7 @@
           "units": "m"
         },
         "gating": true,
-        "rationale": "L1 depth within 0.05 m of the piecewise-constant Ippen oblique-jump field."
+        "rationale": "Mean depth error within 5 cm of the exact two-state field on the finest grid (6 % of the 0.81 m depth jump); a jump at the wrong angle or with the wrong conjugate depth fails."
       },
       {
         "id": "mass",
@@ -95,7 +95,7 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "Mass conservation within 0.1% versus analytic field."
+        "rationale": "Stored volume within 0.1 % of the exact field: the jump sits where the jump conditions put it."
       }
     ],
     "convergence": {

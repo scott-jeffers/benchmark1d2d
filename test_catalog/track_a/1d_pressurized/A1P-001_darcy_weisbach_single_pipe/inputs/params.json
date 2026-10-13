@@ -1,9 +1,13 @@
 {
-  "problem": "Steady flow from a reservoir through a single horizontal pipe with Darcy–Weisbach friction (fixed f).",
+  "problem": "Steady flow from a reservoir through a single horizontal pipe; Darcy–Weisbach friction with the friction factor from Colebrook–White.",
   "pipe": {
     "L_m": 1000.0,
     "D_m": 0.3,
-    "f": 0.02
+    "roughness_m": 0.00015
+  },
+  "fluid": {
+    "kinematic_viscosity_m2s": 1e-06,
+    "g_ms2": 9.81
   },
   "boundaries": {
     "upstream": {
@@ -11,8 +15,11 @@
       "head_m": 100.0
     },
     "downstream": {
-      "type": "velocity",
-      "V_ms": 1.0
+      "type": "withdrawal",
+      "velocity_ms": 1.0,
+      "flow_m3s": 0.0706858347
     }
-  }
+  },
+  "output": "Piezometric head h at x = 0 and x = L (and any interior points the solver reports), each row tagged with x.",
+  "notes": "Re = 3.0e5 and relative roughness 5.0e-4: fully turbulent. Explicit friction formulas (Swamee–Jain, Haaland) agree with Colebrook–White to about 1 % in this range."
 }

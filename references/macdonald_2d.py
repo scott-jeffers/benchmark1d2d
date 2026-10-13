@@ -1,4 +1,4 @@
-"""MacDonald-style 2D manufactured steady free surface over a known bed.
+"""MacDonald-type steady channel flow, posed on a 2D grid.
 
 Reference
 ---------
@@ -7,126 +7,61 @@ MacDonald, I., Baines, M. J., Nichols, N. K., and Samuels, P. G. (1997).
 *J. Hydraul. Eng.*, 123(11), 1041–1045.
 https://doi.org/10.1061/(ASCE)0733-9429(1997)123:11(1041)
 
-This module provides a **simple 2D manufactured** steady state for Phase 5 MVP
-verification (not a literal reprint of a published 2D MacDonald table):
+MacDonald's method: prescribe a smooth depth ``h(x)`` and a discharge, then
+build the bed so the steady equations hold exactly. Here the 1D M1 profile of
+:mod:`references.macdonald` (A1F-001) is placed in a 2D rectangular channel
+with slip walls, unit discharge ``q`` and Manning friction. The flow is uniform
+across the channel, so the exact 2D solution is ``h = h(x)``, ``u = q/h``,
+``v = 0`` over the bed ``zb(x)`` with ``dzb/dx = -(1 - Fr²) dh/dx - n² q²/h^{10/3}``.
 
-* Prescribed positive depth ``h(x, y)`` with a streamwise Gaussian bump and a
-  mild spanwise cosine modulation.
-* Constant unit discharges ``(qx, qy)`` with ``u = qx/h``, ``v = qy/h``.
-* Analytic bed ``zb(x, y)`` chosen so that a constant free-surface elevation
-  ``zs = zb + h`` is consistent with the prescribed depth (still-water style
-  topography under the manufactured free surface). Friction is omitted; the
-  field is an exact analytic target for depth/velocity L1 scoring.
+A 2D solver must balance pressure, bed slope and friction on its own grid
+to reproduce it; nothing is imposed except the inflow discharge and the
+outlet depth.
 
-Solvers that only reproduce the prescribed fields (analytic writers) pass
-gating; full SW residual satisfaction with friction is left to later phases.
+Case history: before 2.0.0 this module held the free surface flat while water
+flowed without friction, which is not a solution of the shallow-water
+equations; any solver that merely copied the field passed.
 """
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 import numpy as np
 
-DEFAULT_PARAMS = {
-    "L": 1000.0,  # streamwise length [m]
-    "W": 100.0,  # spanwise width [m]
-    "amp": 0.25,  # relative streamwise bump amplitude [-]
-    "k": 16.0,  # Gaussian sharpness [-]
-    "span_amp": 0.05,  # spanwise modulation amplitude [-]
-    "qx": 0.2,  # unit discharge x [m²/s]
-    "qy": 0.0,  # unit discharge y [m²/s]
-    "g": 9.81,
-}
+from references.macdonald import M1_PARAMS, _dh_dx_m1, depth_profile as _h_m1
+
+DEFAULT_PARAMS = {"L": 1000.0, "W": 100.0, "q": M1_PARAMS["Q"] / M1_PARAMS["B"], "n_manning": M1_PARAMS["n_manning"], "g": 9.81}
 
 
-def _h_ref(g: float) -> float:
-    return (4.0 / float(g)) ** (1.0 / 3.0)
+def depth_profile(x, y=None, *, g: float = 9.81, **_: object) -> np.ndarray:
+    """Exact depth ``h(x)`` [m] (independent of ``y``)."""
+    return _h_m1(np.asarray(x, dtype=float), g=g)
 
 
-def depth_profile(
-    x,
-    y,
-    *,
-    L: float = 1000.0,
-    W: float = 100.0,
-    amp: float = 0.25,
-    k: float = 16.0,
-    span_amp: float = 0.05,
-    g: float = 9.81,
-) -> np.ndarray:
-    """Manufactured steady depth ``h(x, y)`` [m]."""
+@lru_cache(maxsize=8)
+def _bed_table(L: float, q: float, n_manning: float, g: float) -> tuple[np.ndarray, np.ndarray]:
+    xs = np.linspace(-0.1 * L, 1.1 * L, 120_001)
+    h = _h_m1(xs, g=g)
+    dzdx = -(1.0 - q * q / (g * h**3)) * _dh_dx_m1(xs, g=g) - n_manning**2 * q * q / h ** (10.0 / 3.0)
+    z = np.concatenate(([0.0], np.cumsum(0.5 * (dzdx[1:] + dzdx[:-1]) * np.diff(xs))))
+    return xs, z - np.interp(L, xs, z)  # anchor zb(L) = 0
+
+
+def bed_elevation(x, y=None, *, L: float = 1000.0, q: float = 0.2, n_manning: float = 0.03, g: float = 9.81, **_: object) -> np.ndarray:
+    """Bed ``zb(x)`` [m] that makes ``h(x)`` an exact steady solution; ``zb(L) = 0``."""
+    xs, z = _bed_table(float(L), float(q), float(n_manning), float(g))
+    return np.interp(np.asarray(x, dtype=float), xs, z)
+
+
+def depth_velocity(x, y, t: float = 0.0, *, L: float = 1000.0, W: float = 100.0, q: float = 0.2,
+                   n_manning: float = 0.03, g: float = 9.81) -> dict:
+    """Exact steady fields on any sample of the channel (``t`` ignored)."""
+    del t, W
     x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    href = _h_ref(g)
-    stream = 1.0 + amp * np.exp(-k * ((x / L) - 0.5) ** 2)
-    span = 1.0 + span_amp * np.cos(2.0 * np.pi * y / W)
-    return href * stream * span
+    h = depth_profile(x, g=g)
+    zb = bed_elevation(x, L=L, q=q, n_manning=n_manning, g=g)
+    return {"h": h, "u": q / h, "v": np.zeros_like(h), "zb": zb, "zs": zb + h}
 
 
-def bed_elevation(
-    x,
-    y,
-    *,
-    L: float = 1000.0,
-    W: float = 100.0,
-    amp: float = 0.25,
-    k: float = 16.0,
-    span_amp: float = 0.05,
-    g: float = 9.81,
-    zs0: float | None = None,
-) -> np.ndarray:
-    """Bed ``zb = zs0 - h`` with constant free-surface datum ``zs0``.
-
-    Default ``zs0`` is chosen so that ``zb`` is negative under the deepest
-    water (``zs0 = max(h)`` on a dense sample is not required; we use
-    ``zs0 = 2 * href`` which keeps ``zb < 0`` for default amplitudes).
-    """
-    h = depth_profile(
-        x, y, L=L, W=W, amp=amp, k=k, span_amp=span_amp, g=g
-    )
-    if zs0 is None:
-        zs0 = 2.0 * _h_ref(g)
-    return float(zs0) - h
-
-
-def depth_velocity(
-    x,
-    y,
-    t: float = 0.0,  # noqa: ARG001 — steady; kept for scorer (x,y,t) API
-    *,
-    L: float = 1000.0,
-    W: float = 100.0,
-    amp: float = 0.25,
-    k: float = 16.0,
-    span_amp: float = 0.05,
-    qx: float = 0.2,
-    qy: float = 0.0,
-    g: float = 9.81,
-    zs0: float | None = None,
-) -> dict:
-    """Steady manufactured 2D depth and velocity fields.
-
-    Returns
-    -------
-    dict
-        ``h``, ``u``, ``v``, ``zb``, ``zs``.
-    """
-    del t  # steady
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    h = depth_profile(
-        x, y, L=L, W=W, amp=amp, k=k, span_amp=span_amp, g=g
-    )
-    zb = bed_elevation(
-        x, y, L=L, W=W, amp=amp, k=k, span_amp=span_amp, g=g, zs0=zs0
-    )
-    zs = zb + h
-    u = float(qx) / h
-    if abs(float(qy)) < 1e-15:
-        v = np.zeros_like(h)
-    else:
-        v = float(qy) / h
-    return {"h": h, "u": u, "v": v, "zb": zb, "zs": zs}
-
-
-# Alias matching draft manifest wording.
 depth_2d = depth_velocity

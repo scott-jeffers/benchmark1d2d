@@ -1,12 +1,12 @@
 {
   "schema_version": "1.1.0",
-  "case_version": "0.1.0",
-  "status": "draft",
+  "case_version": "1.0.0",
+  "status": "candidate",
   "track": "A",
   "test_id": "A1F-020_hydraulic_jump_belanger",
   "test_class": "verification_analytic",
   "title": "Bélanger hydraulic jump",
-  "description": "Steady 1D hydraulic jump: sequent depths related by the Bélanger equation; verify conjugate depth and momentum balance.",
+  "description": "A stationary hydraulic jump on a horizontal frictionless bed: supercritical inflow (h1 = 0.2 m, Fr1 = 2.5) meets the Bélanger sequent depth h2 = 0.61 m held downstream. The exact solution is a step that stays at x = 50 m; the case checks that a solver captures the jump with the right conjugate depths and does not let it drift.",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "free_surface",
@@ -48,7 +48,8 @@
         "Fr1": 2.5,
         "h1": 0.2,
         "g": 9.81,
-        "L": 100.0
+        "L": 100.0,
+        "x_jump": 50.0
       }
     }
   },
@@ -62,30 +63,30 @@
     ],
     "mesh_refinement": {
       "levels": [
-        20.0,
-        10.0,
-        5.0,
-        2.5
+        2.0,
+        1.0,
+        0.5,
+        0.25
       ],
-      "fixed_courant": 0.5
+      "fixed_courant": 0.45
     }
   },
   "scoring": {
     "criteria": [
       {
-        "id": "sequent_depth",
-        "metric": "L2",
+        "id": "jump_profile",
+        "metric": "L1",
         "variable": "h",
         "threshold": {
           "op": "abs<=",
-          "value": 2.0,
+          "value": 1.0,
           "units": "%"
         },
         "gating": true,
-        "rationale": "Downstream conjugate depth within 2% of Bélanger equation."
+        "rationale": "Depth profile within 1 % (relative L1) of the stationary Bélanger step at x = 50 m on the finest grid. A captured jump smeared over two cells contributes Δh·2dx/L ≈ 0.5 % at dx = 0.25 m; a drifting jump or wrong sequent depth exceeds it."
       },
       {
-        "id": "mass",
+        "id": "jump_stays_put",
         "metric": "global_mass_error",
         "variable": "volume",
         "threshold": {
@@ -94,7 +95,7 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "Mass conservation across the jump."
+        "rationale": "Stored volume within 0.1 % of the exact step: a jump that drifts by half a cell (0.125 m) on the finest grid changes the volume by 0.13 %, so this fails any solver that cannot hold the Rankine–Hugoniot balance."
       }
     ],
     "convergence": {

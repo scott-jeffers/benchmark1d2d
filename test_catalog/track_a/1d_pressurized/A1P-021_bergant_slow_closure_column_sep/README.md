@@ -11,7 +11,3 @@ secondary pressure peaks.
 Bergant, A., and Simpson, A. R. (1999). "Pipeline column separation flow
 regimes." *J. Hydraul. Eng.*, 125(8), 835–848.
 https://doi.org/10.1061/(ASCE)0733-9429(1999)125:8(835)
-
-## Status
-
-Draft scaffold — measured traces not yet vendored (`Unlicense` stub).

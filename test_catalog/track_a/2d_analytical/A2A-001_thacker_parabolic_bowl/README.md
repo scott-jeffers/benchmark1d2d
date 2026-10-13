@@ -26,9 +26,9 @@ $$z_s = \frac{\eta h_0}{L^2}\left(2x\cos\omega t - \eta\cos^2\omega t\right),\qq
 
 verified pointwise against both equations in `references/tests/test_thacker.py`.
 
-## Status
+## Demo solver
 
-**candidate.** Scored end to end by the first-order finite-volume demo solver
+Scored end to end by the first-order finite-volume demo solver
 (`examples/demo_solver/swe2d.py`, run by `scripts/run_demo_2d.py`): it passes with
 observed order ≈ 0.9. `examples/demo_solver/solve_2d.py` only *samples* the
 analytical solution; it is a scorer fixture, and the convergence check rejects it.

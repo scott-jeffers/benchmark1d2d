@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run four Track A cases with the demo solver and score them (gate script).
+"""Run the 1D Track A cases with the demo solver and score them (gate script).
 
 Verification cases with ``mesh_refinement.levels`` are solved on every level;
 scoring uses the finest result for gating criteria and all levels for GCI /
@@ -28,6 +28,8 @@ CASES = [
     ("A1F-011", "stoker"),
     ("A1F-001", "macdonald"),
     ("A1P-020", "joukowsky"),
+    ("A1F-020", "belanger"),
+    ("A1P-030", "tracer"),
 ]
 
 
@@ -93,13 +95,13 @@ def main() -> int:
     print("\nSummary:")
     for tid, ok in results:
         print(f"  {tid}: {'PASS' if ok else 'FAIL'}")
-    assert len(results) == 4
-    # Gate: all four verification cases must pass with multi-mesh evidence.
+    assert len(results) == len(CASES)
+    # Gate: every verification case must pass with multi-mesh evidence.
     failed = [tid for tid, ok in results if not ok]
     if failed:
         print(f"GATE FAIL: {failed}")
         return 1
-    print("GATE PASS: all four cases passed")
+    print("GATE PASS: all cases passed")
     return 0
 
 

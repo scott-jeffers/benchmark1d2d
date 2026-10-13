@@ -57,6 +57,7 @@ def head_loss(
     rho = 1000.0
     return {
         "H": H,
+        "h": H,  # results contract: piezometric head in h for pressurized networks
         "p": rho * g * H,  # pressure head referenced to a horizontal pipe at z = 0
         "u": np.full_like(x, V),
         "Q": np.full_like(x, V * np.pi * D**2 / 4.0),

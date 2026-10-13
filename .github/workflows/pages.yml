@@ -47,10 +47,11 @@ jobs:
       - name: Fetch remote inputs (verified by SHA-256)
         run: python scripts/fetch_inputs.py
 
-      - name: Track A demo runs (1D slice, 2D finite volume)
+      - name: Track A runs (1D demo, EPANET 2.2 networks, 2D finite volume)
         run: |
           python scripts/run_vertical_slice.py || true
-          python scripts/run_demo_2d.py A2A-001 A2C-EA1 A2C-EA2 A2C-EA4 A2C-EA5 || true
+          python scripts/run_network_cases.py || true
+          python scripts/run_demo_2d.py || true
 
       # Track B demonstration: older engine releases scored against the pinned references.
       - name: Track B demo runs (SWMM 5.1.15, EPANET 2.0)
@@ -61,7 +62,7 @@ jobs:
         run: |
           python site/build.py \
             --scorecards site/fixtures/scorecards \
-            --scorecards out/track_b --scorecards out/vertical_slice --scorecards out/demo_2d
+            --scorecards out/track_b --scorecards out/vertical_slice --scorecards out/networks --scorecards out/demo_2d
           for f in index catalog corpus reports downloads method get-started; do test -f "site/dist/$f.html"; done
           test -f site/dist/data/benchmark1d2d-catalog.zip
 

@@ -1,10 +1,11 @@
 # Get started
 
 benchmark1d2d is an open V&V suite for free-surface and pressurized water
-solvers. You score a solver against catalog cases; Track A checks physics,
-Track B checks parity with a pinned industry engine.
+solvers. You score a solver against catalog cases: Track A checks the physics
+against exact solutions, conservation laws and measurements; Track B checks
+parity with a pinned industry engine (EPA SWMM 5.2.4, EPANET 2.2).
 
-## Install
+## 1. Install
 
 ```bash
 git clone https://github.com/scott-jeffers/benchmark1d2d.git
@@ -20,24 +21,28 @@ benchmark1d2d catalog list
 benchmark1d2d engines
 ```
 
-## What your solver must write
+## 2. See the scoring work first
+
+The repository scores real runs end to end. Each command writes score cards
+to `out/` and prints every criterion with its observed value:
+
+```bash
+python scripts/run_vertical_slice.py   # 1D demo solvers: dam breaks, backwater, jump, water hammer, tracer
+python scripts/run_network_cases.py    # EPA EPANET 2.2 on the two pipe-network cases
+python scripts/run_demo_2d.py A2A-010  # 2D demo finite-volume solver (omit the ID to run all 2D cases)
+```
+
+## 3. Write results in the common format
 
 One Parquet file per run with columns `t, x, y, h, u, v, p` (SI units), plus
 `Q`, `c` and bed elevation `z` where they apply. Network solvers add
-`element_id` (node or link name) and `element_type`. Each case's page lists the
+`element_id` (node or link name) and `element_type` (`node` or `link`); for
+pressurized networks `h` is the piezometric head. Each case page lists the
 variables, output times and probe points it needs.
 
-## Score a Track A case
+## 4. Score a Track A case
 
-The repository ships simple demo solvers you can copy:
-
-```bash
-python scripts/run_vertical_slice.py    # 1D: Ritter, Stoker, MacDonald, Joukowsky on every mesh level
-python scripts/run_demo_2d.py A2A-001   # 2D: Thacker bowl with a first-order finite-volume scheme
-```
-
-To score your own results, pass every refinement level so the observed order of
-accuracy can be measured:
+Pass every refinement level so the observed order of accuracy can be measured:
 
 ```bash
 benchmark1d2d score A1F-010 --results out/mine_dx1.25.parquet \
@@ -45,20 +50,44 @@ benchmark1d2d score A1F-010 --results out/mine_dx1.25.parquet \
   --solver-name my-solver --solver-version 1.0
 ```
 
-A **pass** needs every gating criterion and the convergence check. A **fail**
-on a verification case means the equations are not being solved to the stated
-tolerance: Track A can prove a solver wrong.
+A **pass** needs every gating criterion and, on verification cases, the
+convergence check. A **fail** on a verification case means the equations are
+not being solved to the stated tolerance: Track A can prove a solver wrong.
+Steady closed-form cases (the pipe networks) have no grid to refine; their
+page says so.
 
-## Score a Track B case
+## 5. Score a Track B case
 
-Run your solver on the case's `inputs/network.inp` and write per-element results
-(the `swmm5` and `epanet22` adapters show the format), then:
+Run your solver on the case's `inputs/network.inp` and write per-element
+results (the `swmm5` and `epanet22` adapters show the format), then:
 
 ```bash
 benchmark1d2d score B-RTC-001 --results my_rtc.parquet --solver-name my-solver
 ```
 
-The score card names the worst node or link for each criterion. Reference
-results come from the pinned engine (`scripts/make_reference.py`); if a case's
-reference is missing the CLI prints `NOT SCORED` rather than a pass.
+The score card names the worst node or link for each criterion. If a case's
+reference is missing the CLI prints `NOT SCORED`, never a pass.
 
+## 6. Score a SWMM engine across the corpus
+
+Any engine with a `swmm.toolkit`-compatible Python build can be compared with
+SWMM 5.2.4 on a whole tier of the HydroCouple corpus:
+
+```bash
+git clone https://github.com/HydroCouple/openswmm.engine.benchmarks hc   # then check out the pinned commit
+python scripts/corpus_parity.py --corpus hc/corpus --tier pr \
+  --candidate-python /path/to/candidate/python --label my-engine
+```
+
+Results land in `out/corpus_parity/`: one row per model with its worst node
+and worst link, plus a summary. A difference says how far the candidate is
+from the reference engine, not which one is right.
+
+## 7. Check a score card
+
+```bash
+benchmark1d2d verify-card out/vertical_slice/A1F-010_ritter_dry_bed_dambreak.scorecard.json
+```
+
+This checks the content hash and says whether the card carries the public
+development key (demo runs) or a maintainer key.

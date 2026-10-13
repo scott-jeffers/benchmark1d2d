@@ -3,6 +3,50 @@
 All notable changes to this suite are documented here.
 Suite releases are independent of schema semver (`schemas/v1`).
 
+## [0.4.0] — 2026-10-14
+
+A second review. Every scored Track A case now has a run that passes it, and
+the corpus can score any SWMM engine against 5.2.4.
+
+### Fixed
+
+- **MacDonald 2D reference was not a shallow-water solution** (flat free surface
+  with flow and no friction). Rebuilt by MacDonald's method with Manning
+  friction; A2A-010 v2.0.0.
+- **Oblique-jump reference** used the gas-dynamics θ–β–M relation (34.0° instead
+  of 39.6°) and put the upstream state on the wrong side. Rewritten from the
+  exact shallow-water jump conditions; A2A-020 v2.0.0.
+- **Joukowsky "continuity"** measured front smearing. Replaced by the exact
+  storage balance ∫Δp dx = ρa²V₀t; A1P-020 v3.0.0.
+- **Pipe and transport cases were unmeetable templates**: grid convergence on
+  steady closed-form flow, "%" tolerances compared with absolute norms.
+  Relative norms for "%" thresholds, a `relative_head_loss` metric,
+  element-keyed analytic references (node and link namespaces kept apart), and
+  `convergence.not_applicable` in schema v1.1.
+- **PR corpus tier covered one collection** (38 legacy EXTRAN examples, on which
+  SWMM 5.1.15 and 5.2.4 are bit-identical). Now 40 models picked for tag
+  coverage across 9 collections.
+- **Site:** LaTeX shown raw (Markdown ate the backslashes), test pages wider
+  than a phone, EA 4 depth map hidden behind the floodplain patch, GitHub links
+  to a non-existent `main` branch, axis titles overlapping tick labels.
+
+### Added
+
+- First scores for A1P-001 and A1P-010 (EPA EPANET 2.2), A1P-030 and A1F-020
+  (new 1D demo solvers), A2A-010 and A2A-020 (2D demo solver with ghost-cell
+  boundaries). The Track A demo job now gates CI.
+- `scripts/corpus_parity.py`: SWMM 5.2.4 vs any SWMM build across a tier, with a
+  self-check (exactly zero against itself) on every PR; SWMM 5.1.15 results
+  published on the corpus page.
+- Cross-build finding: the official win64 SWMM 5.2.4 differs from the
+  `swmm-toolkit` build on B-RTC-001 (reported, not gating).
+- Promotion rules (`docs/methodology/promotion.md`,
+  `benchmark1d2d.catalog.promotion`) and a `review` field in manifests.
+- Site: at-a-glance panel, section menu and promotion checklist on every case
+  page; "still needs" column in the catalog; start-here paths and headline
+  numbers on the overview; mobile menu; copy buttons for commands and hashes;
+  score-card filter; "which file do I need" guide.
+
 ## [0.3.0] — 2026-10-13
 
 An end-to-end audit found defects that affected published results. All are fixed,

@@ -309,6 +309,92 @@ def solve_joukowsky(
     return {"t": np.full(m, t_end), "x": x, "y": nan.copy(), "h": nan.copy(), "u": V, "v": nan.copy(), "p": p0 + rho * g * (H - H0)}
 
 
+def _hll_vec(hL, huL, hR, huR, g: float):
+    """Vectorised HLL flux for wet states (used by the steady-jump demo)."""
+    uL, uR = huL / hL, huR / hR
+    cL, cR = np.sqrt(g * hL), np.sqrt(g * hR)
+    sL = np.minimum(uL - cL, uR - cR)
+    sR = np.maximum(uL + cL, uR + cR)
+    fL0, fL1 = huL, huL * uL + 0.5 * g * hL * hL
+    fR0, fR1 = huR, huR * uR + 0.5 * g * hR * hR
+    d = sR - sL
+    f0 = np.where(sL >= 0, fL0, np.where(sR <= 0, fR0, (sR * fL0 - sL * fR0 + sL * sR * (hR - hL)) / d))
+    f1 = np.where(sL >= 0, fL1, np.where(sR <= 0, fR1, (sR * fL1 - sL * fR1 + sL * sR * (huR - huL)) / d))
+    return f0, f1
+
+
+def solve_belanger(dx: float, t_end: float = 200.0, Fr1: float = 2.5, h1: float = 0.2, g: float = 9.81,
+                   L: float = 100.0, cfl: float = 0.45) -> dict[str, np.ndarray]:
+    """Stationary hydraulic jump: first-order finite volume with HLL fluxes.
+
+    Starts from the Bélanger step at x = L/2 and integrates to ``t_end``.
+    Upstream: supercritical inflow (h1 and q imposed). Downstream: the
+    sequent depth h2 imposed, velocity extrapolated. Whatever the scheme does
+    to the jump (smearing, drift, spurious waves) shows up in the profile.
+    """
+    from references.belanger import sequent_depth_ratio
+
+    q = Fr1 * np.sqrt(g * h1) * h1
+    h2 = h1 * sequent_depth_ratio(Fr1)
+    nx = max(int(round(L / dx)), 4)
+    dx = L / nx
+    x = (np.arange(nx) + 0.5) * dx
+    h = np.where(x < 0.5 * L, h1, h2)
+    hu = np.full(nx, q)
+    t = 0.0
+    while t < t_end - 1e-12:
+        u = hu / h
+        dt = min(cfl * dx / float(np.max(np.abs(u) + np.sqrt(g * h))), t_end - t)
+        H = np.concatenate(([h1], h, [h2]))
+        HU = np.concatenate(([q], hu, [h2 * hu[-1] / h[-1]]))
+        f0, f1 = _hll_vec(H[:-1], HU[:-1], H[1:], HU[1:], g)
+        h = h - dt / dx * (f0[1:] - f0[:-1])
+        hu = hu - dt / dx * (f1[1:] - f1[:-1])
+        t += dt
+    n = len(x)
+    nan = np.full(n, np.nan)
+    return {"t": np.full(n, t_end), "x": x, "y": nan.copy(), "h": h, "u": hu / h, "v": nan.copy(),
+            "p": nan.copy(), "Q": hu.copy()}
+
+
+def solve_tracer(dx: float, t_end: float = 3600.0, u: float = 0.1, D: float = 0.01, c0: float = 1.0,
+                 L: float = 1000.0, cfl: float = 0.5) -> dict[str, np.ndarray]:
+    """Advection–dispersion of a continuous source: MUSCL (van Leer limiter) + central diffusion, SSP-RK2.
+
+    Finite volume on cell centres. Inlet face x = 0 holds c = c0 (advective
+    flux u c0, diffusive flux through a half cell); the outlet is zero
+    gradient. Second order where the solution is smooth.
+    """
+    nx = max(int(round(L / dx)), 4)
+    dx = L / nx
+    x = (np.arange(nx) + 0.5) * dx
+    c = np.zeros(nx)
+    dt = min(cfl * dx / u, 0.4 * dx * dx / D)
+    nsteps = int(np.ceil(t_end / dt))
+    dt = t_end / nsteps
+
+    def rhs(c):
+        g = np.concatenate(([2.0 * c0 - c[0]], c, [c[-1]]))  # ghosts: inlet face value c0, outlet zero gradient
+        dm, dp = g[1:-1] - g[:-2], g[2:] - g[1:-1]
+        r = dm * dp
+        slope = np.where(r > 0, 2.0 * r / np.where(dm + dp == 0, 1.0, dm + dp), 0.0)  # van Leer
+        face = c + 0.5 * slope  # upwind (u > 0) state at each cell's east face
+        adv = u * np.concatenate(([c0], face))  # inlet face carries c0
+        dif = -D * np.diff(g) / dx
+        dif[0] = -D * (c[0] - c0) / (0.5 * dx)
+        flux = adv + dif
+        flux[-1] = u * face[-1]  # zero-gradient outlet: advection only
+        return -(flux[1:] - flux[:-1]) / dx
+
+    for _ in range(nsteps):
+        c1 = c + dt * rhs(c)
+        c = 0.5 * (c + c1 + dt * rhs(c1))
+    n = len(x)
+    nan = np.full(n, np.nan)
+    return {"t": np.full(n, t_end), "x": x, "y": nan.copy(), "h": nan.copy(), "u": np.full(n, u),
+            "v": nan.copy(), "p": nan.copy(), "c": c}
+
+
 def _case_from_manifest(manifest: dict) -> str:
     tid = str(manifest.get("test_id", "")).lower()
     mod = (
@@ -322,6 +408,10 @@ def _case_from_manifest(manifest: dict) -> str:
         return "macdonald"
     if "joukowsky" in tid or "joukowsky" in mod:
         return "joukowsky"
+    if "belanger" in tid or "belanger" in mod:
+        return "belanger"
+    if "ogata" in mod or "tracer" in tid:
+        return "tracer"
     raise ValueError(f"Cannot infer demo case from manifest {manifest.get('test_id')}")
 
 
@@ -375,6 +465,14 @@ def run_case(
             rho=float(p.get("rho", 1000.0)),
             p0=float(p.get("p0", 0.0)),
         )
+    elif case == "belanger":
+        p = params
+        cols = solve_belanger(dx=dx, t_end=200.0 if t_end is None else t_end, Fr1=float(p.get("Fr1", 2.5)),
+                              h1=float(p.get("h1", 0.2)), g=float(p.get("g", 9.81)), L=float(p.get("L", 100.0)))
+    elif case == "tracer":
+        p = params
+        cols = solve_tracer(dx=dx, t_end=3600.0 if t_end is None else t_end, u=float(p.get("u", 0.1)),
+                            D=float(p.get("D", 0.01)), c0=float(p.get("c0", 1.0)))
     else:
         raise ValueError(f"unknown case {case!r}")
 

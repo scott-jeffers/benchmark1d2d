@@ -8,5 +8,12 @@
     "xmax": 40.0,
     "ymin": 0.0,
     "ymax": 30.0
+  },
+  "frame": "wall frame: slip wall along y = 0 from x = 0; incoming flow at 15° towards the wall",
+  "boundaries": {
+    "south": "slip wall",
+    "west": "upstream state imposed",
+    "north": "upstream state imposed",
+    "east": "zero-gradient outflow (supercritical, Fr2 = 1.58)"
   }
 }
