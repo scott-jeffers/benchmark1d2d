@@ -6,7 +6,15 @@
 | Version | 5.2.4 (Build 5.2.4, Aug 2023) |
 | Upstream release | https://github.com/USEPA/Stormwater-Management-Model/releases/tag/v5.2.4 |
 | Asset | `swmm-solver-5.2.4-win64.zip` |
-| Pin file | [`SHA256SUMS`](SHA256SUMS) (real hashes; do not hand-edit) |
+| Pin file | [`SHA256SUMS`](SHA256SUMS) (hash authority; do not hand-edit) |
+| Machine-readable | [`pin.json`](pin.json) (mirrors hashes for CLI + site; keep in sync) |
+
+Show the pin from the CLI:
+
+```bash
+benchmark1d2d engines
+benchmark1d2d engines -v
+```
 
 ## Fetch (Windows)
 

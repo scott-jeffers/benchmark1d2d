@@ -50,7 +50,12 @@ jobs:
         run: |
           set -euo pipefail
           python scripts/run_vertical_slice.py || true
-          python site/build.py --scorecards out/vertical_slice
+          mkdir -p out/site_scorecards
+          cp -n site/fixtures/scorecards/*.scorecard.json out/site_scorecards/ || true
+          cp -n out/vertical_slice/*.scorecard.json out/site_scorecards/ 2>/dev/null || true
+          python site/build.py --scorecards out/site_scorecards --scorecards site/fixtures/scorecards
+          test -f site/dist/engines.html
+          grep -q "SWMM 5.2.4" site/dist/engines.html
           ls -la site/dist | head
 
 

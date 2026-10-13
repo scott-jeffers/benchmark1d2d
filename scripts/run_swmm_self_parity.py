@@ -21,11 +21,12 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from benchmark1d2d.adapters.swmm5 import adapt_rpt_to_parquet
 from benchmark1d2d.catalog import load_manifest
+from benchmark1d2d.engines import assert_pin_matches_sha256sums, load_swmm_pin
 from benchmark1d2d.scoring.scorer import score_case
 
 BIN = _REPO / "reference_engines" / "swmm-5.2.4" / "bin"
 EXE = BIN / "runswmm.exe"
-DLL = BIN / "swmm5.dll"
+PIN_PATH = _REPO / "reference_engines" / "swmm-5.2.4" / "pin.json"
 SUMS = _REPO / "reference_engines" / "swmm-5.2.4" / "SHA256SUMS"
 
 
@@ -33,26 +34,27 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _verify_pin() -> None:
-    lines = {
-        parts[0]: parts[1]
-        for line in SUMS.read_text(encoding="utf-8").splitlines()
-        if line.strip() and not line.strip().startswith("#")
-        for parts in [line.split()]
-        if len(parts) >= 2
-    }
-    for name, expected in lines.items():
+def _verify_pin(pin: dict) -> None:
+    assert_pin_matches_sha256sums(_REPO)
+    binaries = pin.get("binaries") or {}
+    for name, expected in binaries.items():
         got = _sha256(BIN / name)
         if got != expected.lower():
             raise SystemExit(f"PIN MISMATCH {name}: {got} != {expected}")
-    print(f"PIN OK: swmm5.dll={lines['swmm5.dll'][:16]}…")
+    dll = binaries.get("swmm5.dll", "")
+    print(f"PIN OK: SWMM {pin.get('version')} swmm5.dll={dll[:16]}…")
 
 
 def main() -> int:
     if not EXE.is_file():
         print("SWMM binary missing; fetch USEPA v5.2.4 win64 release first.")
         return 2
-    _verify_pin()
+    if not PIN_PATH.is_file():
+        print(f"Missing pin file: {PIN_PATH}")
+        return 2
+    pin = load_swmm_pin(_REPO)
+    _verify_pin(pin)
+    version = str(pin.get("version") or "5.2.4")
 
     manifest = load_manifest("B-EXTRAN-001", repo=_REPO)
     inp = _REPO / "test_catalog/track_b/tier_pr/B-EXTRAN-001_extran_parity/inputs/network.inp"
@@ -86,7 +88,7 @@ def main() -> int:
         pq1,
         timestamp="2024-01-01T00:00:00Z",
         private_key=key,
-        solver={"name": "SWMM", "version": "5.2.4", "adapter": "swmm5"},
+        solver={"name": str(pin.get("engine") or "SWMM"), "version": version, "adapter": "swmm5"},
     )
     # Force parity against the second run's adapted series by reusing identity
     # stub path — relative metrics on identical adapted tables.
@@ -107,7 +109,7 @@ def main() -> int:
         encoding="utf-8",
     )
     ok = identical and abs(rp) < 1e-12 and abs(rv) < 1e-12
-    print("GATE PASS: SWMM 5.2.4 100% self-parity" if ok else "GATE FAIL")
+    print(f"GATE PASS: SWMM {version} 100% self-parity" if ok else "GATE FAIL")
     return 0 if ok else 1
 
 

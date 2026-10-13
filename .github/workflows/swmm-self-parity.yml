@@ -1,0 +1,54 @@
+name: SWMM self-parity
+
+on:
+  pull_request:
+    paths:
+      - "reference_engines/swmm-5.2.4/**"
+      - "scripts/run_swmm_self_parity.py"
+      - "runner/python/benchmark1d2d/adapters/swmm5.py"
+      - "runner/python/benchmark1d2d/engines.py"
+      - "test_catalog/track_b/tier_pr/B-EXTRAN-001_extran_parity/**"
+      - ".github/workflows/swmm-self-parity.yml"
+  push:
+    branches: [main, master]
+    paths:
+      - "reference_engines/swmm-5.2.4/**"
+      - "scripts/run_swmm_self_parity.py"
+      - "runner/python/benchmark1d2d/**"
+      - "test_catalog/track_b/tier_pr/B-EXTRAN-001_extran_parity/**"
+
+jobs:
+  self-parity:
+    name: SWMM 5.2.4 self-parity
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Verify pin.json vs SHA256SUMS
+        run: python -c "from benchmark1d2d.engines import assert_pin_matches_sha256sums; assert_pin_matches_sha256sums()"
+      - name: Fetch pinned SWMM win64
+        shell: pwsh
+        run: |
+          $pin = Get-Content reference_engines/swmm-5.2.4/pin.json | ConvertFrom-Json
+          $rel = $pin.asset_url
+          New-Item -ItemType Directory -Force -Path reference_engines/swmm-5.2.4/vendor | Out-Null
+          $zip = "reference_engines/swmm-5.2.4/vendor/$($pin.asset)"
+          Invoke-WebRequest $rel -OutFile $zip
+          Expand-Archive $zip -DestinationPath reference_engines/swmm-5.2.4/vendor/extracted -Force
+          New-Item -ItemType Directory -Force -Path reference_engines/swmm-5.2.4/bin | Out-Null
+          $src = Get-ChildItem -Recurse reference_engines/swmm-5.2.4/vendor/extracted -Filter runswmm.exe | Select-Object -First 1
+          $bindir = $src.DirectoryName
+          Copy-Item "$bindir/runswmm.exe","$bindir/swmm5.dll","$bindir/swmm-output.dll" reference_engines/swmm-5.2.4/bin/
+      - name: Run self-parity
+        run: python scripts/run_swmm_self_parity.py
+      - name: Upload scorecards
+        uses: actions/upload-artifact@v4
+        with:
+          name: swmm-scorecards
+          path: out/swmm_self_parity/*.scorecard.json

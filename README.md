@@ -41,12 +41,16 @@ A solver may hold any combination; the score card shows each separately.
 ## Quickstart
 
 ```bash
-python -m pip install -e .
+python -m pip install -e ".[dev]"
 benchmark1d2d catalog list --track A
+benchmark1d2d engines
 benchmark1d2d run A1F-010 --solver examples/demo_solver/solve.py --adapter generic_parquet
 benchmark1d2d score A1F-010 --results out/A1F-010.parquet
-benchmark1d2d report --open
+python site/build.py
+# open site/dist/index.html
 ```
+
+Public site: Home, Catalog, Get started, Engines (pinned SWMM 5.2.4), Methodology.
 
 ## How a benchmark run works
 

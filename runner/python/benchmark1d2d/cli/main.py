@@ -10,6 +10,7 @@ from pathlib import Path
 
 from benchmark1d2d.adapters import REGISTRY
 from benchmark1d2d.catalog import find_repo_root, list_catalog, load_manifest
+from benchmark1d2d.engines import assert_pin_matches_sha256sums, list_pinned_engines
 from benchmark1d2d.exec.runner import run_solver
 from benchmark1d2d.scoring.scorer import score_case
 
@@ -146,6 +147,31 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_engines(args: argparse.Namespace) -> int:
+    repo = find_repo_root()
+    assert_pin_matches_sha256sums(repo)
+    engines = list_pinned_engines(repo)
+    if not engines:
+        print("No pinned reference engines found.")
+        return 0
+    for pin in engines:
+        binaries = pin.get("binaries") or {}
+        dll = binaries.get("swmm5.dll") or next(iter(binaries.values()), "")
+        short = dll[:16] + "…" if len(dll) > 16 else dll
+        print(
+            f"{pin.get('engine')} {pin.get('version')}  "
+            f"build={pin.get('build', '—')}  "
+            f"swmm5.dll={short}  "
+            f"dir={pin.get('_engine_dir')}"
+        )
+        if args.verbose:
+            print(f"  upstream: {pin.get('upstream_url')}")
+            print(f"  asset:    {pin.get('asset')}")
+            for name, digest in binaries.items():
+                print(f"  {name}: {digest}")
+    return 0
+
+
 def _cmd_report(args: argparse.Namespace) -> int:
     repo = find_repo_root()
     score_dir = Path(args.scorecards) if args.scorecards else repo / "out"
@@ -227,6 +253,10 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--open", action="store_true", help="Write HTML stub and open it")
     report.add_argument("--scorecards", default=None, help="Directory of scorecard JSON files")
     report.set_defaults(func=_cmd_report)
+
+    engines = sub.add_parser("engines", help="Show pinned reference engines (SWMM, …)")
+    engines.add_argument("-v", "--verbose", action="store_true", help="Print full hashes and URLs")
+    engines.set_defaults(func=_cmd_engines)
 
     return parser
 

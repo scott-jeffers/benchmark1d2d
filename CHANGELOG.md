@@ -5,6 +5,12 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ## [0.2.1] — 2026-10-13
 
+### Added
+
+- `reference_engines/swmm-5.2.4/pin.json` + `benchmark1d2d engines` CLI; site Engines page.
+- Public site IA: Home, Catalog, Get started, Engines, Methodology (cool slate/teal redesign).
+- Fixture scorecards + Windows SWMM self-parity job feeding GitHub Pages.
+
 ### Changed
 
 - Renamed project from `hydrobench` to **Benchmark1d2d** (`benchmark1d2d` package/CLI)

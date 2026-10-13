@@ -15,7 +15,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  swmm-self-parity:
+    name: SWMM 5.2.4 self-parity
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Fetch pinned SWMM win64
+        shell: pwsh
+        run: |
+          $pin = Get-Content reference_engines/swmm-5.2.4/pin.json | ConvertFrom-Json
+          $rel = $pin.asset_url
+          New-Item -ItemType Directory -Force -Path reference_engines/swmm-5.2.4/vendor | Out-Null
+          $zip = "reference_engines/swmm-5.2.4/vendor/$($pin.asset)"
+          Invoke-WebRequest $rel -OutFile $zip
+          Expand-Archive $zip -DestinationPath reference_engines/swmm-5.2.4/vendor/extracted -Force
+          New-Item -ItemType Directory -Force -Path reference_engines/swmm-5.2.4/bin | Out-Null
+          $src = Get-ChildItem -Recurse reference_engines/swmm-5.2.4/vendor/extracted -Filter runswmm.exe | Select-Object -First 1
+          $bindir = $src.DirectoryName
+          Copy-Item "$bindir/runswmm.exe","$bindir/swmm5.dll","$bindir/swmm-output.dll" reference_engines/swmm-5.2.4/bin/
+      - name: Run self-parity
+        run: python scripts/run_swmm_self_parity.py
+      - name: Upload SWMM scorecards
+        uses: actions/upload-artifact@v4
+        with:
+          name: swmm-scorecards
+          path: out/swmm_self_parity/*.scorecard.json
+          if-no-files-found: error
+
   build:
+    needs: [swmm-self-parity]
+    # Publish even if Windows SWMM fetch fails — fixtures keep Engines/B-EXTRAN populated.
+    if: ${{ always() && needs.swmm-self-parity.result != 'cancelled' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,12 +63,27 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
+      - name: Download SWMM scorecards
+        if: ${{ needs.swmm-self-parity.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: swmm-scorecards
+          path: out/swmm_self_parity
       - name: Build site
         run: |
-          # Scorecards optional for static catalog pages; do not fail the site build.
+          # Track A demo scorecards optional; fixtures + SWMM artifact always merge in.
           python scripts/run_vertical_slice.py || true
-          python site/build.py --scorecards out/vertical_slice
+          mkdir -p out/site_scorecards
+          cp -n site/fixtures/scorecards/*.scorecard.json out/site_scorecards/ || true
+          cp -n out/vertical_slice/*.scorecard.json out/site_scorecards/ 2>/dev/null || true
+          cp -n out/swmm_self_parity/*.scorecard.json out/site_scorecards/ 2>/dev/null || true
+          python site/build.py --scorecards out/site_scorecards --scorecards site/fixtures/scorecards
           test -f site/dist/index.html
+          test -f site/dist/engines.html
+          test -f site/dist/catalog.html
+          test -f site/dist/get-started.html
+          grep -q "SWMM 5.2.4" site/dist/engines.html
+          grep -q "Awaiting score\|PASS\|FAIL" site/dist/catalog.html
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
