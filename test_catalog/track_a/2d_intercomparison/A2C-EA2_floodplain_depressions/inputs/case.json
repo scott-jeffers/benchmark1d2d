@@ -1,0 +1,36 @@
+{
+  "manning_n": 0.03,
+  "grid_resolution_m": 20.0,
+  "t_end_s": 172800.0,
+  "initial_condition": "dry bed",
+  "boundaries": {
+    "inflow": {
+      "type": "discharge",
+      "table": "inflow.csv",
+      "time_units": "min",
+      "interpolation": "linear",
+      "line": [
+        [
+          0.0,
+          2000.0
+        ],
+        [
+          0.0,
+          1900.0
+        ]
+      ]
+    },
+    "others": "closed"
+  },
+  "outputs": {
+    "probe_interval_s": 300.0,
+    "probes": "output_points.csv"
+  },
+  "domain": {
+    "xmin": 0,
+    "xmax": 2000,
+    "ymin": 0,
+    "ymax": 2000
+  },
+  "active_area": "active_area.shp (ESRI polygon, same CRS as the DEM)"
+}

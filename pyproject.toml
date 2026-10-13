@@ -5,7 +5,10 @@ requires-python = ">=3.10"
 dependencies = ["numpy", "scipy", "pandas", "pyarrow", "jsonschema", "cryptography", "matplotlib"]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "pyyaml"]
+# Reference engines for Track B: EPA SWMM 5.2.4 (swmm-toolkit) and EPANET 2.2 (WNTR)
+engines = ["swmm-toolkit==0.17.0", "wntr==1.5.0"]
+site = ["markdown>=3.5"]
 
 [project.scripts]
 benchmark1d2d = "benchmark1d2d.cli.main:main"

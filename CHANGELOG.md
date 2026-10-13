@@ -3,6 +3,54 @@
 All notable changes to this suite are documented here.
 Suite releases are independent of schema semver (`schemas/v1`).
 
+## [0.3.0] — 2026-10-13
+
+An end-to-end audit found defects that affected published results. All are fixed,
+covered by regression tests, and listed on the site's Reports page.
+
+### Fixed
+
+- **Track B parity compared results with themselves.** Non-analytic cases were
+  scored by a stub that compared a solver's output with itself, so any output
+  passed (and earned `B-1%`). Parity is now per element against pinned-engine
+  reference results; a missing reference raises `ReferenceUnavailable` (not scored).
+- **Error norms inflated observed orders by +1.** `L1 = mean(|e|)·dx` added a
+  power of dx. Norms are domain-normalised; true demo orders are Ritter 0.95,
+  Stoker 0.95, MacDonald 1.99, Joukowsky 0.49.
+- **Fake 1D solvers.** The demo MacDonald and Joukowsky "solvers" returned the
+  analytical solution. Replaced by a Heun GVF integration and a method-of-
+  characteristics solver; convergence now rejects round-off errors on every mesh.
+- **Thacker reference violated mass conservation** (wrong ω, missing cos² term).
+  Corrected with pointwise PDE-residual tests; case A2A-001 v2.0.0.
+- **Joukowsky convergence target** set from theory (0.5, min 0.4); case v2.0.0.
+- **Probe lookup** mixed depth and bed from different cells for gauges on cell faces.
+- **Certification claims** follow class and tolerance (A-V, A-C, A-L, A-F, B-x%).
+
+### Added
+
+- Schema v1.1.0: `intercomparison` class and reference kind, inputs fetched by
+  hash from an archive (`committed: false` + `source`), explicit `pending`
+  inputs (draft only), results columns `z`, `element_id`, `element_type`.
+- EA Tests 1, 2, 4, 5 rebuilt as `A2C-` code inter-comparison cases from the
+  official archive (`scripts/build_ea_cases.py`), plus EA Test 6A lab draft.
+- Real inputs for every analytic case; four new generators (Darcy–Weisbach,
+  Ogata–Banks, Bélanger, Todini–Pilati, the last cross-checked against EPANET 2.2).
+- Demo 2D finite-volume solver (`examples/demo_solver/swe2d.py`) passing Thacker
+  and EA Tests 1, 2, 4.
+- SWMM binary-output and EPANET 2.2 adapters; `scripts/make_reference.py`;
+  Track B cases B-RTC-001 (control rules) and B-EPANET-001 (Net1).
+- Track B corpus census on SWMM 5.2.4 and a full corpus index pinned to a
+  HydroCouple commit; tiers built from measured runtimes.
+- Bellinge field-validation draft (CC BY items only).
+- Redesigned GitHub Pages site: test pages with charts, coverage matrix,
+  corpus explorer, reports and audit log, downloads with hashes.
+
+### Changed
+
+- Licences corrected: Weber, Bergant, Rubinato data → `TBD-confirm`; Bellinge
+  rain gauges are CC BY-NC (excluded); EA OGL scope limited to the data archive.
+- CI: no placeholder hashes; engines run in Track B CI; Pages builds on Linux.
+
 ## [0.2.1] — 2026-10-13
 
 ### Added

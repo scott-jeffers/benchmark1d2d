@@ -1,0 +1,114 @@
+{
+  "schema_version": "1.1.0",
+  "test_id": "B-RTC-001_pump_station_rules",
+  "case_version": "2.0.0",
+  "status": "candidate",
+  "track": "B",
+  "test_class": "parity",
+  "title": "Control-rule parity: pump stations switched by wet-well level",
+  "description": "A 90-node sanitary network (SI units) with two pump stations whose pumps are switched ON and OFF by IF/THEN rules on wet-well depth (e.g. pump U433_Psan_1_ou_2 switches 74 times in 36 h). Tests that a candidate evaluates control rules at the same moments as SWMM 5.2.4. Case v2.0.0 replaces EXTRAN Example 1 with a rule whose condition never changed, so v1 never exercised a switch.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "mixed",
+    "governing_equations": [
+      "saint_venant_dynamic"
+    ],
+    "phenomena": [
+      "real_time_control",
+      "pump",
+      "wet_well",
+      "network_routing"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "title": "openswmm.engine.benchmarks corpus: epa/221-h-h-si-units-elements",
+        "authors": [
+          "HydroCouple"
+        ],
+        "year": 2026,
+        "url": "https://raw.githubusercontent.com/HydroCouple/openswmm.engine.benchmarks/63eb8bc5b4e741c82195ed65c4d7d146b86da1cc/corpus/epa/221-h-h-si-units-elements/model.inp"
+      },
+      {
+        "authors": [
+          "Rossman, L. A."
+        ],
+        "year": 2017,
+        "title": "Storm Water Management Model Reference Manual, Volume II – Hydraulics",
+        "report_number": "EPA/600/R-17/111"
+      }
+    ],
+    "license": "Unlicense",
+    "adaptation_notes": "Unmodified EPA example model from HydroCouple openswmm.engine.benchmarks at commit 63eb8bc5b4e741c82195ed65c4d7d146b86da1cc (public-domain dedication). Not committed (21,158 lines); fetched by hash."
+  },
+  "inputs": [
+    {
+      "path": "inputs/network.inp",
+      "role": "network",
+      "format": "inp",
+      "sha256": "6756016d98e6d8f2f2db004ec61cb844e6c18210d7646e8fc783e9048945a589",
+      "committed": false,
+      "source": {
+        "url": "https://raw.githubusercontent.com/HydroCouple/openswmm.engine.benchmarks/63eb8bc5b4e741c82195ed65c4d7d146b86da1cc/corpus/epa/221-h-h-si-units-elements/model.inp"
+      }
+    }
+  ],
+  "reference": {
+    "kind": "pinned_engine",
+    "engine": "SWMM",
+    "version": "5.2.4",
+    "binary_sha256": "7bac9983ec031415f04e8e6bdafc4878fd17cb7c3460d3323f41cad78f4a7a92",
+    "results_path": "reference/swmm-5.2.4.parquet",
+    "build": "swmm-toolkit 0.17.0 (EPA SWMM 5.2.4 engine)"
+  },
+  "simulation": {
+    "t_end": 129600,
+    "output_interval": 30,
+    "required_outputs": [
+      "h",
+      "Q"
+    ]
+  },
+  "scoring": {
+    "pass_rule": "all_gating",
+    "criteria": [
+      {
+        "id": "peak_depth",
+        "metric": "relative_peak",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 2.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Architecture parity band (±2 % peak) at every node, wet wells included."
+      },
+      {
+        "id": "link_volume",
+        "metric": "relative_volume",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 2.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Pumped and conveyed volume within ±2 % in every link: a rule that fires at the wrong level changes how much each pump moves."
+      },
+      {
+        "id": "peak_timing",
+        "metric": "timing_error",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 120,
+          "units": "s"
+        },
+        "gating": true,
+        "rationale": "Four 30 s reporting steps; a rule evaluated at a different moment shifts pump-on times."
+      }
+    ]
+  }
+}

@@ -9,8 +9,9 @@ import numpy as np
 import pandas as pd
 
 REQUIRED_COLUMNS = ("t", "x", "y", "h", "u", "v", "p")
-OPTIONAL_COLUMNS = ("Q", "c")
-ALL_COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS
+OPTIONAL_COLUMNS = ("Q", "c", "z")
+STRING_COLUMNS = ("element_id", "element_type")
+ALL_COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS + STRING_COLUMNS
 
 
 def validate_results_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -23,7 +24,10 @@ def validate_results_columns(df: pd.DataFrame) -> pd.DataFrame:
         raise ValueError(f"results has unknown columns: {unknown}")
     out = df.copy()
     for col in out.columns:
-        out[col] = pd.to_numeric(out[col], errors="coerce").astype(np.float64)
+        if col in STRING_COLUMNS:
+            out[col] = out[col].astype(str)
+        else:
+            out[col] = pd.to_numeric(out[col], errors="coerce").astype(np.float64)
     return out
 
 
@@ -50,6 +54,12 @@ def write_results_parquet(path: str | Path, columns: Mapping[str, Any]) -> Path:
             data[name] = arr
 
     df = pd.DataFrame(data)
+    for name in STRING_COLUMNS:
+        if name in columns:
+            arr = np.asarray(columns[name], dtype=object).astype(str)
+            if len(arr) != n:
+                raise ValueError(f"column {name!r} length {len(arr)} != {n}")
+            df[name] = arr
     validate_results_columns(df)
     df.to_parquet(path, index=False, engine="pyarrow")
     return path

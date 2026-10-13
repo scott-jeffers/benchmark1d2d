@@ -1,12 +1,12 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "test_id": "B-EXTRAN-001_extran_parity",
-  "case_version": "1.0.0",
+  "case_version": "2.0.0",
   "status": "candidate",
   "track": "B",
   "test_class": "parity",
-  "title": "EXTRAN parity against SWMM 5.2.4",
-  "description": "Industry parity case: candidate solver output compared to pinned EPA SWMM 5.2.4 on a classic EXTRAN-style sewer network fixture.",
+  "title": "EXTRAN Manual Example 1: parity against SWMM 5.2.4",
+  "description": "EXTRAN Manual Example 1 (Roesner et al. 1988) as distributed with the OWA/EPA SWMM 5 regression set: a dendritic sewer network with surcharge and three hydrograph inflows, 8 h dynamic-wave routing. Candidate depths and flows are compared with EPA SWMM 5.2.4 at every node and link. Case v2.0.0 replaces a 2-conduit synthetic fixture that v1 presented as this example.",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "mixed",
@@ -31,27 +31,41 @@
         "year": 1988,
         "title": "Storm Water Management Model User's Manual, Version 4: EXTRAN Addendum",
         "report_number": "EPA/600/3-88/001b"
+      },
+      {
+        "title": "openswmm.engine.benchmarks corpus: owa-extran/extran1",
+        "authors": [
+          "HydroCouple"
+        ],
+        "year": 2026,
+        "url": "https://raw.githubusercontent.com/HydroCouple/openswmm.engine.benchmarks/63eb8bc5b4e741c82195ed65c4d7d146b86da1cc/corpus/owa-extran/extran1/model.inp"
       }
     ],
-    "license": "Unlicense"
+    "license": "Unlicense",
+    "adaptation_notes": "Unmodified model from HydroCouple openswmm.engine.benchmarks at commit 63eb8bc5b4e741c82195ed65c4d7d146b86da1cc (public-domain dedication)."
   },
   "inputs": [
     {
       "path": "inputs/network.inp",
       "role": "network",
       "format": "inp",
-      "sha256": "87c1851d0eed690e3869a7916cbdc93c2531e5cee4fd1358b51731f2949df1f6"
+      "sha256": "739391331b141c142b40e29f16289a3d56cd54315e748a3ca076a522b63c08be",
+      "source": {
+        "url": "https://raw.githubusercontent.com/HydroCouple/openswmm.engine.benchmarks/63eb8bc5b4e741c82195ed65c4d7d146b86da1cc/corpus/owa-extran/extran1/model.inp"
+      }
     }
   ],
   "reference": {
     "kind": "pinned_engine",
     "engine": "SWMM",
     "version": "5.2.4",
-    "binary_sha256": "7bac9983ec031415f04e8e6bdafc4878fd17cb7c3460d3323f41cad78f4a7a92"
+    "binary_sha256": "7bac9983ec031415f04e8e6bdafc4878fd17cb7c3460d3323f41cad78f4a7a92",
+    "results_path": "reference/swmm-5.2.4.parquet",
+    "build": "swmm-toolkit 0.17.0 (EPA SWMM 5.2.4 engine)"
   },
   "simulation": {
-    "t_end": 21600,
-    "output_interval": 60,
+    "t_end": 28800,
+    "output_interval": 900,
     "required_outputs": [
       "h",
       "Q"
@@ -69,19 +83,19 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "Within SWMM 5.2.4 self-consistency band on EXTRAN cases."
+        "rationale": "Peak depth within ±1 % of SWMM 5.2.4 at every node."
       },
       {
         "id": "volume",
         "metric": "relative_volume",
-        "variable": "volume",
+        "variable": "Q",
         "threshold": {
           "op": "abs<=",
           "value": 1.0,
           "units": "%"
         },
         "gating": true,
-        "rationale": "Hydrograph volume within Â±1% of pinned SWMM 5.2.4 reference."
+        "rationale": "Conveyed volume within ±1 % of SWMM 5.2.4 in every link."
       }
     ],
     "pass_rule": "all_gating"

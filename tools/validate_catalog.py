@@ -188,12 +188,29 @@ def validate_manifest_dict(
                 continue
             rel = entry.get("path")
             expected = entry.get("sha256")
+            if entry.get("pending"):
+                if status != "draft":
+                    result.fail(f"pending input {rel} not allowed for status={status!r}")
+                else:
+                    result.messages.append(f"pending input {rel}: {entry['pending'].get('reason', '')}")
+                continue
             if not rel or not expected:
                 result.fail(f"input entry missing path/sha256: {entry!r}")
                 continue
             path = case_dir / rel
-            if not path.is_file():
+            if entry.get("committed", True) is False:
+                if not entry.get("source"):
+                    result.fail(f"non-committed input {rel} has no source")
+                    continue
+                if not path.is_file():
+                    # Fetched on demand by scripts/fetch_inputs.py and verified there.
+                    result.messages.append(f"remote input {rel} (fetch with scripts/fetch_inputs.py)")
+                    continue
+            elif not path.is_file():
                 result.fail(f"input file missing: {rel}")
+                continue
+            if path.stat().st_size == 0:
+                result.fail(f"input file is empty: {rel}")
                 continue
             actual = sha256_file(path)
             expected_l = str(expected).lower()

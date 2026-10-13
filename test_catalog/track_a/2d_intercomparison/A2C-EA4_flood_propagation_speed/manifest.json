@@ -1,0 +1,176 @@
+{
+  "schema_version": "1.1.0",
+  "test_id": "A2C-EA4_flood_propagation_speed",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_class": "intercomparison",
+  "title": "EA Test 4 — speed of flood propagation over an extended floodplain",
+  "description": "Flat, horizontal 1000 m × 2000 m floodplain at 0 m; a breach hydrograph peaking at 20 m³/s enters along a 20 m line mid-way along the west edge. Tests front celerity and transient depths and velocities at the leading edge.",
+  "physics": {
+    "dimensionality": "2D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "shallow_water_2d"
+    ],
+    "phenomena": [
+      "wet_dry",
+      "front_propagation",
+      "inundation"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Néelz, S.",
+          "Pender, G."
+        ],
+        "year": 2013,
+        "title": "Benchmarking the Latest Generation of 2D Hydraulic Modelling Packages",
+        "report_number": "SC120002",
+        "isbn": "978-1-84911-306-9",
+        "url": "https://www.gov.uk/flood-and-coastal-erosion-risk-management-research-reports/2d-benchmarking-evaluating-the-latest-generation-of-the-hydraulic-models-for-fcrm"
+      },
+      {
+        "authors": [
+          "Néelz, S.",
+          "Pender, G."
+        ],
+        "year": 2010,
+        "title": "Benchmarking of 2D Hydraulic Modelling Packages",
+        "report_number": "SC080035/SR2",
+        "url": "https://assets.publishing.service.gov.uk/media/5a75765c40f0b6360e4744dd/scho0510bsno-e-e.pdf"
+      }
+    ],
+    "license": "OGL-UK-3.0",
+    "adaptation_notes": "Inputs come from the GOV.UK 'Benchmarking model data' archive, published under the Open Government Licence v3.0 (the page licence; the archive carries no other terms). Attribution: Environment Agency, SC120002 (2013), test specifications May 2010. Committed: inflow table, output points, active-area polygon, case.json. No DEM: the bed is flat at 0 m (specification §6)."
+  },
+  "inputs": [
+    {
+      "path": "inputs/inflow.csv",
+      "sha256": "c640e05f6bf9c2d1a9c3ce85ca4e10f72a3559ea2c818b7e106ba69bd07cc4a1",
+      "role": "boundary_condition",
+      "format": "csv"
+    },
+    {
+      "path": "inputs/output_points.csv",
+      "sha256": "77fb98ecea8712f3d2d2aad76f0fd522c94077c8d5a0492255fdbb8dd960b327",
+      "role": "probes",
+      "format": "csv"
+    },
+    {
+      "path": "inputs/case.json",
+      "sha256": "be39d8144b77957e39111b47c6f4a06f78283c2c3bef7c77eba1adc3e2886adf",
+      "role": "case_parameters",
+      "format": "json"
+    }
+  ],
+  "reference": {
+    "kind": "intercomparison",
+    "expected_states": [
+      {
+        "id": "final_stored_volume",
+        "variable": "volume",
+        "time": 18000.0,
+        "value": 285000.0,
+        "units": "m3",
+        "derivation": "Closed boundaries and a dry initial bed: stored volume at the end of the run equals the linearly interpolated inflow hydrograph integrated to t_end."
+      }
+    ],
+    "ensemble": {
+      "source": "SC120002 report, Test 4 figures",
+      "availability": "permission_required",
+      "notes": "Published package results exist only as figures in the SC120002 report, whose text is 'All rights reserved … reproduced with prior permission of the Environment Agency'. They are shown for context once digitised with EA permission and never gate."
+    }
+  },
+  "simulation": {
+    "t_end": 18000.0,
+    "output_interval": 20.0,
+    "required_outputs": [
+      "h",
+      "u",
+      "v"
+    ],
+    "probes": [
+      {
+        "id": "P1",
+        "x": 50.0,
+        "y": 1000.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P2",
+        "x": 100.0,
+        "y": 1000.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P3",
+        "x": 200.0,
+        "y": 1000.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P4",
+        "x": 300.0,
+        "y": 1000.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P5",
+        "x": 400.0,
+        "y": 1000.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P6",
+        "x": 300.0,
+        "y": 1300.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      }
+    ]
+  },
+  "scoring": {
+    "pass_rule": "all_gating",
+    "criteria": [
+      {
+        "id": "mass_conservation",
+        "metric": "expected_state_error",
+        "against": "final_stored_volume",
+        "variable": "volume",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "The only exact statement the test admits: nothing leaves a closed domain, so any difference is mass created or lost by the scheme (suite target < 0.1 %)."
+      }
+    ]
+  }
+}

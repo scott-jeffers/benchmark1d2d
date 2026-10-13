@@ -2,8 +2,8 @@
 
 [![Track A](https://img.shields.io/badge/Track%20A-verification-0A7-blue)](#the-two-tracks)
 [![Track B](https://img.shields.io/badge/Track%20B-parity-6B4-purple)](#the-two-tracks)
-[![catalog](https://img.shields.io/badge/catalog-v0.2.0-lightgrey)](CHANGELOG.md)
-[![schema](https://img.shields.io/badge/schema-v1.0.0-green)](schemas/v1/)
+[![catalog](https://img.shields.io/badge/catalog-v0.3.0-lightgrey)](CHANGELOG.md)
+[![schema](https://img.shields.io/badge/schema-v1.1.0-green)](schemas/v1/)
 [![DOI](https://img.shields.io/badge/DOI-pending-lightgrey)](CITATION.cff)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
@@ -26,13 +26,14 @@
 | Ground truth | Exact solutions; lab & field measurements | Pinned reference-engine output |
 | Can prove | The solver is **wrong** | The solver **differs** |
 | Metrics | L1/L2/L∞, observed order, mass error, NSE, arrival time | ±% peak, volume, timing; continuity error |
-| Example | Thacker bowl, Ritter dam break, Joukowsky | 1,729-model corpus, EXTRAN cases, RTC rules |
+| Example | Thacker bowl, Ritter dam break, EA Test 1–5 | HydroCouple corpus, EXTRAN cases, RTC rules, EPANET Net1 |
 
 > **Track A results can prove a solver wrong. Track B results can only prove it different from the reference engine.** Every badge and table keeps the two apart.
 
 ### Certification levels
 
 - **Verified (A-V):** passes all analytical tests **and** shows the design order of accuracy.
+- **Conserves (A-C):** passes the objective checks of a code inter-comparison case (mass balance, settled levels) where no exact or measured answer exists.
 - **Validated (A-L / A-F):** meets lab / field criteria within stated measurement uncertainty.
 - **Parity (B-x%):** matches the reference engine within the stated tolerance band.
 
@@ -41,13 +42,15 @@ A solver may hold any combination; the score card shows each separately.
 ## Quickstart
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,engines,site]"   # engines: EPA SWMM 5.2.4 + EPANET 2.2 for Track B
+python scripts/fetch_inputs.py                    # DEMs and other large inputs, verified by SHA-256
 benchmark1d2d catalog list --track A
 benchmark1d2d engines
 benchmark1d2d run A1F-010 --solver examples/demo_solver/solve.py --adapter generic_parquet
 benchmark1d2d score A1F-010 --results out/A1F-010.parquet
-python site/build.py
-# open site/dist/index.html
+python scripts/run_vertical_slice.py     # 1D demo solvers, all refinement levels, score cards
+python scripts/run_demo_2d.py            # 2D finite-volume demo: Thacker and EA Tests 1, 2, 4, 5
+python site/build.py                     # open site/dist/index.html
 ```
 
 Public site: Home, Catalog, Get started, Engines (pinned SWMM 5.2.4), Methodology.
@@ -69,17 +72,25 @@ manifest → fetch & hash inputs → execute solver (sandboxed)
 ## The output contract
 
 See [`schemas/v1/results.schema.json`](schemas/v1/results.schema.json).
-Columns: `t, x, y, h, u, v, p` (plus `Q` and concentration `c` for 1D).
+Columns: `t, x, y, h, u, v, p`, optional `Q`, `c` and bed elevation `z`.
+Network solvers add `element_id` / `element_type` so Track B parity is computed
+per node and link, never by row order.
 
 ## Test catalog
 
-| ID | Physics | Source | Primary metric | Tolerance |
-|---|---|---|---|---|
-| A1F-010 | 1D dry-bed dam break | Ritter (1892) | front position + GCI | ≤ 2.5 m; order ≥ 0.8 |
-| A1F-011 | 1D wet-bed dam break | Stoker (1957) | L1(h) + GCI | order ≥ 0.8 |
-| A1F-001 | 1D M1 backwater | MacDonald et al. (1997) | L1(h) + GCI | order ≥ 0.8 |
-| A1P-020 | Instant valve closure | Joukowsky (1900) | peak pressure | ± 2 % |
-| B-EXTRAN-001 | EXTRAN parity | SWMM 5.2.4 | peak depth / volume | ± 1 % |
+27 cases across eight components; the [site](https://scott-jeffers.github.io/benchmark1d2d/catalog.html)
+shows each one with its reference, tolerances and latest score. Highlights:
+
+| ID | Physics | Ground truth | Gating checks |
+|---|---|---|---|
+| A1F-010 / 011 | 1D dam break, dry and wet bed | Ritter (1892), Stoker (1957) | front position or L1(h); observed order ≥ 0.8 |
+| A1F-001 | 1D steady backwater | MacDonald et al. (1997) manufactured bed | L1(h); observed order ≥ 0.8 |
+| A1P-010 | Two-loop pipe network | Todini–Pilati solve, cross-checked against EPANET 2.2 | nodal head, link flow |
+| A1P-020 | Instant valve closure | Joukowsky (1900) | peak pressure; observed order ≥ 0.4 (discontinuity) |
+| A2A-001 | 2D bowl with moving shoreline | Thacker (1981), corrected in v0.3 | L1(h), mass; observed order ≥ 0.8 |
+| A2C-EA1…EA5 | EA 2D inter-comparison tests | Settled pond level, mass conservation | from the official EA archive, fetched by hash |
+| B-EXTRAN-001, B-RTC-001 | Sewer routing, control rules | EPA SWMM 5.2.4 | peak, volume, timing at every element |
+| B-EPANET-001 | Water distribution (Net1) | EPANET 2.2 | peak pressure, volume at every element |
 
 Full catalog: `benchmark1d2d catalog list`.
 
@@ -110,7 +121,10 @@ Roache), not a single-mesh error threshold.
 
 - Input files are pinned by SHA-256.
 - Track B references a pinned engine build (version + binary hash), never
-  "SWMM" in general. Reference results are regenerated by CI.
+  "SWMM" in general. `scripts/make_reference.py --check` re-runs SWMM 5.2.4 and
+  EPANET 2.2 in CI and fails if a committed reference drifts; a Windows job scores
+  the official EPA binaries against the same references (cross-build parity).
+- A case whose reference is missing is **not scored** — never passed.
 - Score cards are canonical JSON, Ed25519-signed, and byte-identical across reruns.
 - Releases mint a Zenodo DOI (pending for v0.1).
 

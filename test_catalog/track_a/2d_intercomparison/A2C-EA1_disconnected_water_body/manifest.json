@@ -1,0 +1,220 @@
+{
+  "schema_version": "1.1.0",
+  "test_id": "A2C-EA1_disconnected_water_body",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_class": "intercomparison",
+  "title": "EA Test 1 — flooding a disconnected water body",
+  "description": "700 m × 100 m sloping strip with a depression behind a 10.25 m sill. A water-level boundary rises from 9.7 m to 10.35 m, holds, then falls back; the pond must fill, become horizontal, and settle at the sill crest. Tests wetting/drying and disconnected water bodies.",
+  "physics": {
+    "dimensionality": "2D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "shallow_water_2d"
+    ],
+    "phenomena": [
+      "wet_dry",
+      "disconnected_water_body",
+      "inundation"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Néelz, S.",
+          "Pender, G."
+        ],
+        "year": 2013,
+        "title": "Benchmarking the Latest Generation of 2D Hydraulic Modelling Packages",
+        "report_number": "SC120002",
+        "isbn": "978-1-84911-306-9",
+        "url": "https://www.gov.uk/flood-and-coastal-erosion-risk-management-research-reports/2d-benchmarking-evaluating-the-latest-generation-of-the-hydraulic-models-for-fcrm"
+      },
+      {
+        "authors": [
+          "Néelz, S.",
+          "Pender, G."
+        ],
+        "year": 2010,
+        "title": "Benchmarking of 2D Hydraulic Modelling Packages",
+        "report_number": "SC080035/SR2",
+        "url": "https://assets.publishing.service.gov.uk/media/5a75765c40f0b6360e4744dd/scho0510bsno-e-e.pdf"
+      }
+    ],
+    "license": "OGL-UK-3.0",
+    "adaptation_notes": "Inputs come from the GOV.UK 'Benchmarking model data' archive, published under the Open Government Licence v3.0 (the page licence; the archive carries no other terms). Attribution: Environment Agency, SC120002 (2013), test specifications May 2010. Committed: boundary table, output points, case.json. DEM fetched by hash."
+  },
+  "inputs": [
+    {
+      "path": "inputs/terrain.asc",
+      "role": "terrain",
+      "format": "esri_ascii_grid",
+      "sha256": "96dc6541a3e53f6fcae5d1984452a87b3892a9f5f097bb2b86e9fa614104616a",
+      "committed": false,
+      "source": {
+        "url": "https://assets.publishing.service.gov.uk/media/6033a9bbd3bf7f72182e99ca/Benchmarking_Model_Data.zip",
+        "archive_sha256": "388c2789570e5975fe909033e34bedbe5d7bde5e6d7f9b7d7c1eaf04e58bc732",
+        "members": [
+          "Test1_dataset_2010.zip",
+          "Test1 dataset 2010/test1DEM.asc"
+        ]
+      },
+      "crs": "local"
+    },
+    {
+      "path": "inputs/boundary_level.csv",
+      "sha256": "c0a001dd8971b25b7f1ee87b491aa92b8ae20d39d74e82db9b67a7c4cc50fd93",
+      "role": "boundary_condition",
+      "format": "csv"
+    },
+    {
+      "path": "inputs/output_points.csv",
+      "sha256": "6b89f16db52d41d135979c93418c0c56a21a39f426993cbba70ed5fc619318f5",
+      "role": "probes",
+      "format": "csv"
+    },
+    {
+      "path": "inputs/case.json",
+      "sha256": "70b96e6d913a91197161d63eabc5ec2fb2135abc80cc9fbd4cda9ea263154ccf",
+      "role": "case_parameters",
+      "format": "json"
+    }
+  ],
+  "reference": {
+    "kind": "intercomparison",
+    "expected_states": [
+      {
+        "id": "pond_final_level_p1",
+        "variable": "h+z",
+        "where": "P1",
+        "time": 72000,
+        "value": 10.25,
+        "units": "m",
+        "derivation": "Specification §2: after the boundary falls the pond becomes horizontal at the sill elevation, 10.25 m (sill crest at x = 300 m in the DEM)."
+      },
+      {
+        "id": "pond_final_level_p2",
+        "variable": "h+z",
+        "where": "P2",
+        "time": 72000,
+        "value": 10.25,
+        "units": "m",
+        "derivation": "As P1; both points lie in the same pond."
+      },
+      {
+        "id": "peak_level",
+        "variable": "h+z",
+        "where": "P1,P2",
+        "value": 10.35,
+        "units": "m",
+        "derivation": "Boundary holds 10.35 m for 10 h (60–660 min), long enough for the whole domain to become horizontal (specification §2)."
+      },
+      {
+        "id": "final_stored_volume",
+        "variable": "volume",
+        "time": 72000,
+        "value": 9954.1,
+        "units": "m3",
+        "derivation": "Pond below 10.25 m (9887.3 m³) plus water below 9.7 m elsewhere (66.9 m³), integrated on the 2 m EA DEM. Solvers on a 10 m grid sample the DEM differently, so this check does not gate."
+      }
+    ],
+    "ensemble": {
+      "source": "SC120002 report, Test 1 figures",
+      "availability": "permission_required",
+      "notes": "Published package results exist only as figures in the SC120002 report, whose text is 'All rights reserved … reproduced with prior permission of the Environment Agency'. They are shown for context once digitised with EA permission and never gate."
+    }
+  },
+  "simulation": {
+    "t_end": 72000.0,
+    "output_interval": 60.0,
+    "required_outputs": [
+      "h",
+      "u",
+      "v"
+    ],
+    "probes": [
+      {
+        "id": "P1",
+        "x": 400.0,
+        "y": 50.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P2",
+        "x": 600.0,
+        "y": 50.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      }
+    ]
+  },
+  "scoring": {
+    "pass_rule": "all_gating",
+    "criteria": [
+      {
+        "id": "final_level_p1",
+        "metric": "expected_state_error",
+        "against": "pond_final_level_p1",
+        "variable": "h",
+        "where": "P1",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.02,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "A solver that conserves mass and handles the sill must leave the pond at the crest level; 2 cm allows for slow drainage over the sill by t = 20 h."
+      },
+      {
+        "id": "final_level_p2",
+        "metric": "expected_state_error",
+        "against": "pond_final_level_p2",
+        "variable": "h",
+        "where": "P2",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.02,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "As P1."
+      },
+      {
+        "id": "peak_level",
+        "metric": "expected_state_error",
+        "against": "peak_level",
+        "variable": "h",
+        "where": "P1,P2",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.02,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Hydrostatic plateau level during the 10 h hold."
+      },
+      {
+        "id": "final_volume",
+        "metric": "expected_state_error",
+        "against": "final_stored_volume",
+        "variable": "volume",
+        "threshold": {
+          "op": "abs<=",
+          "value": 2.0,
+          "units": "%"
+        },
+        "gating": false,
+        "rationale": "Informational: depends on how the solver samples the 2 m DEM onto its own grid."
+      }
+    ]
+  }
+}

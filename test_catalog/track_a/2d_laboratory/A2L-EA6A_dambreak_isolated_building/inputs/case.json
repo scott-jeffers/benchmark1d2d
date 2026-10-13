@@ -1,0 +1,15 @@
+{
+  "manning_n": 0.01,
+  "grid_resolution_m": 0.1,
+  "t_end_s": 120.0,
+  "initial_condition": {
+    "depth_upstream_m": 0.4,
+    "depth_downstream_m": 0.02,
+    "dam_at_x_m": 0.0
+  },
+  "boundaries": "all vertical walls",
+  "outputs": {
+    "probe_interval_s": 0.1,
+    "probes": "output_points.csv"
+  }
+}

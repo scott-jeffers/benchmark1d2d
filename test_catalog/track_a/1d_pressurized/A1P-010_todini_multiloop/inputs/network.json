@@ -1,0 +1,114 @@
+{
+  "description": "Two-loop gravity network after Alperovits & Shamir (1977): 1 reservoir, 6 junctions, 8 pipes of 1000 m, Hazen\u2013Williams C = 130. Diameters are a fixed analysis set (inches converted to m); demands converted from m\u00b3/h.",
+  "units": {
+    "length": "m",
+    "diameter": "m",
+    "flow": "m3/s",
+    "head": "m"
+  },
+  "headloss": "hazen-williams",
+  "reservoirs": [
+    {
+      "id": "1",
+      "head": 210.0
+    }
+  ],
+  "junctions": [
+    {
+      "id": "2",
+      "elevation": 150.0,
+      "demand_m3s": 0.027777777777777776
+    },
+    {
+      "id": "3",
+      "elevation": 160.0,
+      "demand_m3s": 0.027777777777777776
+    },
+    {
+      "id": "4",
+      "elevation": 155.0,
+      "demand_m3s": 0.03333333333333333
+    },
+    {
+      "id": "5",
+      "elevation": 150.0,
+      "demand_m3s": 0.075
+    },
+    {
+      "id": "6",
+      "elevation": 165.0,
+      "demand_m3s": 0.09166666666666666
+    },
+    {
+      "id": "7",
+      "elevation": 160.0,
+      "demand_m3s": 0.05555555555555555
+    }
+  ],
+  "pipes": [
+    {
+      "id": "1",
+      "from": "1",
+      "to": "2",
+      "L": 1000.0,
+      "D": 0.4572,
+      "C": 130.0
+    },
+    {
+      "id": "2",
+      "from": "2",
+      "to": "3",
+      "L": 1000.0,
+      "D": 0.254,
+      "C": 130.0
+    },
+    {
+      "id": "3",
+      "from": "2",
+      "to": "4",
+      "L": 1000.0,
+      "D": 0.4064,
+      "C": 130.0
+    },
+    {
+      "id": "4",
+      "from": "4",
+      "to": "5",
+      "L": 1000.0,
+      "D": 0.1016,
+      "C": 130.0
+    },
+    {
+      "id": "5",
+      "from": "4",
+      "to": "6",
+      "L": 1000.0,
+      "D": 0.4064,
+      "C": 130.0
+    },
+    {
+      "id": "6",
+      "from": "6",
+      "to": "7",
+      "L": 1000.0,
+      "D": 0.254,
+      "C": 130.0
+    },
+    {
+      "id": "7",
+      "from": "3",
+      "to": "5",
+      "L": 1000.0,
+      "D": 0.254,
+      "C": 130.0
+    },
+    {
+      "id": "8",
+      "from": "7",
+      "to": "5",
+      "L": 1000.0,
+      "D": 0.0254,
+      "C": 130.0
+    }
+  ]
+}

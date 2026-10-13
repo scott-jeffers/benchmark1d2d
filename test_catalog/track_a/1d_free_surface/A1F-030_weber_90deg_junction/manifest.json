@@ -1,12 +1,12 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A1F-030_weber_90deg_junction",
   "test_class": "validation_lab",
-  "title": "Weber 90\u00b0 open-channel junction",
-  "description": "Laboratory combining junction at 90\u00b0; compare depths and velocities to Weber, Schumate & Mawer (2001) measurements.",
+  "title": "Weber 90° open-channel junction",
+  "description": "Laboratory combining junction at 90°; compare depths and velocities to Weber, Schumate & Mawer (2001) measurements.",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "free_surface",
@@ -27,19 +27,22 @@
           "Mawer, N."
         ],
         "year": 2001,
-        "title": "Experiments on flow at a 90\u00b0 open-channel junction",
+        "title": "Experiments on flow at a 90° open-channel junction",
         "doi": "10.1061/(ASCE)0733-9429(2001)127:5(340)"
       }
     ],
-    "license": "Unlicense",
+    "license": "TBD-confirm",
     "adaptation_notes": "Draft: digitize published gauge profiles once redistribution terms allow."
   },
   "inputs": [
     {
-      "path": "inputs/params.json",
-      "role": "parameters",
+      "path": "inputs/flume.json",
+      "role": "geometry",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "pending": {
+        "reason": "Flume geometry and inflows from Weber, Schumate & Mawer (2001); measured depth/velocity fields need redistribution terms from the authors / IIHR.",
+        "obtain_from": "IIHR – Hydroscience & Engineering, University of Iowa (authors of Weber et al. 2001)"
+      }
     }
   ],
   "reference": {
@@ -51,7 +54,8 @@
       "units": "1",
       "notes": "Draft placeholder uncertainty; replace with published gauge error."
     },
-    "include_measurement_uncertainty": true
+    "include_measurement_uncertainty": true,
+    "availability": "request_from_authors"
   },
   "simulation": {
     "t_end": 600.0,
@@ -74,7 +78,7 @@
           "units": "1"
         },
         "gating": true,
-        "rationale": "NSE on junction depths \u2265 0.7 within measurement uncertainty."
+        "rationale": "NSE on junction depths ≥ 0.7 within measurement uncertainty."
       },
       {
         "id": "peak_depth",

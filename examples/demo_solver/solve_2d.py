@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""Demo 2D writers for benchmark1d2d Phase 5 (analytic / perturbed exact).
+"""Scorer fixtures for 2D analytic cases — these are NOT solvers.
 
-Two independent \"solvers\" for MVP scoring:
+1. **exact** samples the analytical reference on a grid. Its errors are at
+   round-off on every mesh, which no discretisation can produce, so the
+   convergence check rejects it (see ``test_thacker_exact_writer_is_rejected``).
+2. **perturbed** adds a synthetic ``O(dx)`` perturbation to the exact field. It
+   exercises the observed-order machinery and nothing else.
 
-1. **exact** — samples the analytic reference on a Cartesian grid and writes
-   results Parquet ``(t, x, y, h, u, v, p)``. Machine-zero error vs. reference.
-2. **perturbed** — same analytic field plus an ``O(dx)`` smooth perturbation so
-   L1 error decreases under mesh refinement (first-order convergence evidence).
-   Documented stand-in for a simple first-order 2D FV scheme until a real
-   discretisation is wired in.
-
-Both are scored by ``scripts/run_phase5_2d.py``.
+Neither says anything about a 2D scheme. The real demo solver is
+``examples/demo_solver/swe2d.py`` (first-order finite volume), run by
+``scripts/run_demo_2d.py``.
 """
 
 from __future__ import annotations

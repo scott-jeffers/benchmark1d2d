@@ -1,22 +1,30 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "test_id": "A1P-020_joukowsky_instant_closure",
-  "case_version": "1.0.0",
+  "case_version": "2.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "verification_analytic",
   "title": "Joukowsky instant valve closure",
-  "description": "Frictionless pipe water hammer after instantaneous full valve closure; classic Joukowsky pressure rise before the first reflection.",
+  "description": "Frictionless pipe water hammer after instantaneous full valve closure; classic Joukowsky pressure rise before the first reflection. Convergence expectation: the pressure front is a discontinuity carried by a linear wave equation, so a p-th order fixed-grid scheme converges in L1 only as dx^(p/(p+1)) — 0.5 for first-order methods such as MOC with space-line interpolation (case v1 demanded 0.8, which no honest first-order fixed-grid solver can reach).",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "pressurized",
-    "governing_equations": ["water_hammer"],
-    "phenomena": ["water_hammer", "valve_closure", "pressure_wave"]
+    "governing_equations": [
+      "water_hammer"
+    ],
+    "phenomena": [
+      "water_hammer",
+      "valve_closure",
+      "pressure_wave"
+    ]
   },
   "provenance": {
     "citations": [
       {
-        "authors": ["Joukowsky, N."],
+        "authors": [
+          "Joukowsky, N."
+        ],
         "year": 1900,
         "title": "Über den hydraulischen Stoss in Wasserleitungsröhren",
         "report_number": "Mem. Acad. Imp. Sci. St.-Petersbourg Ser.8 9(5)"
@@ -27,9 +35,9 @@
   "inputs": [
     {
       "path": "inputs/params.json",
-      "role": "parameters",
+      "role": "case_parameters",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "1a1d580b46bca5b168619391e8a27147a04869f03c293f32ef85ac639eb201c5"
     }
   ],
   "reference": {
@@ -49,9 +57,17 @@
   "simulation": {
     "t_end": 0.5,
     "output_interval": 0.05,
-    "required_outputs": ["p", "u"],
+    "required_outputs": [
+      "p",
+      "u"
+    ],
     "mesh_refinement": {
-      "levels": [20, 10, 5, 2.5],
+      "levels": [
+        20,
+        10,
+        5,
+        2.5
+      ],
       "fixed_courant": 0.5
     }
   },
@@ -61,7 +77,11 @@
         "id": "peak_pressure",
         "metric": "peak_error",
         "variable": "p",
-        "threshold": {"op": "abs<=", "value": 2.0, "units": "%"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 2.0,
+          "units": "%"
+        },
         "gating": true,
         "rationale": "Peak pressure within ±2% of Joukowsky rise Δp = ρ a V0."
       },
@@ -69,7 +89,11 @@
         "id": "continuity",
         "metric": "continuity_error",
         "variable": "u",
-        "threshold": {"op": "abs<=", "value": 1.0, "units": "%"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 1.0,
+          "units": "%"
+        },
         "gating": true,
         "rationale": "Mass continuity behind the closed-end front before first reflection."
       }
@@ -77,8 +101,8 @@
     "convergence": {
       "norm": "L1",
       "variable": "p",
-      "expected_order": 1.0,
-      "min_observed_order": 0.8
+      "expected_order": 0.5,
+      "min_observed_order": 0.4
     },
     "pass_rule": "all_gating"
   }

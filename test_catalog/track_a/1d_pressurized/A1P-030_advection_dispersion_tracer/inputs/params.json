@@ -1,0 +1,18 @@
+{
+  "problem": "Continuous-source tracer in a uniform 1D flow (Ogata & Banks 1961): c = c0 at x = 0 from t = 0, initially clean.",
+  "domain": {
+    "xmin": 0.0,
+    "xmax": 1000.0
+  },
+  "flow": {
+    "u_ms": 0.1,
+    "D_m2s": 0.01
+  },
+  "source": {
+    "c0": 1.0
+  },
+  "boundaries": {
+    "x0": "Dirichlet c = c0",
+    "xmax": "zero gradient"
+  }
+}

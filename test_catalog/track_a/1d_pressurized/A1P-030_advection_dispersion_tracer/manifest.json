@@ -1,12 +1,12 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A1P-030_advection_dispersion_tracer",
   "test_class": "verification_analytic",
-  "title": "Advection\u2013dispersion tracer (Ogata\u2013Banks)",
-  "description": "1D pipe / porous-media tracer transport with constant velocity and longitudinal dispersion; exact Ogata\u2013Banks concentration profile.",
+  "title": "Advection–dispersion tracer (Ogata–Banks)",
+  "description": "1D pipe / porous-media tracer transport with constant velocity and longitudinal dispersion; exact Ogata–Banks concentration profile.",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "pressurized",
@@ -35,9 +35,9 @@
   "inputs": [
     {
       "path": "inputs/params.json",
-      "role": "parameters",
+      "role": "case_parameters",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "94ed2381312349f7e35df843a0c6c4926d529895c8f8ada75798895570564025"
     }
   ],
   "reference": {
@@ -81,7 +81,7 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "L1 concentration error within 2% of Ogata\u2013Banks solution."
+        "rationale": "L1 concentration error within 2% of Ogata–Banks solution."
       },
       {
         "id": "mass",

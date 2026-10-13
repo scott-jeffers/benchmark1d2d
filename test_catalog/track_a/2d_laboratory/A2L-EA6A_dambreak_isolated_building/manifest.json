@@ -1,0 +1,193 @@
+{
+  "schema_version": "1.1.0",
+  "test_id": "A2L-EA6A_dambreak_isolated_building",
+  "case_version": "1.0.0",
+  "status": "draft",
+  "track": "A",
+  "test_class": "validation_lab",
+  "title": "EA Test 6A — dam break past an isolated building (laboratory scale)",
+  "description": "UCL laboratory dam break through a 1 m gate against a single idealised building (Soares-Frazão & Zech 2002, IMPACT), as adopted by the Environment Agency. Tests hydraulic jumps and the wake behind an obstacle against gauge measurements.",
+  "physics": {
+    "dimensionality": "2D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "shallow_water_2d"
+    ],
+    "phenomena": [
+      "dam_break",
+      "hydraulic_jump",
+      "obstacle_wake",
+      "wet_dry"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Soares-Frazão, S.",
+          "Zech, Y."
+        ],
+        "year": 2007,
+        "title": "Experimental study of dam-break flow against an isolated obstacle",
+        "doi": "10.1080/00221686.2007.9521830"
+      },
+      {
+        "authors": [
+          "Néelz, S.",
+          "Pender, G."
+        ],
+        "year": 2013,
+        "title": "Benchmarking the Latest Generation of 2D Hydraulic Modelling Packages",
+        "report_number": "SC120002",
+        "isbn": "978-1-84911-306-9",
+        "url": "https://www.gov.uk/flood-and-coastal-erosion-risk-management-research-reports/2d-benchmarking-evaluating-the-latest-generation-of-the-hydraulic-models-for-fcrm"
+      }
+    ],
+    "license": "OGL-UK-3.0",
+    "adaptation_notes": "Inputs come from the GOV.UK 'Benchmarking model data' archive, published under the Open Government Licence v3.0 (the page licence; the archive carries no other terms). Attribution: Environment Agency, SC120002 (2013), test specifications May 2010. Gauge measurements (G1–G6) are not in the EA archive; they come from the IMPACT programme / Soares-Frazão & Zech (2007) and need redistribution terms before the case can leave draft."
+  },
+  "inputs": [
+    {
+      "path": "inputs/terrain.asc",
+      "role": "terrain",
+      "format": "esri_ascii_grid",
+      "sha256": "69a0722f0620663423cf8ff52c4c48779d697b9a7a48929cee99fa7fcf4ad864",
+      "committed": false,
+      "source": {
+        "url": "https://assets.publishing.service.gov.uk/media/6033a9bbd3bf7f72182e99ca/Benchmarking_Model_Data.zip",
+        "archive_sha256": "388c2789570e5975fe909033e34bedbe5d7bde5e6d7f9b7d7c1eaf04e58bc732",
+        "members": [
+          "Test6_dataset_2010.zip",
+          "Test6 dataset 2010/Test6ADEM.asc"
+        ]
+      },
+      "crs": "local"
+    },
+    {
+      "path": "inputs/output_points.csv",
+      "sha256": "78123efa0ea4aee66c8469a6e02bb8546175fa5c02b498de1b98bf35d4c5498b",
+      "role": "probes",
+      "format": "csv"
+    },
+    {
+      "path": "inputs/case.json",
+      "sha256": "e2ae35f95ec878fa30ec74cd5cef2434eed8ec6c0ea53899a62eb4fbed271693",
+      "role": "case_parameters",
+      "format": "json"
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/gauges.parquet",
+    "availability": "request_from_authors",
+    "uncertainty": {
+      "type": "absolute",
+      "value": 0.005,
+      "units": "m",
+      "notes": "Provisional: replace with the gauge accuracy stated by Soares-Frazão & Zech (2007)."
+    },
+    "include_measurement_uncertainty": true
+  },
+  "simulation": {
+    "t_end": 120.0,
+    "output_interval": 0.1,
+    "required_outputs": [
+      "h",
+      "u",
+      "v"
+    ],
+    "probes": [
+      {
+        "id": "G1",
+        "x": 2.65,
+        "y": 1.15,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "G2",
+        "x": 2.65,
+        "y": -0.6,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "G3",
+        "x": 4.0,
+        "y": 1.15,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "G4",
+        "x": 4.0,
+        "y": -0.8,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "G5",
+        "x": 5.2,
+        "y": 0.3,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "G6",
+        "x": -1.87,
+        "y": 1.1,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      }
+    ]
+  },
+  "scoring": {
+    "pass_rule": "all_gating",
+    "criteria": [
+      {
+        "id": "gauge_nse",
+        "metric": "NSE",
+        "variable": "h",
+        "where": "G1-G5",
+        "threshold": {
+          "op": ">=",
+          "value": 0.7,
+          "units": "1"
+        },
+        "gating": true,
+        "rationale": "Provisional; set from measurement uncertainty once gauge data are obtained."
+      },
+      {
+        "id": "front_arrival",
+        "metric": "arrival_time_error",
+        "variable": "h",
+        "where": "G1-G5",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.5,
+          "units": "s"
+        },
+        "gating": true,
+        "rationale": "Provisional; five output steps at the specified 0.1 s frequency."
+      }
+    ]
+  }
+}

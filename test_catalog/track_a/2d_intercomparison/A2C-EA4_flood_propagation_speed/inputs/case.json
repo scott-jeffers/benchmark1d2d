@@ -1,0 +1,39 @@
+{
+  "manning_n": 0.05,
+  "grid_resolution_m": 5.0,
+  "t_end_s": 18000.0,
+  "initial_condition": "dry bed",
+  "boundaries": {
+    "inflow": {
+      "type": "discharge",
+      "table": "inflow.csv",
+      "time_units": "min",
+      "interpolation": "linear",
+      "line": [
+        [
+          0.0,
+          990.0
+        ],
+        [
+          0.0,
+          1010.0
+        ]
+      ]
+    },
+    "others": "closed"
+  },
+  "outputs": {
+    "probe_interval_s": 20.0,
+    "probes": "output_points.csv"
+  },
+  "domain": {
+    "xmin": 0,
+    "xmax": 1000,
+    "ymin": 0,
+    "ymax": 2000
+  },
+  "terrain": {
+    "type": "flat",
+    "elevation_m": 0.0
+  }
+}

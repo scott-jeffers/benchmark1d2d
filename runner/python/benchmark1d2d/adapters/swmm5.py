@@ -1,4 +1,16 @@
-"""Adapter: EPA SWMM 5.x text report (.rpt) → benchmark1d2d results Parquet."""
+"""Adapters for EPA SWMM 5.x → benchmark1d2d results Parquet.
+
+Two paths:
+
+- **Binary output (preferred).** ``run_swmm`` runs an ``.inp`` on the EPA SWMM
+  5.2.4 engine bundled in ``swmm-toolkit`` and ``adapt_out_to_parquet`` reads the
+  binary ``.out`` into full per-element time series (node depth ``h``, link
+  flow ``Q`` and velocity ``u``) keyed by ``element_id``. This is what Track B
+  parity scores.
+- **Text report (legacy).** ``adapt_rpt_to_parquet`` reads only the Node Depth
+  and Link Flow *summary* tables (one maximum per element); useful when only a
+  ``.rpt`` is available.
+"""
 
 from __future__ import annotations
 
@@ -188,3 +200,101 @@ def adapt_rpt_to_parquet(rpt_path: str | Path, out_parquet: str | Path) -> Path:
 def adapt(input_path: str | Path, output_path: str | Path) -> Path:
     """Registry entry point: treat ``input_path`` as a ``.rpt`` file."""
     return adapt_rpt_to_parquet(input_path, output_path)
+
+
+# ── Binary .out path ─────────────────────────────────────────────────────────
+
+
+def engine_version() -> str:
+    """Version of the SWMM engine bundled in swmm-toolkit (e.g. ``5.2.4``)."""
+    from swmm.toolkit import solver
+
+    return str(solver.swmm_version_info())
+
+
+def run_swmm(inp: str | Path, workdir: str | Path) -> tuple[Path, Path]:
+    """Run ``inp`` on the bundled SWMM engine; return ``(rpt, out)`` paths.
+
+    Runs with the model's own directory as working directory so relative
+    rainfall / time-series file references resolve.
+    """
+    import os
+
+    from swmm.toolkit import solver
+
+    inp = Path(inp).resolve()
+    workdir = Path(workdir).resolve()
+    workdir.mkdir(parents=True, exist_ok=True)
+    rpt = workdir / (inp.stem + ".rpt")
+    out = workdir / (inp.stem + ".out")
+    cwd = os.getcwd()
+    try:
+        os.chdir(inp.parent)
+        solver.swmm_run(str(inp), str(rpt), str(out))
+    finally:
+        os.chdir(cwd)
+    return rpt, out
+
+
+def read_out(out_path: str | Path) -> dict[str, Any]:
+    """Read node depth and link flow/velocity series from a SWMM binary .out."""
+    from swmm.toolkit import output, shared_enum
+
+    handle = output.init()
+    output.open(handle, str(out_path))
+    try:
+        n_sub, n_node, n_link, _n_poll = output.get_proj_size(handle)[:4]
+        n_per = output.get_times(handle, shared_enum.Time.NUM_PERIODS)
+        step = output.get_times(handle, shared_enum.Time.REPORT_STEP)
+        t = np.arange(1, n_per + 1, dtype=np.float64) * float(step)
+        nodes, links = {}, {}
+        for i in range(n_node):
+            name = output.get_elem_name(handle, shared_enum.ElementType.NODE, i)
+            nodes[name] = np.asarray(
+                output.get_node_series(handle, i, shared_enum.NodeAttribute.INVERT_DEPTH, 0, n_per - 1), dtype=np.float64
+            )
+        for i in range(n_link):
+            name = output.get_elem_name(handle, shared_enum.ElementType.LINK, i)
+            q = output.get_link_series(handle, i, shared_enum.LinkAttribute.FLOW_RATE, 0, n_per - 1)
+            v = output.get_link_series(handle, i, shared_enum.LinkAttribute.FLOW_VELOCITY, 0, n_per - 1)
+            links[name] = (np.asarray(q, dtype=np.float64), np.asarray(v, dtype=np.float64))
+        flow_units = output.get_units(handle)
+    finally:
+        output.close(handle)
+    return {"t": t, "nodes": nodes, "links": links, "units": flow_units}
+
+
+def adapt_out_to_parquet(out_path: str | Path, out_parquet: str | Path) -> Path:
+    """Write per-element series from a SWMM ``.out`` to the results contract.
+
+    Node rows carry ``h`` (depth above invert); link rows carry ``Q`` (flow) and
+    ``u`` (velocity). Values stay in the model's own units, so a candidate and
+    its reference are always compared in the same units.
+    """
+    data = read_out(out_path)
+    t = data["t"]
+    n_t = len(t)
+    cols: dict[str, list] = {k: [] for k in ("t", "x", "y", "h", "u", "v", "p", "Q", "element_id", "element_type")}
+    ordinal = 0
+    for name, depth in data["nodes"].items():
+        cols["t"].append(t); cols["h"].append(depth); cols["Q"].append(np.full(n_t, np.nan))
+        cols["u"].append(np.full(n_t, np.nan)); cols["element_id"].append([name] * n_t)
+        cols["element_type"].append(["node"] * n_t); cols["x"].append(np.full(n_t, float(ordinal))); ordinal += 1
+    for name, (q, vel) in data["links"].items():
+        cols["t"].append(t); cols["h"].append(np.full(n_t, np.nan)); cols["Q"].append(q)
+        cols["u"].append(vel); cols["element_id"].append([name] * n_t)
+        cols["element_type"].append(["link"] * n_t); cols["x"].append(np.full(n_t, float(ordinal))); ordinal += 1
+    flat = {k: np.concatenate(v) if k not in ("element_id", "element_type") else sum(v, []) for k, v in cols.items() if v}
+    total = len(flat["t"])
+    for k in ("y", "v", "p"):
+        flat[k] = np.zeros(total) if k == "y" else np.full(total, np.nan)
+    return write_results_parquet(out_parquet, flat)
+
+
+def run_to_parquet(inp: str | Path, out_parquet: str | Path, workdir: str | Path | None = None) -> Path:
+    """Run ``inp`` on SWMM 5.2.4 and write its full results Parquet."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        _rpt, out = run_swmm(inp, workdir or td)
+        return adapt_out_to_parquet(out, out_parquet)

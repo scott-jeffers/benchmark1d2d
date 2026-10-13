@@ -186,14 +186,18 @@ def assess_convergence(
     if len(spacings_l) != len(errors_l):
         raise ValueError("spacings and errors must have the same length")
 
-    # Exact (machine-zero) solutions on every mesh: order is formally satisfied.
-    if all(abs(e) < 1e-15 for e in errors_l):
+    # Round-off-level errors on every mesh cannot come from a discretisation:
+    # the solver returned the reference instead of computing it. Refuse to
+    # report an order (it would be invented) and do not pass.
+    if all(abs(e) < 1e-12 for e in errors_l):
         return {
-            "observed_order": float(expected_order),
-            "gci_fine": 0.0,
-            "passed_order": True,
+            "observed_order": None,
+            "gci_fine": None,
+            "passed_order": False,
             "expected_order": float(expected_order),
             "min_observed_order": float(min_observed_order),
+            "note": "errors are at round-off on every mesh; a discretised solution always carries "
+            "truncation error, so the results appear to be the reference itself",
         }
 
     p = observed_order(errors_l, spacings_l)

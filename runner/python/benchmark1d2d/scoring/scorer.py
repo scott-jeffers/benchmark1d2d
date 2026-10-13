@@ -315,6 +315,9 @@ def _score_analytic(
             "min_observed_order": assess["min_observed_order"],
             "gci": assess["gci_fine"],
             "passed": assess["passed_order"],
+            "spacings": [float(v) for v in spacings],
+            "errors": [float(v) for v in errors],
+            **({"note": assess["note"]} if assess.get("note") else {}),
         }
 
     gating = [c for c in criteria_results if c.get("gating")]
@@ -332,45 +335,297 @@ def _score_analytic(
     return criteria_results, convergence_result, passed
 
 
-def _score_parity_stub(
-    manifest: dict[str, Any],
-    results_path: Path,
-) -> tuple[list[dict], None, bool]:
-    """Track B without pinned engine fixture: identity self-check on results."""
-    df = read_results_parquet(results_path)
-    sim = _final_slice(df)
-    criteria_results = []
-    for c in manifest["scoring"]["criteria"]:
-        metric = c["metric"]
-        variable = c.get("variable", "h")
-        field = sim[variable].to_numpy(dtype=float) if variable in sim.columns else sim["h"].to_numpy()
-        if metric == "relative_peak":
-            observed = relative_peak(field, field) * 100.0
-        elif metric == "relative_volume":
-            observed = relative_volume(field, field) * 100.0
-        else:
-            observed = 0.0
-        thr = c["threshold"]
-        passed = _threshold_passes(observed, thr)
-        criteria_results.append(
-            {
-                "id": c["id"],
-                "metric": metric,
-                "variable": variable,
-                "observed": float(observed),
-                "threshold": {
-                    "op": thr["op"],
-                    "value": float(thr["value"]),
-                    "units": thr.get("units", ""),
-                },
-                "passed": bool(passed),
-                "gating": bool(c.get("gating", False)),
-                "detail": "parity self-check (no pinned reference loaded)",
-            }
+class ReferenceUnavailable(RuntimeError):
+    """The case's reference data is missing, so it cannot be scored.
+
+    Raised instead of producing a score card: a case without its reference
+    is *not scored*, never passed.
+    """
+
+
+def _case_dir(manifest: dict[str, Any]) -> Path | None:
+    d = manifest.get("_case_dir")
+    return Path(d) if d else None
+
+
+def _result_row(criterion: dict[str, Any], observed: float, detail: str | None = None) -> dict[str, Any]:
+    thr = criterion["threshold"]
+    passed = bool(np.isfinite(observed)) and _threshold_passes(observed, thr)
+    row = {
+        "id": criterion["id"],
+        "metric": criterion["metric"],
+        "variable": criterion.get("variable", "h"),
+        "observed": float(observed) if np.isfinite(observed) else None,
+        "threshold": {"op": thr["op"], "value": float(thr["value"]), "units": thr.get("units", "")},
+        "passed": passed,
+        "gating": bool(criterion.get("gating", False)),
+    }
+    if detail:
+        row["detail"] = detail
+    return row
+
+
+# ── Track B: parity against a pinned engine's per-element series ────────────
+
+
+def _element_series(df: pd.DataFrame, variable: str) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    if "element_id" not in df.columns:
+        raise ValueError(
+            "parity scoring needs an element_id column (node/link names); "
+            "use the swmm5/epanet22 adapters or add element_id to your results"
         )
-    gating = [r for r in criteria_results if r["gating"]]
-    passed = all(r["passed"] for r in gating) if gating else all(r["passed"] for r in criteria_results)
-    return criteria_results, None, passed
+    col = "Q" if variable in ("Q", "volume") else variable
+    if col not in df.columns:
+        raise ValueError(f"results have no {col!r} column")
+    out: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+    sub = df[np.isfinite(df[col].to_numpy(dtype=float))]
+    for eid, grp in sub.groupby("element_id", sort=True):
+        grp = grp.sort_values("t")
+        out[str(eid)] = (grp["t"].to_numpy(dtype=float), grp[col].to_numpy(dtype=float))
+    return out
+
+
+def _parity_metric(metric: str, variable: str, sim: pd.DataFrame, ref: pd.DataFrame) -> tuple[float, str]:
+    """Worst-element parity error and a human-readable detail string."""
+    s_series = _element_series(sim, variable)
+    r_series = _element_series(ref, variable)
+    if not r_series:
+        raise ReferenceUnavailable(f"reference has no {variable!r} series")
+    missing = sorted(set(r_series) - set(s_series))
+    if missing:
+        return float("inf"), f"{len(missing)} reference elements missing from results (e.g. {missing[0]})"
+
+    if metric == "relative_peak":
+        ref_pk = {e: float(np.max(np.abs(v))) for e, (_, v) in r_series.items()}
+        sim_pk = {e: float(np.max(np.abs(s_series[e][1]))) for e in r_series}
+        floor = 0.01 * max(ref_pk.values()) or 1e-12
+        errs = {e: (sim_pk[e] - ref_pk[e]) / max(ref_pk[e], floor) for e in r_series}
+        unit = "%"
+        scale = 100.0
+    elif metric == "relative_volume":
+        def vol(t, v):
+            return float(np.trapezoid(np.abs(v), t)) if len(t) > 1 else float(np.sum(np.abs(v)))
+        ref_v = {e: vol(*r_series[e]) for e in r_series}
+        sim_v = {e: vol(*s_series[e]) for e in r_series}
+        floor = 0.01 * max(ref_v.values()) or 1e-12
+        errs = {e: (sim_v[e] - ref_v[e]) / max(ref_v[e], floor) for e in r_series}
+        unit = "%"
+        scale = 100.0
+    elif metric == "timing_error":
+        errs = {}
+        for e, (tr, vr) in r_series.items():
+            ts, vs = s_series[e]
+            errs[e] = float(ts[np.argmax(np.abs(vs))] - tr[np.argmax(np.abs(vr))])
+        unit = "s"
+        scale = 1.0
+    else:
+        raise ValueError(f"metric {metric!r} is not a parity metric")
+    worst = max(errs, key=lambda e: abs(errs[e]))
+    value = errs[worst] * scale
+    return float(value), f"worst of {len(errs)} elements: {worst} ({value:+.4g} {unit})"
+
+
+def _resolve_engine_reference(manifest: dict[str, Any], reference_results: Path | None) -> Path:
+    if reference_results is not None:
+        path = Path(reference_results)
+    else:
+        rel = (manifest.get("reference") or {}).get("results_path")
+        case_dir = _case_dir(manifest)
+        if not rel or case_dir is None:
+            raise ReferenceUnavailable(
+                f"{manifest['test_id']}: no reference results; run scripts/make_reference.py {manifest['test_id']}"
+            )
+        path = case_dir / rel
+    if not path.is_file():
+        raise ReferenceUnavailable(f"{manifest['test_id']}: reference results not found at {path}")
+    return path
+
+
+def _score_parity(manifest: dict[str, Any], results_path: Path, reference_results: Path | None) -> tuple[list[dict], None, bool]:
+    ref_path = _resolve_engine_reference(manifest, reference_results)
+    sim = read_results_parquet(results_path)
+    ref = read_results_parquet(ref_path)
+    rows = []
+    for c in manifest["scoring"]["criteria"]:
+        if c["metric"] in ("relative_peak", "relative_volume", "timing_error"):
+            observed, detail = _parity_metric(c["metric"], c.get("variable", "h"), sim, ref)
+            rows.append(_result_row(c, observed, detail))
+        else:
+            rows.append(_result_row(c, float("nan"), f"metric {c['metric']!r} not evaluable for parity; counted as not passed"))
+    return rows, None, _passed(rows)
+
+
+# ── Track A code inter-comparison: objective expected states ────────────────
+
+
+def _read_asc(path: Path) -> tuple[dict[str, float], np.ndarray]:
+    with path.open() as fh:
+        hdr = {}
+        for _ in range(6):
+            k, v = fh.readline().split()
+            hdr[k.lower()] = float(v)
+        z = np.loadtxt(fh)
+    return hdr, z
+
+
+def _bed_at(manifest: dict[str, Any], x: float, y: float) -> float:
+    case_dir = _case_dir(manifest)
+    terrain = None
+    for entry in manifest.get("inputs") or []:
+        if entry.get("role") == "terrain":
+            terrain = entry
+    if terrain is None:
+        return 0.0  # flat bed at datum (e.g. EA Test 4)
+    path = case_dir / terrain["path"] if case_dir else None
+    if path is None or not path.is_file():
+        raise ReferenceUnavailable(f"terrain {terrain['path']} not fetched; run scripts/fetch_inputs.py")
+    hdr, z = _read_asc(path)
+    cs = hdr["cellsize"]
+    j = int((x - hdr["xllcorner"]) // cs)
+    i = int(hdr["nrows"] - 1 - (y - hdr["yllcorner"]) // cs)
+    return float(z[i, j])
+
+
+def _probe(manifest: dict[str, Any], pid: str) -> dict[str, Any]:
+    for p in (manifest.get("simulation") or {}).get("probes") or []:
+        if p["id"] == pid:
+            return p
+    raise ValueError(f"probe {pid!r} not declared in manifest")
+
+
+def _series_at(df: pd.DataFrame, x: float, y: float, col: str) -> tuple[np.ndarray, np.ndarray]:
+    """Time series at the single cell nearest (x, y).
+
+    A probe on a cell face is equidistant from two (or four) cells; ties are
+    broken towards the smallest x, then the smallest y, so depth and bed always
+    come from the same cell.
+    """
+    cells = df[["x", "y"]].drop_duplicates().to_numpy(dtype=float)
+    d2 = (cells[:, 0] - x) ** 2 + (cells[:, 1] - y) ** 2
+    tied = cells[np.isclose(d2, d2.min(), rtol=1e-12, atol=1e-12)]
+    cx, cy = sorted(map(tuple, tied))[0]
+    sub = df[np.isclose(df["x"].to_numpy(dtype=float), cx) & np.isclose(df["y"].to_numpy(dtype=float), cy)]
+    sub = sub.sort_values("t").drop_duplicates("t")
+    return sub["t"].to_numpy(dtype=float), sub[col].to_numpy(dtype=float)
+
+
+def _expected_state_value(manifest: dict[str, Any], state: dict[str, Any], df: pd.DataFrame) -> float:
+    var = state["variable"]
+    t_target = float(state.get("time", df["t"].max()))
+    if var == "volume":
+        times = np.unique(df["t"].to_numpy(dtype=float))
+        t_use = times[np.argmin(np.abs(times - t_target))]
+        sl = df[np.isclose(df["t"].to_numpy(dtype=float), t_use)]
+        return float(np.nansum(sl["h"].to_numpy(dtype=float)) * _estimate_cell_measure(sl))
+    if var in ("h+z", "h"):
+        values = []
+        for pid in str(state.get("where", "")).split(","):
+            p = _probe(manifest, pid.strip())
+            t, h = _series_at(df, p["x"], p.get("y", 0.0), "h")
+            z = 0.0
+            if var == "h+z":
+                if "z" in df.columns and df["z"].notna().any():
+                    # the solver's own bed at the cell holding the probe
+                    z = float(np.nanmean(_series_at(df, p["x"], p.get("y", 0.0), "z")[1]))
+                else:
+                    z = _bed_at(manifest, p["x"], p.get("y", 0.0))
+            if "time" in state:
+                values.append(float(np.interp(t_target, t, h)) + z)
+            else:
+                values.append(float(np.max(h)) + z)
+        # worst deviation across the listed probes
+        return max(values, key=lambda v: abs(v - float(state["value"])))
+    raise ValueError(f"expected-state variable {var!r} not supported")
+
+
+def _score_expected_states(manifest: dict[str, Any], results_path: Path) -> tuple[list[dict], None, bool]:
+    ref = manifest["reference"]
+    states = {s["id"]: s for s in ref["expected_states"]}
+    df = read_results_parquet(results_path)
+    rows = []
+    for c in manifest["scoring"]["criteria"]:
+        if c["metric"] != "expected_state_error":
+            rows.append(_result_row(c, float("nan"), "only expected_state_error criteria gate an inter-comparison case"))
+            continue
+        st = states[c["against"]]
+        got = _expected_state_value(manifest, st, df)
+        expected = float(st["value"])
+        units = c["threshold"].get("units", "")
+        observed = 100.0 * (got - expected) / expected if units == "%" else got - expected
+        rows.append(_result_row(c, observed, f"{st['id']}: simulated {got:.6g} vs expected {expected:.6g} {st['units']}"))
+    return rows, None, _passed(rows)
+
+
+# ── Track A validation: measured gauges ─────────────────────────────────────
+
+
+def _score_measured(manifest: dict[str, Any], results_path: Path) -> tuple[list[dict], None, bool]:
+    ref = manifest["reference"]
+    case_dir = _case_dir(manifest)
+    path = case_dir / ref["data_path"] if case_dir else None
+    if path is None or not path.is_file():
+        raise ReferenceUnavailable(
+            f"{manifest['test_id']}: measured reference {ref['data_path']} is not available "
+            f"(availability: {ref.get('availability', 'unknown')})"
+        )
+    meas = pd.read_parquet(path)  # columns: t, gauge, and measured variables
+    df = read_results_parquet(results_path)
+    probe_map = ref.get("probe_map") or {}
+    rows = []
+    for c in manifest["scoring"]["criteria"]:
+        var = c.get("variable", "h")
+        errs = []
+        for p in (manifest.get("simulation") or {}).get("probes") or []:
+            gauge = probe_map.get(p["id"], p["id"])
+            m = meas[meas["gauge"] == gauge].sort_values("t")
+            if m.empty or var not in m.columns:
+                continue
+            ts, vs = _series_at(df, p["x"], p.get("y", 0.0), var)
+            sim_on_meas = np.interp(m["t"].to_numpy(float), ts, vs)
+            obs = m[var].to_numpy(float)
+            if c["metric"] == "NSE":
+                errs.append(1.0 - np.sum((sim_on_meas - obs) ** 2) / np.sum((obs - obs.mean()) ** 2))
+            elif c["metric"] in ("peak_error", "relative_peak"):
+                errs.append(100.0 * (sim_on_meas.max() - obs.max()) / obs.max())
+            elif c["metric"] == "arrival_time_error":
+                thr = 0.05 * obs.max()
+                errs.append(float(m["t"].to_numpy(float)[np.argmax(sim_on_meas > thr)] - m["t"].to_numpy(float)[np.argmax(obs > thr)]))
+        if not errs:
+            rows.append(_result_row(c, float("nan"), "no gauge matched a declared probe"))
+            continue
+        worst = min(errs) if c["metric"] == "NSE" else max(errs, key=abs)
+        rows.append(_result_row(c, float(worst), f"worst of {len(errs)} gauges"))
+    return rows, None, _passed(rows)
+
+
+def _passed(rows: list[dict[str, Any]]) -> bool:
+    gating = [r for r in rows if r["gating"]]
+    return all(r["passed"] for r in (gating or rows))
+
+
+_CLASS_CLAIM = {
+    "verification_analytic": "A-V",
+    "verification_manufactured": "A-V",
+    "validation_lab": "A-L",
+    "validation_field": "A-F",
+    "validation_coupled": "A-L",
+    "intercomparison": "A-C",
+}
+
+
+def certification_claims(manifest: dict[str, Any], passed: bool) -> list[str]:
+    """Claims a passing card may carry, derived from the case's class and tolerance."""
+    if not passed:
+        return []
+    if manifest.get("track") == "A":
+        claim = _CLASS_CLAIM.get(str(manifest.get("test_class")))
+        return [claim] if claim else []
+    pct = [
+        float(c["threshold"]["value"])
+        for c in manifest["scoring"]["criteria"]
+        if c.get("gating") and c["threshold"].get("units") == "%"
+    ]
+    return [f"B-{max(pct):g}%"] if pct else ["B"]
 
 
 def score_case(
@@ -382,8 +637,14 @@ def score_case(
     solver: dict[str, str] | None = None,
     catalog_version: str = "0.1.0",
     key_id: str = "benchmark1d2d-dev",
+    reference_results: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Score one catalog case and return a signed scorecard dict."""
+    """Score one catalog case and return a signed scorecard dict.
+
+    Raises :class:`ReferenceUnavailable` when the case's reference (pinned-engine
+    results, measured gauges, fetched terrain) is missing: such a case is not
+    scored rather than passed.
+    """
     results_path = Path(results_path)
     ref_kind = (manifest.get("reference") or {}).get("kind")
     if ref_kind == "analytic":
@@ -392,14 +653,18 @@ def score_case(
             results_path,
             [Path(p) for p in refinement_results] if refinement_results else None,
         )
+    elif ref_kind == "pinned_engine":
+        criteria_results, convergence_result, passed = _score_parity(
+            manifest, results_path, Path(reference_results) if reference_results else None
+        )
+    elif ref_kind == "intercomparison":
+        criteria_results, convergence_result, passed = _score_expected_states(manifest, results_path)
+    elif ref_kind == "measured":
+        criteria_results, convergence_result, passed = _score_measured(manifest, results_path)
     else:
-        criteria_results, convergence_result, passed = _score_parity_stub(manifest, results_path)
+        raise ValueError(f"unknown reference kind {ref_kind!r}")
 
-    claims: list[str] = []
-    if passed and manifest.get("track") == "A":
-        claims.append("A-V")
-    elif passed and manifest.get("track") == "B":
-        claims.append("B-1%")
+    claims = certification_claims(manifest, passed)
 
     return build_scorecard(
         test_id=manifest["test_id"],

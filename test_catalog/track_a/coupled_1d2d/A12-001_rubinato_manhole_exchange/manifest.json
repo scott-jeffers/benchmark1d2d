@@ -1,12 +1,12 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A12-001_rubinato_manhole_exchange",
   "test_class": "validation_coupled",
   "title": "Rubinato manhole exchange",
-  "description": "Laboratory sewer/surface exchange through a manhole; validate 1D\u20132D coupling exchange equations (Rubinato et al. 2017).",
+  "description": "Laboratory sewer/surface exchange through a manhole; validate 1D–2D coupling exchange equations (Rubinato et al. 2017).",
   "physics": {
     "dimensionality": "1D2D",
     "flow_type": "mixed",
@@ -29,7 +29,7 @@
           "Martins, R.",
           "Kesserwani, G.",
           "Leandro, J.",
-          "Djordjevi\u0107, S.",
+          "Djordjević, S.",
           "Shucksmith, J."
         ],
         "year": 2017,
@@ -37,7 +37,7 @@
         "doi": "10.1016/j.jhydrol.2017.06.024"
       }
     ],
-    "license": "Unlicense",
+    "license": "TBD-confirm",
     "adaptation_notes": "Draft: exchange hydrographs to be digitized from publication / obtained from authors."
   },
   "inputs": [
@@ -45,7 +45,10 @@
       "path": "inputs/coupling.json",
       "role": "coupling",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "pending": {
+        "reason": "Manhole/surface exchange rig geometry and measured exchange flows from Rubinato et al. (2017); request data from the University of Sheffield authors.",
+        "obtain_from": "University of Sheffield (Shucksmith group)"
+      }
     }
   ],
   "reference": {
@@ -57,7 +60,8 @@
       "units": "1",
       "notes": "Draft placeholder uncertainty; replace with published gauge error."
     },
-    "include_measurement_uncertainty": true
+    "include_measurement_uncertainty": true,
+    "availability": "request_from_authors"
   },
   "simulation": {
     "t_end": 300.0,
@@ -79,7 +83,7 @@
           "units": "1"
         },
         "gating": true,
-        "rationale": "NSE on manhole exchange discharge \u2265 0.7 vs laboratory."
+        "rationale": "NSE on manhole exchange discharge ≥ 0.7 vs laboratory."
       },
       {
         "id": "surface_h",

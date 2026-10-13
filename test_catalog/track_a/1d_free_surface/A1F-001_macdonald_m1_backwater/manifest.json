@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "test_id": "A1F-001_macdonald_m1_backwater",
   "case_version": "1.0.0",
   "status": "candidate",
@@ -10,8 +10,14 @@
   "physics": {
     "dimensionality": "1D",
     "flow_type": "free_surface",
-    "governing_equations": ["saint_venant_steady"],
-    "phenomena": ["backwater", "subcritical", "friction"]
+    "governing_equations": [
+      "saint_venant_steady"
+    ],
+    "phenomena": [
+      "backwater",
+      "subcritical",
+      "friction"
+    ]
   },
   "provenance": {
     "citations": [
@@ -32,9 +38,9 @@
   "inputs": [
     {
       "path": "inputs/params.json",
-      "role": "parameters",
+      "role": "case_parameters",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "0697fa8675af13a380cbba20c2484305e1d52c4d768b4dc5d87bef52b56fdc5d"
     }
   ],
   "reference": {
@@ -51,9 +57,18 @@
   "simulation": {
     "t_end": 3600,
     "output_interval": 60,
-    "required_outputs": ["h", "u", "Q"],
+    "required_outputs": [
+      "h",
+      "u",
+      "Q"
+    ],
     "mesh_refinement": {
-      "levels": [40, 20, 10, 5],
+      "levels": [
+        40,
+        20,
+        10,
+        5
+      ],
       "fixed_courant": 0.5
     }
   },
@@ -63,7 +78,11 @@
         "id": "L1_h",
         "metric": "L1",
         "variable": "h",
-        "threshold": {"op": "abs<=", "value": 0.01, "units": "m"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.01,
+          "units": "m"
+        },
         "gating": true,
         "rationale": "Steady depth L1 error on finest mesh against MacDonald M1 profile."
       },
@@ -71,7 +90,11 @@
         "id": "mass",
         "metric": "global_mass_error",
         "variable": "volume",
-        "threshold": {"op": "abs<=", "value": 0.1, "units": "%"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "%"
+        },
         "gating": true,
         "rationale": "Conservation property at steady state."
       }

@@ -41,3 +41,15 @@ data/raw/
 # Pinned SWMM binaries (hashes in SHA256SUMS; fetch via EPA release)
 reference_engines/**/bin/
 reference_engines/**/vendor/
+
+# Inputs fetched by scripts/fetch_inputs.py (verified by SHA-256; see manifest source blocks)
+test_catalog/**/inputs/*.asc
+
+# Track B model fetched by hash (see manifest source)
+test_catalog/track_b/tier_pr/B-RTC-001_pump_station_rules/inputs/network.inp
+
+# Census checkpoints and WNTR scratch files
+*.partial.parquet
+temp.inp
+temp.bin
+temp.rpt

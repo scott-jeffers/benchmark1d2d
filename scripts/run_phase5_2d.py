@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-"""Phase 5 gate: score Thacker (and optionally all A2A cases) with two solvers.
+"""Scorer self-test on the 2D analytic cases using the fixtures in ``solve_2d.py``.
 
-Independent MVP solvers (see ``examples/demo_solver/solve_2d.py``):
-
-1. **exact** — analytic sample writer (machine-zero L1 vs. reference).
-2. **perturbed** — deliberately O(dx)-diffused exact field that still converges
-   under mesh refinement (MVP stand-in for a first-order 2D FV scheme).
-
-Primary gate: A2A-001 Thacker with mesh refinement + convergence evidence for
-both solvers. MacDonald 2D and oblique jump are scored with the exact writer.
+This exercises the convergence and scoring machinery only: the "exact" fixture
+must be rejected (round-off errors on every mesh) and the "perturbed" fixture
+must show first-order convergence. Real 2D solver results come from
+``scripts/run_demo_2d.py``.
 """
 
 from __future__ import annotations

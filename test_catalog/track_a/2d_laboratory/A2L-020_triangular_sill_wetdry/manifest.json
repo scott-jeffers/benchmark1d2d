@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
@@ -23,7 +23,7 @@
     "citations": [
       {
         "authors": [
-          "Soares-Fraz\u00e3o, S."
+          "Soares-Frazão, S."
         ],
         "year": 2007,
         "title": "Experiments of dam-break wave over a triangular bottom sill",
@@ -37,8 +37,11 @@
     {
       "path": "inputs/bathymetry.tif",
       "role": "terrain",
-      "format": "geotiff",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "format": "tif",
+      "pending": {
+        "reason": "Triangular-sill flume geometry (Soares-Frazão 2007, CADAM); terms not confirmed.",
+        "obtain_from": "Université catholique de Louvain (Soares-Frazão)"
+      }
     }
   ],
   "reference": {
@@ -50,7 +53,8 @@
       "units": "1",
       "notes": "Draft placeholder uncertainty; replace with published gauge error."
     },
-    "include_measurement_uncertainty": true
+    "include_measurement_uncertainty": true,
+    "availability": "pending_license"
   },
   "simulation": {
     "t_end": 30.0,
@@ -73,7 +77,7 @@
           "units": "1"
         },
         "gating": true,
-        "rationale": "NSE vs laboratory gauges \u2265 0.6 within measurement uncertainty."
+        "rationale": "NSE vs laboratory gauges ≥ 0.6 within measurement uncertainty."
       },
       {
         "id": "front",

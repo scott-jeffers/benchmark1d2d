@@ -219,52 +219,94 @@ def solve_dam_break(
 
 
 def solve_macdonald(dx: float, t_end: float = 3600.0) -> dict[str, np.ndarray]:
-    from references.macdonald import M1_PARAMS, depth_profile
+    """Steady GVF solved numerically: Heun (RK2) integration upstream from x = L.
 
-    L = float(M1_PARAMS["L"])
-    B = float(M1_PARAMS["B"])
-    Q = float(M1_PARAMS["Q"])
-    g = float(M1_PARAMS["g"])
+    Integrates ``dh/dx = (S0(x) - Sf(h)) / (1 - Fr(h)^2)`` with the manufactured
+    bed slope ``S0`` and the exact depth imposed only at the downstream
+    boundary (subcritical control). Everything else is computed, so the error
+    against MacDonald's profile is genuine truncation error (design order 2).
+    """
+    from references.macdonald import M1_PARAMS, _dh_dx_m1, bed_slope_from_depth, depth_profile
+
+    L, B, Q = float(M1_PARAMS["L"]), float(M1_PARAMS["B"]), float(M1_PARAMS["Q"])
+    n, g = float(M1_PARAMS["n_manning"]), float(M1_PARAMS["g"])
     nx = max(int(round(L / dx)), 2)
-    dx = L / nx
-    x = (np.arange(nx) + 0.5) * dx
-    h = depth_profile(x, case="m1", g=g)
+    x = np.linspace(0.0, L, nx + 1)
+
+    def s0(xx: float) -> float:
+        hh = depth_profile(np.array([xx]), g=g)
+        return float(-bed_slope_from_depth(hh, _dh_dx_m1(np.array([xx]), g=g), Q=Q, B=B, n_manning=n, g=g)[0])
+
+    def rhs(xx: float, hh: float) -> float:
+        sf = n**2 * Q**2 / (B**2 * hh ** (10.0 / 3.0))
+        fr2 = Q**2 / (g * B**2 * hh**3)
+        return (s0(xx) - sf) / (1.0 - fr2)
+
+    h = np.empty_like(x)
+    h[-1] = float(depth_profile(np.array([L]), g=g)[0])  # downstream control
+    step = x[1] - x[0]
+    for i in range(nx, 0, -1):  # march upstream (subcritical)
+        k1 = rhs(x[i], h[i])
+        k2 = rhs(x[i - 1], h[i] - step * k1)
+        h[i - 1] = h[i] - 0.5 * step * (k1 + k2)
     u = Q / (B * h)
-    n = len(x)
-    nan = np.full(n, np.nan)
-    return {
-        "t": np.full(n, t_end),
-        "x": x,
-        "y": nan.copy(),
-        "h": h,
-        "u": u,
-        "v": nan.copy(),
-        "p": nan.copy(),
-        "Q": np.full(n, Q),
-    }
+    m = len(x)
+    nan = np.full(m, np.nan)
+    return {"t": np.full(m, t_end), "x": x, "y": nan.copy(), "h": h, "u": u, "v": nan.copy(), "p": nan.copy(), "Q": np.full(m, Q)}
 
 
-def solve_joukowsky(dx: float, t_end: float | None = None) -> dict[str, np.ndarray]:
-    from references.joukowsky import pressure_wave
+def solve_joukowsky(
+    dx: float,
+    t_end: float | None = None,
+    L: float = 1000.0,
+    a: float = 1000.0,
+    V0: float = 1.0,
+    rho: float = 1000.0,
+    p0: float = 0.0,
+    courant: float = 0.5,
+    g: float = 9.81,
+) -> dict[str, np.ndarray]:
+    """Frictionless water hammer by the method of characteristics.
 
-    L, a, V0, rho, p0 = 1000.0, 1000.0, 1.0, 1000.0, 0.0
-    if t_end is None:
-        t_end = 0.5
+    Fixed grid, Courant number 0.5, linear space-line interpolation at the
+    feet of the characteristics (Wylie & Streeter 1993, ch. 3). Reservoir at
+    x = 0 holds the initial head; the valve at x = L is shut at t = 0.
+    The interpolation smears the wave front, as any fixed-grid scheme does,
+    so the error is genuine and shrinks with dx.
+    """
+    t_end = 0.5 if t_end is None else float(t_end)
     nx = max(int(round(L / dx)), 2)
-    dx = L / nx
-    x = (np.arange(nx) + 0.5) * dx
-    wave = pressure_wave(x, t_end, L=L, a=a, V0=V0, rho=rho, p0=p0)
-    n = len(x)
-    nan = np.full(n, np.nan)
-    return {
-        "t": np.full(n, t_end),
-        "x": x,
-        "y": nan.copy(),
-        "h": nan.copy(),
-        "u": wave["u"],
-        "v": nan.copy(),
-        "p": wave["p"],
-    }
+    x = np.linspace(0.0, L, nx + 1)
+    step = x[1] - x[0]
+    dt = courant * step / a
+    H0 = p0 / (rho * g)
+    H = np.full_like(x, H0)
+    V = np.full_like(x, V0)
+    B = a / g
+    t = 0.0
+    while t < t_end - 1e-12:
+        dt_use = min(dt, t_end - t)
+        th = a * dt_use / step
+        # feet of C+ (from the left) and C- (from the right) characteristics
+        HR = H[1:] + th * (H[:-1] - H[1:])   # at x_i - a dt, for nodes 1..N
+        VR = V[1:] + th * (V[:-1] - V[1:])
+        HS = H[:-1] + th * (H[1:] - H[:-1])  # at x_i + a dt, for nodes 0..N-1
+        VS = V[:-1] + th * (V[1:] - V[:-1])
+        Cp = HR + B * VR                      # C+ invariant arriving at nodes 1..N
+        Cm = HS - B * VS                      # C- invariant arriving at nodes 0..N-1
+        Hn = np.empty_like(H)
+        Vn = np.empty_like(V)
+        Hn[1:-1] = 0.5 * (Cp[:-1] + Cm[1:])
+        Vn[1:-1] = (Cp[:-1] - Cm[1:]) / (2.0 * B)
+        Hn[0] = H0                            # reservoir
+        Vn[0] = (H0 - Cm[0]) / B
+        Vn[-1] = 0.0                          # closed valve
+        Hn[-1] = Cp[-1]
+        H, V = Hn, Vn
+        t += dt_use
+    m = len(x)
+    nan = np.full(m, np.nan)
+    return {"t": np.full(m, t_end), "x": x, "y": nan.copy(), "h": nan.copy(), "u": V, "v": nan.copy(), "p": p0 + rho * g * (H - H0)}
 
 
 def _case_from_manifest(manifest: dict) -> str:
@@ -323,34 +365,16 @@ def run_case(
         t_end = 3600.0 if t_end is None else t_end
         cols = solve_macdonald(dx=dx, t_end=t_end)
     elif case == "joukowsky":
-        t_end = 0.5 if t_end is None else t_end
-        # Prefer exact analytic wave for demo pass.
-        if manifest:
-            p = ((manifest.get("reference") or {}).get("generator") or {}).get("parameters") or {}
-            from references.joukowsky import pressure_wave
-
-            L = float(p.get("L", 1000.0))
-            a = float(p.get("a", 1000.0))
-            V0 = float(p.get("V0", 1.0))
-            rho = float(p.get("rho", 1000.0))
-            p0 = float(p.get("p0", 0.0))
-            nx = max(int(round(L / dx)), 2)
-            dx_use = L / nx
-            x = (np.arange(nx) + 0.5) * dx_use
-            wave = pressure_wave(x, t_end, L=L, a=a, V0=V0, rho=rho, p0=p0)
-            n = len(x)
-            nan = np.full(n, np.nan)
-            cols = {
-                "t": np.full(n, t_end),
-                "x": x,
-                "y": nan.copy(),
-                "h": nan.copy(),
-                "u": wave["u"],
-                "v": nan.copy(),
-                "p": wave["p"],
-            }
-        else:
-            cols = solve_joukowsky(dx=dx, t_end=t_end)
+        p = params
+        cols = solve_joukowsky(
+            dx=dx,
+            t_end=0.5 if t_end is None else t_end,
+            L=float(p.get("L", 1000.0)),
+            a=float(p.get("a", 1000.0)),
+            V0=float(p.get("V0", 1.0)),
+            rho=float(p.get("rho", 1000.0)),
+            p0=float(p.get("p0", 0.0)),
+        )
     else:
         raise ValueError(f"unknown case {case!r}")
 

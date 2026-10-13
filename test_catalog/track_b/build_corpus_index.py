@@ -1,183 +1,167 @@
 #!/usr/bin/env python3
-"""Build Track B ``corpus_index.parquet`` from CSV rows or the PR-tier selection.
+"""Build the Track B corpus index and tier selections from HydroCouple.
 
-Tag vocabulary and provenance format are **federated** from HydroCouple
-``openswmm.engine.benchmarks`` (verified 2026-10-13):
+Reads a checkout of HydroCouple ``openswmm.engine.benchmarks`` (tags from each
+case's ``metadata.yaml``, licence and source from ``provenance.yaml``), hashes
+every ``model.inp``, joins the SWMM 5.2.4 census
+(``scripts/corpus_census.py``), and writes:
 
-- Tags: ``test_catalog/track_b/hydrocouple_tags.yaml`` (mirror of
-  ``harness/schemas/tags.yaml``)
-- Provenance: ``hydrocouple_provenance.schema.yaml``
-- Docs: ``HYDROCOUPLE_FEDERATION.md``
+- ``corpus_index.parquet`` — one row per model, pinned to the upstream commit
+- ``tier_pr/selection.json`` — fast PR gate
+- ``tier_nightly/selection.json`` — ~500 models, balanced across tags
+- ``tier_release/selection.json`` — every model that runs on SWMM 5.2.4 and
+  has a verified licence
 
-Models are not forked; ``scripts/fetch_track_b_models.py`` pulls by hash.
+Models are never forked: rows record the upstream URL at the pinned commit
+plus the SHA-256, and ``scripts/fetch_track_b_models.py`` downloads by hash.
+
+Usage::
+
+    python test_catalog/track_b/build_corpus_index.py --hydrocouple ../hc \\
+        --census test_catalog/track_b/corpus_census.parquet
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import subprocess
+from collections import Counter
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
 
 import pandas as pd
+import yaml
 
-# Columns required in corpus_index.parquet
-COLUMNS = (
-    "hash",
-    "tags",
-    "license",
-    "provenance_source",
-    "model_id",
-    "tier",
-    "path",
-)
-
-# Synthetic tier_pr seed rows (no large .inp files committed).
-SYNTHETIC_ROWS: list[dict[str, Any]] = [
-    {
-        "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "tags": ["extran", "surcharge", "backwater", "combined_sewer"],
-        "license": "Unlicense",
-        "provenance_source": "synthetic://benchmark1d2d/B-EXTRAN-001",
-        "model_id": "B-EXTRAN-001",
-        "tier": "tier_pr",
-        "path": "test_catalog/track_b/tier_pr/B-EXTRAN-001_extran_parity",
-    },
-    {
-        "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "tags": ["rtc", "pump", "storage"],
-        "license": "synthetic-internal",
-        "provenance_source": "synthetic://benchmark1d2d/B-RTC-001",
-        "model_id": "B-RTC-001",
-        "tier": "tier_pr",
-        "path": "test_catalog/track_b/tier_pr/B-RTC-001_rtc_rules",
-    },
-    {
-        "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "tags": ["weir", "orifice", "free_surface"],
-        "license": "synthetic-internal",
-        "provenance_source": "synthetic://benchmark1d2d/B-CONTROL-001",
-        "model_id": "B-CONTROL-001",
-        "tier": "tier_pr",
-        "path": "test_catalog/track_b/tier_pr/B-CONTROL-001_weir_orifice",
-    },
-    {
-        "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "tags": ["pressurized", "sanitary"],
-        "license": "synthetic-internal",
-        "provenance_source": "synthetic://benchmark1d2d/B-FORCEMAIN-001",
-        "model_id": "B-FORCEMAIN-001",
-        "tier": "tier_pr",
-        "path": "test_catalog/track_b/tier_pr/B-FORCEMAIN-001_forcemain",
-    },
-    {
-        "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "tags": ["storm", "quality"],
-        "license": "synthetic-internal",
-        "provenance_source": "synthetic://benchmark1d2d/B-QUALITY-001",
-        "model_id": "B-QUALITY-001",
-        "tier": "tier_pr",
-        "path": "test_catalog/track_b/tier_pr/B-QUALITY-001_washoff",
-    },
-]
-
-SCHEMA_DOC = {
-    "title": "benchmark1d2d Track B corpus_index",
-    "description": (
-        "Index of Track B models. Tag vocabulary and provenance format are "
-        "HydroCouple-compatible best-effort. "
-        "TODO(verify against openswmm.engine.benchmarks)"
-    ),
-    "columns": {
-        "hash": {"type": "string", "description": "SHA-256 of primary .inp (or placeholder)"},
-        "tags": {
-            "type": "list[string]|string",
-            "description": "HydroCouple-style phenomenon / facility tags",
-        },
-        "license": {"type": "string", "description": "DATA_LICENSES.md license id"},
-        "provenance_source": {
-            "type": "string",
-            "description": "org/repo, URL, or synthetic://benchmark1d2d/<id>",
-        },
-        "model_id": {"type": "string", "description": "Stable model / case id"},
-        "tier": {
-            "type": "string",
-            "enum": ["tier_pr", "tier_nightly", "tier_release"],
-        },
-        "path": {"type": "string", "description": "Repo-relative case or corpus path"},
-    },
-}
+HERE = Path(__file__).resolve().parent
+UPSTREAM = "HydroCouple/openswmm.engine.benchmarks"
+RAW = "https://raw.githubusercontent.com/" + UPSTREAM + "/{commit}/corpus/{model_id}/model.inp"
+LICENSE_MAP = {"public-domain": "Unlicense", "unverified": "TBD-confirm"}
+NIGHTLY_TARGET = 500
+NIGHTLY_MAX_RUNTIME_S = 10.0
+PR_MAX_RUNTIME_S = 5.0
+# Catalog-level Track B cases (in this repo) that always gate PRs.
+CATALOG_PR_CASES = ["B-EXTRAN-001", "B-RTC-001", "B-EPANET-001"]
 
 
-def _normalize_tags(tags: Any) -> list[str]:
-    if tags is None:
-        return []
-    if isinstance(tags, str):
-        # Allow comma- or semicolon-separated strings from CSV.
-        parts = [p.strip() for p in tags.replace(";", ",").split(",")]
-        return [p for p in parts if p]
-    if isinstance(tags, (list, tuple)):
-        return [str(t).strip() for t in tags if str(t).strip()]
-    return [str(tags)]
+def upstream_commit(checkout: Path) -> str:
+    return subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
 
 
-def rows_to_frame(rows: Iterable[Mapping[str, Any]]) -> pd.DataFrame:
-    records = []
-    for row in rows:
-        rec = {c: row.get(c) for c in COLUMNS}
-        rec["tags"] = _normalize_tags(rec.get("tags"))
-        records.append(rec)
-    df = pd.DataFrame.from_records(records, columns=list(COLUMNS))
-    return df
+def scan(checkout: Path, commit: str) -> pd.DataFrame:
+    rows = []
+    for inp in sorted((checkout / "corpus").glob("*/*/model.inp")):
+        case = inp.parent
+        if case.parent.name.startswith("_"):
+            continue
+        meta = yaml.safe_load((case / "metadata.yaml").read_text(encoding="utf-8")) or {}
+        prov = yaml.safe_load((case / "provenance.yaml").read_text(encoding="utf-8")) or {}
+        model_id = f"{case.parent.name}/{case.name}"
+        rows.append(
+            {
+                "model_id": model_id,
+                "collection": case.parent.name,
+                "title": str(meta.get("title") or "").strip(),
+                "hash": hashlib.sha256(inp.read_bytes()).hexdigest(),
+                "tags": sorted(meta.get("tags") or []),
+                "units": meta.get("units"),
+                "routing": meta.get("routing"),
+                "size_class": meta.get("size_class"),
+                "upstream_runtime_class": meta.get("runtime_class"),
+                "license": LICENSE_MAP.get(str(prov.get("license")), str(prov.get("license"))),
+                "upstream_license": str(prov.get("license")),
+                "provenance_source": str(prov.get("source") or ""),
+                "url": RAW.format(commit=commit, model_id=model_id),
+                "upstream_commit": commit,
+                "path": f"corpus/{model_id}/model.inp",
+            }
+        )
+    return pd.DataFrame(rows)
 
 
-def load_rows_from_csv(csv_path: Path) -> list[dict[str, Any]]:
-    df = pd.read_csv(csv_path)
-    return df.to_dict(orient="records")
+def balanced_pick(df: pd.DataFrame, target: int, must: list[str]) -> list[str]:
+    """Greedy tag-coverage pick: take models that add the rarest uncovered tags first."""
+    chosen = list(dict.fromkeys(m for m in must if m in set(df["model_id"])))
+    counts: Counter[str] = Counter()
+    for tags in df[df["model_id"].isin(chosen)]["tags"]:
+        counts.update(tags)
+    pool = df[~df["model_id"].isin(chosen)].sort_values(["runtime_s", "model_id"])
+    tag_freq = Counter(t for tags in df["tags"] for t in tags)
+    while len(chosen) < target and not pool.empty:
+        scores = pool["tags"].apply(lambda ts: sum(1.0 / (1 + counts[t]) / tag_freq[t] ** 0.5 for t in ts))
+        best = scores.idxmax()
+        row = pool.loc[best]
+        chosen.append(row["model_id"])
+        counts.update(row["tags"])
+        pool = pool.drop(index=best)
+    return chosen
 
 
-def build_corpus_index(
-    rows: Sequence[Mapping[str, Any]] | None = None,
-    *,
-    out_dir: Path | None = None,
-) -> Path:
-    """Write ``corpus_index.parquet`` (+ schema JSON) under ``out_dir``."""
-    out_dir = Path(out_dir) if out_dir is not None else Path(__file__).resolve().parent
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    source_rows: Sequence[Mapping[str, Any]] = list(rows) if rows is not None else SYNTHETIC_ROWS
-    df = rows_to_frame(source_rows)
-
-    parquet_path = out_dir / "corpus_index.parquet"
-    # Store tags as JSON strings for portable Parquet (list support varies).
-    store = df.copy()
-    store["tags"] = store["tags"].map(lambda t: json.dumps(list(t)))
-    store.to_parquet(parquet_path, index=False, engine="pyarrow")
-
-    schema_path = out_dir / "corpus_index.schema.json"
-    schema_path.write_text(json.dumps(SCHEMA_DOC, indent=2) + "\n", encoding="utf-8")
-    return parquet_path
+def write_selection(tier: str, payload: dict) -> None:
+    path = HERE / f"tier_{tier}" / "selection.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--csv",
-        type=Path,
-        default=None,
-        help="Optional CSV with columns: hash,tags,license,provenance_source,model_id,tier,path",
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--hydrocouple", type=Path, required=True, help="checkout of openswmm.engine.benchmarks")
+    ap.add_argument("--census", type=Path, default=HERE / "corpus_census.parquet")
+    args = ap.parse_args()
+
+    commit = upstream_commit(args.hydrocouple)
+    df = scan(args.hydrocouple, commit)
+    census = pd.read_parquet(args.census)
+    df = df.merge(
+        census[["model_id", "status", "runtime_s", "error_codes", "continuity_runoff_pct", "continuity_routing_pct", "engine_version"]],
+        on="model_id",
+        how="left",
     )
-    parser.add_argument(
-        "--out-dir",
-        type=Path,
-        default=Path(__file__).resolve().parent,
-        help="Directory for corpus_index.parquet (default: this folder)",
-    )
-    args = parser.parse_args(argv)
+    df["status"] = df["status"].fillna("not_run")
+    runnable = df[(df["status"] == "ran") & (df["license"] != "TBD-confirm")]
 
-    rows = load_rows_from_csv(args.csv) if args.csv else None
-    path = build_corpus_index(rows, out_dir=args.out_dir)
-    print(f"Wrote {path}")
+    old_pr = json.loads((HERE / "tier_pr" / "selection.json").read_text(encoding="utf-8")).get("model_ids", [])
+    seed = [m for m in old_pr if "/" in m]
+    fast = runnable[runnable["runtime_s"] <= PR_MAX_RUNTIME_S]
+    pr_corpus = [m for m in seed if m in set(fast["model_id"])]
+    rtc_fast = fast[fast["tags"].apply(lambda t: "controls" in t)].sort_values("runtime_s")["model_id"].tolist()
+    for m in rtc_fast:
+        if sum(1 for x in pr_corpus if x in set(rtc_fast)) >= 5:
+            break
+        if m not in pr_corpus:
+            pr_corpus.append(m)
+    dropped = [m for m in seed if m not in pr_corpus]
+
+    nightly_pool = runnable[runnable["runtime_s"] <= NIGHTLY_MAX_RUNTIME_S]
+    nightly = balanced_pick(nightly_pool, NIGHTLY_TARGET, pr_corpus)
+    release = runnable["model_id"].tolist()
+
+    df["tier"] = "none"
+    df.loc[df["model_id"].isin(release), "tier"] = "tier_release"
+    df.loc[df["model_id"].isin(nightly), "tier"] = "tier_nightly"
+    df.loc[df["model_id"].isin(pr_corpus), "tier"] = "tier_pr"
+    df.to_parquet(HERE / "corpus_index.parquet", index=False)
+
+    common = {"upstream": f"https://github.com/{UPSTREAM}", "upstream_commit": commit,
+              "engine": "EPA SWMM", "engine_version": str(census["engine_version"].iloc[0])}
+    write_selection("pr", {"tier": "pr", **common,
+                           "description": "Fast PR gate: catalog Track B cases plus corpus models that run on SWMM 5.2.4 in ≤ 5 s, including ≥ 5 control-rule (RTC) models.",
+                           "catalog_cases": CATALOG_PR_CASES, "count": len(pr_corpus), "model_ids": pr_corpus,
+                           "dropped_from_previous": dropped})
+    write_selection("nightly", {"tier": "nightly", **common,
+                                "description": f"~{NIGHTLY_TARGET} corpus models, ≤ {NIGHTLY_MAX_RUNTIME_S:g} s each on SWMM 5.2.4, picked greedily to cover every tag.",
+                                "count": len(nightly), "model_ids": nightly})
+    write_selection("release", {"tier": "release", **common,
+                                "description": "Every corpus model that runs on SWMM 5.2.4 and carries a verified licence.",
+                                "count": len(release), "model_ids": release})
+    tag_cov = Counter(t for tags in df[df["model_id"].isin(nightly)]["tags"] for t in tags)
+    all_tags = Counter(t for tags in df["tags"] for t in tags)
+    print(json.dumps({
+        "commit": commit, "models": len(df), "status": df["status"].value_counts().to_dict(),
+        "licence": df["license"].value_counts().to_dict(),
+        "pr": len(pr_corpus), "pr_dropped": dropped, "nightly": len(nightly), "release": len(release),
+        "nightly_tags_missing": sorted(set(all_tags) - set(tag_cov)),
+    }, indent=1))
     return 0
 
 

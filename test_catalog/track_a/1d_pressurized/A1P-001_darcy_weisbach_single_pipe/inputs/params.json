@@ -1,0 +1,18 @@
+{
+  "problem": "Steady flow from a reservoir through a single horizontal pipe with Darcy–Weisbach friction (fixed f).",
+  "pipe": {
+    "L_m": 1000.0,
+    "D_m": 0.3,
+    "f": 0.02
+  },
+  "boundaries": {
+    "upstream": {
+      "type": "reservoir",
+      "head_m": 100.0
+    },
+    "downstream": {
+      "type": "velocity",
+      "V_ms": 1.0
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "problem": "Instantaneous dam break onto a dry, horizontal, frictionless bed.",
+  "domain": {
+    "xmin": 0.0,
+    "xmax": 2000.0
+  },
+  "initial_condition": {
+    "h_left_m": 1.0,
+    "h_right_m": 0.0,
+    "dam_x_m": 1000.0,
+    "u": 0.0
+  },
+  "friction": "none",
+  "bed": "horizontal",
+  "boundaries": "transmissive"
+}

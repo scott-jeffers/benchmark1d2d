@@ -1,30 +1,12 @@
-# B-EXTRAN-001 — EXTRAN parity (SWMM 5.2.4)
+# B-EXTRAN-001 — EXTRAN Manual Example 1 parity
 
-## Physics
+The first example of the EXTRAN user's manual (Roesner, Aldrich and Dickinson, 1988), as carried in the OWA/EPA SWMM 5 regression models:
+a dendritic sewer network with surcharge, driven by three inflow hydrographs and routed by dynamic wave for 8 hours.
 
-Track B industry-parity case. Candidate solvers are scored against a pinned
-EPA SWMM 5.2.4 binary on an EXTRAN-style 1D sewer network (free-surface /
-pressurized transitions, surcharge, and network routing). Ground truth is
-**not** analytic — only engine-to-engine agreement within the stated band.
+The reference is EPA SWMM 5.2.4 (`swmm-toolkit` build; the official Windows binaries are checked against it in CI). A candidate passes when
+every node's peak depth and every link's conveyed volume are within 1 % of the reference.
 
-## Citation
+Source: HydroCouple `openswmm.engine.benchmarks`, `owa-extran/extran1`, commit `63eb8bc5b4e741c82195ed65c4d7d146b86da1cc`. Regenerate the reference with
+`python scripts/make_reference.py B-EXTRAN-001`.
 
-Roesner, L. A., Aldrich, J. A., and Dickinson, R. E. (1988).
-*Storm Water Management Model User's Manual, Version 4: EXTRAN Addendum*.
-EPA/600/3-88/001b, U.S. EPA, Athens, GA.
-
-Pinned engine: SWMM 5.2.4 (`binary_sha256` placeholder until the release
-binary is recorded).
-
-## License
-
-`Unlicense` — see `DATA_LICENSES.md` (1729-SWMM5-Models / openswmm corpora).
-
-## Pitfalls
-
-- Do not interpret a Track B fail as a physics proof of incorrectness; it only
-  shows difference from SWMM 5.2.4.
-- Routing options, surcharge methods, and time-step controls must match the
-  pinned engine settings recorded with the fixture.
-- Replace the empty `network.inp` and binary hash placeholders before
-  promoting beyond `candidate`.
+A Track B fail shows a difference from SWMM 5.2.4, not a physics error.

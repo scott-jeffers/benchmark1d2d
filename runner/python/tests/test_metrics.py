@@ -40,7 +40,8 @@ def test_l1_known_arrays():
     ref = np.array([1.0, 1.0, 1.0])
     # mean(|diff|) = mean([0, 1, 2]) = 1
     assert_allclose(L1(sim, ref), 1.0)
-    assert_allclose(L1(sim, ref, dx=2.0), 2.0)
+    # dx is ignored: norms are domain-normalised so observed orders are not inflated
+    assert_allclose(L1(sim, ref, dx=2.0), 1.0)
 
 
 def test_l2_and_linf():

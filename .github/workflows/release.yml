@@ -34,7 +34,7 @@ jobs:
           python -m pip install -e ".[dev]"
 
       - name: Validate catalog before release
-        run: python tools/validate_catalog.py --allow-placeholder-hash --self-test
+        run: python tools/validate_catalog.py --self-test
 
       - name: Create tag
         if: ${{ inputs.dry_run == false }}

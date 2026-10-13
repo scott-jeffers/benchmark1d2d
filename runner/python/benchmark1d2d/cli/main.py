@@ -82,18 +82,24 @@ def _cmd_score(args: argparse.Namespace) -> int:
     if args.refinement:
         refinement = list(args.refinement)
 
-    card = score_case(
-        manifest,
-        args.results,
-        refinement_results=refinement,
-        timestamp=args.timestamp,
-        private_key=private_key,
-        solver={
-            "name": args.solver_name or "demo",
-            "version": args.solver_version or "0.1.0",
-            "adapter": args.adapter or "generic_parquet",
-        },
-    )
+    from benchmark1d2d.scoring.scorer import ReferenceUnavailable
+
+    try:
+        card = score_case(
+            manifest,
+            args.results,
+            refinement_results=refinement,
+            timestamp=args.timestamp,
+            private_key=private_key,
+            solver={
+                "name": args.solver_name or "demo",
+                "version": args.solver_version or "0.1.0",
+                "adapter": args.adapter or "generic_parquet",
+            },
+        )
+    except ReferenceUnavailable as exc:
+        print(f"NOT SCORED: {exc}")
+        return 3
     out_path = Path(args.out) if args.out else Path(args.results).with_suffix(".scorecard.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(card, sort_keys=True, separators=(",", ":"), ensure_ascii=True)

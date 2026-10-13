@@ -2,10 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openhydro.org/schemas/v1/results.schema.json",
   "title": "Benchmark1d2d Results Parquet Contract",
-  "description": "Documents the Arrow/Parquet column contract for solver output. Required columns are t, x, y, h, u, v, p. Optional Q and c are used for 1D pressurized/free-surface and water-quality cases. This schema describes the column metadata embedded in (or alongside) a Parquet file — it is not a row-oriented JSON results dump.",
+  "description": "Documents the Arrow/Parquet column contract for solver output. Required columns are t, x, y, h, u, v, p. Optional Q and c are used for 1D pressurized/free-surface and water-quality cases. This schema describes the column metadata embedded in (or alongside) a Parquet file — it is not a row-oriented JSON results dump. Network solvers (SWMM, EPANET, any 1D network) SHOULD add element_id (node/link name) and element_type (e.g. node, link, junction, pipe) so Track B parity is computed per element rather than by row order; when present, h is node depth and Q is link flow at that element. 2D solvers SHOULD add z (bed elevation of the cell, m) so water levels h + z are computed on the solver's own bed rather than a resampled DEM.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "format", "columns"],
+  "required": [
+    "schema_version",
+    "format",
+    "columns"
+  ],
   "properties": {
     "schema_version": {
       "type": "string",
@@ -24,14 +28,40 @@
       "items": {
         "$ref": "#/$defs/column"
       },
-      "contains": { "$ref": "#/$defs/col_t" },
+      "contains": {
+        "$ref": "#/$defs/col_t"
+      },
       "allOf": [
-        { "contains": { "$ref": "#/$defs/col_x" } },
-        { "contains": { "$ref": "#/$defs/col_y" } },
-        { "contains": { "$ref": "#/$defs/col_h" } },
-        { "contains": { "$ref": "#/$defs/col_u" } },
-        { "contains": { "$ref": "#/$defs/col_v" } },
-        { "contains": { "$ref": "#/$defs/col_p" } }
+        {
+          "contains": {
+            "$ref": "#/$defs/col_x"
+          }
+        },
+        {
+          "contains": {
+            "$ref": "#/$defs/col_y"
+          }
+        },
+        {
+          "contains": {
+            "$ref": "#/$defs/col_h"
+          }
+        },
+        {
+          "contains": {
+            "$ref": "#/$defs/col_u"
+          }
+        },
+        {
+          "contains": {
+            "$ref": "#/$defs/col_v"
+          }
+        },
+        {
+          "contains": {
+            "$ref": "#/$defs/col_p"
+          }
+        }
       ]
     },
     "dimensionality_notes": {
@@ -43,16 +73,36 @@
     "column": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "type", "required"],
+      "required": [
+        "name",
+        "type",
+        "required"
+      ],
       "properties": {
         "name": {
           "type": "string",
-          "enum": ["t", "x", "y", "h", "u", "v", "p", "Q", "c"]
+          "enum": [
+            "t",
+            "x",
+            "y",
+            "h",
+            "u",
+            "v",
+            "p",
+            "Q",
+            "c",
+            "element_id",
+            "element_type",
+            "z"
+          ]
         },
         "type": {
           "type": "string",
-          "const": "float64",
-          "description": "Arrow/Parquet physical type (IEEE-754 double)."
+          "enum": [
+            "float64",
+            "string"
+          ],
+          "description": "Arrow/Parquet physical type: float64 for state variables; string for element_id / element_type."
         },
         "required": {
           "type": "boolean",
@@ -70,69 +120,167 @@
         "description": {
           "type": "string"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "name": {
+                "enum": [
+                  "element_id",
+                  "element_type"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": {
+                "const": "string"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "type": {
+                "const": "float64"
+              }
+            }
+          }
+        }
+      ]
     },
     "col_t": {
       "type": "object",
-      "required": ["name", "type", "required"],
+      "required": [
+        "name",
+        "type",
+        "required"
+      ],
       "properties": {
-        "name": { "const": "t" },
-        "type": { "const": "float64" },
-        "required": { "const": true }
+        "name": {
+          "const": "t"
+        },
+        "type": {
+          "const": "float64"
+        },
+        "required": {
+          "const": true
+        }
       }
     },
     "col_x": {
       "type": "object",
-      "required": ["name", "type", "required"],
+      "required": [
+        "name",
+        "type",
+        "required"
+      ],
       "properties": {
-        "name": { "const": "x" },
-        "type": { "const": "float64" },
-        "required": { "const": true }
+        "name": {
+          "const": "x"
+        },
+        "type": {
+          "const": "float64"
+        },
+        "required": {
+          "const": true
+        }
       }
     },
     "col_y": {
       "type": "object",
-      "required": ["name", "type", "required"],
+      "required": [
+        "name",
+        "type",
+        "required"
+      ],
       "properties": {
-        "name": { "const": "y" },
-        "type": { "const": "float64" },
-        "required": { "const": true }
+        "name": {
+          "const": "y"
+        },
+        "type": {
+          "const": "float64"
+        },
+        "required": {
+          "const": true
+        }
       }
     },
     "col_h": {
       "type": "object",
-      "required": ["name", "type", "required"],
+      "required": [
+        "name",
+        "type",
+        "required"
+      ],
       "properties": {
-        "name": { "const": "h" },
-        "type": { "const": "float64" },
-        "required": { "const": true }
+        "name": {
+          "const": "h"
+        },
+        "type": {
+          "const": "float64"
+        },
+        "required": {
+          "const": true
+        }
       }
     },
     "col_u": {
       "type": "object",
-      "required": ["name", "type", "required"],
+      "required": [
+        "name",
+        "type",
+        "required"
+      ],
       "properties": {
-        "name": { "const": "u" },
-        "type": { "const": "float64" },
-        "required": { "const": true }
+        "name": {
+          "const": "u"
+        },
+        "type": {
+          "const": "float64"
+        },
+        "required": {
+          "const": true
+        }
       }
     },
     "col_v": {
       "type": "object",
-      "required": ["name", "type", "required"],
+      "required": [
+        "name",
+        "type",
+        "required"
+      ],
       "properties": {
-        "name": { "const": "v" },
-        "type": { "const": "float64" },
-        "required": { "const": true }
+        "name": {
+          "const": "v"
+        },
+        "type": {
+          "const": "float64"
+        },
+        "required": {
+          "const": true
+        }
       }
     },
     "col_p": {
       "type": "object",
-      "required": ["name", "type", "required"],
+      "required": [
+        "name",
+        "type",
+        "required"
+      ],
       "properties": {
-        "name": { "const": "p" },
-        "type": { "const": "float64" },
-        "required": { "const": true }
+        "name": {
+          "const": "p"
+        },
+        "type": {
+          "const": "float64"
+        },
+        "required": {
+          "const": true
+        }
       }
     }
   },

@@ -4,54 +4,47 @@ on:
   pull_request:
   push:
     branches: [main, master]
-    paths:
-      - "references/**"
-      - "runner/python/**"
-      - "test_catalog/track_a/**"
-      - "schemas/v1/**"
-      - "pyproject.toml"
-      - "tools/**"
-      - ".github/workflows/track-a.yml"
 
 jobs:
-  track-a:
-    name: References, metrics, demo score
+  tests:
+    name: Harness and reference tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,engines]"
+      - name: Pytest (references, scorer, schemas)
+        run: python -m pytest -q
 
-      - name: Install package
-        run: |
+  demo:
+    name: Demo solvers end to end (report, not gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
-
-      - name: Pytest references
-        run: python -m pytest references/tests -q
-
-      - name: Pytest runner metrics / convergence
-        run: python -m pytest runner/python/tests -q
-
-      - name: Demo score A1F-010 (if CLI available)
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          if ! command -v benchmark1d2d >/dev/null 2>&1; then
-            echo "benchmark1d2d CLI not on PATH; skipping demo score"
-            exit 0
-          fi
-          SOLVER="examples/demo_solver/solve.py"
-          if [ ! -f "$SOLVER" ]; then
-            echo "Demo solver missing at $SOLVER; skipping demo score"
-            exit 0
-          fi
-          mkdir -p out
-          benchmark1d2d run A1F-010 --solver "$SOLVER" --adapter generic_parquet || true
-          if [ -f out/A1F-010.parquet ]; then
-            benchmark1d2d score A1F-010 --results out/A1F-010.parquet
-          else
-            echo "No results parquet produced; demo score skipped"
-          fi
+      - uses: actions/cache@v4
+        with:
+          path: .cache/sources
+          key: sources-${{ hashFiles('test_catalog/**/manifest.json') }}
+      - run: python scripts/fetch_inputs.py
+      # The demo solvers are deliberately simple; a FAIL here is a finding about the
+      # solver or the case, reported as a warning, not a broken build.
+      - name: 1D vertical slice
+        run: python scripts/run_vertical_slice.py || echo "::warning::A 1D demo case failed its criteria; see the job log and the score cards"
+      - name: 2D demo (Thacker, EA 1, 2, 4)
+        run: python scripts/run_demo_2d.py A2A-001 A2C-EA1 A2C-EA2 A2C-EA4 || echo "::warning::A 2D demo case failed its criteria"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: track-a-scorecards
+          path: |
+            out/vertical_slice/*.scorecard.json
+            out/demo_2d/*.scorecard.json
