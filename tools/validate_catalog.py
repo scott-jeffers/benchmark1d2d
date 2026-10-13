@@ -139,6 +139,15 @@ def check_doi(doi: str, *, strict: bool) -> tuple[bool, str]:
             msg = f"Crossref returned HTTP {status_code} for DOI {cleaned}"
     except urllib.error.HTTPError as exc:
         msg = f"Crossref HTTP {exc.code} for DOI {cleaned}"
+        if exc.code == 404:
+            # Datasets are usually registered with DataCite, not Crossref.
+            dc = "https://api.datacite.org/dois/" + urllib.parse.quote(cleaned, safe="/")
+            try:
+                with urllib.request.urlopen(urllib.request.Request(dc, headers={"User-Agent": USER_AGENT}), timeout=15) as resp:
+                    if 200 <= int(getattr(resp, "status", None) or resp.getcode()) < 300:
+                        return True, f"DOI OK via DataCite ({cleaned})"
+            except Exception as exc2:  # noqa: BLE001
+                msg += f"; DataCite: {exc2}"
     except Exception as exc:  # noqa: BLE001 — network/offline must not crash
         msg = f"DOI check failed for {cleaned}: {exc}"
     if strict:
