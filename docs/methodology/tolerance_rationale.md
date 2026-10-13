@@ -33,3 +33,14 @@ the solution, design order of a reasonable scheme), never tuned to a particular
 solver's output. When an expectation is found to be wrong, the case's major
 version is bumped and the reason is written into its description, because
 scores before and after are not comparable (example: A1P-020 v2.0.0).
+
+## Cross-build sensitivity (Track B)
+
+Two builds of the same engine version are not guaranteed to agree. For EPA SWMM
+5.2.4 the official win64 build and the `swmm-toolkit` 0.17.0 build agree exactly
+on EXTRAN Example 1, but differ on the control-rule case B-RTC-001 by −3.7 %
+peak depth and a 92,400 s peak-timing shift. A tolerance tighter than the
+spread between reference builds cannot separate a correct candidate from a
+wrong one, so B-RTC-001's ±2 % / ±120 s criteria are under review (see the
+case README).
+

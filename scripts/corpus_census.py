@@ -66,6 +66,7 @@ def _continuity(rpt_text: str) -> dict[str, float | None]:
 
 def run_one(inp: Path, timeout: float) -> dict:
     rec: dict = {"status": "error", "runtime_s": None, "error_codes": ""}
+    inp = inp.resolve()  # the subprocess runs inside the model folder; relative paths would break
     with tempfile.TemporaryDirectory() as td:
         rpt = Path(td) / "model.rpt"
         out = Path(td) / "model.out"
@@ -88,6 +89,8 @@ def run_one(inp: Path, timeout: float) -> dict:
                 rec["status"] = "input_error"
             else:
                 rec["status"] = "engine_error"
+                tail = (proc.stdout + proc.stderr).decode("latin-1", errors="replace").strip().splitlines()
+                rec["error_codes"] = (tail[-1] if tail else f"exit {proc.returncode}")[:200]
         except subprocess.TimeoutExpired:
             rec["status"] = "timeout"
             rec["runtime_s"] = float(timeout)

@@ -66,3 +66,9 @@ jobs:
           Copy-Item "$($src.DirectoryName)/runswmm.exe","$($src.DirectoryName)/swmm5.dll","$($src.DirectoryName)/swmm-output.dll" reference_engines/swmm-5.2.4/bin/
       - name: Score the official build against the committed references
         run: python scripts/run_swmm_self_parity.py
+      - name: Keep the cross-build score cards
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-build-scorecards
+          path: out/cross_build/*.json

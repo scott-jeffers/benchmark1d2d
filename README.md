@@ -124,6 +124,9 @@ Roache), not a single-mesh error threshold.
   "SWMM" in general. `scripts/make_reference.py --check` re-runs SWMM 5.2.4 and
   EPANET 2.2 in CI and fails if a committed reference drifts; a Windows job scores
   the official EPA binaries against the same references (cross-build parity).
+  EXTRAN Example 1 agrees to 0.0 % across the two builds; the control-rule case
+  B-RTC-001 does not (−3.7 % peak depth, a pump-cycle peak moved by 92,400 s), so
+  it is reported there as build-sensitive rather than gating.
 - A case whose reference is missing is **not scored** — never passed.
 - Score cards are canonical JSON with a SHA-256 content hash and byte-identical across reruns; check one with `benchmark1d2d verify-card`. Demo cards are signed with a development key published in the repo, so their signatures show integrity, not authorship.
 - Releases mint a Zenodo DOI (pending for v0.1).
