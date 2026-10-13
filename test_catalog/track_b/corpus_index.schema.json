@@ -1,38 +1,98 @@
 {
   "title": "benchmark1d2d Track B corpus_index",
-  "description": "Index of Track B models. Tag vocabulary and provenance format are HydroCouple-compatible best-effort. TODO(verify against openswmm.engine.benchmarks)",
+  "description": "One row per HydroCouple corpus model, pinned to one upstream commit and joined with the SWMM 5.2.4 census. Built by build_corpus_index.py.",
   "columns": {
+    "model_id": {
+      "type": "str",
+      "description": "collection/case in the upstream corpus"
+    },
+    "collection": {
+      "type": "str",
+      "description": ""
+    },
+    "title": {
+      "type": "str",
+      "description": ""
+    },
     "hash": {
-      "type": "string",
-      "description": "SHA-256 of primary .inp (or placeholder)"
+      "type": "str",
+      "description": "SHA-256 of model.inp at the pinned commit"
     },
     "tags": {
-      "type": "list[string]|string",
-      "description": "HydroCouple-style phenomenon / facility tags"
+      "type": "object",
+      "description": "HydroCouple tags (controlled vocabulary)"
+    },
+    "units": {
+      "type": "str",
+      "description": ""
+    },
+    "routing": {
+      "type": "str",
+      "description": ""
+    },
+    "size_class": {
+      "type": "str",
+      "description": ""
+    },
+    "upstream_runtime_class": {
+      "type": "str",
+      "description": ""
     },
     "license": {
-      "type": "string",
-      "description": "DATA_LICENSES.md license id"
+      "type": "str",
+      "description": "DATA_LICENSES.md id (public-domain → Unlicense, unverified → TBD-confirm)"
+    },
+    "upstream_license": {
+      "type": "str",
+      "description": ""
     },
     "provenance_source": {
-      "type": "string",
-      "description": "org/repo, URL, or synthetic://benchmark1d2d/<id>"
+      "type": "str",
+      "description": ""
     },
-    "model_id": {
-      "type": "string",
-      "description": "Stable model / case id"
+    "url": {
+      "type": "str",
+      "description": "raw URL of model.inp at the pinned commit"
     },
-    "tier": {
-      "type": "string",
-      "enum": [
-        "tier_pr",
-        "tier_nightly",
-        "tier_release"
-      ]
+    "upstream_commit": {
+      "type": "str",
+      "description": "HydroCouple commit the row was built from"
     },
     "path": {
-      "type": "string",
-      "description": "Repo-relative case or corpus path"
+      "type": "str",
+      "description": ""
+    },
+    "status": {
+      "type": "str",
+      "description": "census outcome on EPA SWMM 5.2.4: ran, input_error, engine_error, timeout, harness_error"
+    },
+    "runtime_s": {
+      "type": "float64",
+      "description": "wall-clock seconds on one core (census)"
+    },
+    "error_codes": {
+      "type": "str",
+      "description": "SWMM ERROR codes found in the report"
+    },
+    "continuity_runoff_pct": {
+      "type": "float64",
+      "description": "SWMM runoff continuity error, %"
+    },
+    "continuity_routing_pct": {
+      "type": "float64",
+      "description": "SWMM flow-routing continuity error, %"
+    },
+    "engine_version": {
+      "type": "str",
+      "description": ""
+    },
+    "continuity_ok": {
+      "type": "bool",
+      "description": "|continuity| ≤ 5 % (tier eligibility)"
+    },
+    "tier": {
+      "type": "str",
+      "description": "tier_pr, tier_nightly, tier_release or none"
     }
   }
 }

@@ -847,14 +847,14 @@ def corpus_page(index: pd.DataFrame | None, census: pd.DataFrame | None) -> str:
     if index is None or census is None:
         return layout("Track B corpus", "<header class=page-head><h1>Track B corpus</h1><p class=lede>The corpus census has not been run yet.</p></header>", "corpus.html")
     st = index["status"].value_counts()
-    status_css = {"ran": "st-frozen", "input_error": "st-fail", "engine_error": "st-fail", "timeout": "st-draft", "not_run": "st-draft"}
-    status_names = {"ran": "Ran cleanly", "input_error": "Input error", "engine_error": "Engine error", "timeout": "Timed out (90 s)", "not_run": "Not run"}
+    status_css = {"ran": "st-frozen", "input_error": "st-fail", "engine_error": "st-fail", "timeout": "st-draft", "not_run": "st-draft", "harness_error": "st-draft"}
+    status_names = {"ran": "Ran cleanly", "input_error": "Input error", "engine_error": "Engine error", "timeout": "Timed out (60 s)", "not_run": "Not run", "harness_error": "Harness error"}
     bars = hbars("Census outcome on EPA SWMM 5.2.4", [(status_names.get(k, k), [(int(v), status_css.get(k, "st-draft"), status_names.get(k, k))]) for k, v in st.items()], unit=" models")
-    rt = index["runtime_s"].dropna()
-    edges = np.array([0, 0.1, 0.3, 1, 3, 10, 30, 90.01])
+    rt = index.loc[index["status"] == "ran", "runtime_s"].dropna()
+    edges = np.array([0, 0.1, 0.3, 1, 3, 10, 30, 60.01])
     hist, _ = np.histogram(rt.clip(upper=90), bins=edges)
-    labels = ["< 0.1 s", "0.1–0.3 s", "0.3–1 s", "1–3 s", "3–10 s", "10–30 s", "30–90 s"]
-    rt_bars = hbars("Runtime on SWMM 5.2.4 (one CPU core)", [(lab, [(int(n), "st-candidate", lab)]) for lab, n in zip(labels, hist)], unit=" models")
+    labels = ["< 0.1 s", "0.1–0.3 s", "0.3–1 s", "1–3 s", "3–10 s", "10–30 s", "30–60 s"]
+    rt_bars = hbars("Runtime on SWMM 5.2.4 of the models that ran (one CPU core)", [(lab, [(int(n), "st-candidate", lab)]) for lab, n in zip(labels, hist)], unit=" models")
     tiers = index["tier"].value_counts()
     tag_counts = Counter(t for tags in index["tags"] for t in tags)
     top = [t for t, _ in tag_counts.most_common(24)]
@@ -878,17 +878,17 @@ def corpus_page(index: pd.DataFrame | None, census: pd.DataFrame | None) -> str:
   <p class="lede">{len(index):,} EPA SWMM models from <a href="https://github.com/HydroCouple/openswmm.engine.benchmarks/tree/{commit}">HydroCouple openswmm.engine.benchmarks</a> at commit <code>{commit[:12]}</code>, each run on the pinned EPA SWMM {esc(str(census['engine_version'].iloc[0]))} engine. Models are not copied here: the index records each file's URL at that commit and its SHA-256.</p>
 </header>
 <section><h2>Does each model run on the reference engine?</h2>{bars}
-<p>A model joins a tier only if it runs cleanly. {int(st.get('input_error', 0)) + int(st.get('engine_error', 0))} models stop with input or engine errors and {int(st.get('timeout', 0))} exceed the 90 s census limit; they stay in the index so the upstream maintainers can see them.</p></section>
+<p>A model joins a tier only if it runs cleanly <b>and</b> SWMM's own continuity error stays within ±5 %: a reference that loses or creates water cannot anchor parity. {int(st.get('input_error', 0)) + int(st.get('engine_error', 0))} models stop with input or engine errors (mostly older-version syntax: ERROR 205, 207, 209, 211, 235, and 32 missing rainfall files, ERROR 317), {int(st.get('timeout', 0))} exceed the 60 s census limit, and {int(((index['status'] == 'ran') & ~index['continuity_ok']).sum())} run but fail the continuity rule. All stay in the index so upstream maintainers can see them.</p></section>
 <section><h2>Tiers</h2>
 <div class="table-scroll"><table class="data"><thead><tr><th>Tier</th><th class=num>Models</th><th>Selection rule</th><th>Download</th></tr></thead><tbody>
 <tr><td>PR</td><td class=num>{int(tiers.get('tier_pr', 0))} + 3 catalog cases</td><td>Runs in ≤ 5 s, includes at least five control-rule models, gates every pull request</td><td><a href="data/track_b/tier_pr.json">selection.json</a></td></tr>
 <tr><td>Nightly</td><td class=num>{int(tiers.get('tier_nightly', 0)) + int(tiers.get('tier_pr', 0))}</td><td>Runs in ≤ 10 s, picked greedily so every tag is covered</td><td><a href="data/track_b/tier_nightly.json">selection.json</a></td></tr>
-<tr><td>Release</td><td class=num>{int((index['tier'] != 'none').sum())}</td><td>Every model that runs and has a verified licence</td><td><a href="data/track_b/tier_release.json">selection.json</a></td></tr>
+<tr><td>Release</td><td class=num>{int((index['tier'] != 'none').sum())}</td><td>Every model that runs, keeps continuity within ±5 % and has a verified licence</td><td><a href="data/track_b/tier_release.json">selection.json</a></td></tr>
 </tbody></table></div></section>
 <section><h2>Runtime</h2>{rt_bars}</section>
 <section><h2>What the tiers cover</h2>{tag_bars}{legend([("PR", "st-frozen"), ("Nightly", "st-candidate"), ("Release only", "st-release"), ("Not in a tier", "st-draft")])}</section>
 <section><h2>Largest routing continuity errors on SWMM 5.2.4</h2>
-<p>Continuity error is SWMM's own mass-balance check. These models are kept in the release tier only if they run; a large error here is a property of the model or engine, and parity is still judged against it.</p>
+<p>Continuity error is SWMM's own mass-balance check. Models beyond ±5 % are excluded from every tier: their reference results are not physically meaningful, so agreeing with them proves nothing.</p>
 <div class="table-scroll"><table class="data"><thead><tr><th>Model</th><th class=num>Routing continuity</th><th class=num>Runtime</th></tr></thead><tbody>{worst_rows}</tbody></table></div>
 <p class="small">Median absolute routing continuity error across models that ran: {cont.median():.3f} %.</p></section>
 <section><h2>Data</h2><p>Download the full index as <a href="data/track_b/corpus_index.csv">CSV</a> or <a href="data/track_b/corpus_index.parquet">Parquet</a>. Fetch models with <code>python scripts/fetch_track_b_models.py --tier nightly</code>; every file is checked against its hash.</p></section>"""
@@ -914,6 +914,8 @@ AUDIT = [
      "B-EXTRAN-001 now runs the real EXTRAN Example 1; B-RTC-001 is a pump-station network whose rules switch one pump 74 times in 36 h."),
     ("Gauges on cell faces mixed two cells", "A probe exactly between cells took depth from one cell and bed from another, producing ±4 cm level errors in a flat pond.",
      "Ties resolve to a single cell; regression test added."),
+    ("The PR tier contained models that cannot serve as references", "11 of its 49 corpus models were unfit: 4 do not run on SWMM 5.2.4 (input errors) and 7 run with continuity errors of 6.6 % to 100 %. The PR gate could never have passed, and agreeing with a non-conserving reference proves nothing.",
+     "A full census runs every corpus model on SWMM 5.2.4; tiers admit only models that run cleanly with |continuity| ≤ 5 %. The PR tier is now 38 corpus models (7 with control rules) plus the 3 catalog cases."),
     ("Signatures implied authorship", "All published cards were signed with development keys hard-coded in the repository, and the documented verify command checked manifests, not cards.",
      "benchmark1d2d verify-card checks the content hash and says when a card carries a public development key; the site no longer presents those signatures as proof of origin."),
     ("Every pass was labelled A-V", "Validation and parity passes received verification or fixed B-1 % claims.",

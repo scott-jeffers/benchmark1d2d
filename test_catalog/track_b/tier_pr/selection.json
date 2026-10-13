@@ -1,32 +1,27 @@
 {
   "tier": "pr",
-  "description": "Fast PR gate (~50). Federated from HydroCouple openswmm.engine.benchmarks (Unlicense). Model files fetched by hash \u2014 not committed.",
   "upstream": "https://github.com/HydroCouple/openswmm.engine.benchmarks",
-  "upstream_ref": "dev",
-  "tag_filter": [
-    "regression",
-    "hydraulics"
-  ],
-  "model_ids": [
+  "upstream_commit": "63eb8bc5b4e741c82195ed65c4d7d146b86da1cc",
+  "engine": "EPA SWMM",
+  "engine_version": "5.2.4",
+  "description": "Fast PR gate: catalog Track B cases plus corpus models that run on SWMM 5.2.4 in \u2264 5 s, including \u2265 5 control-rule (RTC) models.",
+  "catalog_cases": [
     "B-EXTRAN-001",
+    "B-RTC-001",
+    "B-EPANET-001"
+  ],
+  "count": 38,
+  "model_ids": [
     "owa-extran/barrels-custom-shape",
     "owa-extran/bug-item11-swmm5-1-014-more-links-than-nodes",
     "owa-extran/bug-item8-link-seepage",
-    "owa-extran/edsyphon",
     "owa-extran/emc-exam1",
     "owa-extran/epanet-swmmhazenwilliamscomparison",
     "owa-extran/exam1",
     "owa-extran/exam1-45-days-sw5",
-    "owa-extran/exam1-icm",
-    "owa-extran/exam1-negative-flow-examples",
     "owa-extran/exam1-no-adverse-slopes-sw5",
-    "owa-extran/exam1-outlet-curve-si",
-    "owa-extran/exam1-pid-freeboard",
-    "owa-extran/exam1-sw5",
     "owa-extran/exam1-sw5-external-load-of-tss",
-    "owa-extran/exam12-sw5",
     "owa-extran/exam2-long-step-sw5",
-    "owa-extran/exam2-with-fixed-stage",
     "owa-extran/exam2-with-numerical-problem-sw5",
     "owa-extran/exam2-with-tide-sw5",
     "owa-extran/exam21-sw5",
@@ -36,7 +31,6 @@
     "owa-extran/exam60-sw5",
     "owa-extran/exam7-with-pump3-sw5",
     "owa-extran/exam7-with-pump3-ts-rule",
-    "owa-extran/exam70-sw5",
     "owa-extran/exam80-storage",
     "owa-extran/exam80a",
     "owa-extran/extran1",
@@ -54,10 +48,20 @@
     "owa-extran/extran3",
     "owa-extran/extran3-dummy-link",
     "owa-extran/extran3-dummy-links",
-    "owa-extran/extran3-noinflow",
-    "owa-extran/extran3-noinflow-circular-outfall",
     "owa-extran/extran3-rc",
     "owa-extran/extran3-rtc"
   ],
-  "count": 50
+  "dropped_from_previous": [
+    "owa-extran/edsyphon",
+    "owa-extran/exam1-icm",
+    "owa-extran/exam1-negative-flow-examples",
+    "owa-extran/exam1-outlet-curve-si",
+    "owa-extran/exam1-pid-freeboard",
+    "owa-extran/exam1-sw5",
+    "owa-extran/exam12-sw5",
+    "owa-extran/exam2-with-fixed-stage",
+    "owa-extran/exam70-sw5",
+    "owa-extran/extran3-noinflow",
+    "owa-extran/extran3-noinflow-circular-outfall"
+  ]
 }

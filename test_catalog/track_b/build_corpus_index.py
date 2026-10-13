@@ -38,6 +38,8 @@ UPSTREAM = "HydroCouple/openswmm.engine.benchmarks"
 RAW = "https://raw.githubusercontent.com/" + UPSTREAM + "/{commit}/corpus/{model_id}/model.inp"
 LICENSE_MAP = {"public-domain": "Unlicense", "unverified": "TBD-confirm"}
 NIGHTLY_TARGET = 500
+# A reference whose own mass balance is badly off cannot anchor parity.
+MAX_ABS_CONTINUITY_PCT = 5.0
 NIGHTLY_MAX_RUNTIME_S = 10.0
 PR_MAX_RUNTIME_S = 5.0
 # Catalog-level Track B cases (in this repo) that always gate PRs.
@@ -118,7 +120,9 @@ def main() -> int:
         how="left",
     )
     df["status"] = df["status"].fillna("not_run")
-    runnable = df[(df["status"] == "ran") & (df["license"] != "TBD-confirm")]
+    cont = df[["continuity_routing_pct", "continuity_runoff_pct"]].abs().max(axis=1).fillna(0.0)
+    df["continuity_ok"] = cont <= MAX_ABS_CONTINUITY_PCT
+    runnable = df[(df["status"] == "ran") & (df["license"] != "TBD-confirm") & df["continuity_ok"]]
 
     old_pr = json.loads((HERE / "tier_pr" / "selection.json").read_text(encoding="utf-8")).get("model_ids", [])
     seed = [m for m in old_pr if "/" in m]
@@ -152,13 +156,14 @@ def main() -> int:
                                 "description": f"~{NIGHTLY_TARGET} corpus models, ≤ {NIGHTLY_MAX_RUNTIME_S:g} s each on SWMM 5.2.4, picked greedily to cover every tag.",
                                 "count": len(nightly), "model_ids": nightly})
     write_selection("release", {"tier": "release", **common,
-                                "description": "Every corpus model that runs on SWMM 5.2.4 and carries a verified licence.",
+                                "description": f"Every corpus model that runs on SWMM 5.2.4, keeps |continuity error| ≤ {MAX_ABS_CONTINUITY_PCT:g} %, and carries a verified licence.",
                                 "count": len(release), "model_ids": release})
     tag_cov = Counter(t for tags in df[df["model_id"].isin(nightly)]["tags"] for t in tags)
     all_tags = Counter(t for tags in df["tags"] for t in tags)
     print(json.dumps({
         "commit": commit, "models": len(df), "status": df["status"].value_counts().to_dict(),
         "licence": df["license"].value_counts().to_dict(),
+        "continuity_excluded": int(((df["status"] == "ran") & ~df["continuity_ok"]).sum()),
         "pr": len(pr_corpus), "pr_dropped": dropped, "nightly": len(nightly), "release": len(release),
         "nightly_tags_missing": sorted(set(all_tags) - set(tag_cov)),
     }, indent=1))

@@ -227,7 +227,7 @@ def hbars(title: str, rows: list[tuple[str, list[tuple[float, str, str]]]], unit
     row_h, gap, lab_w = 26, 10, 220
     height = len(rows) * (row_h + gap) + 10
     total_max = max((sum(v for v, _, _ in segs) for _, segs in rows), default=1) or 1
-    iw = width - lab_w - 70
+    iw = width - lab_w - 120
     out = [f'<svg class="chart bars" viewBox="0 0 {width} {height}" role="img" aria-label="{esc(title)}"><title>{esc(title)}</title>']
     for i, (label, segs) in enumerate(rows):
         y = 6 + i * (row_h + gap)
