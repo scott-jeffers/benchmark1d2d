@@ -326,7 +326,9 @@ def run_self_test(
                 validator=validator,
                 license_ids=license_ids,
                 case_dir=None,
-                allow_placeholder_hash=allow_placeholder_hash,
+                # Schema fixtures exercise the schema, not the catalog; their
+                # hashes are placeholders by design.
+                allow_placeholder_hash=True,
                 check_doi_flag=False,
                 label=f"self-test valid/{path.name}",
             )
