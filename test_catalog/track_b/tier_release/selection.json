@@ -1,0 +1,6 @@
+{
+  "tier": "tier_release",
+  "description": "Full Track B corpus for release certification (all indexed models). Selection is empty here; resolve from corpus_index.parquet at release time.",
+  "model_ids": [],
+  "notes": "Release gate = entire corpus_index (HydroCouple federation + pinned EXTRAN). Do not commit large .inp files to git."
+}

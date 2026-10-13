@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0.0",
+  "test_id": "B-EXTRAN-001_extran_parity",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "B",
+  "test_class": "parity",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "mixed",
+    "governing_equations": ["saint_venant_dynamic"],
+    "phenomena": ["surcharge"]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": ["Roesner, L. A."],
+        "year": 1988,
+        "title": "EXTRAN Addendum",
+        "report_number": "EPA/600/3-88/001b"
+      }
+    ],
+    "license": "synthetic-internal"
+  },
+  "inputs": [
+    {
+      "path": "inputs/network.inp",
+      "role": "network",
+      "format": "inp",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.ritter",
+      "function": "depth_velocity",
+      "parameters": {"h0": 1.0}
+    }
+  },
+  "simulation": {
+    "t_end": 21600,
+    "output_interval": 60,
+    "required_outputs": ["h", "Q"]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "peak_depth",
+        "metric": "relative_peak",
+        "variable": "h",
+        "threshold": {"op": "abs<=", "value": 1.0, "units": "%"},
+        "gating": true,
+        "rationale": "Should fail: Track B must use pinned_engine reference."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}

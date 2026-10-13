@@ -1,0 +1,47 @@
+name: Solver submission
+description: Register a solver adapter and claim certification tracks
+title: "[solver] "
+labels: ["solver", "submission"]
+body:
+  - type: input
+    id: solver_name
+    attributes:
+      label: Solver name
+      description: Public name of the solver or product under test.
+      placeholder: OpenHydro Demo Solver
+    validations:
+      required: true
+
+  - type: input
+    id: adapter
+    attributes:
+      label: Adapter
+      description: Adapter module or path that writes the results Parquet contract (e.g. generic_parquet, swmm_rpt).
+      placeholder: generic_parquet
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: tracks_claimed
+    attributes:
+      label: Tracks claimed
+      description: Which certification axes you intend to exercise.
+      options:
+        - label: Track A — Verified (A-V)
+        - label: Track A — Validated lab (A-L)
+        - label: Track A — Validated field (A-F)
+        - label: Track B — Parity (B-x%)
+    validations:
+      required: true
+
+  - type: textarea
+    id: runtime
+    attributes:
+      label: Runtime notes
+      description: How the black-box solver is invoked (binary, container, WASM) and any environment constraints.
+
+  - type: textarea
+    id: links
+    attributes:
+      label: Links
+      description: Repository, documentation, or prior validation reports.

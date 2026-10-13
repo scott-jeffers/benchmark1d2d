@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+title: "hydrobench — Open V&V Benchmarks for Water Solvers"
+message: "If you use this software, please cite it using the metadata from this file."
+type: software
+authors:
+  - family-names: OpenHydro
+    given-names: Contributors
+    alias: "@Scott"
+repository-code: "https://github.com/openhydro/hydrobench"
+license: Apache-2.0
+version: 0.1.0
+date-released: "2026-10-13"
+abstract: >-
+  An open, engine-agnostic suite for verifying and validating 1D, 2D and
+  coupled 1D/2D hydraulic solvers against exact solutions, laboratory
+  measurements and the EPA SWMM / EPANET reference engines.
+keywords:
+  - verification
+  - validation
+  - SWMM
+  - EPANET
+  - shallow water
+  - hydraulics
+  - benchmark

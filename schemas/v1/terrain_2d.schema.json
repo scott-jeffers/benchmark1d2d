@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openhydro.org/schemas/v1/terrain_2d.schema.json",
+  "title": "Hydrobench 2D Terrain",
+  "description": "Minimal 2D terrain description: mesh or raster elevation references, roughness, and boundary conditions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "elevation", "boundary_conditions"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "crs": {
+      "type": "string",
+      "description": "CRS (EPSG code or WKT)."
+    },
+    "elevation": {
+      "$ref": "#/$defs/surface_ref"
+    },
+    "mesh": {
+      "$ref": "#/$defs/mesh_ref"
+    },
+    "roughness": {
+      "$ref": "#/$defs/roughness"
+    },
+    "boundary_conditions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/boundary_condition" }
+    },
+    "initial_condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["dry", "constant_depth", "raster", "file"]
+        },
+        "depth": { "type": "number", "minimum": 0 },
+        "path": { "type": "string" },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "surface_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["raster", "mesh", "analytic"]
+        },
+        "path": { "type": "string" },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["geotiff", "ugrid", "netcdf", "xyz", "analytic"]
+        },
+        "band": { "type": "integer", "minimum": 1 },
+        "vertical_datum": { "type": "string" },
+        "analytic": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Parameters for analytic bathymetry (e.g. Thacker bowl)."
+        }
+      },
+      "anyOf": [
+        { "required": ["path"] },
+        {
+          "properties": { "kind": { "const": "analytic" } },
+          "required": ["kind", "analytic"]
+        }
+      ]
+    },
+    "mesh_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "format"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "format": {
+          "type": "string",
+          "enum": ["ugrid", "gmsh", "2dm", "vtk", "other"]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "cell_type": {
+          "type": "string",
+          "enum": ["triangle", "quad", "mixed"]
+        }
+      }
+    },
+    "roughness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model"],
+      "properties": {
+        "model": {
+          "type": "string",
+          "enum": ["manning", "chezy", "nikuradse", "constant"]
+        },
+        "constant": { "type": "number", "minimum": 0 },
+        "path": { "type": "string" },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "zones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "value"],
+            "properties": {
+              "id": { "type": "string" },
+              "value": { "type": "number", "minimum": 0 },
+              "geometry_path": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "boundary_condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "wall",
+            "open",
+            "discharge",
+            "stage",
+            "rating_curve",
+            "froude",
+            "absorbing"
+          ]
+        },
+        "edge_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "polyline_path": { "type": "string" },
+        "timeseries_path": { "type": "string" },
+        "curve_id": { "type": "string" },
+        "value": { "type": "number" },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,243 @@
+:root {
+  --bg: #f7f5f1;
+  --ink: #1a1f24;
+  --muted: #5a6570;
+  --line: #d4cfc6;
+  --track-a: #0a5f7a;
+  --track-b: #6b3d8f;
+  --pass: #1b6b3a;
+  --fail: #9b2c2c;
+  --card: #fffefb;
+  --accent: #c45c26;
+  --font: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --mono: "IBM Plex Mono", "Consolas", "Courier New", monospace;
+  --sans: "Source Sans 3", "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #e8eef2 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #efe6dc 0%, transparent 50%),
+    var(--bg);
+  font-family: var(--sans);
+  line-height: 1.55;
+}
+
+a {
+  color: var(--track-a);
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+header.site {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+}
+
+header.site h1 {
+  font-family: var(--font);
+  font-weight: 600;
+  font-size: clamp(1.75rem, 4vw, 2.35rem);
+  margin: 0 0 0.35rem;
+  letter-spacing: -0.02em;
+}
+
+header.site p {
+  margin: 0;
+  color: var(--muted);
+}
+
+nav.site {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1rem;
+  font-size: 0.95rem;
+}
+
+h2 {
+  font-family: var(--font);
+  font-size: 1.45rem;
+  margin: 2rem 0 0.75rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.35rem;
+}
+
+h3 {
+  font-family: var(--font);
+  font-size: 1.15rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.lede {
+  font-size: 1.05rem;
+  max-width: 62ch;
+}
+
+.tracks {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1.25rem 0 2rem;
+}
+
+@media (min-width: 720px) {
+  .tracks {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.track {
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 1rem 1.1rem;
+}
+
+.track.a {
+  border-top: 3px solid var(--track-a);
+}
+
+.track.b {
+  border-top: 3px solid var(--track-b);
+}
+
+.track h3 {
+  margin-top: 0;
+  color: inherit;
+}
+
+.track.a h3 {
+  color: var(--track-a);
+}
+
+.track.b h3 {
+  color: var(--track-b);
+}
+
+.track p {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+table.results {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card);
+  font-size: 0.92rem;
+}
+
+table.results th,
+table.results td {
+  border: 1px solid var(--line);
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+table.results th {
+  background: #efeae3;
+  font-weight: 600;
+}
+
+.status-pass {
+  color: var(--pass);
+  font-weight: 600;
+}
+
+.status-fail {
+  color: var(--fail);
+  font-weight: 600;
+}
+
+.status-none {
+  color: var(--muted);
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-family: var(--mono);
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--line);
+  background: #f0ebe4;
+  margin-right: 0.35rem;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.criteria,
+.citations {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 1rem;
+}
+
+.criteria li,
+.citations li {
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 0.65rem 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.criteria .rationale {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+code,
+.mono {
+  font-family: var(--mono);
+  font-size: 0.88em;
+}
+
+.plot {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  background: #fff;
+  margin: 1rem 0;
+}
+
+.method-block {
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+.method-block pre {
+  white-space: pre-wrap;
+  font-family: var(--sans);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+footer.site {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.85rem;
+}

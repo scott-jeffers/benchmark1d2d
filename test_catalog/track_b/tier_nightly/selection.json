@@ -1,0 +1,10 @@
+{
+  "tier": "tier_nightly",
+  "description": "Nightly Track B selection (~500 models when corpus is wired). Placeholders only; no large .inp files committed.",
+  "model_ids": [
+    "B-EXTRAN-001",
+    "B-NIGHTLY-PLACEHOLDER-001",
+    "B-NIGHTLY-PLACEHOLDER-002"
+  ],
+  "notes": "Expand toward ~500 HydroCouple / 1729-SWMM5 corpus members in CI artifact store."
+}

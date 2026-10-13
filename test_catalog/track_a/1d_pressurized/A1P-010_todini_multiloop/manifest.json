@@ -1,0 +1,106 @@
+{
+  "schema_version": "1.0.0",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_id": "A1P-010_todini_multiloop",
+  "test_class": "verification_analytic",
+  "title": "Todini multi-loop network",
+  "description": "Steady multi-loop pipe network solved by the Todini\u2013Pilati gradient method; nodal heads and link flows checked against a closed-form / high-precision reference.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "pressurized",
+    "governing_equations": [
+      "darcy_weisbach",
+      "network_continuity"
+    ],
+    "phenomena": [
+      "looped_network",
+      "steady_hydraulics"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Todini, E.",
+          "Pilati, S."
+        ],
+        "year": 1988,
+        "title": "A gradient algorithm for the analysis of pipe networks",
+        "isbn": "9780863800948"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/network.json",
+      "role": "network",
+      "format": "json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.todini",
+      "function": "steady_network",
+      "parameters": {
+        "demand_scale": 1.0
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 1.0,
+    "output_interval": 1.0,
+    "required_outputs": [
+      "p",
+      "Q"
+    ],
+    "mesh_refinement": {
+      "levels": [
+        20.0,
+        10.0,
+        5.0,
+        2.5
+      ],
+      "fixed_courant": 0.5
+    }
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "nodal_head",
+        "metric": "L2",
+        "variable": "p",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.5,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Nodal heads within 0.5% of Todini\u2013Pilati reference."
+      },
+      {
+        "id": "link_flow",
+        "metric": "L2",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 1.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Link flows within 1% of reference balance."
+      }
+    ],
+    "convergence": {
+      "norm": "L1",
+      "variable": "p",
+      "expected_order": 1.0,
+      "min_observed_order": 0.8
+    },
+    "pass_rule": "all_gating"
+  }
+}

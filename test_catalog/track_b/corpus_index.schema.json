@@ -1,0 +1,38 @@
+{
+  "title": "hydrobench Track B corpus_index",
+  "description": "Index of Track B models. Tag vocabulary and provenance format are HydroCouple-compatible best-effort. TODO(verify against openswmm.engine.benchmarks)",
+  "columns": {
+    "hash": {
+      "type": "string",
+      "description": "SHA-256 of primary .inp (or placeholder)"
+    },
+    "tags": {
+      "type": "list[string]|string",
+      "description": "HydroCouple-style phenomenon / facility tags"
+    },
+    "license": {
+      "type": "string",
+      "description": "DATA_LICENSES.md license id"
+    },
+    "provenance_source": {
+      "type": "string",
+      "description": "org/repo, URL, or synthetic://hydrobench/<id>"
+    },
+    "model_id": {
+      "type": "string",
+      "description": "Stable model / case id"
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "tier_pr",
+        "tier_nightly",
+        "tier_release"
+      ]
+    },
+    "path": {
+      "type": "string",
+      "description": "Repo-relative case or corpus path"
+    }
+  }
+}

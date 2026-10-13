@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.0.0",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_id": "A2A-001_thacker_parabolic_bowl",
+  "test_class": "verification_analytic",
+  "title": "Thacker parabolic bowl",
+  "description": "2D nonlinear shallow-water planar free-surface oscillation in a parabolic bowl with exact Thacker (1981) solution and moving wet/dry shoreline.",
+  "physics": {
+    "dimensionality": "2D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "shallow_water_2d"
+    ],
+    "phenomena": [
+      "wet_dry",
+      "oscillation",
+      "parabolic_bowl"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Thacker, W. C."
+        ],
+        "year": 1981,
+        "title": "Some exact solutions to the nonlinear shallow-water wave equations",
+        "doi": "10.1017/S0022112081001882"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/params.json",
+      "role": "parameters",
+      "format": "json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.thacker",
+      "function": "planar_oscillation",
+      "parameters": {
+        "L": 1.0,
+        "eta": 0.5,
+        "g": 9.81
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 4.0,
+    "output_interval": 0.25,
+    "required_outputs": [
+      "h",
+      "u",
+      "v"
+    ],
+    "mesh_refinement": {
+      "levels": [
+        0.1,
+        0.05,
+        0.025,
+        0.0125
+      ],
+      "fixed_courant": 0.5
+    }
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "depth_L1",
+        "metric": "L1",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 2.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "L1 depth error within 2% of Thacker exact solution."
+      },
+      {
+        "id": "mass",
+        "metric": "global_mass_error",
+        "variable": "volume",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Global volume conserved within 0.1%."
+      }
+    ],
+    "convergence": {
+      "norm": "L1",
+      "variable": "h",
+      "expected_order": 2.0,
+      "min_observed_order": 1.5
+    },
+    "pass_rule": "all_gating"
+  }
+}

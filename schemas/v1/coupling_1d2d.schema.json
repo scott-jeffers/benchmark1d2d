@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openhydro.org/schemas/v1/coupling_1d2d.schema.json",
+  "title": "Hydrobench 1D/2D Coupling Map",
+  "description": "Minimal SWMM (or other 1D) node ↔ 2D cell/face exchange map for coupled urban inundation tests.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "network_ref", "terrain_ref", "exchanges"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "network_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "format": {
+          "type": "string",
+          "enum": ["network_1d_json", "swmm_inp", "other"]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        }
+      }
+    },
+    "terrain_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "format": {
+          "type": "string",
+          "enum": ["terrain_2d_json", "geotiff", "ugrid", "other"]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        }
+      }
+    },
+    "exchange_model": {
+      "type": "string",
+      "enum": [
+        "weir",
+        "orifice",
+        "free_discharge",
+        "head_difference",
+        "custom"
+      ],
+      "description": "Default exchange formulation for all links unless overridden."
+    },
+    "exchanges": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/exchange" }
+    }
+  },
+  "$defs": {
+    "exchange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "node_id", "surface"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "node_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "1D network node (e.g. SWMM manhole/junction) id."
+        },
+        "surface": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["cell", "face", "point"]
+            },
+            "cell_id": { "type": "string" },
+            "face_id": { "type": "string" },
+            "x": { "type": "number" },
+            "y": { "type": "number" }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": { "kind": { "const": "cell" } },
+                "required": ["kind"]
+              },
+              "then": { "required": ["cell_id"] }
+            },
+            {
+              "if": {
+                "properties": { "kind": { "const": "face" } },
+                "required": ["kind"]
+              },
+              "then": { "required": ["face_id"] }
+            },
+            {
+              "if": {
+                "properties": { "kind": { "const": "point" } },
+                "required": ["kind"]
+              },
+              "then": { "required": ["x", "y"] }
+            }
+          ]
+        },
+        "crest_elevation": { "type": "number" },
+        "exchange_width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "discharge_coefficient": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "exchange_model": {
+          "type": "string",
+          "enum": [
+            "weir",
+            "orifice",
+            "free_discharge",
+            "head_difference",
+            "custom"
+          ]
+        },
+        "bidirectional": {
+          "type": "boolean",
+          "default": true
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0.0",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_id": "A1P-030_advection_dispersion_tracer",
+  "test_class": "verification_analytic",
+  "title": "Advection\u2013dispersion tracer (Ogata\u2013Banks)",
+  "description": "1D pipe / porous-media tracer transport with constant velocity and longitudinal dispersion; exact Ogata\u2013Banks concentration profile.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "pressurized",
+    "governing_equations": [
+      "advection_dispersion"
+    ],
+    "phenomena": [
+      "tracer_transport",
+      "dispersion"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Ogata, A.",
+          "Banks, R. B."
+        ],
+        "year": 1961,
+        "title": "A Solution of the Differential Equation of Longitudinal Dispersion in Porous Media",
+        "report_number": "USGS Professional Paper 411-A"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/params.json",
+      "role": "parameters",
+      "format": "json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.ogata_banks",
+      "function": "concentration",
+      "parameters": {
+        "u": 0.1,
+        "D": 0.01,
+        "c0": 1.0
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 3600.0,
+    "output_interval": 60.0,
+    "required_outputs": [
+      "c",
+      "u"
+    ],
+    "mesh_refinement": {
+      "levels": [
+        20.0,
+        10.0,
+        5.0,
+        2.5
+      ],
+      "fixed_courant": 0.5
+    }
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "concentration_L1",
+        "metric": "L1",
+        "variable": "c",
+        "threshold": {
+          "op": "abs<=",
+          "value": 2.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "L1 concentration error within 2% of Ogata\u2013Banks solution."
+      },
+      {
+        "id": "mass",
+        "metric": "global_mass_error",
+        "variable": "c",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.5,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Conserved tracer mass within 0.5%."
+      }
+    ],
+    "convergence": {
+      "norm": "L1",
+      "variable": "c",
+      "expected_order": 1.0,
+      "min_observed_order": 0.8
+    },
+    "pass_rule": "all_gating"
+  }
+}

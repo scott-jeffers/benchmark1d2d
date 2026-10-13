@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0.0",
+  "test_id": "A1F-011_stoker_wet_bed_dambreak",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_class": "verification_analytic",
+  "title": "Stoker wet-bed dam break",
+  "description": "1D inviscid Saint-Venant dam break onto a wet bed (hl=1, hr=0.1) with exact Stoker (1957) Riemann solution.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": ["saint_venant_dynamic"],
+    "phenomena": ["dam_break", "wet_bed", "shock", "rarefaction"]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": ["Stoker, J. J."],
+        "year": 1957,
+        "title": "Water Waves: The Mathematical Theory with Applications",
+        "isbn": "9780471570349"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/params.json",
+      "role": "parameters",
+      "format": "json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.stoker",
+      "function": "depth_velocity",
+      "parameters": {
+        "hl": 1.0,
+        "hr": 0.1,
+        "x0": 0.0,
+        "g": 9.81
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 30,
+    "output_interval": 5,
+    "required_outputs": ["h", "u", "Q"],
+    "mesh_refinement": {
+      "levels": [10, 5, 2.5, 1.25],
+      "fixed_courant": 0.5
+    }
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "L1_h",
+        "metric": "L1",
+        "variable": "h",
+        "threshold": {"op": "abs<=", "value": 0.05, "units": "m"},
+        "gating": true,
+        "rationale": "L1 depth error on finest mesh; shock and rarefaction capture."
+      },
+      {
+        "id": "mass",
+        "metric": "global_mass_error",
+        "variable": "volume",
+        "threshold": {"op": "abs<=", "value": 0.1, "units": "%"},
+        "gating": true,
+        "rationale": "Conservation property of continuous equations."
+      }
+    ],
+    "convergence": {
+      "norm": "L1",
+      "variable": "h",
+      "expected_order": 1.0,
+      "min_observed_order": 0.8
+    },
+    "pass_rule": "all_gating"
+  }
+}

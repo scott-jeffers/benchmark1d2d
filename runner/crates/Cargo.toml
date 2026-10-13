@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = [
+    "hb-core",
+    "hb-exec",
+    "hb-io",
+    "hb-metrics",
+    "hb-convergence",
+    "hb-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["OpenHydro"]
+description = "Placeholder Rust crates for hydrobench (ADR-0003)"

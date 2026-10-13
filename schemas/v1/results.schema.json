@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openhydro.org/schemas/v1/results.schema.json",
+  "title": "Hydrobench Results Parquet Contract",
+  "description": "Documents the Arrow/Parquet column contract for solver output. Required columns are t, x, y, h, u, v, p. Optional Q and c are used for 1D pressurized/free-surface and water-quality cases. This schema describes the column metadata embedded in (or alongside) a Parquet file — it is not a row-oriented JSON results dump.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "format", "columns"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+      "description": "Results-contract semver."
+    },
+    "format": {
+      "type": "string",
+      "const": "parquet",
+      "description": "Physical storage format. Arrow IPC may be accepted by adapters that advertise it, but the normative contract is Parquet."
+    },
+    "columns": {
+      "type": "array",
+      "minItems": 7,
+      "description": "Ordered column definitions. Implementations MUST include all required columns; optional columns MAY be omitted when not applicable.",
+      "items": {
+        "$ref": "#/$defs/column"
+      },
+      "contains": { "$ref": "#/$defs/col_t" },
+      "allOf": [
+        { "contains": { "$ref": "#/$defs/col_x" } },
+        { "contains": { "$ref": "#/$defs/col_y" } },
+        { "contains": { "$ref": "#/$defs/col_h" } },
+        { "contains": { "$ref": "#/$defs/col_u" } },
+        { "contains": { "$ref": "#/$defs/col_v" } },
+        { "contains": { "$ref": "#/$defs/col_p" } }
+      ]
+    },
+    "dimensionality_notes": {
+      "type": "string",
+      "description": "For 1D cases, y and v may be filled with NaN; Q and c are optional. For 2D, Q is typically absent."
+    }
+  },
+  "$defs": {
+    "column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "required"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": ["t", "x", "y", "h", "u", "v", "p", "Q", "c"]
+        },
+        "type": {
+          "type": "string",
+          "const": "float64",
+          "description": "Arrow/Parquet physical type (IEEE-754 double)."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether the column must be present in every results file."
+        },
+        "nullable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether null/NaN values are permitted within the column."
+        },
+        "units": {
+          "type": "string",
+          "description": "SI units: s, m, m/s, Pa, m^3/s, kg/m^3 (or dimensionless for c when normalised)."
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "col_t": {
+      "type": "object",
+      "required": ["name", "type", "required"],
+      "properties": {
+        "name": { "const": "t" },
+        "type": { "const": "float64" },
+        "required": { "const": true }
+      }
+    },
+    "col_x": {
+      "type": "object",
+      "required": ["name", "type", "required"],
+      "properties": {
+        "name": { "const": "x" },
+        "type": { "const": "float64" },
+        "required": { "const": true }
+      }
+    },
+    "col_y": {
+      "type": "object",
+      "required": ["name", "type", "required"],
+      "properties": {
+        "name": { "const": "y" },
+        "type": { "const": "float64" },
+        "required": { "const": true }
+      }
+    },
+    "col_h": {
+      "type": "object",
+      "required": ["name", "type", "required"],
+      "properties": {
+        "name": { "const": "h" },
+        "type": { "const": "float64" },
+        "required": { "const": true }
+      }
+    },
+    "col_u": {
+      "type": "object",
+      "required": ["name", "type", "required"],
+      "properties": {
+        "name": { "const": "u" },
+        "type": { "const": "float64" },
+        "required": { "const": true }
+      }
+    },
+    "col_v": {
+      "type": "object",
+      "required": ["name", "type", "required"],
+      "properties": {
+        "name": { "const": "v" },
+        "type": { "const": "float64" },
+        "required": { "const": true }
+      }
+    },
+    "col_p": {
+      "type": "object",
+      "required": ["name", "type", "required"],
+      "properties": {
+        "name": { "const": "p" },
+        "type": { "const": "float64" },
+        "required": { "const": true }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "1.0.0",
+      "format": "parquet",
+      "columns": [
+        {
+          "name": "t",
+          "type": "float64",
+          "required": true,
+          "units": "s",
+          "description": "Time"
+        },
+        {
+          "name": "x",
+          "type": "float64",
+          "required": true,
+          "units": "m",
+          "description": "X coordinate (or chainage for 1D)"
+        },
+        {
+          "name": "y",
+          "type": "float64",
+          "required": true,
+          "nullable": true,
+          "units": "m",
+          "description": "Y coordinate; NaN for pure 1D"
+        },
+        {
+          "name": "h",
+          "type": "float64",
+          "required": true,
+          "units": "m",
+          "description": "Water depth (or piezometric head for pressurised)"
+        },
+        {
+          "name": "u",
+          "type": "float64",
+          "required": true,
+          "units": "m/s",
+          "description": "Velocity x-component (or along-channel for 1D)"
+        },
+        {
+          "name": "v",
+          "type": "float64",
+          "required": true,
+          "nullable": true,
+          "units": "m/s",
+          "description": "Velocity y-component; NaN for pure 1D"
+        },
+        {
+          "name": "p",
+          "type": "float64",
+          "required": true,
+          "nullable": true,
+          "units": "Pa",
+          "description": "Pressure; NaN when not applicable"
+        },
+        {
+          "name": "Q",
+          "type": "float64",
+          "required": false,
+          "units": "m^3/s",
+          "description": "Discharge (1D optional)"
+        },
+        {
+          "name": "c",
+          "type": "float64",
+          "required": false,
+          "units": "kg/m^3",
+          "description": "Concentration / tracer (1D optional)"
+        }
+      ]
+    }
+  ]
+}

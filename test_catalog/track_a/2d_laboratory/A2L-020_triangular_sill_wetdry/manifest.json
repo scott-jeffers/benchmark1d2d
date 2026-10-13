@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0.0",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_id": "A2L-020_triangular_sill_wetdry",
+  "test_class": "validation_lab",
+  "title": "Triangular sill wet/dry",
+  "description": "Dam-break wave over a triangular bottom sill with wetting and drying.",
+  "physics": {
+    "dimensionality": "2D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "shallow_water_2d"
+    ],
+    "phenomena": [
+      "dam_break",
+      "urban",
+      "wet_dry"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Soares-Fraz\u00e3o, S."
+        ],
+        "year": 2007,
+        "title": "Experiments of dam-break wave over a triangular bottom sill",
+        "doi": "10.1080/00221686.2007.9521829"
+      }
+    ],
+    "license": "TBD-confirm",
+    "adaptation_notes": "CADAM/IMPACT laboratory data blocked pending license confirmation."
+  },
+  "inputs": [
+    {
+      "path": "inputs/bathymetry.tif",
+      "role": "terrain",
+      "format": "geotiff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/measurements.parquet",
+    "uncertainty": {
+      "type": "relative",
+      "value": 0.05,
+      "units": "1",
+      "notes": "Draft placeholder uncertainty; replace with published gauge error."
+    },
+    "include_measurement_uncertainty": true
+  },
+  "simulation": {
+    "t_end": 30.0,
+    "output_interval": 0.5,
+    "required_outputs": [
+      "h",
+      "u",
+      "v"
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "gauge_NSE",
+        "metric": "NSE",
+        "variable": "h",
+        "threshold": {
+          "op": ">=",
+          "value": 0.6,
+          "units": "1"
+        },
+        "gating": true,
+        "rationale": "NSE vs laboratory gauges \u2265 0.6 within measurement uncertainty."
+      },
+      {
+        "id": "front",
+        "metric": "front_position_error",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Wet/dry front position within 0.1 m of lab imagery / gauges."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}

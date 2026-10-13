@@ -1,0 +1,110 @@
+{
+  "schema_version": "1.0.0",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_id": "A1P-001_darcy_weisbach_single_pipe",
+  "test_class": "verification_analytic",
+  "title": "Darcy\u2013Weisbach single pipe",
+  "description": "Steady pressurized flow in a single pipe with Darcy\u2013Weisbach friction; head loss compared to the closed-form \u0394h = f (L/D) V\u00b2/(2g).",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "pressurized",
+    "governing_equations": [
+      "darcy_weisbach",
+      "continuity"
+    ],
+    "phenomena": [
+      "pipe_friction",
+      "steady_flow"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Darcy, H.",
+          "Weisbach, J."
+        ],
+        "year": 1845,
+        "title": "Classical Darcy\u2013Weisbach pipe-friction relation (as used in EPANET hydraulics)",
+        "report_number": "EPA/600/R-20/133 \u00a73"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/params.json",
+      "role": "parameters",
+      "format": "json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.darcy_weisbach",
+      "function": "head_loss",
+      "parameters": {
+        "L": 1000.0,
+        "D": 0.3,
+        "f": 0.02,
+        "V": 1.0,
+        "g": 9.81
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 1.0,
+    "output_interval": 1.0,
+    "required_outputs": [
+      "p",
+      "Q"
+    ],
+    "mesh_refinement": {
+      "levels": [
+        20.0,
+        10.0,
+        5.0,
+        2.5
+      ],
+      "fixed_courant": 0.5
+    }
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "head_loss",
+        "metric": "L2",
+        "variable": "p",
+        "threshold": {
+          "op": "abs<=",
+          "value": 1.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Steady head loss within 1% of Darcy\u2013Weisbach closed form."
+      },
+      {
+        "id": "mass",
+        "metric": "continuity_error",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Mass continuity on a single pipe."
+      }
+    ],
+    "convergence": {
+      "norm": "L1",
+      "variable": "p",
+      "expected_order": 1.0,
+      "min_observed_order": 0.8
+    },
+    "pass_rule": "all_gating"
+  }
+}

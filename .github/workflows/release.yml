@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.0)"
+        required: true
+        type: string
+      dry_run:
+        description: "Skip creating the git tag"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  release:
+    name: Tag, build site, Zenodo placeholder
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Validate catalog before release
+        run: python tools/validate_catalog.py --allow-placeholder-hash --self-test
+
+      - name: Create tag
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "hydrobench $TAG"
+          git push origin "$TAG"
+
+      - name: Build static site
+        run: |
+          set -euo pipefail
+          if command -v hydrobench >/dev/null 2>&1; then
+            hydrobench report --out site/dist || python -m hydrobench.cli.main report --out site/dist || true
+          fi
+          if [ -d site ]; then
+            mkdir -p site/dist
+            echo "Site scaffold present; build step is a placeholder until the generator is wired."
+            ls -la site
+          fi
+
+      - name: Zenodo deposit (placeholder)
+        run: |
+          echo "Zenodo deposit step is a placeholder."
+          echo "No secrets configured; no upload performed."
+          echo "Tag: ${{ inputs.tag }}"
+          echo "When ready, wire ZENODO_TOKEN and deposit metadata from CITATION.cff."

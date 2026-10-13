@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package openhydro.hydrobench.v1;
+
+option java_package = "org.openhydro.hydrobench.v1";
+option csharp_namespace = "OpenHydro.Hydrobench.V1";
+
+// Mirror of schemas/v1/scorecard.schema.json — signed score card.
+// One ScoreCard = one test = one track.
+
+message SolverInfo {
+  string name = 1;
+  string version = 2;
+  string adapter = 3;
+}
+
+message Threshold {
+  string op = 1;    // abs<= | <= | >= | ==
+  double value = 2;
+  string units = 3;
+}
+
+message CriterionResult {
+  string id = 1;
+  string metric = 2;
+  string variable = 3;
+  double observed = 4;
+  Threshold threshold = 5;
+  bool passed = 6;
+  bool gating = 7;
+  optional bool include_measurement_uncertainty = 8;
+  string detail = 9;
+}
+
+message ConvergenceResult {
+  string norm = 1;  // L1 | L2 | Linf
+  string variable = 2;
+  double observed_order = 3;
+  double expected_order = 4;
+  double min_observed_order = 5;
+  optional double gci = 6;
+  bool passed = 7;
+}
+
+message TrackBlock {
+  bool passed = 1;
+  repeated CriterionResult criteria_results = 2;
+  optional ConvergenceResult convergence_result = 3;
+  repeated string certification_claims = 4;
+}
+
+message Signature {
+  string alg = 1;     // must be "Ed25519"
+  string key_id = 2;
+  bytes value = 3;    // raw signature bytes (JSON form is base64)
+}
+
+message ScoreCard {
+  string schema_version = 1;
+  string test_id = 2;
+  string track = 3;  // "A" | "B"
+  string case_version = 4;
+  SolverInfo solver = 5;
+  string catalog_version = 6;
+  string timestamp = 7;  // ISO-8601; injectable for fixtures
+  repeated CriterionResult criteria_results = 8;
+  optional ConvergenceResult convergence_result = 9;
+  bool passed = 10;
+  optional double score = 11;
+  repeated string certification_claims = 12;
+  // Optional embedded multi-track blocks (normally omit; one card = one track).
+  optional TrackBlock track_a = 13;
+  optional TrackBlock track_b = 14;
+  Signature signature = 15;
+  string content_hash = 16;  // SHA-256 hex of canonical payload
+  string notes = 17;
+}

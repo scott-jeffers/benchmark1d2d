@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0.0",
+  "test_id": "A1F-001_macdonald_m1_backwater",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_class": "verification_analytic",
+  "title": "MacDonald M1 subcritical backwater",
+  "description": "Steady 1D open-channel M1-like backwater with MacDonald manufactured bed so that a prescribed smooth depth profile is exact.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": ["saint_venant_steady"],
+    "phenomena": ["backwater", "subcritical", "friction"]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "MacDonald, I.",
+          "Baines, M. J.",
+          "Nichols, N. K.",
+          "Samuels, P. G."
+        ],
+        "year": 1997,
+        "title": "Analytic benchmark solutions for open-channel flows",
+        "doi": "10.1061/(ASCE)0733-9429(1997)123:11(1041)"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/params.json",
+      "role": "parameters",
+      "format": "json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.macdonald",
+      "function": "depth_profile",
+      "parameters": {
+        "case": "m1",
+        "g": 9.81
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 3600,
+    "output_interval": 60,
+    "required_outputs": ["h", "u", "Q"],
+    "mesh_refinement": {
+      "levels": [40, 20, 10, 5],
+      "fixed_courant": 0.5
+    }
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "L1_h",
+        "metric": "L1",
+        "variable": "h",
+        "threshold": {"op": "abs<=", "value": 0.01, "units": "m"},
+        "gating": true,
+        "rationale": "Steady depth L1 error on finest mesh against MacDonald M1 profile."
+      },
+      {
+        "id": "mass",
+        "metric": "global_mass_error",
+        "variable": "volume",
+        "threshold": {"op": "abs<=", "value": 0.1, "units": "%"},
+        "gating": true,
+        "rationale": "Conservation property at steady state."
+      }
+    ],
+    "convergence": {
+      "norm": "L1",
+      "variable": "h",
+      "expected_order": 1.0,
+      "min_observed_order": 0.8
+    },
+    "pass_rule": "all_gating"
+  }
+}

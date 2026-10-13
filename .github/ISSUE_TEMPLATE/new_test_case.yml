@@ -1,0 +1,65 @@
+name: New test case
+description: Propose a new Track A or Track B catalog entry
+title: "[test] "
+labels: ["catalog", "new-test"]
+body:
+  - type: input
+    id: test_id
+    attributes:
+      label: Test ID
+      description: Unique ID with track/class prefix (e.g. A1F-012_… or B-EXTRAN-002_…).
+      placeholder: A1F-012_example_case
+    validations:
+      required: true
+
+  - type: dropdown
+    id: track
+    attributes:
+      label: Track
+      options:
+        - A
+        - B
+    validations:
+      required: true
+
+  - type: dropdown
+    id: status
+    attributes:
+      label: Proposed initial status
+      options:
+        - draft
+        - candidate
+      default: 0
+    validations:
+      required: true
+
+  - type: input
+    id: license
+    attributes:
+      label: Data license
+      description: Must match a License ID in DATA_LICENSES.md (use TBD-confirm only with status draft).
+      placeholder: analytic-public
+    validations:
+      required: true
+
+  - type: input
+    id: citation_doi
+    attributes:
+      label: Citation DOI
+      description: Primary citation DOI if available (Crossref-resolvable preferred).
+      placeholder: 10.1061/(ASCE)0733-9429(1997)123:11(1041)
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale
+      description: Why this case belongs in the suite, physics exercised, and proposed scoring tolerances.
+      placeholder: Exact Ritter solution exercises dry-bed wet/dry front tracking…
+    validations:
+      required: true
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources / datasets
+      description: Links to papers, lab reports, or corpora; note any license confirmation needed.

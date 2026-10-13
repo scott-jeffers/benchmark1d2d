@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openhydro.org/schemas/v1/network_1d.schema.json",
+  "title": "Hydrobench 1D Network",
+  "description": "Minimal 1D pipe/channel network: nodes, links, cross-sections, rating/pump curves and controls. Used as a portable input alongside or instead of native .inp files.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "nodes", "links"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "units": {
+      "type": "string",
+      "enum": ["SI", "US"],
+      "default": "SI"
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "links": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/link" }
+    },
+    "xsections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/xsection" }
+    },
+    "curves": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/curve" }
+    },
+    "controls": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/control" }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["junction", "outfall", "storage", "divider", "reservoir"]
+        },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "invert_elevation": { "type": "number" },
+        "max_depth": { "type": "number", "minimum": 0 },
+        "initial_depth": { "type": "number", "minimum": 0 },
+        "area": { "type": "number", "exclusiveMinimum": 0 },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "from_node", "to_node"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["conduit", "pipe", "pump", "orifice", "weir", "outlet"]
+        },
+        "from_node": { "type": "string", "minLength": 1 },
+        "to_node": { "type": "string", "minLength": 1 },
+        "length": { "type": "number", "exclusiveMinimum": 0 },
+        "roughness": { "type": "number", "minimum": 0 },
+        "xsection_id": { "type": "string" },
+        "curve_id": { "type": "string" },
+        "offset_upstream": { "type": "number" },
+        "offset_downstream": { "type": "number" },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "xsection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "shape"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "shape": {
+          "type": "string",
+          "enum": [
+            "circular",
+            "rectangular",
+            "trapezoidal",
+            "triangular",
+            "irregular",
+            "custom"
+          ]
+        },
+        "geom1": { "type": "number" },
+        "geom2": { "type": "number" },
+        "geom3": { "type": "number" },
+        "geom4": { "type": "number" },
+        "stations": {
+          "type": "array",
+          "description": "Irregular cross-section station-elevation pairs.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["station", "elevation"],
+            "properties": {
+              "station": { "type": "number" },
+              "elevation": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "curve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "points"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["pump", "rating", "storage", "shape", "tidal", "control"]
+        },
+        "points": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y"],
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "rule"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "rule": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable or SWMM-style control rule text."
+        },
+        "priority": { "type": "integer" },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

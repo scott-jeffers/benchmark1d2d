@@ -1,0 +1,11 @@
+{
+  "tier": "tier_pr",
+  "description": "PR-gate Track B model IDs (synthetic scaffold; ~5 cases).",
+  "model_ids": [
+    "B-EXTRAN-001",
+    "B-RTC-001",
+    "B-CONTROL-001",
+    "B-FORCEMAIN-001",
+    "B-QUALITY-001"
+  ]
+}

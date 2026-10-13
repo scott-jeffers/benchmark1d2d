@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0.0",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_id": "A1P-021_bergant_slow_closure_column_sep",
+  "test_class": "validation_lab",
+  "title": "Bergant slow valve closure with column separation",
+  "description": "Laboratory water-hammer with slow valve closure producing column separation and cavity collapse; compare pressure traces to published gauge data.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "pressurized",
+    "governing_equations": [
+      "water_hammer",
+      "column_separation"
+    ],
+    "phenomena": [
+      "water_hammer",
+      "column_separation",
+      "valve_closure"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Bergant, A.",
+          "Simpson, A. R."
+        ],
+        "year": 1999,
+        "title": "Pipeline column separation flow regimes",
+        "doi": "10.1061/(ASCE)0733-9429(1999)125:8(835)"
+      }
+    ],
+    "license": "Unlicense",
+    "adaptation_notes": "Draft: laboratory pressure traces to be vendored after license/source confirmation of raw data."
+  },
+  "inputs": [
+    {
+      "path": "inputs/params.json",
+      "role": "parameters",
+      "format": "json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/measurements.parquet",
+    "uncertainty": {
+      "type": "relative",
+      "value": 0.05,
+      "units": "1",
+      "notes": "Draft placeholder uncertainty; replace with published gauge error."
+    },
+    "include_measurement_uncertainty": true
+  },
+  "simulation": {
+    "t_end": 10.0,
+    "output_interval": 0.01,
+    "required_outputs": [
+      "p",
+      "u"
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "peak_pressure",
+        "metric": "peak_error",
+        "variable": "p",
+        "threshold": {
+          "op": "abs<=",
+          "value": 5.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Peak pressure within 5% of published Bergant & Simpson gauge peak."
+      },
+      {
+        "id": "arrival",
+        "metric": "arrival_time_error",
+        "variable": "p",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.05,
+          "units": "s"
+        },
+        "gating": true,
+        "rationale": "Cavity collapse / pressure recovery timing within 0.05 s."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}

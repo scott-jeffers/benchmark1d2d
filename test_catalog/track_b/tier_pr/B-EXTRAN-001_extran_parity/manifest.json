@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0.0",
+  "test_id": "B-EXTRAN-001_extran_parity",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "B",
+  "test_class": "parity",
+  "title": "EXTRAN parity against SWMM 5.2.4",
+  "description": "Industry parity case: candidate solver output compared to pinned EPA SWMM 5.2.4 on a classic EXTRAN-style sewer network fixture.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "mixed",
+    "governing_equations": ["saint_venant_dynamic", "pressurized_pipe"],
+    "phenomena": ["surcharge", "backwater", "network_routing"]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Roesner, L. A.",
+          "Aldrich, J. A.",
+          "Dickinson, R. E."
+        ],
+        "year": 1988,
+        "title": "Storm Water Management Model User's Manual, Version 4: EXTRAN Addendum",
+        "report_number": "EPA/600/3-88/001b"
+      }
+    ],
+    "license": "Unlicense"
+  },
+  "inputs": [
+    {
+      "path": "inputs/network.inp",
+      "role": "network",
+      "format": "inp",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "pinned_engine",
+    "engine": "SWMM",
+    "version": "5.2.4",
+    "binary_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "simulation": {
+    "t_end": 21600,
+    "output_interval": 60,
+    "required_outputs": ["h", "Q"]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "peak_depth",
+        "metric": "relative_peak",
+        "variable": "h",
+        "threshold": {"op": "abs<=", "value": 1.0, "units": "%"},
+        "gating": true,
+        "rationale": "Within SWMM 5.2.4 self-consistency band on EXTRAN cases."
+      },
+      {
+        "id": "volume",
+        "metric": "relative_volume",
+        "variable": "volume",
+        "threshold": {"op": "abs<=", "value": 1.0, "units": "%"},
+        "gating": true,
+        "rationale": "Hydrograph volume within ±1% of pinned SWMM 5.2.4 reference."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}

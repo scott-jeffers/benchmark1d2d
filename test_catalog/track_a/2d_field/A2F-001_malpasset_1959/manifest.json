@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0.0",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_id": "A2F-001_malpasset_1959",
+  "test_class": "validation_field",
+  "title": "Malpasset 1959 dam failure",
+  "description": "Historical Malpasset dam-break (1959, France); 2D shallow-water field validation against surveyed high-water marks (CADAM).",
+  "physics": {
+    "dimensionality": "2D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "shallow_water_2d"
+    ],
+    "phenomena": [
+      "dam_break",
+      "field_inundation",
+      "high_water_marks"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Hervouet, J.-M.",
+          "Petitjean, A."
+        ],
+        "year": 1999,
+        "title": "Malpasset dam-break revisited with two-dimensional computations",
+        "doi": "10.1080/00221689909498511"
+      }
+    ],
+    "license": "TBD-confirm",
+    "adaptation_notes": "Terrain and high-water marks blocked pending license confirmation (Goutal 1999 CADAM definition)."
+  },
+  "inputs": [
+    {
+      "path": "inputs/terrain.tif",
+      "role": "terrain",
+      "format": "geotiff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/high_water_marks.csv",
+    "uncertainty": {
+      "type": "relative",
+      "value": 0.1,
+      "units": "1",
+      "notes": "Draft placeholder uncertainty; replace with published gauge error."
+    },
+    "include_measurement_uncertainty": true
+  },
+  "simulation": {
+    "t_end": 4000.0,
+    "output_interval": 10.0,
+    "required_outputs": [
+      "h",
+      "u",
+      "v"
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "hwm",
+        "metric": "L2",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 15.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "High-water mark elevations within 15% / stated survey uncertainty."
+      },
+      {
+        "id": "arrival",
+        "metric": "arrival_time_error",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 120.0,
+          "units": "s"
+        },
+        "gating": true,
+        "rationale": "Arrival at key valley gauges within 2 minutes of reconstruction."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0.0",
+  "test_id": "A1P-020_joukowsky_instant_closure",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_class": "verification_analytic",
+  "title": "Joukowsky instant valve closure",
+  "description": "Frictionless pipe water hammer after instantaneous full valve closure; classic Joukowsky pressure rise before the first reflection.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "pressurized",
+    "governing_equations": ["water_hammer"],
+    "phenomena": ["water_hammer", "valve_closure", "pressure_wave"]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": ["Joukowsky, N."],
+        "year": 1900,
+        "title": "Über den hydraulischen Stoss in Wasserleitungsröhren",
+        "report_number": "Mem. Acad. Imp. Sci. St.-Petersbourg Ser.8 9(5)"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/params.json",
+      "role": "parameters",
+      "format": "json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.joukowsky",
+      "function": "pressure_wave",
+      "parameters": {
+        "L": 1000.0,
+        "a": 1000.0,
+        "V0": 1.0,
+        "rho": 1000.0,
+        "p0": 0.0
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 0.5,
+    "output_interval": 0.05,
+    "required_outputs": ["p", "u"],
+    "mesh_refinement": {
+      "levels": [20, 10, 5, 2.5],
+      "fixed_courant": 0.5
+    }
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "peak_pressure",
+        "metric": "peak_error",
+        "variable": "p",
+        "threshold": {"op": "abs<=", "value": 2.0, "units": "%"},
+        "gating": true,
+        "rationale": "Peak pressure within ±2% of Joukowsky rise Δp = ρ a V0."
+      },
+      {
+        "id": "continuity",
+        "metric": "continuity_error",
+        "variable": "u",
+        "threshold": {"op": "abs<=", "value": 1.0, "units": "%"},
+        "gating": true,
+        "rationale": "Mass continuity behind the closed-end front before first reflection."
+      }
+    ],
+    "convergence": {
+      "norm": "L1",
+      "variable": "p",
+      "expected_order": 1.0,
+      "min_observed_order": 0.8
+    },
+    "pass_rule": "all_gating"
+  }
+}

@@ -1,0 +1,583 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openhydro.org/schemas/v1/test_manifest.schema.json",
+  "title": "Hydrobench Test Manifest",
+  "description": "Main contract for a hydrobench V&V test case. Declares identity, physics, provenance, inputs, reference solution, simulation setup and scoring tolerances.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "test_id",
+    "case_version",
+    "status",
+    "track",
+    "test_class",
+    "physics",
+    "provenance",
+    "inputs",
+    "reference",
+    "simulation",
+    "scoring"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema semver this manifest conforms to.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "test_id": {
+      "type": "string",
+      "description": "Unique test identifier. Prefix encodes track and class (A1P, A1F, A2A, A2L, A2F, A12, B).",
+      "pattern": "^(A1P|A1F|A2A|A2L|A2F|A12|B)-[A-Za-z0-9._-]+$"
+    },
+    "case_version": {
+      "type": "string",
+      "description": "Semver of this test case definition.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "status": {
+      "type": "string",
+      "description": "Lifecycle status. Only frozen cases count toward certification.",
+      "enum": ["draft", "candidate", "frozen", "deprecated"]
+    },
+    "track": {
+      "type": "string",
+      "description": "A = physics verification/validation; B = industry parity.",
+      "enum": ["A", "B"]
+    },
+    "test_class": {
+      "type": "string",
+      "description": "Test class constrained by track via if/then rules.",
+      "enum": [
+        "verification_analytic",
+        "verification_manufactured",
+        "validation_lab",
+        "validation_field",
+        "validation_coupled",
+        "parity",
+        "regression",
+        "stress"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "description": "Short human-readable title."
+    },
+    "description": {
+      "type": "string",
+      "description": "Longer description of the test case."
+    },
+    "physics": {
+      "$ref": "#/$defs/physics"
+    },
+    "provenance": {
+      "$ref": "#/$defs/provenance"
+    },
+    "inputs": {
+      "type": "array",
+      "description": "Input files with integrity hashes.",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/input_file"
+      }
+    },
+    "reference": {
+      "$ref": "#/$defs/reference"
+    },
+    "simulation": {
+      "$ref": "#/$defs/simulation"
+    },
+    "scoring": {
+      "$ref": "#/$defs/scoring"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "track": { "const": "A" } },
+        "required": ["track"]
+      },
+      "then": {
+        "properties": {
+          "test_class": {
+            "enum": [
+              "verification_analytic",
+              "verification_manufactured",
+              "validation_lab",
+              "validation_field",
+              "validation_coupled"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "track": { "const": "B" } },
+        "required": ["track"]
+      },
+      "then": {
+        "properties": {
+          "test_class": {
+            "enum": ["parity", "regression", "stress"]
+          },
+          "reference": {
+            "properties": {
+              "kind": { "const": "pinned_engine" }
+            },
+            "required": ["kind"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "test_class": {
+            "type": "string",
+            "pattern": "^verification"
+          }
+        },
+        "required": ["test_class"]
+      },
+      "then": {
+        "properties": {
+          "simulation": {
+            "type": "object",
+            "required": ["mesh_refinement"],
+            "properties": {
+              "mesh_refinement": {
+                "type": "object",
+                "required": ["levels"],
+                "properties": {
+                  "levels": {
+                    "type": "array",
+                    "minItems": 3,
+                    "items": { "type": "number" }
+                  }
+                }
+              }
+            }
+          },
+          "scoring": {
+            "type": "object",
+            "required": ["convergence"],
+            "properties": {
+              "convergence": {
+                "type": "object",
+                "required": ["expected_order", "min_observed_order"]
+              }
+            }
+          }
+        },
+        "required": ["simulation", "scoring"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scoring": {
+            "type": "object",
+            "properties": {
+              "pass_rule": { "const": "weighted" }
+            },
+            "required": ["pass_rule"]
+          }
+        },
+        "required": ["scoring"]
+      },
+      "then": {
+        "properties": {
+          "scoring": {
+            "type": "object",
+            "required": ["minimum_score"],
+            "properties": {
+              "minimum_score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "physics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dimensionality",
+        "flow_type",
+        "governing_equations",
+        "phenomena"
+      ],
+      "properties": {
+        "dimensionality": {
+          "type": "string",
+          "enum": ["1D", "2D", "1D2D"]
+        },
+        "flow_type": {
+          "type": "string",
+          "enum": ["pressurized", "free_surface", "mixed"]
+        },
+        "governing_equations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "phenomena": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["citations", "license"],
+      "properties": {
+        "citations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/citation" }
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Must match an entry in DATA_LICENSES.md."
+        },
+        "source_dataset_doi": {
+          "type": "string",
+          "description": "Optional DOI of the source dataset."
+        },
+        "adaptation_notes": {
+          "type": "string",
+          "description": "Notes on how source data was adapted for this case."
+        }
+      }
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "authors": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "year": { "type": "integer" },
+        "doi": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri" },
+        "isbn": { "type": "string", "minLength": 1 },
+        "report_number": { "type": "string", "minLength": 1 }
+      },
+      "anyOf": [
+        { "required": ["doi"] },
+        { "required": ["url"] },
+        { "required": ["isbn"] },
+        { "required": ["report_number"] }
+      ]
+    },
+    "input_file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role", "format", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Relative path within the test case folder."
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Semantic role (e.g. network, terrain, forcing, initial_condition)."
+        },
+        "format": {
+          "type": "string",
+          "minLength": 1,
+          "description": "File format identifier (e.g. json, inp, geotiff, ugrid)."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$",
+          "description": "SHA-256 hex digest of the file contents."
+        },
+        "crs": {
+          "type": "string",
+          "description": "Optional CRS (EPSG code or WKT)."
+        }
+      }
+    },
+    "reference": {
+      "oneOf": [
+        { "$ref": "#/$defs/reference_analytic" },
+        { "$ref": "#/$defs/reference_measured" },
+        { "$ref": "#/$defs/reference_pinned_engine" }
+      ]
+    },
+    "reference_analytic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "generator"],
+      "properties": {
+        "kind": { "const": "analytic" },
+        "generator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["module", "function", "parameters"],
+          "properties": {
+            "module": { "type": "string", "minLength": 1 },
+            "function": { "type": "string", "minLength": 1 },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "reference_measured": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "data_path", "uncertainty"],
+      "properties": {
+        "kind": { "const": "measured" },
+        "data_path": { "type": "string", "minLength": 1 },
+        "uncertainty": { "$ref": "#/$defs/uncertainty" },
+        "include_measurement_uncertainty": {
+          "type": "boolean",
+          "description": "When true, scoring absorbs stated measurement uncertainty."
+        }
+      }
+    },
+    "reference_pinned_engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "engine", "version", "binary_sha256"],
+      "properties": {
+        "kind": { "const": "pinned_engine" },
+        "engine": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "binary_sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        }
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["absolute", "relative", "combined", "per_variable"]
+        },
+        "value": { "type": "number" },
+        "units": { "type": "string" },
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "absolute": { "type": "number" },
+              "relative": { "type": "number" },
+              "units": { "type": "string" }
+            }
+          }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "simulation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["t_end", "output_interval", "required_outputs"],
+      "properties": {
+        "t_end": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Simulation end time (seconds)."
+        },
+        "output_interval": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Output sampling interval (seconds)."
+        },
+        "required_outputs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["t", "x", "y", "h", "u", "v", "p", "Q", "c"]
+          }
+        },
+        "probes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/probe" }
+        },
+        "mesh_refinement": {
+          "$ref": "#/$defs/mesh_refinement"
+        },
+        "solver_freedoms": {
+          "type": "object",
+          "description": "Optional solver parameters the adapter may expose.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "x"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["h", "u", "v", "p", "Q", "c"]
+          }
+        }
+      }
+    },
+    "mesh_refinement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["levels"],
+      "properties": {
+        "levels": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "number", "exclusiveMinimum": 0 },
+          "description": "Characteristic mesh spacings (coarse → fine)."
+        },
+        "fixed_courant": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Courant number held fixed across refinement levels."
+        }
+      }
+    },
+    "scoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["criteria", "pass_rule"],
+      "properties": {
+        "criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/criterion" }
+        },
+        "convergence": {
+          "$ref": "#/$defs/convergence"
+        },
+        "pass_rule": {
+          "type": "string",
+          "enum": ["all_gating", "any_gating", "weighted"]
+        },
+        "minimum_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Required when pass_rule is weighted."
+        }
+      }
+    },
+    "criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "metric", "variable", "threshold", "gating", "rationale"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "metric": {
+          "type": "string",
+          "enum": [
+            "L1",
+            "L2",
+            "Linf",
+            "global_mass_error",
+            "NSE",
+            "KGE",
+            "peak_error",
+            "arrival_time_error",
+            "front_position_error",
+            "CSI",
+            "relative_peak",
+            "relative_volume",
+            "timing_error",
+            "continuity_error"
+          ]
+        },
+        "variable": { "type": "string", "minLength": 1 },
+        "where": {
+          "type": "string",
+          "description": "Optional spatial/temporal mask or probe selector."
+        },
+        "threshold": { "$ref": "#/$defs/threshold" },
+        "gating": {
+          "type": "boolean",
+          "description": "If true, this criterion participates in the pass_rule."
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required justification; appears on the public test page."
+        },
+        "include_measurement_uncertainty": {
+          "type": "boolean"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Optional weight for weighted pass_rule."
+        }
+      }
+    },
+    "threshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "value", "units"],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": ["abs<=", "<=", ">=", "=="]
+        },
+        "value": { "type": "number" },
+        "units": { "type": "string", "minLength": 1 }
+      }
+    },
+    "convergence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["norm", "variable", "expected_order", "min_observed_order"],
+      "properties": {
+        "norm": {
+          "type": "string",
+          "enum": ["L1", "L2", "Linf"]
+        },
+        "variable": { "type": "string", "minLength": 1 },
+        "expected_order": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "min_observed_order": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openhydro.org/schemas/v1/scorecard.schema.json",
+  "title": "Hydrobench Signed Score Card",
+  "description": "Signed, reproducible output of a scoring run. One card = one test = one track. Track A and Track B are never collapsed into a single pass/fail badge; emit separate cards when both tracks are scored.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "test_id",
+    "track",
+    "solver",
+    "catalog_version",
+    "timestamp",
+    "criteria_results",
+    "passed",
+    "certification_claims",
+    "signature",
+    "content_hash"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "test_id": {
+      "type": "string",
+      "pattern": "^(A1P|A1F|A2A|A2L|A2F|A12|B)-[A-Za-z0-9._-]+$"
+    },
+    "track": {
+      "type": "string",
+      "enum": ["A", "B"]
+    },
+    "case_version": {
+      "type": "string",
+      "description": "case_version from the scored manifest."
+    },
+    "solver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "adapter"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "adapter": { "type": "string", "minLength": 1 }
+      }
+    },
+    "catalog_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Suite / catalog release version used for this run."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of the scoring run. Injectable for reproducible fixtures."
+    },
+    "criteria_results": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/criterion_result" }
+    },
+    "convergence_result": {
+      "$ref": "#/$defs/convergence_result"
+    },
+    "passed": {
+      "type": "boolean",
+      "description": "Overall pass/fail for this single-track card."
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Optional aggregate score when pass_rule was weighted."
+    },
+    "certification_claims": {
+      "type": "array",
+      "description": "Claims this result supports (e.g. A-V, A-L, B-1%). Empty if failed.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "track_a": {
+      "$ref": "#/$defs/track_block",
+      "description": "Optional detailed Track A block when a multi-track report embeds both."
+    },
+    "track_b": {
+      "$ref": "#/$defs/track_block",
+      "description": "Optional detailed Track B block when a multi-track report embeds both."
+    },
+    "signature": {
+      "$ref": "#/$defs/signature"
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$",
+      "description": "SHA-256 of the canonical score-card payload (excluding signature.value)."
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "criterion_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "metric", "observed", "threshold", "passed", "gating"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "metric": { "type": "string", "minLength": 1 },
+        "variable": { "type": "string" },
+        "observed": { "type": "number" },
+        "threshold": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "value", "units"],
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": ["abs<=", "<=", ">=", "=="]
+            },
+            "value": { "type": "number" },
+            "units": { "type": "string" }
+          }
+        },
+        "passed": { "type": "boolean" },
+        "gating": { "type": "boolean" },
+        "include_measurement_uncertainty": { "type": "boolean" },
+        "detail": { "type": "string" }
+      }
+    },
+    "convergence_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["norm", "variable", "observed_order", "expected_order", "min_observed_order", "passed"],
+      "properties": {
+        "norm": {
+          "type": "string",
+          "enum": ["L1", "L2", "Linf"]
+        },
+        "variable": { "type": "string", "minLength": 1 },
+        "observed_order": { "type": "number" },
+        "expected_order": { "type": "number" },
+        "min_observed_order": { "type": "number" },
+        "gci": {
+          "type": "number",
+          "description": "Optional Grid Convergence Index (Roache)."
+        },
+        "passed": { "type": "boolean" }
+      }
+    },
+    "track_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "criteria_results": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/criterion_result" }
+        },
+        "convergence_result": {
+          "$ref": "#/$defs/convergence_result"
+        },
+        "certification_claims": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "key_id", "value"],
+      "properties": {
+        "alg": {
+          "type": "string",
+          "const": "Ed25519"
+        },
+        "key_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifier of the signing key."
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Base64-encoded Ed25519 signature.",
+          "pattern": "^[A-Za-z0-9+/]+=*$"
+        }
+      }
+    }
+  }
+}

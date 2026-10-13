@@ -1,0 +1,95 @@
+{
+  "schema_version": "1.0.0",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_id": "A2L-EA4_flood_propagation_speed",
+  "test_class": "validation_lab",
+  "title": "EA4 flood propagation speed",
+  "description": "Flood-wave propagation speed over a sloping plane (EA 2D benchmark).",
+  "physics": {
+    "dimensionality": "2D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "shallow_water_2d"
+    ],
+    "phenomena": [
+      "inundation",
+      "wet_dry",
+      "floodplain"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "N\u00e9elz, S.",
+          "Pender, G."
+        ],
+        "year": 2013,
+        "title": "Benchmarking the Latest Generation of 2D Hydraulic Modelling Packages",
+        "url": "https://www.gov.uk/flood-and-coastal-erosion-risk-management-research-reports/2d-benchmarking-evaluating-the-latest-generation-of-the-hydraulic-models-for-fcrm",
+        "report_number": "SC120002"
+      }
+    ],
+    "license": "TBD-confirm",
+    "adaptation_notes": "Blocked pending Environment Agency dataset license confirmation."
+  },
+  "inputs": [
+    {
+      "path": "inputs/terrain.tif",
+      "role": "terrain",
+      "format": "geotiff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/gauges.csv",
+    "uncertainty": {
+      "type": "relative",
+      "value": 0.05,
+      "units": "1",
+      "notes": "Draft placeholder uncertainty; replace with published gauge error."
+    },
+    "include_measurement_uncertainty": true
+  },
+  "simulation": {
+    "t_end": 3600.0,
+    "output_interval": 60.0,
+    "required_outputs": [
+      "h",
+      "u",
+      "v"
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "arrival",
+        "metric": "arrival_time_error",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 60.0,
+          "units": "s"
+        },
+        "gating": true,
+        "rationale": "Gauge arrival time within 60 s of published EA reference."
+      },
+      {
+        "id": "peak",
+        "metric": "peak_error",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 10.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Peak depth within 10% of EA reference gauges."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}

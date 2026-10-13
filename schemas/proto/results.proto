@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package openhydro.hydrobench.v1;
+
+option java_package = "org.openhydro.hydrobench.v1";
+option csharp_namespace = "OpenHydro.Hydrobench.V1";
+
+// Mirror of schemas/v1/results.schema.json — Arrow/Parquet column contract
+// expressed as a streaming row message for gRPC solvers.
+
+// Physical column names match the Parquet contract: t,x,y,h,u,v,p [,Q,c].
+message ResultsRow {
+  double t = 1;  // time [s]
+  double x = 2;  // x / chainage [m]
+  double y = 3;  // y [m]; NaN for pure 1D
+  double h = 4;  // depth / head [m]
+  double u = 5;  // velocity x [m/s]
+  double v = 6;  // velocity y [m/s]; NaN for pure 1D
+  double p = 7;  // pressure [Pa]; NaN when N/A
+
+  // Optional 1D fields (presence flagged separately).
+  optional double Q = 8;  // discharge [m^3/s]
+  optional double c = 9;  // concentration [kg/m^3 or normalised]
+}
+
+message ResultsColumnMeta {
+  string name = 1;       // t|x|y|h|u|v|p|Q|c
+  string type = 2;       // always "float64" for v1
+  bool required = 3;
+  bool nullable = 4;
+  string units = 5;
+  string description = 6;
+}
+
+message ResultsSchema {
+  string schema_version = 1;
+  string format = 2;  // "parquet" | "arrow_ipc" | "stream"
+  repeated ResultsColumnMeta columns = 3;
+}
+
+// Batch of rows for streaming solvers.
+message ResultsBatch {
+  ResultsSchema schema = 1;
+  repeated ResultsRow rows = 2;
+  string content_hash = 3;  // optional SHA-256 of canonical batch payload
+}

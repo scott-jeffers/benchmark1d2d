@@ -1,0 +1,23 @@
+[project]
+name = "hydrobench"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["numpy", "scipy", "pandas", "pyarrow", "jsonschema", "cryptography", "matplotlib"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+hydrobench = "hydrobench.cli.main:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["runner/python", "."]
+include = ["hydrobench*", "references*"]
+
+[tool.pytest.ini_options]
+testpaths = ["runner/python/tests", "references/tests", "schemas/v1/tests"]
+pythonpath = ["runner/python", "."]

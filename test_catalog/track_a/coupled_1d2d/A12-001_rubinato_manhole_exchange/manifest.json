@@ -1,0 +1,99 @@
+{
+  "schema_version": "1.0.0",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_id": "A12-001_rubinato_manhole_exchange",
+  "test_class": "validation_coupled",
+  "title": "Rubinato manhole exchange",
+  "description": "Laboratory sewer/surface exchange through a manhole; validate 1D\u20132D coupling exchange equations (Rubinato et al. 2017).",
+  "physics": {
+    "dimensionality": "1D2D",
+    "flow_type": "mixed",
+    "governing_equations": [
+      "saint_venant_dynamic",
+      "shallow_water_2d",
+      "manhole_exchange"
+    ],
+    "phenomena": [
+      "sewer_surface_exchange",
+      "manhole",
+      "urban_flood"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Rubinato, M.",
+          "Martins, R.",
+          "Kesserwani, G.",
+          "Leandro, J.",
+          "Djordjevi\u0107, S.",
+          "Shucksmith, J."
+        ],
+        "year": 2017,
+        "title": "Experimental calibration and validation of sewer/surface flow exchange equations in steady and unsteady flow conditions",
+        "doi": "10.1016/j.jhydrol.2017.06.024"
+      }
+    ],
+    "license": "Unlicense",
+    "adaptation_notes": "Draft: exchange hydrographs to be digitized from publication / obtained from authors."
+  },
+  "inputs": [
+    {
+      "path": "inputs/coupling.json",
+      "role": "coupling",
+      "format": "json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/measurements.parquet",
+    "uncertainty": {
+      "type": "relative",
+      "value": 0.05,
+      "units": "1",
+      "notes": "Draft placeholder uncertainty; replace with published gauge error."
+    },
+    "include_measurement_uncertainty": true
+  },
+  "simulation": {
+    "t_end": 300.0,
+    "output_interval": 1.0,
+    "required_outputs": [
+      "h",
+      "Q"
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "exchange_Q",
+        "metric": "NSE",
+        "variable": "Q",
+        "threshold": {
+          "op": ">=",
+          "value": 0.7,
+          "units": "1"
+        },
+        "gating": true,
+        "rationale": "NSE on manhole exchange discharge \u2265 0.7 vs laboratory."
+      },
+      {
+        "id": "surface_h",
+        "metric": "peak_error",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 5.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Surface depth peak within 5% of lab gauges."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}

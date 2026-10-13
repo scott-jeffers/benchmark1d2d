@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0.0",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_id": "A1F-020_hydraulic_jump_belanger",
+  "test_class": "verification_analytic",
+  "title": "B\u00e9langer hydraulic jump",
+  "description": "Steady 1D hydraulic jump: sequent depths related by the B\u00e9langer equation; verify conjugate depth and momentum balance.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "saint_venant_dynamic"
+    ],
+    "phenomena": [
+      "hydraulic_jump",
+      "shock"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "B\u00e9langer, J. B."
+        ],
+        "year": 1828,
+        "title": "Essai sur la solution num\u00e9rique de quelques probl\u00e8mes relatifs au mouvement permanent des eaux courantes (B\u00e9langer sequent-depth relation)",
+        "report_number": "Belanger-1828"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/params.json",
+      "role": "parameters",
+      "format": "json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.belanger",
+      "function": "sequent_depths",
+      "parameters": {
+        "Fr1": 2.5,
+        "h1": 0.2,
+        "g": 9.81
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 200.0,
+    "output_interval": 10.0,
+    "required_outputs": [
+      "h",
+      "u",
+      "Q"
+    ],
+    "mesh_refinement": {
+      "levels": [
+        20.0,
+        10.0,
+        5.0,
+        2.5
+      ],
+      "fixed_courant": 0.5
+    }
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "sequent_depth",
+        "metric": "L2",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 2.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Downstream conjugate depth within 2% of B\u00e9langer equation."
+      },
+      {
+        "id": "mass",
+        "metric": "global_mass_error",
+        "variable": "volume",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Mass conservation across the jump."
+      }
+    ],
+    "convergence": {
+      "norm": "L1",
+      "variable": "h",
+      "expected_order": 1.0,
+      "min_observed_order": 0.8
+    },
+    "pass_rule": "all_gating"
+  }
+}

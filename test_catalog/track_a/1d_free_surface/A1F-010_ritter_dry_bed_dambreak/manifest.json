@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0.0",
+  "test_id": "A1F-010_ritter_dry_bed_dambreak",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_class": "verification_analytic",
+  "title": "Ritter dry-bed dam break",
+  "description": "1D inviscid Saint-Venant dam break onto a dry bed with exact Ritter (1892) solution.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": ["saint_venant_dynamic"],
+    "phenomena": ["dam_break", "dry_bed", "wet_dry_front"]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": ["Ritter, A."],
+        "year": 1892,
+        "title": "Die Fortpflanzung der Wasserwellen",
+        "report_number": "ZdVDI 36(33)"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/params.json",
+      "role": "parameters",
+      "format": "json",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.ritter",
+      "function": "depth_velocity",
+      "parameters": {
+        "h0": 1.0,
+        "x0": 1000.0,
+        "g": 9.81
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 60,
+    "output_interval": 5,
+    "required_outputs": ["h", "u", "Q"],
+    "mesh_refinement": {
+      "levels": [10, 5, 2.5, 1.25],
+      "fixed_courant": 0.5
+    }
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "front_position",
+        "metric": "front_position_error",
+        "variable": "h",
+        "threshold": {"op": "abs<=", "value": 2.5, "units": "m"},
+        "gating": true,
+        "rationale": "Two finest cells; exact front at 1375.8 m."
+      },
+      {
+        "id": "mass",
+        "metric": "global_mass_error",
+        "variable": "volume",
+        "threshold": {"op": "abs<=", "value": 0.1, "units": "%"},
+        "gating": true,
+        "rationale": "Conservation property of continuous equations."
+      }
+    ],
+    "convergence": {
+      "norm": "L1",
+      "variable": "h",
+      "expected_order": 1.0,
+      "min_observed_order": 0.8
+    },
+    "pass_rule": "all_gating"
+  }
+}
