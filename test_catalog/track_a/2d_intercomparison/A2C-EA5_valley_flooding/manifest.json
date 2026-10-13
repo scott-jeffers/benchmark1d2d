@@ -1,0 +1,209 @@
+{
+  "schema_version": "1.1.0",
+  "test_id": "A2C-EA5_valley_flooding",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_class": "intercomparison",
+  "title": "EA Test 5 — valley flooding",
+  "description": "Dam-failure hydrograph (peak 3000 m³/s) released down a ~17 km valley whose slope eases from ~0.01 to ~0.001, producing both super- and subcritical flow, run to 30 h. Tests peak levels, velocities and travel times.",
+  "physics": {
+    "dimensionality": "2D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "shallow_water_2d"
+    ],
+    "phenomena": [
+      "wet_dry",
+      "transcritical",
+      "dam_break",
+      "inundation"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Néelz, S.",
+          "Pender, G."
+        ],
+        "year": 2013,
+        "title": "Benchmarking the Latest Generation of 2D Hydraulic Modelling Packages",
+        "report_number": "SC120002",
+        "isbn": "978-1-84911-306-9",
+        "url": "https://www.gov.uk/flood-and-coastal-erosion-risk-management-research-reports/2d-benchmarking-evaluating-the-latest-generation-of-the-hydraulic-models-for-fcrm"
+      },
+      {
+        "authors": [
+          "Néelz, S.",
+          "Pender, G."
+        ],
+        "year": 2010,
+        "title": "Benchmarking of 2D Hydraulic Modelling Packages",
+        "report_number": "SC080035/SR2",
+        "url": "https://assets.publishing.service.gov.uk/media/5a75765c40f0b6360e4744dd/scho0510bsno-e-e.pdf"
+      }
+    ],
+    "license": "OGL-UK-3.0",
+    "adaptation_notes": "Inputs come from the GOV.UK 'Benchmarking model data' archive, published under the Open Government Licence v3.0 (the page licence; the archive carries no other terms). Attribution: Environment Agency, SC120002 (2013), test specifications May 2010. Committed: inflow table, output points, active-area polygon, case.json. DEM fetched by hash."
+  },
+  "inputs": [
+    {
+      "path": "inputs/terrain.asc",
+      "role": "terrain",
+      "format": "esri_ascii_grid",
+      "sha256": "bab3711e9fdcfa4b3599c91894d9dff216eca252f4deafb25e9923c39309c488",
+      "committed": false,
+      "source": {
+        "url": "https://assets.publishing.service.gov.uk/media/6033a9bbd3bf7f72182e99ca/Benchmarking_Model_Data.zip",
+        "archive_sha256": "388c2789570e5975fe909033e34bedbe5d7bde5e6d7f9b7d7c1eaf04e58bc732",
+        "members": [
+          "Test5_dataset_2010.zip",
+          "Test5 dataset 2010/Test5DEM.asc"
+        ]
+      },
+      "crs": "EPSG:27700"
+    },
+    {
+      "path": "inputs/active_area.shp",
+      "sha256": "cb3af8927f6203b459bd24e59f73c084bf3a8a72d055eefd875ff2bbc843c09a",
+      "role": "active_area",
+      "format": "shp"
+    },
+    {
+      "path": "inputs/inflow.csv",
+      "sha256": "bd464cffa339c0612478d6315f4d2915b86511d15d59f0dd6df3445726bc2bfb",
+      "role": "boundary_condition",
+      "format": "csv"
+    },
+    {
+      "path": "inputs/output_points.csv",
+      "sha256": "e8c8eccab28f5581441cd0d6dcc92eb4151f4f2e1322e4c52246aa20510f0fac",
+      "role": "probes",
+      "format": "csv"
+    },
+    {
+      "path": "inputs/case.json",
+      "sha256": "ef24fd3ad639208d98a750dcc8ec8a4eb5013de7f5f0a92fab171ac307e2ce07",
+      "role": "case_parameters",
+      "format": "json"
+    }
+  ],
+  "reference": {
+    "kind": "intercomparison",
+    "expected_states": [
+      {
+        "id": "final_stored_volume",
+        "variable": "volume",
+        "time": 108000.0,
+        "value": 9450000.0,
+        "units": "m3",
+        "derivation": "Closed boundaries and a dry initial bed: stored volume at the end of the run equals the linearly interpolated inflow hydrograph integrated to t_end."
+      }
+    ],
+    "ensemble": {
+      "source": "SC120002 report, Test 5 figures",
+      "availability": "permission_required",
+      "notes": "Published package results exist only as figures in the SC120002 report, whose text is 'All rights reserved … reproduced with prior permission of the Environment Agency'. They are shown for context once digitised with EA permission and never gate."
+    }
+  },
+  "simulation": {
+    "t_end": 108000.0,
+    "output_interval": 60.0,
+    "required_outputs": [
+      "h",
+      "u",
+      "v"
+    ],
+    "probes": [
+      {
+        "id": "P1",
+        "x": 235200.0,
+        "y": 832400.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P2",
+        "x": 236700.0,
+        "y": 833800.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P3",
+        "x": 237800.0,
+        "y": 835200.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P4",
+        "x": 239400.0,
+        "y": 838000.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P5",
+        "x": 243300.0,
+        "y": 840300.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P6",
+        "x": 235700.0,
+        "y": 832500.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      },
+      {
+        "id": "P7",
+        "x": 237700.0,
+        "y": 835500.0,
+        "variables": [
+          "h",
+          "u",
+          "v"
+        ]
+      }
+    ]
+  },
+  "scoring": {
+    "pass_rule": "all_gating",
+    "criteria": [
+      {
+        "id": "mass_conservation",
+        "metric": "expected_state_error",
+        "against": "final_stored_volume",
+        "variable": "volume",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "The only exact statement the test admits: nothing leaves a closed domain, so any difference is mass created or lost by the scheme (suite target < 0.1 %)."
+      }
+    ]
+  }
+}

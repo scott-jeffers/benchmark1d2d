@@ -21,7 +21,7 @@ def repo_root() -> Path:
     return find_repo_root()
 
 
-def test_thacker_exact_passes(tmp_path: Path, repo_root: Path):
+def test_thacker_exact_writer_is_rejected(tmp_path: Path, repo_root: Path):
     manifest = load_manifest("A2A-001", repo=repo_root)
     # Use coarser than catalog for a fast unit test; still multi-level.
     dxs = [0.2, 0.1, 0.05]
@@ -39,9 +39,14 @@ def test_thacker_exact_passes(tmp_path: Path, repo_root: Path):
         private_key=Ed25519PrivateKey.from_private_bytes(bytes([5] * 32)),
         solver={"name": "demo_2d_exact", "version": "0.1.0", "adapter": "generic_parquet"},
     )
-    assert card["passed"] is True
-    assert card.get("convergence_result") is not None
-    assert card["convergence_result"]["passed"] is True
+    # The "exact" writer samples the analytical solution: its errors are at
+    # round-off on every mesh, which no discretisation can produce, so the
+    # convergence check must refuse it rather than pass it.
+    assert card["passed"] is False
+    conv = card["convergence_result"]
+    assert conv["passed"] is False
+    assert conv["observed_order"] is None
+    assert "round-off" in conv["note"]
 
 
 def test_thacker_perturbed_converges(tmp_path: Path, repo_root: Path):

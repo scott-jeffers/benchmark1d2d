@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
@@ -38,8 +38,11 @@
     {
       "path": "inputs/terrain.tif",
       "role": "terrain",
-      "format": "geotiff",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "format": "tif",
+      "pending": {
+        "reason": "CADAM/EDF Malpasset topography; redistribution terms not confirmed.",
+        "obtain_from": "EDF R&D / CADAM partners; USACE LifeSim derivative"
+      }
     }
   ],
   "reference": {
@@ -51,7 +54,8 @@
       "units": "1",
       "notes": "Draft placeholder uncertainty; replace with published gauge error."
     },
-    "include_measurement_uncertainty": true
+    "include_measurement_uncertainty": true,
+    "availability": "pending_license"
   },
   "simulation": {
     "t_end": 4000.0,

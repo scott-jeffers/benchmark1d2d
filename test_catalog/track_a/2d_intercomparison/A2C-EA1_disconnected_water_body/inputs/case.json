@@ -1,0 +1,26 @@
+{
+  "domain": {
+    "xmin": 0,
+    "xmax": 700,
+    "ymin": 0,
+    "ymax": 100
+  },
+  "manning_n": 0.03,
+  "grid_resolution_m": 10.0,
+  "t_end_s": 72000,
+  "initial_condition": {
+    "water_level_m": 9.7
+  },
+  "boundaries": {
+    "west": {
+      "type": "water_level",
+      "table": "boundary_level.csv",
+      "time_units": "min"
+    },
+    "others": "closed"
+  },
+  "outputs": {
+    "probe_interval_s": 60,
+    "probes": "output_points.csv"
+  }
+}

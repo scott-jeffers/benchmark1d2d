@@ -7,35 +7,44 @@ on:
 
 jobs:
   validate:
-    name: Schema / hash / license
+    name: Schema, hashes, licences
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: python -m pip install --upgrade pip jsonschema
+      # No placeholder hashes are allowed any more: every input is real, fetched by hash, or explicitly pending (draft only).
+      - name: Validate catalog
+        run: python tools/validate_catalog.py --self-test
 
-      - name: Install jsonschema
-        run: python -m pip install --upgrade pip jsonschema
-
-      - name: Validate catalog (allow placeholder hashes)
-        run: python tools/validate_catalog.py --allow-placeholder-hash --self-test
+  fetched-inputs:
+    name: Fetch remote inputs and verify hashes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip jsonschema
+      - uses: actions/cache@v4
+        with:
+          path: .cache/sources
+          key: sources-${{ hashFiles('test_catalog/**/manifest.json') }}
+      - name: Fetch and verify
+        run: python scripts/fetch_inputs.py
+      - name: Validate with fetched files present
+        run: python tools/validate_catalog.py
 
   doi-check:
     name: Crossref DOI check
     runs-on: ubuntu-latest
-    # Soft gate on PRs; still runs on main for visibility.
     continue-on-error: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install jsonschema
-        run: python -m pip install --upgrade pip jsonschema
-
-      - name: Validate catalog with strict DOI checks
-        run: python tools/validate_catalog.py --allow-placeholder-hash --check-doi
+      - run: python -m pip install --upgrade pip jsonschema
+      - run: python tools/validate_catalog.py --check-doi

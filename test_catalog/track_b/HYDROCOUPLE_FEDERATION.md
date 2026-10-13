@@ -6,7 +6,7 @@ this suite records tags, provenance, and tier membership.
 
 ## Upstream
 
-- Repo: https://github.com/HydroCouple/openswmm.engine.benchmarks (`dev` branch)
+- Repo: https://github.com/HydroCouple/openswmm.engine.benchmarks, pinned to commit `63eb8bc5b4e741c82195ed65c4d7d146b86da1cc` (2026-10-03). Every index row records the raw URL at that commit and the file's SHA-256; moving to a newer commit means re-running the census and rebuilding the index.
 - License: Unlicense
 - Layout: `corpus/<collection>/<case>/{model.inp,metadata.yaml,provenance.yaml}`
 - Tag vocabulary (canonical): `harness/schemas/tags.yaml`
@@ -50,3 +50,13 @@ ID to an upstream raw URL and verifies SHA-256 before use.
 
 Verified against openswmm.engine.benchmarks on 2026-10-13 (tag vocabulary +
 corpus layout). Engine runs through HydroCouple harness remain upstream work.
+
+## Census on EPA SWMM 5.2.4 (13 Oct 2026)
+
+`scripts/corpus_census.py` runs every model on the pinned engine. Of 1,396 models, 941 run
+cleanly, 296 stop with input errors (mostly older-version syntax: ERROR 205, 207, 209, 211, 235;
+32 reference rainfall files that are not in the repository, ERROR 317), 157 exceed the 60 s
+limit, and 2 fail in the engine or harness. Of the 941 that run, 98 report continuity errors
+beyond ±5 % and are excluded from tiers, because a non-conserving reference cannot anchor
+parity. These lists are worth sending upstream; the index (`corpus_index.parquet`, `status`,
+`error_codes`, `continuity_*`) has every row.

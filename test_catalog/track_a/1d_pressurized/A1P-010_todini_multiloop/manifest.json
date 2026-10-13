@@ -1,12 +1,12 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A1P-010_todini_multiloop",
   "test_class": "verification_analytic",
   "title": "Todini multi-loop network",
-  "description": "Steady multi-loop pipe network solved by the Todini\u2013Pilati gradient method; nodal heads and link flows checked against a closed-form / high-precision reference.",
+  "description": "Steady two-loop gravity network (Alperovits & Shamir 1977 topology, fixed analysis diameters, Hazen–Williams). Reference heads and flows from a Todini–Pilati gradient solve converged to 1e-12 m, cross-checked against EPANET 2.2 (|ΔH| < 1 mm).",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "pressurized",
@@ -29,6 +29,15 @@
         "year": 1988,
         "title": "A gradient algorithm for the analysis of pipe networks",
         "isbn": "9780863800948"
+      },
+      {
+        "authors": [
+          "Alperovits, E.",
+          "Shamir, U."
+        ],
+        "year": 1977,
+        "title": "Design of optimal water distribution systems",
+        "doi": "10.1029/WR013i006p00885"
       }
     ],
     "license": "analytic-public"
@@ -38,7 +47,7 @@
       "path": "inputs/network.json",
       "role": "network",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "e93cd1cba8d75846db32789065c81026c11b0b3334f307fa3342a42d552410f8"
     }
   ],
   "reference": {
@@ -47,6 +56,7 @@
       "module": "references.todini",
       "function": "steady_network",
       "parameters": {
+        "network_path": "inputs/network.json",
         "demand_scale": 1.0
       }
     }
@@ -80,7 +90,7 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "Nodal heads within 0.5% of Todini\u2013Pilati reference."
+        "rationale": "Nodal heads within 0.5% of Todini–Pilati reference."
       },
       {
         "id": "link_flow",

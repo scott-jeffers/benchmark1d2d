@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.1.0",
+  "test_id": "B-EPANET-001_net1_parity",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "B",
+  "test_class": "parity",
+  "title": "EPANET Net1 parity against EPANET 2.2",
+  "description": "EPANET Example Network 1 (9 junctions, 1 reservoir, 1 tank, 12 pipes, 1 pump; 24 h extended period). Candidate nodal pressures and link flows are compared element by element with EPANET 2.2.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "pressurized",
+    "governing_equations": [
+      "steady_network_hydraulics",
+      "extended_period_simulation"
+    ],
+    "phenomena": [
+      "looped_network",
+      "pump",
+      "tank_filling"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Rossman, L. A.",
+          "Woo, H.",
+          "Tryby, M.",
+          "Shang, F.",
+          "Janke, R.",
+          "Haxton, T."
+        ],
+        "year": 2020,
+        "title": "EPANET 2.2 User Manual",
+        "report_number": "EPA/600/R-20/133"
+      }
+    ],
+    "license": "public-domain-EPA",
+    "adaptation_notes": "Net1.inp is the example network distributed with EPA EPANET (public domain); copied unmodified from the WNTR 1.5.0 network library."
+  },
+  "inputs": [
+    {
+      "path": "inputs/network.inp",
+      "role": "network",
+      "format": "inp",
+      "sha256": "607510a01287d60d27b280a39df31a001363175a438a5de1b39e749cec6ddbc8"
+    }
+  ],
+  "reference": {
+    "kind": "pinned_engine",
+    "engine": "EPANET",
+    "version": "2.2",
+    "binary_sha256": "3a49fa2eb1aecdf4d7a83c9a26667bacc418d285ed1d3a45becec52e7556d73f",
+    "results_path": "reference/epanet-2.2.parquet",
+    "build": "wntr 1.5.0 (EPANET 2.2 library libepanet22)"
+  },
+  "simulation": {
+    "t_end": 86400,
+    "output_interval": 3600,
+    "required_outputs": [
+      "p",
+      "Q"
+    ]
+  },
+  "scoring": {
+    "pass_rule": "all_gating",
+    "criteria": [
+      {
+        "id": "peak_pressure",
+        "metric": "relative_peak",
+        "variable": "p",
+        "threshold": {
+          "op": "abs<=",
+          "value": 1.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Nodal peak pressure within 1 % of EPANET 2.2 at every node."
+      },
+      {
+        "id": "link_volume",
+        "metric": "relative_volume",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 1.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "24 h conveyed volume within 1 % of EPANET 2.2 in every pipe and pump."
+      },
+      {
+        "id": "peak_timing",
+        "metric": "timing_error",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 3600,
+          "units": "s"
+        },
+        "gating": false,
+        "rationale": "Informational: one reporting step."
+      }
+    ]
+  }
+}

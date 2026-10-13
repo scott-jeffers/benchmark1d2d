@@ -82,18 +82,24 @@ def _cmd_score(args: argparse.Namespace) -> int:
     if args.refinement:
         refinement = list(args.refinement)
 
-    card = score_case(
-        manifest,
-        args.results,
-        refinement_results=refinement,
-        timestamp=args.timestamp,
-        private_key=private_key,
-        solver={
-            "name": args.solver_name or "demo",
-            "version": args.solver_version or "0.1.0",
-            "adapter": args.adapter or "generic_parquet",
-        },
-    )
+    from benchmark1d2d.scoring.scorer import ReferenceUnavailable
+
+    try:
+        card = score_case(
+            manifest,
+            args.results,
+            refinement_results=refinement,
+            timestamp=args.timestamp,
+            private_key=private_key,
+            solver={
+                "name": args.solver_name or "demo",
+                "version": args.solver_version or "0.1.0",
+                "adapter": args.adapter or "generic_parquet",
+            },
+        )
+    except ReferenceUnavailable as exc:
+        print(f"NOT SCORED: {exc}")
+        return 3
     out_path = Path(args.out) if args.out else Path(args.results).with_suffix(".scorecard.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(card, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
@@ -107,6 +113,37 @@ def _cmd_score(args: argparse.Namespace) -> int:
         mark = "PASS" if cr["passed"] else "FAIL"
         print(f"  [{mark}] convergence p={cr['observed_order']:.4f}")
     return 0 if card["passed"] else 1
+
+
+# Keys the demo scripts sign with. They are published in this repository, so a
+# card signed with one proves integrity (content hash) but not who produced it.
+_DEV_SEEDS = {"vertical slice": bytes([9] * 32), "demo / Track B scripts": bytes([5] * 32)}
+
+
+def _cmd_verify_card(args: argparse.Namespace) -> int:
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+    from benchmark1d2d.scoring.scorecard import verify_scorecard
+
+    card = json.loads(Path(args.card).read_text(encoding="utf-8"))
+    if not verify_scorecard(card):
+        print("FAIL: content hash does not match the card's contents (the card was altered)")
+        return 1
+    print(f"OK   content hash {card['content_hash'][:16]}… matches the card")
+    if args.public_key:
+        ok = verify_scorecard(card, bytes.fromhex(args.public_key))
+        print("OK   signature matches the given public key" if ok else "FAIL: signature does not match the given public key")
+        return 0 if ok else 1
+    for label, seed in _DEV_SEEDS.items():
+        pub = Ed25519PrivateKey.from_private_bytes(seed).public_key()
+        if verify_scorecard(card, pub):
+            raw = pub.public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
+            print(f"NOTE signed with the public development key used by the {label} ({raw[:16]}…).")
+            print("     That key is in the repository, so the signature shows integrity, not who produced the card.")
+            return 0
+    print("NOTE signature not checked: pass --public-key with the signer's key")
+    return 0
 
 
 def _cmd_verify(args: argparse.Namespace) -> int:
@@ -248,6 +285,11 @@ def build_parser() -> argparse.ArgumentParser:
     verify = sub.add_parser("verify", help="Validate manifest schema and input hashes")
     verify.add_argument("test_id")
     verify.set_defaults(func=_cmd_verify)
+
+    vcard = sub.add_parser("verify-card", help="Check a score card's content hash and Ed25519 signature")
+    vcard.add_argument("card", help="path to a *.scorecard.json")
+    vcard.add_argument("--public-key", default=None, help="hex Ed25519 public key of the expected signer")
+    vcard.set_defaults(func=_cmd_verify_card)
 
     report = sub.add_parser("report", help="Summarize score cards")
     report.add_argument("--open", action="store_true", help="Write HTML stub and open it")

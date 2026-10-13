@@ -1,12 +1,12 @@
 {
-  "schema_version": "1.0.0",
-  "case_version": "0.1.0",
+  "schema_version": "1.1.0",
+  "case_version": "2.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A2A-001_thacker_parabolic_bowl",
   "test_class": "verification_analytic",
   "title": "Thacker parabolic bowl",
-  "description": "2D nonlinear shallow-water planar free-surface oscillation in a parabolic bowl with exact Thacker (1981) solution and moving wet/dry shoreline.",
+  "description": "2D shallow-water planar free-surface oscillation in a parabolic bowl (Thacker 1981) with a moving wet/dry shoreline. Reference: zs = (η h0/L²)(2x cos ωt − η cos² ωt), u = −η ω sin ωt, ω = √(2 g h0)/L. Case v2.0.0 replaces a v1 reference that satisfied momentum but violated mass conservation (wrong ω and a missing cos² term).",
   "physics": {
     "dimensionality": "2D",
     "flow_type": "free_surface",

@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "test_id": "A1F-010_ritter_dry_bed_dambreak",
   "case_version": "1.0.0",
   "status": "candidate",
@@ -10,13 +10,21 @@
   "physics": {
     "dimensionality": "1D",
     "flow_type": "free_surface",
-    "governing_equations": ["saint_venant_dynamic"],
-    "phenomena": ["dam_break", "dry_bed", "wet_dry_front"]
+    "governing_equations": [
+      "saint_venant_dynamic"
+    ],
+    "phenomena": [
+      "dam_break",
+      "dry_bed",
+      "wet_dry_front"
+    ]
   },
   "provenance": {
     "citations": [
       {
-        "authors": ["Ritter, A."],
+        "authors": [
+          "Ritter, A."
+        ],
         "year": 1892,
         "title": "Die Fortpflanzung der Wasserwellen",
         "report_number": "ZdVDI 36(33)"
@@ -27,9 +35,9 @@
   "inputs": [
     {
       "path": "inputs/params.json",
-      "role": "parameters",
+      "role": "case_parameters",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "ec594fd897382ccebf4e11ecad5eb85342cc81f9bdf3ca85040616e7ec818a2c"
     }
   ],
   "reference": {
@@ -47,9 +55,18 @@
   "simulation": {
     "t_end": 60,
     "output_interval": 5,
-    "required_outputs": ["h", "u", "Q"],
+    "required_outputs": [
+      "h",
+      "u",
+      "Q"
+    ],
     "mesh_refinement": {
-      "levels": [10, 5, 2.5, 1.25],
+      "levels": [
+        10,
+        5,
+        2.5,
+        1.25
+      ],
       "fixed_courant": 0.5
     }
   },
@@ -59,7 +76,11 @@
         "id": "front_position",
         "metric": "front_position_error",
         "variable": "h",
-        "threshold": {"op": "abs<=", "value": 2.5, "units": "m"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 2.5,
+          "units": "m"
+        },
         "gating": true,
         "rationale": "Two finest cells (2×1.25 m). Exact iso-contour at h=0.001·h0 (~1358 m), not the vacuum tip (1375.8 m)."
       },
@@ -67,7 +88,11 @@
         "id": "mass",
         "metric": "global_mass_error",
         "variable": "volume",
-        "threshold": {"op": "abs<=", "value": 0.1, "units": "%"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "%"
+        },
         "gating": true,
         "rationale": "Conservation property of continuous equations."
       }

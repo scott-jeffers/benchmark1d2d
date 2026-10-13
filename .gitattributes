@@ -12,3 +12,7 @@
 *.exe binary
 *.dll binary
 *.out binary
+
+# Catalog inputs and references are hashed byte for byte: never normalise line endings
+test_catalog/**/inputs/** -text
+test_catalog/**/reference/** -text

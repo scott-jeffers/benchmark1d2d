@@ -1,12 +1,12 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A1F-020_hydraulic_jump_belanger",
   "test_class": "verification_analytic",
-  "title": "B\u00e9langer hydraulic jump",
-  "description": "Steady 1D hydraulic jump: sequent depths related by the B\u00e9langer equation; verify conjugate depth and momentum balance.",
+  "title": "Bélanger hydraulic jump",
+  "description": "Steady 1D hydraulic jump: sequent depths related by the Bélanger equation; verify conjugate depth and momentum balance.",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "free_surface",
@@ -22,10 +22,10 @@
     "citations": [
       {
         "authors": [
-          "B\u00e9langer, J. B."
+          "Bélanger, J. B."
         ],
         "year": 1828,
-        "title": "Essai sur la solution num\u00e9rique de quelques probl\u00e8mes relatifs au mouvement permanent des eaux courantes (B\u00e9langer sequent-depth relation)",
+        "title": "Essai sur la solution numérique de quelques problèmes relatifs au mouvement permanent des eaux courantes (Bélanger sequent-depth relation)",
         "report_number": "Belanger-1828"
       }
     ],
@@ -34,9 +34,9 @@
   "inputs": [
     {
       "path": "inputs/params.json",
-      "role": "parameters",
+      "role": "case_parameters",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "e9ccb8d3d60b7cdcadc73a71d048f8b393ecab3be9f290ae45295dc96bce72fb"
     }
   ],
   "reference": {
@@ -47,7 +47,8 @@
       "parameters": {
         "Fr1": 2.5,
         "h1": 0.2,
-        "g": 9.81
+        "g": 9.81,
+        "L": 100.0
       }
     }
   },
@@ -81,7 +82,7 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "Downstream conjugate depth within 2% of B\u00e9langer equation."
+        "rationale": "Downstream conjugate depth within 2% of Bélanger equation."
       },
       {
         "id": "mass",

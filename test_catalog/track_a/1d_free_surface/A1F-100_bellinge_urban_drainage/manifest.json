@@ -1,0 +1,151 @@
+{
+  "schema_version": "1.1.0",
+  "test_id": "A1F-100_bellinge_urban_drainage",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_class": "validation_field",
+  "title": "Bellinge combined sewer system (Odense, Denmark) — field validation",
+  "description": "1.7 km² mainly combined urban drainage system with up to 10 years of level, flow and pump-power observations and a published EPA SWMM model. A candidate is run on the published network with observed rainfall and judged against measured water levels at the 13 level meters.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "mixed",
+    "governing_equations": [
+      "saint_venant_dynamic",
+      "rainfall_runoff"
+    ],
+    "phenomena": [
+      "surcharge",
+      "pump",
+      "combined_sewer_overflow",
+      "network_routing"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Pedersen, A. N.",
+          "Pedersen, J. W.",
+          "Vigueras-Rodriguez, A.",
+          "Brink-Kjær, A.",
+          "Borup, M.",
+          "Mikkelsen, P. S."
+        ],
+        "year": 2021,
+        "title": "The Bellinge data set: open data and models for community-wide urban drainage systems research",
+        "doi": "10.5194/essd-13-4779-2021"
+      },
+      {
+        "authors": [
+          "Pedersen, A. N.",
+          "Pedersen, J. W.",
+          "Vigueras-Rodriguez, A.",
+          "Brink-Kjær, A.",
+          "Borup, M.",
+          "Mikkelsen, P. S."
+        ],
+        "year": 2021,
+        "title": "Dataset for Bellinge: An urban drainage case study",
+        "doi": "10.11583/DTU.c.5029124"
+      }
+    ],
+    "license": "CC-BY-4.0",
+    "source_dataset_doi": "10.11583/DTU.c.5029124",
+    "adaptation_notes": "Uses only CC BY 4.0 items: 7 – Models (SWMM), 2 – Sensor data, 3b – radar and meteorological-station rainfall. Item 3a (rain gauges) is CC BY-NC 4.0 and is deliberately excluded so the case stays usable by commercial vendors. The published SWMM model is uncalibrated (ESSD paper §4); event selection and the validation window are still to be fixed."
+  },
+  "inputs": [
+    {
+      "path": "inputs/7_SWMM.zip",
+      "role": "network",
+      "format": "zip",
+      "committed": false,
+      "source": {
+        "url": "https://ndownloader.figshare.com/files/30592830",
+        "md5": "fea9026c5d98b29645eb7fad69c4675d",
+        "doi": "10.11583/DTU.12513428.v2"
+      },
+      "pending": {
+        "reason": "Record the SHA-256 on first fetch (DTU's file store is on port 9000, unreachable from the build sandbox).",
+        "obtain_from": "DTU Data, item 12513428, file 30592830"
+      }
+    },
+    {
+      "path": "inputs/3b_DMI_C-band_v2.zip",
+      "role": "rainfall",
+      "format": "zip",
+      "committed": false,
+      "source": {
+        "url": "https://ndownloader.figshare.com/files/30592692",
+        "doi": "10.11583/DTU.12513236.v3"
+      },
+      "pending": {
+        "reason": "Radar rainfall (CC BY 4.0) for the selected events; choose events, then record SHA-256.",
+        "obtain_from": "DTU Data, item 12513236"
+      }
+    },
+    {
+      "path": "inputs/2_cleaned_data.zip",
+      "role": "observations",
+      "format": "zip",
+      "committed": false,
+      "source": {
+        "url": "https://ndownloader.figshare.com/files/30592524",
+        "doi": "10.11583/DTU.12509249"
+      },
+      "pending": {
+        "reason": "390 MB of cleaned sensor data; extract level-meter series for the selected events into reference/levels.parquet.",
+        "obtain_from": "DTU Data, item 12509249"
+      }
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/levels.parquet",
+    "availability": "to_digitise",
+    "uncertainty": {
+      "type": "absolute",
+      "value": 0.02,
+      "units": "m",
+      "notes": "Provisional; take level-meter accuracy from the sensor documentation (2_Sensordata_v2.pdf)."
+    },
+    "include_measurement_uncertainty": true
+  },
+  "simulation": {
+    "t_end": 86400,
+    "output_interval": 60,
+    "required_outputs": [
+      "h",
+      "Q"
+    ]
+  },
+  "scoring": {
+    "pass_rule": "all_gating",
+    "criteria": [
+      {
+        "id": "level_nse",
+        "metric": "NSE",
+        "variable": "h",
+        "threshold": {
+          "op": ">=",
+          "value": 0.5,
+          "units": "1"
+        },
+        "gating": true,
+        "rationale": "Provisional. Moriasi et al. (2007) 'satisfactory' band; to be set once events and an uncalibrated-model baseline are fixed."
+      },
+      {
+        "id": "peak_level",
+        "metric": "peak_error",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 15.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Provisional; peak water level at each level meter."
+      }
+    ]
+  }
+}

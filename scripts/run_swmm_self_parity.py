@@ -1,9 +1,22 @@
 #!/usr/bin/env python3
-"""Prove SWMM 5.2.4 scores 100% self-parity on B-EXTRAN-001.
+"""Cross-build parity: the official EPA SWMM 5.2.4 Windows binaries vs the committed references.
 
-Runs the pinned ``runswmm.exe`` twice on the same ``.inp``, asserts byte-
-identical ``.rpt`` / ``.out``, adapts both reports to the results contract,
-and scores relative peak/volume (must be ~0).
+The Track B references are produced on Linux by the SWMM 5.2.4 engine bundled
+in ``swmm-toolkit``. This script runs the pinned official Windows build
+(``runswmm.exe``, hashes in ``reference_engines/swmm-5.2.4/pin.json``) on every
+SWMM catalog case, adapts its binary output with the same reader, and scores it
+against those references. Passing shows the two builds of 5.2.4 agree within
+each case's tolerance, so a candidate scored against either is scored against
+"SWMM 5.2.4".
+
+It also runs the official binary twice and requires byte-identical output.
+Score cards go to ``out/cross_build/`` (job artifact; not merged into the site).
+
+Not every case is build-independent. Control-rule models switch pumps on
+depth thresholds, so last-bit floating-point differences between the MSVC
+(official) and GCC (swmm-toolkit) builds can flip a switch and move a peak.
+Such cases are run and reported every time but marked ``gating: False`` with
+the reason; only build-independent cases decide the job.
 """
 
 from __future__ import annotations
@@ -17,99 +30,68 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO / "runner" / "python"))
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 
-from benchmark1d2d.adapters.swmm5 import adapt_rpt_to_parquet
-from benchmark1d2d.catalog import load_manifest
-from benchmark1d2d.engines import assert_pin_matches_sha256sums, load_swmm_pin
-from benchmark1d2d.scoring.scorer import score_case
+from benchmark1d2d.adapters.swmm5 import adapt_out_to_parquet  # noqa: E402
+from benchmark1d2d.catalog import load_manifest  # noqa: E402
+from benchmark1d2d.engines import assert_pin_matches_sha256sums, load_swmm_pin  # noqa: E402
+from benchmark1d2d.scoring.scorer import score_case  # noqa: E402
 
 BIN = _REPO / "reference_engines" / "swmm-5.2.4" / "bin"
 EXE = BIN / "runswmm.exe"
-PIN_PATH = _REPO / "reference_engines" / "swmm-5.2.4" / "pin.json"
-SUMS = _REPO / "reference_engines" / "swmm-5.2.4" / "SHA256SUMS"
+OUT = _REPO / "out" / "cross_build"
+CASES = {
+    "B-EXTRAN-001": {"gating": True},
+    # Found by this job (2026-10-13): official win64 vs swmm-toolkit 0.17.0 on the
+    # same input differ by -3.7 % peak depth at Out_U435 and move the Ref_U435 flow
+    # peak by 92,400 s (two near-equal pump-cycle peaks swap). Both runs are
+    # repeatable bit-for-bit, so this is build sensitivity, not noise.
+    "B-RTC-001": {"gating": False, "reason": "control-rule switching is sensitive to compiler floating-point differences between builds"},
+}
 
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _verify_pin(pin: dict) -> None:
-    assert_pin_matches_sha256sums(_REPO)
-    binaries = pin.get("binaries") or {}
-    for name, expected in binaries.items():
-        got = _sha256(BIN / name)
-        if got != expected.lower():
-            raise SystemExit(f"PIN MISMATCH {name}: {got} != {expected}")
-    dll = binaries.get("swmm5.dll", "")
-    print(f"PIN OK: SWMM {pin.get('version')} swmm5.dll={dll[:16]}…")
-
-
 def main() -> int:
     if not EXE.is_file():
-        print("SWMM binary missing; fetch USEPA v5.2.4 win64 release first.")
-        return 2
-    if not PIN_PATH.is_file():
-        print(f"Missing pin file: {PIN_PATH}")
+        print("SWMM binary missing; fetch the USEPA v5.2.4 win64 release first (see reference_engines/swmm-5.2.4/README.md).")
         return 2
     pin = load_swmm_pin(_REPO)
-    _verify_pin(pin)
-    version = str(pin.get("version") or "5.2.4")
-
-    manifest = load_manifest("B-EXTRAN-001", repo=_REPO)
-    inp = _REPO / "test_catalog/track_b/tier_pr/B-EXTRAN-001_extran_parity/inputs/network.inp"
-    out_dir = _REPO / "out" / "swmm_self_parity"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    runs = []
-    for i in (1, 2):
-        rpt = out_dir / f"run{i}.rpt"
-        out = out_dir / f"run{i}.out"
-        cmd = [str(EXE), str(inp), str(rpt), str(out)]
-        print(" ".join(cmd))
-        subprocess.run(cmd, check=True, cwd=str(out_dir))
-        runs.append((rpt, out))
-
-    r1, o1 = runs[0]
-    r2, o2 = runs[1]
-    identical = _sha256(r1) == _sha256(r2) and _sha256(o1) == _sha256(o2)
-    print(f"byte-identical rpt+out: {identical}")
-    if not identical:
-        return 1
-
-    pq1 = out_dir / "run1.parquet"
-    pq2 = out_dir / "run2.parquet"
-    adapt_rpt_to_parquet(r1, pq1)
-    adapt_rpt_to_parquet(r2, pq2)
-
+    assert_pin_matches_sha256sums(_REPO)
+    for name, expected in (pin.get("binaries") or {}).items():
+        if _sha256(BIN / name) != expected.lower():
+            raise SystemExit(f"PIN MISMATCH {name}")
+    print(f"pin OK: official SWMM {pin['version']} binaries")
+    OUT.mkdir(parents=True, exist_ok=True)
     key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))
-    card = score_case(
-        manifest,
-        pq1,
-        timestamp="2024-01-01T00:00:00Z",
-        private_key=key,
-        solver={"name": str(pin.get("engine") or "SWMM"), "version": version, "adapter": "swmm5"},
-    )
-    # Force parity against the second run's adapted series by reusing identity
-    # stub path — relative metrics on identical adapted tables.
-    from benchmark1d2d.io.results import read_results_parquet
-    from benchmark1d2d.metrics import relative_peak, relative_volume
-    import numpy as np
-
-    a = read_results_parquet(pq1)
-    b = read_results_parquet(pq2)
-    # Align on shared column
-    col = "h" if "h" in a.columns else a.columns[0]
-    rp = float(relative_peak(a[col].to_numpy(float), b[col].to_numpy(float)))
-    rv = float(relative_volume(a[col].to_numpy(float), b[col].to_numpy(float)))
-    print(f"relative_peak={rp:.3e} relative_volume={rv:.3e}")
-    score_path = out_dir / "B-EXTRAN-001_self_parity.scorecard.json"
-    score_path.write_text(
-        json.dumps(card, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n",
-        encoding="utf-8",
-    )
-    ok = identical and abs(rp) < 1e-12 and abs(rv) < 1e-12
-    print(f"GATE PASS: SWMM {version} 100% self-parity" if ok else "GATE FAIL")
+    ok = True
+    for tid, opts in CASES.items():
+        m = load_manifest(tid, repo=_REPO)
+        inp = Path(m["_case_dir"]) / "inputs" / "network.inp"
+        if not inp.is_file():
+            subprocess.run([sys.executable, str(_REPO / "scripts" / "fetch_inputs.py"), tid], check=True)
+        outs = []
+        for i in (1, 2):
+            rpt, out = OUT / f"{tid}.run{i}.rpt", OUT / f"{tid}.run{i}.out"
+            subprocess.run([str(EXE), str(inp), str(rpt), str(out)], check=True, cwd=str(inp.parent), capture_output=True)
+            outs.append(out)
+        identical = _sha256(outs[0]) == _sha256(outs[1])
+        pq = adapt_out_to_parquet(outs[0], OUT / f"{tid}.official.parquet")
+        card = score_case(m, pq, timestamp="2024-01-01T00:00:00Z", private_key=key,
+                          solver={"name": f"EPA SWMM {pin['version']} official win64", "version": pin["version"], "adapter": "swmm5"})
+        (OUT / f"{tid}.cross_build.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+        role = "gating" if opts["gating"] else f"informative — {opts['reason']}"
+        print(f"{tid} [{role}]: repeat runs byte-identical={identical}; vs {m['reference'].get('build')}: {'PASS' if card['passed'] else 'FAIL'}")
+        for r in card["criteria_results"]:
+            print(f"    {r['id']}: {r['observed']} {r['threshold']['units']} ({r.get('detail', '')})")
+        ok &= identical  # repeatability is required of every case
+        if opts["gating"]:
+            ok &= card["passed"]
+        elif not card["passed"]:
+            print(f"::warning title=Cross-build difference {tid}::official win64 build differs from the reference build beyond tolerance ({opts['reason']})")
+    print("CROSS-BUILD PASS" if ok else "CROSS-BUILD FAIL")
     return 0 if ok else 1
 
 

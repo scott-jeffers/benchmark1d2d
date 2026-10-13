@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
@@ -32,15 +32,18 @@
         "doi": "10.1061/(ASCE)0733-9429(1999)125:8(835)"
       }
     ],
-    "license": "Unlicense",
+    "license": "TBD-confirm",
     "adaptation_notes": "Draft: laboratory pressure traces to be vendored after license/source confirmation of raw data."
   },
   "inputs": [
     {
-      "path": "inputs/params.json",
-      "role": "parameters",
+      "path": "inputs/rig.json",
+      "role": "geometry",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "pending": {
+        "reason": "Pipeline rig geometry, valve closure law and pressure traces from Bergant & Simpson (1999); raw traces need permission from the authors.",
+        "obtain_from": "University of Adelaide (Simpson) / Litostroj Power (Bergant)"
+      }
     }
   ],
   "reference": {
@@ -52,7 +55,8 @@
       "units": "1",
       "notes": "Draft placeholder uncertainty; replace with published gauge error."
     },
-    "include_measurement_uncertainty": true
+    "include_measurement_uncertainty": true,
+    "availability": "request_from_authors"
   },
   "simulation": {
     "t_end": 10.0,

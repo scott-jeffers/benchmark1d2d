@@ -1,12 +1,12 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A1P-001_darcy_weisbach_single_pipe",
   "test_class": "verification_analytic",
-  "title": "Darcy\u2013Weisbach single pipe",
-  "description": "Steady pressurized flow in a single pipe with Darcy\u2013Weisbach friction; head loss compared to the closed-form \u0394h = f (L/D) V\u00b2/(2g).",
+  "title": "Darcy–Weisbach single pipe",
+  "description": "Steady pressurized flow in a single pipe with Darcy–Weisbach friction; head loss compared to the closed-form Δh = f (L/D) V²/(2g).",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "pressurized",
@@ -27,8 +27,8 @@
           "Weisbach, J."
         ],
         "year": 1845,
-        "title": "Classical Darcy\u2013Weisbach pipe-friction relation (as used in EPANET hydraulics)",
-        "report_number": "EPA/600/R-20/133 \u00a73"
+        "title": "Classical Darcy–Weisbach pipe-friction relation (as used in EPANET hydraulics)",
+        "report_number": "EPA/600/R-20/133 §3"
       }
     ],
     "license": "analytic-public"
@@ -36,9 +36,9 @@
   "inputs": [
     {
       "path": "inputs/params.json",
-      "role": "parameters",
+      "role": "case_parameters",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "83f7fac770544ad33f605e140fc19b49c42d991a480de39b3a61ce3b2699cb70"
     }
   ],
   "reference": {
@@ -51,7 +51,8 @@
         "D": 0.3,
         "f": 0.02,
         "V": 1.0,
-        "g": 9.81
+        "g": 9.81,
+        "H0": 100.0
       }
     }
   },
@@ -84,7 +85,7 @@
           "units": "%"
         },
         "gating": true,
-        "rationale": "Steady head loss within 1% of Darcy\u2013Weisbach closed form."
+        "rationale": "Steady head loss within 1% of Darcy–Weisbach closed form."
       },
       {
         "id": "mass",

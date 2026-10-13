@@ -24,8 +24,8 @@ DEFAULT_PARAMS = {
 
 
 def angular_frequency(h0: float, L: float, g: float = 9.81) -> float:
-    """Natural frequency ``ω = sqrt(8 g h0) / L`` [rad/s]."""
-    return float(np.sqrt(8.0 * g * h0) / L)
+    """Natural frequency ``ω = sqrt(2 g h0) / L`` [rad/s] (Thacker 1981; SWASHES §4.2.2)."""
+    return float(np.sqrt(2.0 * g * h0) / L)
 
 
 def bed_elevation(x, y, h0: float, L: float) -> np.ndarray:
@@ -49,40 +49,26 @@ def depth_velocity(
     omega: float | None = None,
     g: float = 9.81,
 ) -> dict:
-    """Thacker planar free-surface oscillation in a parabolic bowl.
+    """Thacker (1981) planar free-surface oscillation in a parabolic bowl.
 
-    Free surface (planar)::
+    Bed ``zb = h0 ((x² + y²)/L² - 1)``. The free surface stays planar and
+    tilts back and forth along x; velocity is uniform over the wet region::
 
-        zs(x, y, t) = (η / L) x cos(ω t)
+        zs(x, t) = (η h0 / L²) (2 x cos ωt - η cos² ωt)
+        u(t)     = -η ω sin ωt,   v = 0
+        h        = max(0, zs - zb),   ω = sqrt(2 g h0) / L
 
-    Depth::
+    ``η`` is the horizontal excursion of the shoreline [m]. The cos² term is
+    required by continuity: without it ∂h/∂t + ∂(hu)/∂x ≠ 0. (Versions of this
+    module before case v2.0.0 omitted it and used ω = sqrt(8 g h0)/L, which
+    satisfied momentum but not mass conservation.)
 
-        h = max(0, zs - zb),  zb = h0 ((x² + y²)/L² - 1)
+    Derivation: with u uniform, continuity gives ∂h/∂t + u ∂h/∂x = 0 and
+    momentum gives du/dt = -g ∂zs/∂x. Writing zs = S(t) x + Z(t) yields
+    S'' = -(2 g h0 / L²) S, so S = S0 cos ωt with S0 = 2 η h0 / L², and
+    Z' = -u S, so Z = -(η² h0 / L²) cos² ωt.
 
-    Spatially uniform velocity (exact nonlinear solution)::
-
-        u(t) = -(g η / (ω L)) sin(ω t),  v = 0
-
-    with ``ω = sqrt(8 g h0)/L`` when ``omega`` is omitted.
-
-    Parameters
-    ----------
-    x, y :
-        Array-like horizontal coordinates [m] (broadcastable).
-    t :
-        Time [s].
-    h0, L, eta :
-        Still-water centre depth [m], still shoreline radius [m],
-        free-surface amplitude parameter [m].
-    omega :
-        Angular frequency [rad/s]; default ``sqrt(8 g h0)/L``.
-    g :
-        Gravity [m/s²].
-
-    Returns
-    -------
-    dict
-        ``{"h", "u", "v", "zb", "omega"}`` arrays (``omega`` is float).
+    Returns ``{"h", "u", "v", "zb", "omega"}``.
     """
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)
@@ -94,15 +80,11 @@ def depth_velocity(
         omega = float(omega)
 
     zb = bed_elevation(x, y, h0=h0, L=L)
-    zs = (eta / L) * x * np.cos(omega * t)
+    c = np.cos(omega * t)
+    zs = (eta * h0 / L**2) * (2.0 * x * c - eta * c**2)
     h = np.maximum(0.0, zs - zb)
-
-    # du/dt = -g ∂zs/∂x = -g (η/L) cos(ω t)  =>  u = -(g η/(ω L)) sin(ω t)
-    u_scalar = -(g * eta / (omega * L)) * np.sin(omega * t)
-    u = np.full_like(h, u_scalar, dtype=float)
-    # Dry cells: set velocity to zero for convenience.
-    dry = h <= 0.0
-    u = np.where(dry, 0.0, u)
+    u_scalar = -eta * omega * np.sin(omega * t)
+    u = np.where(h <= 0.0, 0.0, np.full_like(h, u_scalar, dtype=float))
     v = np.zeros_like(h)
 
     return {"h": h, "u": u, "v": v, "zb": zb, "omega": omega}

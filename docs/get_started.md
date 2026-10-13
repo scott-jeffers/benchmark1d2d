@@ -9,7 +9,8 @@ Track B checks parity with a pinned industry engine.
 ```bash
 git clone https://github.com/scott-jeffers/benchmark1d2d.git
 cd benchmark1d2d
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,engines]"   # engines = EPA SWMM 5.2.4 and EPANET 2.2
+python scripts/fetch_inputs.py              # large inputs (DEMs), each checked by SHA-256
 ```
 
 Confirm the CLI:
@@ -19,51 +20,45 @@ benchmark1d2d catalog list
 benchmark1d2d engines
 ```
 
-`engines` prints the pinned EPA SWMM version and binary hashes used for Track B.
+## What your solver must write
 
-## Score a Track A demo case
+One Parquet file per run with columns `t, x, y, h, u, v, p` (SI units), plus
+`Q`, `c` and bed elevation `z` where they apply. Network solvers add
+`element_id` (node or link name) and `element_type`. Each case's page lists the
+variables, output times and probe points it needs.
 
-Run the bundled demo solver on an analytic free-surface case, then score:
+## Score a Track A case
 
-```bash
-benchmark1d2d run A1F-010_ritter_dry_bed_dambreak \
-  --solver examples/demo_solver/solve.py \
-  --out out/demo
-
-benchmark1d2d score A1F-010_ritter_dry_bed_dambreak \
-  --results out/demo/A1F-010_ritter_dry_bed_dambreak.parquet \
-  --solver-name demo --solver-version 0.1.0
-```
-
-A **PASS** means gating criteria and (when required) observed convergence order
-are satisfied. A **FAIL** means the equations are not solved to the published
-tolerance — Track A can prove a solver wrong.
-
-## Track B parity (SWMM)
-
-Track B compares your solver to pinned **SWMM 5.2.4** output (never hand-edited
-references). Fetch the official win64 binaries into
-`reference_engines/swmm-5.2.4/bin/` (see that folder’s README), then:
+The repository ships simple demo solvers you can copy:
 
 ```bash
-python scripts/run_swmm_self_parity.py
+python scripts/run_vertical_slice.py    # 1D: Ritter, Stoker, MacDonald, Joukowsky on every mesh level
+python scripts/run_demo_2d.py A2A-001   # 2D: Thacker bowl with a first-order finite-volume scheme
 ```
 
-That gate proves the pin is self-consistent on `B-EXTRAN-001`. To score your own
-adapter, adapt SWMM report output with `--adapter swmm5` and compare against the
-case reference.
-
-## Build the local site
+To score your own results, pass every refinement level so the observed order of
+accuracy can be measured:
 
 ```bash
-python scripts/run_vertical_slice.py || true
-python site/build.py --scorecards out --scorecards site/fixtures/scorecards
+benchmark1d2d score A1F-010 --results out/mine_dx1.25.parquet \
+  --refinement out/mine_dx10.parquet out/mine_dx5.parquet out/mine_dx2.5.parquet out/mine_dx1.25.parquet \
+  --solver-name my-solver --solver-version 1.0
 ```
 
-Open `site/dist/index.html` in a browser.
+A **pass** needs every gating criterion and the convergence check. A **fail**
+on a verification case means the equations are not being solved to the stated
+tolerance: Track A can prove a solver wrong.
 
-## What to read next
+## Score a Track B case
 
-- [Catalog](catalog.html) — every published case
-- [Engines](engines.html) — SWMM pin details
-- [Methodology](methodology.html) — tolerances and V&V plan
+Run your solver on the case's `inputs/network.inp` and write per-element results
+(the `swmm5` and `epanet22` adapters show the format), then:
+
+```bash
+benchmark1d2d score B-RTC-001 --results my_rtc.parquet --solver-name my-solver
+```
+
+The score card names the worst node or link for each criterion. Reference
+results come from the pinned engine (`scripts/make_reference.py`); if a case's
+reference is missing the CLI prints `NOT SCORED` rather than a pass.
+

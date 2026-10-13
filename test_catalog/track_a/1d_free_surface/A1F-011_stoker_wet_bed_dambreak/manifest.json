@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "test_id": "A1F-011_stoker_wet_bed_dambreak",
   "case_version": "1.0.0",
   "status": "candidate",
@@ -10,13 +10,22 @@
   "physics": {
     "dimensionality": "1D",
     "flow_type": "free_surface",
-    "governing_equations": ["saint_venant_dynamic"],
-    "phenomena": ["dam_break", "wet_bed", "shock", "rarefaction"]
+    "governing_equations": [
+      "saint_venant_dynamic"
+    ],
+    "phenomena": [
+      "dam_break",
+      "wet_bed",
+      "shock",
+      "rarefaction"
+    ]
   },
   "provenance": {
     "citations": [
       {
-        "authors": ["Stoker, J. J."],
+        "authors": [
+          "Stoker, J. J."
+        ],
         "year": 1957,
         "title": "Water Waves: The Mathematical Theory with Applications",
         "isbn": "9780471570349"
@@ -27,9 +36,9 @@
   "inputs": [
     {
       "path": "inputs/params.json",
-      "role": "parameters",
+      "role": "case_parameters",
       "format": "json",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "11c492bdd3a55a0ce95b6b20ac4979772eed50032ee49830affa8fc008c33770"
     }
   ],
   "reference": {
@@ -48,9 +57,18 @@
   "simulation": {
     "t_end": 30,
     "output_interval": 5,
-    "required_outputs": ["h", "u", "Q"],
+    "required_outputs": [
+      "h",
+      "u",
+      "Q"
+    ],
     "mesh_refinement": {
-      "levels": [10, 5, 2.5, 1.25],
+      "levels": [
+        10,
+        5,
+        2.5,
+        1.25
+      ],
       "fixed_courant": 0.5
     }
   },
@@ -60,7 +78,11 @@
         "id": "L1_h",
         "metric": "L1",
         "variable": "h",
-        "threshold": {"op": "abs<=", "value": 0.05, "units": "m"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.05,
+          "units": "m"
+        },
         "gating": true,
         "rationale": "L1 depth error on finest mesh; shock and rarefaction capture."
       },
@@ -68,7 +90,11 @@
         "id": "mass",
         "metric": "global_mass_error",
         "variable": "volume",
-        "threshold": {"op": "abs<=", "value": 0.1, "units": "%"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "%"
+        },
         "gating": true,
         "rationale": "Conservation property of continuous equations."
       }

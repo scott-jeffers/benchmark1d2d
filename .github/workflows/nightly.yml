@@ -20,14 +20,38 @@ jobs:
       - name: Install package
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -e ".[dev,engines]"
 
       - name: Full pytest
         run: python -m pytest -q
 
       - name: Validate catalog
-        run: python tools/validate_catalog.py --allow-placeholder-hash --self-test
+        run: python tools/validate_catalog.py --self-test
 
       - name: DOI check (soft)
         continue-on-error: true
-        run: python tools/validate_catalog.py --allow-placeholder-hash --check-doi
+        run: python tools/validate_catalog.py --check-doi
+
+  corpus-nightly-tier:
+    name: Nightly-tier corpus on SWMM 5.2.4
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,engines]"
+      - name: Check out HydroCouple corpus at the pinned commit
+        run: |
+          COMMIT=$(python -c "import json;print(json.load(open('test_catalog/track_b/tier_nightly/selection.json'))['upstream_commit'])")
+          git init -q hc && cd hc
+          git remote add origin https://github.com/HydroCouple/openswmm.engine.benchmarks
+          git fetch -q --depth 1 origin "$COMMIT" && git checkout -q FETCH_HEAD
+      - run: python scripts/corpus_census.py --corpus hc/corpus --only test_catalog/track_b/tier_nightly/selection.json --timeout 60 --workers 4 --fail-on-error --out out/nightly_census.parquet
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-census
+          path: out/nightly_census.parquet

@@ -1,0 +1,16 @@
+{
+  "problem": "Instantaneous dam break onto a wet, horizontal, frictionless bed (Stoker 1957).",
+  "domain": {
+    "xmin": -1000.0,
+    "xmax": 1000.0
+  },
+  "initial_condition": {
+    "h_left_m": 1.0,
+    "h_right_m": 0.1,
+    "dam_x_m": 0.0,
+    "u": 0.0
+  },
+  "friction": "none",
+  "bed": "horizontal",
+  "boundaries": "transmissive"
+}

@@ -2,48 +2,73 @@ name: Track B PR tier
 
 on:
   pull_request:
-    paths:
-      - "test_catalog/track_b/**"
-      - "runner/**"
-      - "reference_engines/**"
-      - "schemas/v1/**"
-      - "tools/**"
-      - ".github/workflows/track-b-pr-tier.yml"
   push:
     branches: [main, master]
-    paths:
-      - "test_catalog/track_b/tier_pr/**"
 
 jobs:
-  tier-pr:
-    name: Validate Track B tier_pr manifests
+  references:
+    name: Engine references are current
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install package
-        run: |
+      - run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -e ".[dev,engines]"
+      - name: Fetch non-committed inputs (verified by SHA-256)
+        run: python scripts/fetch_inputs.py B-
+      # Re-run SWMM 5.2.4 and EPANET 2.2 on every catalog Track B case and fail if a
+      # committed reference no longer matches what the pinned engine produces.
+      - run: python scripts/make_reference.py --check
 
-      - name: Ensure tier_pr manifests exist
+  corpus-pr-tier:
+    name: PR-tier corpus runs on SWMM 5.2.4
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,engines]"
+      - name: Check out HydroCouple corpus at the pinned commit
         run: |
-          set -euo pipefail
-          count=$(find test_catalog/track_b/tier_pr -name manifest.json | wc -l)
-          echo "Found $count tier_pr manifest(s)"
-          test "$count" -ge 1
+          COMMIT=$(python -c "import json;print(json.load(open('test_catalog/track_b/tier_pr/selection.json'))['upstream_commit'])")
+          git init -q hc && cd hc
+          git remote add origin https://github.com/HydroCouple/openswmm.engine.benchmarks
+          git fetch -q --depth 1 origin "$COMMIT" && git checkout -q FETCH_HEAD
+      - name: Every PR-tier model must run cleanly
+        run: python scripts/corpus_census.py --corpus hc/corpus --only test_catalog/track_b/tier_pr/selection.json --timeout 60 --fail-on-error --out out/pr_census.parquet
 
-      - name: Validate catalog (tier_pr covered by full scan)
-        run: python tools/validate_catalog.py --allow-placeholder-hash
-
-      - name: Verify SWMM pin.json sync
-        run: python -c "from benchmark1d2d.engines import assert_pin_matches_sha256sums; assert_pin_matches_sha256sums()"
-
-      - name: Note — full self-parity on Windows
+  cross-build:
+    name: Official Windows SWMM 5.2.4 build vs reference
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,engines]"
+      - name: Fetch pinned SWMM win64
+        shell: pwsh
         run: |
-          echo "Schema/hash/license checks done on ubuntu."
-          echo "Full SWMM win64 self-parity runs in workflow swmm-self-parity.yml and pages.yml."
+          $pin = Get-Content reference_engines/swmm-5.2.4/pin.json | ConvertFrom-Json
+          New-Item -ItemType Directory -Force -Path reference_engines/swmm-5.2.4/vendor, reference_engines/swmm-5.2.4/bin | Out-Null
+          $zip = "reference_engines/swmm-5.2.4/vendor/$($pin.asset)"
+          Invoke-WebRequest $pin.asset_url -OutFile $zip
+          Expand-Archive $zip -DestinationPath reference_engines/swmm-5.2.4/vendor/extracted -Force
+          $src = Get-ChildItem -Recurse reference_engines/swmm-5.2.4/vendor/extracted -Filter runswmm.exe | Select-Object -First 1
+          Copy-Item "$($src.DirectoryName)/runswmm.exe","$($src.DirectoryName)/swmm5.dll","$($src.DirectoryName)/swmm-output.dll" reference_engines/swmm-5.2.4/bin/
+      - name: Score the official build against the committed references
+        run: python scripts/run_swmm_self_parity.py
+      - name: Keep the cross-build score cards
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-build-scorecards
+          path: out/cross_build/*.json

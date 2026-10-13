@@ -139,6 +139,15 @@ def check_doi(doi: str, *, strict: bool) -> tuple[bool, str]:
             msg = f"Crossref returned HTTP {status_code} for DOI {cleaned}"
     except urllib.error.HTTPError as exc:
         msg = f"Crossref HTTP {exc.code} for DOI {cleaned}"
+        if exc.code == 404:
+            # Datasets are usually registered with DataCite, not Crossref.
+            dc = "https://api.datacite.org/dois/" + urllib.parse.quote(cleaned, safe="/")
+            try:
+                with urllib.request.urlopen(urllib.request.Request(dc, headers={"User-Agent": USER_AGENT}), timeout=15) as resp:
+                    if 200 <= int(getattr(resp, "status", None) or resp.getcode()) < 300:
+                        return True, f"DOI OK via DataCite ({cleaned})"
+            except Exception as exc2:  # noqa: BLE001
+                msg += f"; DataCite: {exc2}"
     except Exception as exc:  # noqa: BLE001 — network/offline must not crash
         msg = f"DOI check failed for {cleaned}: {exc}"
     if strict:
@@ -188,12 +197,29 @@ def validate_manifest_dict(
                 continue
             rel = entry.get("path")
             expected = entry.get("sha256")
+            if entry.get("pending"):
+                if status != "draft":
+                    result.fail(f"pending input {rel} not allowed for status={status!r}")
+                else:
+                    result.messages.append(f"pending input {rel}: {entry['pending'].get('reason', '')}")
+                continue
             if not rel or not expected:
                 result.fail(f"input entry missing path/sha256: {entry!r}")
                 continue
             path = case_dir / rel
-            if not path.is_file():
+            if entry.get("committed", True) is False:
+                if not entry.get("source"):
+                    result.fail(f"non-committed input {rel} has no source")
+                    continue
+                if not path.is_file():
+                    # Fetched on demand by scripts/fetch_inputs.py and verified there.
+                    result.messages.append(f"remote input {rel} (fetch with scripts/fetch_inputs.py)")
+                    continue
+            elif not path.is_file():
                 result.fail(f"input file missing: {rel}")
+                continue
+            if path.stat().st_size == 0:
+                result.fail(f"input file is empty: {rel}")
                 continue
             actual = sha256_file(path)
             expected_l = str(expected).lower()
@@ -309,7 +335,9 @@ def run_self_test(
                 validator=validator,
                 license_ids=license_ids,
                 case_dir=None,
-                allow_placeholder_hash=allow_placeholder_hash,
+                # Schema fixtures exercise the schema, not the catalog; their
+                # hashes are placeholders by design.
+                allow_placeholder_hash=True,
                 check_doi_flag=False,
                 label=f"self-test valid/{path.name}",
             )

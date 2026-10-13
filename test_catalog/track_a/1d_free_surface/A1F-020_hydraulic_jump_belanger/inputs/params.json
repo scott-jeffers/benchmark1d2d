@@ -1,0 +1,25 @@
+{
+  "problem": "Stationary hydraulic jump on a horizontal frictionless bed; supercritical inflow h1 = 0.2 m at Fr1 = 2.5, downstream depth held at the Bélanger sequent depth.",
+  "domain": {
+    "xmin": 0.0,
+    "xmax": 100.0
+  },
+  "channel": {
+    "width_m": 1.0,
+    "shape": "rectangular"
+  },
+  "friction": "none",
+  "bed": "horizontal",
+  "boundaries": {
+    "upstream": {
+      "type": "supercritical_inflow",
+      "h_m": 0.2,
+      "Fr": 2.5
+    },
+    "downstream": {
+      "type": "depth",
+      "from_reference": "h2"
+    }
+  },
+  "scoring_note": "The jump position is neutral on a frictionless horizontal bed; scoring compares plateau depths upstream (x < 30 m) and downstream (x > 70 m) and the unit discharge."
+}
