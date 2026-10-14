@@ -8,8 +8,10 @@ on:
     branches: [master, hecras]
     paths:
       - scripts/run_hecras.py
+      - scripts/run_hecras_2d.py
       - .github/workflows/hecras.yml
       - test_catalog/track_a/1d_free_surface/**
+      - test_catalog/track_a/2d_*/**
       - runner/python/benchmark1d2d/scoring/**
 
 env:
@@ -60,3 +62,51 @@ jobs:
             out/hecras/work/**/*.LOG
             out/hecras/work/**/*.png
             out/hecras/work/**/*.hdf
+
+  hecras-2d:
+    name: HEC-RAS 6.6 2D dam breaks (finding, not a gate)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" "ras-commander==0.105.0" h5py psutil pywin32 pillow pythonnet tifffile
+      - uses: actions/cache@v4
+        with:
+          path: .cache/hecras
+          key: hecras-66-setup-v1
+      - name: Install HEC-RAS 6.6 silently
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .cache/hecras | Out-Null
+          $exe = ".cache/hecras/HEC-RAS_66_Setup.exe"
+          if (-not (Test-Path $exe)) { Invoke-WebRequest $env:HECRAS_URL -OutFile $exe }
+          $sha = (Get-FileHash $exe -Algorithm SHA256).Hash
+          if ($sha -ne $env:HECRAS_SHA256) { throw "HEC-RAS installer hash $sha does not match the pinned $env:HECRAS_SHA256" }
+          $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
+          "installer exit code: $($p.ExitCode)"
+      - name: Probe (coarsest grid, full diagnostics)
+        timeout-minutes: 30
+        run: python scripts/run_hecras_2d.py --accept-hec-terms --probe
+      - name: Run and score HEC-RAS 2D
+        timeout-minutes: 50
+        run: python scripts/run_hecras_2d.py --accept-hec-terms
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hecras-2d
+          path: |
+            out/hecras2d/*.scorecard.json
+            out/hecras2d/*.parquet
+            out/hecras2d/work/**/*.txt
+            out/hecras2d/work/**/*.p0?
+            out/hecras2d/work/**/*.u0?
+            out/hecras2d/work/**/*.g01
+            out/hecras2d/work/**/*.prj
+            out/hecras2d/work/**/*.rasmap
+            out/hecras2d/work/**/*.log
