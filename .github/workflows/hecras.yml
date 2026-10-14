@@ -110,3 +110,5 @@ jobs:
             out/hecras2d/work/**/*.prj
             out/hecras2d/work/**/*.rasmap
             out/hecras2d/work/**/*.log
+            out/hecras2d/work/**/*.bco*
+            out/hecras2d/work/**/*.x01

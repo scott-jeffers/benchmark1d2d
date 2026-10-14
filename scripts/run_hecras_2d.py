@@ -85,8 +85,7 @@ def write_geotiff(path: Path, z: np.ndarray, xmin: float, ymax: float, cell: flo
         path, z.astype(np.float32),
         extratags=[(33550, "d", 3, (cell, cell, 0.0), False),
                    (33922, "d", 6, (0.0, 0.0, 0.0, xmin, ymax, 0.0), False),
-                   (34735, "H", len(geokeys), geokeys, False),
-                   (42113, "s", 0, "-9999", False)],
+                   (34735, "H", len(geokeys), geokeys, False)],
     )
 
 
@@ -228,13 +227,13 @@ def create_terrain(folder: Path, ras_dir: Path, z: np.ndarray, xmin: float, ymax
     return out
 
 
-def h5_tree(path: Path, limit: int = 400) -> str:
+def h5_tree(path: Path, limit: int = 400, skip: tuple = ("Geometry",)) -> str:
     import h5py
 
     rows = []
     with h5py.File(path, "r") as f:
         def visit(name, obj):
-            if len(rows) >= limit:
+            if len(rows) >= limit or name.split("/")[0] in skip:
                 return
             if isinstance(obj, h5py.Dataset):
                 rows.append(f"      {name} {obj.shape} {obj.dtype}")
@@ -251,9 +250,19 @@ def listing(folder: Path) -> str:
 
 
 def messages(folder: Path) -> str:
+    """HEC-RAS's compute messages: text files, the .bco log and the plan HDF summary."""
+    import h5py
+
     out = []
-    for p in sorted(folder.glob("*.comp_msgs.txt")) + sorted(folder.glob("*.computeMsgs.txt")):
-        out.append(f"    --- {p.name}\n" + p.read_text(errors="replace")[-3000:])
+    for p in sorted(folder.glob("*.comp_msgs.txt")) + sorted(folder.glob("*.computeMsgs.txt")) + sorted(folder.glob("*.bco*")):
+        out.append(f"    --- {p.name}\n" + p.read_text(errors="replace")[-4000:])
+    for p in sorted(folder.glob("*.p0?.hdf")):
+        try:
+            with h5py.File(p, "r") as f:
+                msg = f["Results/Summary/Compute Messages (text)"][0]
+                out.append(f"    --- {p.name} compute messages\n" + msg.decode(errors="replace"))
+        except Exception as exc:  # noqa: BLE001
+            out.append(f"    --- {p.name}: no compute messages ({exc})")
     return "\n".join(out)
 
 
@@ -349,10 +358,6 @@ def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool) -> d
                "0.1SEC", "1SEC", False)
     log(f"    project: {nseed} cells, terrain {nx}x{ny} at {cell:g} m")
     preprocess_and_associate(folder, ras_exe, terrain)
-    if probe:
-        g = next(iter(folder.glob("*.g01.hdf")), None)
-        if g:
-            log("    g01.hdf layout:\n" + h5_tree(g, 120))
     hdf1 = compute(folder, ras_exe, "01", 600)
     rst = sorted(folder.glob("*.rst"))
     if probe or hdf1 is None or not rst:
