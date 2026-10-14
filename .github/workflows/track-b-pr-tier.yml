@@ -39,7 +39,8 @@ jobs:
           COMMIT=$(python -c "import json;print(json.load(open('test_catalog/track_b/tier_pr/selection.json'))['upstream_commit'])")
           git init -q hc && cd hc
           git remote add origin https://github.com/HydroCouple/openswmm.engine.benchmarks
-          git fetch -q --depth 1 origin "$COMMIT" && git checkout -q FETCH_HEAD
+          for i in 1 2 3 4; do git fetch -q --depth 1 origin "$COMMIT" && break; echo "fetch failed (attempt $i), retrying"; sleep $((i * 10)); done
+          git checkout -q FETCH_HEAD
       - name: Every PR-tier model must run cleanly
         run: python scripts/corpus_census.py --corpus hc/corpus --only test_catalog/track_b/tier_pr/selection.json --timeout 60 --fail-on-error --out out/pr_census.parquet
       - name: Parity harness self-check (reference against itself must be exactly 0)

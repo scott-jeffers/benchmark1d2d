@@ -56,7 +56,8 @@ jobs:
           COMMIT=$(python -c "import json;print(json.load(open('test_catalog/track_b/tier_nightly/selection.json'))['upstream_commit'])")
           git init -q hc && cd hc
           git remote add origin https://github.com/HydroCouple/openswmm.engine.benchmarks
-          git fetch -q --depth 1 origin "$COMMIT" && git checkout -q FETCH_HEAD
+          for i in 1 2 3 4; do git fetch -q --depth 1 origin "$COMMIT" && break; echo "fetch failed (attempt $i), retrying"; sleep $((i * 10)); done
+          git checkout -q FETCH_HEAD
       - run: python scripts/corpus_census.py --corpus hc/corpus --only test_catalog/track_b/tier_nightly/selection.json --timeout 60 --workers 4 --fail-on-error --out out/nightly_census.parquet
       - name: Parity of SWMM 5.1.15 against 5.2.4 across the tier (a finding, not a gate)
         run: python scripts/corpus_parity.py --corpus hc/corpus --tier nightly --candidate-python "${{ steps.py310.outputs.python-path }}" --label swmm-5.1.15 --workers 4 --timeout 90 || true

@@ -398,41 +398,36 @@ def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool) -> d
 def patch_restart(rst: Path, centres: np.ndarray, zmin: np.ndarray, hl: float, hr: float, x0: float) -> list[str]:
     """Put the dam-break step into HEC-RAS's binary restart file.
 
-    The still-water run leaves every cell at the upstream level ``hl``, so the
-    per-cell water surface is the only run of ``len(cells)`` (or the real
-    cells only) consecutive values equal to ``hl`` in the file. Those values
-    are found in single or double precision and the cells downstream of the
-    dam are set to the downstream level (``zmin + hr``, or the bed when dry).
-    Velocities were zero and stay zero, as in the exact problem.
+    The restart file (HEC-RAS 6.6) is a Fortran unformatted file. After the
+    still-water run every cell holds the same water surface, so the per-cell
+    water surface is the one run of ``len(cells)`` identical, non-zero
+    doubles in it (found at whatever byte offset it sits). HEC-RAS stores it in
+    its internal units (feet: 1 m reads 3.281), so values are rescaled rather
+    than written in metres: downstream cells get ``old * (bed + hr) / hl``, or
+    the bed when dry. Velocities were zero and stay zero, as in the exact
+    problem.
     """
     buf = bytearray(rst.read_bytes())
     zmin = np.nan_to_num(np.asarray(zmin, dtype=float))
     n_all = len(centres)
     down = (centres[:, 0] - X0) > x0
+    target = (zmin + hr) if hr > 0 else zmin
     edited = []
-    for dt in ("<f8", "<f4"):
-        size = np.dtype(dt).itemsize
-        for align in range(size):
-            arr = np.frombuffer(bytes(buf[align:len(buf) - (len(buf) - align) % size]), dtype=dt)
-            hit = np.isclose(arr, hl, rtol=0, atol=1e-6)
-            i = 0
-            while i < len(hit):
-                if not hit[i]:
-                    i += 1
-                    continue
-                j = i
-                while j < len(hit) and hit[j]:
-                    j += 1
-                run = j - i
-                if run >= 50:
-                    log(f"      run of {run} values = {hl:g} ({dt}) at byte {align + i * size}")
-                if run in (n_all,) or (n_all // 2 <= run < n_all):
-                    k = min(run, n_all)
-                    new = np.where(down[:k], (zmin[:k] + hr) if hr > 0 else zmin[:k], hl).astype(dt)
-                    start = align + i * size
-                    buf[start:start + k * size] = new.tobytes()
-                    edited.append(f"{run}x{dt}@{start}")
-                i = j
+    for align in range(8):
+        arr = np.frombuffer(bytes(buf[align:align + (len(buf) - align) // 8 * 8]), dtype="<f8")
+        i = 0
+        while i < len(arr):
+            j = i
+            while j < len(arr) and arr[j] == arr[i]:
+                j += 1
+            run = j - i
+            if run == n_all and np.isfinite(arr[i]) and arr[i] != 0 and 1e-3 < abs(arr[i]) < 1e4:
+                scale = float(arr[i]) / hl
+                new = np.where(down, target * scale, arr[i]).astype("<f8")
+                start = align + i * 8
+                buf[start:start + n_all * 8] = new.tobytes()
+                edited.append(f"{run} doubles at byte {start} (stored value {arr[i]:.6g} = {hl:g} m)")
+            i = max(j, i + 1)
     if edited:
         rst.write_bytes(bytes(buf))
     return edited
