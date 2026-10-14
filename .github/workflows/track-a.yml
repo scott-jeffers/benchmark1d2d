@@ -52,3 +52,30 @@ jobs:
             out/vertical_slice/*.scorecard.json
             out/networks/*.scorecard.json
             out/demo_2d/*.scorecard.json
+
+  telemac:
+    name: openTELEMAC-2D on the dam-break cases (finding, not a gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: telemac
+          create-args: -c conda-forge opentelemac=v9.1.1 python=3.12
+          init-shell: none
+      - name: Score TELEMAC-2D on A1F-010 and A1F-011
+        run: |
+          python scripts/run_telemac.py --telemac-prefix "$MAMBA_ROOT_PREFIX/envs/telemac" \
+            || echo "::warning title=TELEMAC-2D::fails at least one criterion (see score cards); reported, not gating"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: telemac-scorecards
+          path: out/telemac/*.scorecard.json
+

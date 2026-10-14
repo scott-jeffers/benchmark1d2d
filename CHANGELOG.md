@@ -3,6 +3,18 @@
 All notable changes to this suite are documented here.
 Suite releases are independent of schema semver (`schemas/v1`).
 
+## [Unreleased]
+
+### Added
+
+- **openTELEMAC-2D 9.1.1 scored** on the dam-break cases (`scripts/run_telemac.py`,
+  CI job installs it from conda-forge). Run as a black box on a 2D strip mesh
+  with its default finite-volume settings. Results: A1F-010 (Ritter) fails —
+  the wet front lags the exact one by 39 m after 60 s (allowed 2.5 m) and the
+  observed order is 0.71; HLLC and second-order variants leave the lag at about
+  50 m. A1F-011 (Stoker) passes its depth and mass checks but converges at 0.77
+  (minimum 0.8). Mass is conserved to 0.0006 % in both.
+
 ## [0.4.0] — 2026-10-14
 
 A second review. Every scored Track A case now has a run that passes it, and
