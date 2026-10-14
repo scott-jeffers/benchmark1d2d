@@ -1,0 +1,106 @@
+name: Open-source solvers
+
+# Production open-source codes run as black boxes on the catalog. Each job
+# installs its solver from the official source, runs every case it supports
+# on every refinement level and uploads its score cards. A scored fail is a
+# finding about the solver (reported as a warning), not a broken build.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 4 * * 1"  # weekly, Monday 04:41 UTC
+  push:
+    branches: [master]
+    paths:
+      - scripts/run_anuga.py
+      - scripts/run_geoclaw.py
+      - scripts/run_lisflood.py
+      - .github/workflows/open-solvers.yml
+      - references/**
+      - runner/python/benchmark1d2d/scoring/**
+      - test_catalog/track_a/**
+
+jobs:
+  anuga:
+    name: ANUGA 4.0.1
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: anuga
+          create-args: -c conda-forge anuga=4.0.1 python=3.12 pip
+          init-shell: bash
+      - name: Run and score ANUGA
+        shell: micromamba-shell {0}
+        run: |
+          python -m pip install -q -e ".[dev]"
+          python scripts/run_anuga.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anuga-scorecards
+          path: out/anuga/*.scorecard.json
+
+  geoclaw:
+    name: GeoClaw 5.9.2
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clawpack source (tag v5.9.2)
+        run: git clone -q --depth 1 --branch v5.9.2 --recurse-submodules --shallow-submodules https://github.com/clawpack/clawpack "$RUNNER_TEMP/clawpack"
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: claw
+          create-args: -c conda-forge clawpack=5.9.0 python=3.11 gfortran make pip
+          init-shell: bash
+      - name: Build, run and score GeoClaw
+        shell: micromamba-shell {0}
+        env:
+          FC: gfortran
+        run: |
+          python -m pip install -q -e ".[dev]"
+          PYTHONPATH="$RUNNER_TEMP/clawpack" python scripts/run_geoclaw.py --claw "$RUNNER_TEMP/clawpack"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: geoclaw-scorecards
+          path: out/geoclaw/*.scorecard.json
+
+  lisflood:
+    name: LISFLOOD-FP 8.3 (FV1, DG2, ACC)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      LF_URL: https://zenodo.org/api/records/13121119/files/LISFLOOD-FP-8.3.zip/content
+      LF_MD5: abaa2e41b58f6c7df4443274bf130d4a
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build dependencies
+        run: sudo apt-get update -q && sudo apt-get install -y -q libnetcdf-dev libnuma-dev
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/lisflood-src.zip
+          key: lisflood-8.3-src-v1
+      - name: Download (Zenodo, pinned checksum) and build CPU-only, double precision
+        run: |
+          zip="$RUNNER_TEMP/lisflood-src.zip"
+          [ -f "$zip" ] || curl -fsSL --retry 5 -C - -o "$zip" "$LF_URL"
+          echo "$LF_MD5  $zip" | md5sum -c -
+          unzip -q "$zip" -d "$RUNNER_TEMP/lf"
+          src=$(dirname "$(find "$RUNNER_TEMP/lf" -path '*/source/CMakeLists.txt' | head -1)")
+          cmake -S "$src" -B "$RUNNER_TEMP/lf/build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/lf/build" -j4 --target lisflood
+      - name: Run and score LISFLOOD-FP
+        run: |
+          python -m pip install -q -e ".[dev]"
+          python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lisflood-scorecards
+          path: out/lisflood/*/*.scorecard.json

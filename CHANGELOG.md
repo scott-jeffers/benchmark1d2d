@@ -24,6 +24,23 @@ Suite releases are independent of schema semver (`schemas/v1`).
   50 m. A1F-011 (Stoker) passes its depth and mass checks but converges at 0.77
   (minimum 0.8). Mass is conserved to 0.0006 % in both.
 
+- **ANUGA 4.0.1, GeoClaw 5.9.2 and LISFLOOD-FP 8.3 scored**
+  (`scripts/run_anuga.py`, `run_geoclaw.py`, `run_lisflood.py`; weekly
+  `.github/workflows/open-solvers.yml`). Each is installed from its official
+  source and run with its own defaults on every grid level.
+  - ANUGA passes Stoker, Thacker and MacDonald 2D; fails Ritter (front 12 m
+    behind) and the oblique jump's mass check (−0.13 %, limit 0.1 %).
+  - GeoClaw passes Stoker and Thacker; fails Ritter (front 61 m behind).
+  - LISFLOOD-FP FV1 and DG2 pass MacDonald 2D; FV1 and DG2 converge below
+    order 0.8 on the dam breaks and the bowl, and DG2 lags the Ritter front by
+    66 m. The local-inertia solver (ACC) does not converge on any case — as
+    expected for a scheme without advection, and worth knowing because it is
+    LISFLOOD-FP's default for flood mapping.
+  - Every production code fails the Ritter front check (1 mm contour within
+    2.5 m). Flagged for maintainers: with a 1 mm contour on a front whose depth
+    goes to zero, 1 mm of depth error moves the contour ~10 m, and production
+    codes treat depths under 1 mm as dry.
+
 ## [0.4.0] — 2026-10-14
 
 A second review. Every scored Track A case now has a run that passes it, and
