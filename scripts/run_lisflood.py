@@ -29,7 +29,8 @@ Cases: A1F-010 (Ritter) and A1F-011 (Stoker) on a two-cell-wide strip;
 A2A-001 (Thacker bowl); A2A-010 (MacDonald 2D, ``QFIX`` inflow west and
 ``HFIX`` water level east). A2A-020 (oblique jump) needs a supercritical inflow
 with both depth and velocity fixed, which LISFLOOD-FP's boundary types cannot
-express, so it is not run.
+express, so it is not run. The EA inter-comparison tests A2C-EA1, 2, 4 and 5
+run once each at the specification's resolution (see ``ea``).
 
 Build (CPU only; NetCDF-C, OpenMP and libnuma required)::
 
