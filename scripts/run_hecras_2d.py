@@ -370,7 +370,7 @@ def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool) -> d
         if hdf1:
             log("    p01.hdf layout:\n" + h5_tree(hdf1, 200))
         for r in rst:
-            log(f"    {r.name} layout:\n" + h5_tree(r, 200))
+            log(f"    {r.name}: {r.stat().st_size} bytes, binary; first 64 bytes {r.read_bytes()[:64].hex()}")
     if not rst:
         raise RuntimeError("no restart file written by the still-water run")
     rst = rst[-1]
@@ -379,18 +379,8 @@ def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool) -> d
         base = f"Geometry/2D Flow Areas/{AREA}"
         centres = g[f"{base}/Cells Center Coordinate"][()]
         zmin = g[f"{base}/Cells Minimum Elevation"][()] if f"{base}/Cells Minimum Elevation" in g else np.zeros(len(centres))
-    edited = []
-    with h5py.File(rst, "a") as f:
-        def visit(nm, obj):
-            if isinstance(obj, h5py.Dataset) and obj.ndim >= 1 and obj.shape[-1] == len(centres) and "water surface" in nm.lower():
-                edited.append(nm)
-        f.visititems(visit)
-        for nm in edited:
-            ws = f[nm][()]
-            down = (centres[:, 0] - X0) > x0
-            new = np.where(down, np.maximum(zmin, 0.0) + hr, ws) if hr > 0 else np.where(down, zmin, ws)
-            f[nm][...] = new
-    log(f"    restart {rst.name}: set downstream cells in {edited}")
+    edited = patch_restart(rst, centres, zmin, hl, hr, x0)
+    log(f"    restart {rst.name}: set the downstream cells in {edited}")
     if not edited:
         raise RuntimeError("no per-cell water surface found in the restart file")
     write_unsteady(folder / f"{name}.u02", "dam break", None, rst.name)
@@ -403,6 +393,49 @@ def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool) -> d
     if hdf2 is None:
         raise RuntimeError("dam-break run wrote no results")
     return read_strip(hdf2, folder / f"{name}.g01.hdf", t_end, x0, xmin, xmax, dx)
+
+
+def patch_restart(rst: Path, centres: np.ndarray, zmin: np.ndarray, hl: float, hr: float, x0: float) -> list[str]:
+    """Put the dam-break step into HEC-RAS's binary restart file.
+
+    The still-water run leaves every cell at the upstream level ``hl``, so the
+    per-cell water surface is the only run of ``len(cells)`` (or the real
+    cells only) consecutive values equal to ``hl`` in the file. Those values
+    are found in single or double precision and the cells downstream of the
+    dam are set to the downstream level (``zmin + hr``, or the bed when dry).
+    Velocities were zero and stay zero, as in the exact problem.
+    """
+    buf = bytearray(rst.read_bytes())
+    zmin = np.nan_to_num(np.asarray(zmin, dtype=float))
+    n_all = len(centres)
+    down = (centres[:, 0] - X0) > x0
+    edited = []
+    for dt in ("<f8", "<f4"):
+        size = np.dtype(dt).itemsize
+        for align in range(size):
+            arr = np.frombuffer(bytes(buf[align:len(buf) - (len(buf) - align) % size]), dtype=dt)
+            hit = np.isclose(arr, hl, rtol=0, atol=1e-6)
+            i = 0
+            while i < len(hit):
+                if not hit[i]:
+                    i += 1
+                    continue
+                j = i
+                while j < len(hit) and hit[j]:
+                    j += 1
+                run = j - i
+                if run >= 50:
+                    log(f"      run of {run} values = {hl:g} ({dt}) at byte {align + i * size}")
+                if run in (n_all,) or (n_all // 2 <= run < n_all):
+                    k = min(run, n_all)
+                    new = np.where(down[:k], (zmin[:k] + hr) if hr > 0 else zmin[:k], hl).astype(dt)
+                    start = align + i * size
+                    buf[start:start + k * size] = new.tobytes()
+                    edited.append(f"{run}x{dt}@{start}")
+                i = j
+    if edited:
+        rst.write_bytes(bytes(buf))
+    return edited
 
 
 def read_strip(hdf: Path, ghdf: Path, t_end: float, x0: float, xmin: float, xmax: float, dx: float) -> dict:
