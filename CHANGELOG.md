@@ -7,6 +7,15 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ### Added
 
+- **HEC-RAS 6.6 scored** (`scripts/run_hecras.py`, `.github/workflows/hecras.yml`):
+  installed silently on a Windows runner from HEC's GitHub release (installer
+  SHA-256 pinned), Terms and Conditions for Use recorded for the runner user,
+  plain-text projects generated per grid level and run headless through
+  `ras-commander`. A1F-001: depth error 0.1 mm (limit 1 cm, passes) but no grid
+  convergence (fails), because HEC-RAS stores input elevations to 0.001 ft.
+- A1F-001 v1.1.0: inputs now match the reference (10 m, n = 0.03, wide-channel
+  hydraulic radius, exact outlet depth).
+
 - **openTELEMAC-2D 9.1.1 scored** on the dam-break cases (`scripts/run_telemac.py`,
   CI job installs it from conda-forge). Run as a black box on a 2D strip mesh
   with its default finite-volume settings. Results: A1F-010 (Ritter) fails —
