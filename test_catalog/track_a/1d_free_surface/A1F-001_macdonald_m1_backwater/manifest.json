@@ -1,7 +1,7 @@
 {
   "schema_version": "1.1.0",
   "test_id": "A1F-001_macdonald_m1_backwater",
-  "case_version": "1.0.0",
+  "case_version": "1.1.0",
   "status": "candidate",
   "track": "A",
   "test_class": "verification_analytic",
@@ -40,7 +40,7 @@
       "path": "inputs/params.json",
       "role": "case_parameters",
       "format": "json",
-      "sha256": "0697fa8675af13a380cbba20c2484305e1d52c4d768b4dc5d87bef52b56fdc5d"
+      "sha256": "01a75f47e13d1ffdc4395d1840cd709d33bb84c6b0c5955da9cd7b15baf47f70"
     }
   ],
   "reference": {

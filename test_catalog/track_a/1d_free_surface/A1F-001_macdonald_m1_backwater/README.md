@@ -27,3 +27,12 @@ Analytic generator: `references.macdonald.depth_profile` (case `m1`).
   depth control).
 - Use the manufactured bed from the same parameter set as the depth profile;
   mismatched \(n\) or \(Q\) voids the exactness property.
+
+## Case history
+
+- **1.1.0** — `inputs/params.json` described a 1 m channel with n = 0.033,
+  contradicting the reference (10 m, n = 0.03, wide-channel hydraulic radius).
+  The inputs now state the reference's parameters, the exact downstream depth
+  and that only friction losses apply. The reference is unchanged, so scores
+  from solvers that used the reference parameters are comparable.
+
