@@ -102,6 +102,7 @@ jobs:
       - name: Run and score LISFLOOD-FP
         run: |
           python -m pip install -q -e ".[dev]"
+          python scripts/fetch_inputs.py  # EA terrain and tables, verified by SHA-256
           python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" --solver fv1 acc
           # DG2 costs several times more per step; the EA valley tests (2, 5) are run locally.
           python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" --solver dg2 \
