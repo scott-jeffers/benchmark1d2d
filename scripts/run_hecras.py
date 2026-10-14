@@ -11,10 +11,12 @@ Cases
 -----
 A1F-001  MacDonald steady backwater: standard-step steady flow, subcritical.
          The reference assumes a wide channel (hydraulic radius = depth), so
-         the reach is modelled 1,000 m wide carrying the same unit discharge
-         (0.2 m²/s): the walls' share of the wetted perimeter is then 0.2 %.
+         the reach is modelled 100 km wide carrying the same unit discharge
+         (0.2 m²/s). The walls' share of the wetted perimeter then moves the
+         depth by 0.0006 mm (at 1 km wide it was 0.06 mm, a floor that hid
+         HEC-RAS's grid convergence).
          Friction only (expansion/contraction coefficients 0); standard-step
-         tolerance tightened to 0.1 mm so solver tolerance does not mask the
+         tolerance tightened to 0.01 mm so solver tolerance does not mask the
          discretisation error being measured.
 
 Usage (Windows, HEC-RAS 6.6 installed)::
@@ -44,7 +46,7 @@ sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 OUT = REPO / "out" / "hecras"
 TS = "2024-01-01T00:00:00Z"
 RIVER, REACH = "Channel", "Main"
-WIDE = 1000.0  # m, see module docstring
+WIDE = 100_000.0  # m, see module docstring
 
 # ── HEC-RAS text formats (fixed-width fields as written by HEC-RAS 6.x) ─────
 
@@ -99,7 +101,7 @@ def write_steady_flow(path: Path, title: str, rs_up: str, q: float, ws_down: flo
 
 def write_plan(path: Path, title: str, short: str) -> None:
     lines = [f"Plan Title={title}", "Program Version=6.60", f"Short Identifier={short:<12}", "Geom File=g01",
-             "Flow File=f01", "Subcritical Flow", "K Sum by GR= 0", "Std Step Tol= .0001", "Critical Tol= .0001",
+             "Flow File=f01", "Subcritical Flow", "K Sum by GR= 0", "Std Step Tol= .00001", "Critical Tol= .00001",
              "Num of Std Step Trials= 40", "Max Error Tol= .3", "Flow Tol Ratio= .001", "Log Output Level= 0",
              "Friction Slope Method= 1"]
     path.write_text("\n".join(lines) + "\n", encoding="ascii", newline="\r\n")
