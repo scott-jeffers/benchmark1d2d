@@ -169,18 +169,66 @@ def accept_terms(ras_exe: Path) -> None:
     print(f"HEC-RAS terms accepted for this user (HKCU\\{key}, System Statistic={code})")
 
 
-def run_plan(folder: Path, ras_exe: Path) -> Path:
-    from ras_commander import RasCmdr, init_ras_project
+def _describe_screen(folder: Path, tag: str) -> str:
+    """Window titles and dialog text on the desktop, plus a screenshot (diagnostics)."""
+    lines = []
+    try:
+        import win32gui
 
-    ras = init_ras_project(folder, str(ras_exe))
-    result = RasCmdr.compute_plan("01", ras_object=ras, max_runtime=600)
-    print(f"    ras-commander: {result!r}"[:400])
+        def visit(hwnd, _):
+            if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
+                texts = []
+                win32gui.EnumChildWindows(hwnd, lambda c, acc: acc.append(win32gui.GetWindowText(c)) or True, texts)
+                body = " | ".join(t for t in texts if t)[:300]
+                lines.append(f"{win32gui.GetWindowText(hwnd)!r} [{win32gui.GetClassName(hwnd)}] {body}")
+            return True
+
+        win32gui.EnumWindows(visit, None)
+    except Exception as exc:  # noqa: BLE001 - diagnostics only
+        lines.append(f"(window list unavailable: {exc})")
+    try:
+        from PIL import ImageGrab
+
+        ImageGrab.grab().save(folder / f"screen_{tag}.png")
+        lines.append(f"(screenshot: {folder.name}/screen_{tag}.png)")
+    except Exception as exc:  # noqa: BLE001
+        lines.append(f"(screenshot unavailable: {exc})")
+    return "\n      ".join(lines)
+
+
+def run_plan(folder: Path, ras_exe: Path, timeout: float = 300.0) -> Path:
+    """Run plan 01 with HEC-RAS's command line (``Ras.exe -c project plan``).
+
+    ras-commander drives the same command line; it is used first because it
+    watches for and reports HEC-RAS dialogs. If no results appear, Ras.exe is
+    run directly and the desktop is described while it runs.
+    """
+    import time
+
+    try:
+        from ras_commander import RasCmdr, init_ras_project
+
+        ras = init_ras_project(folder, str(ras_exe))
+        result = RasCmdr.compute_plan("01", ras_object=ras, max_runtime=timeout)
+        print(f"    ras-commander: {result!r}"[:600])
+    except Exception as exc:  # noqa: BLE001 - fall through to the direct call
+        print(f"    ras-commander failed: {type(exc).__name__}: {exc}"[:600])
     hdfs = sorted(folder.glob("*.p01.hdf"))
     if not hdfs:
-        # Fall back to HEC-RAS's documented command line, then report what exists.
         prj = next(folder.glob("*.prj"))
-        proc = subprocess.run([str(ras_exe), "-c", str(prj), str(prj.with_suffix(".p01"))], capture_output=True, text=True, timeout=900)
-        print(f"    Ras.exe -c exit {proc.returncode}: {proc.stdout[-500:]} {proc.stderr[-500:]}")
+        proc = subprocess.Popen([str(ras_exe), "-c", str(prj), str(prj.with_suffix(".p01"))], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        t0 = time.monotonic()
+        reported = False
+        while proc.poll() is None and time.monotonic() - t0 < timeout:
+            time.sleep(2)
+            if not reported and time.monotonic() - t0 > 45:
+                print("    Ras.exe still running after 45 s; desktop:\n      " + _describe_screen(folder, "45s"))
+                reported = True
+        if proc.poll() is None:
+            print("    Ras.exe timed out; desktop:\n      " + _describe_screen(folder, "timeout"))
+            proc.kill()
+        out, err = proc.communicate()
+        print(f"    Ras.exe -c exit {proc.returncode}: {out[-500:]} {err[-500:]}")
         hdfs = sorted(folder.glob("*.p01.hdf"))
     if not hdfs:
         listing = "\n".join(f"      {p.name} ({p.stat().st_size} B)" for p in sorted(folder.iterdir()))
