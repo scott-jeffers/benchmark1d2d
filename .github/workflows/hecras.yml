@@ -90,9 +90,6 @@ jobs:
           if ($sha -ne $env:HECRAS_SHA256) { throw "HEC-RAS installer hash $sha does not match the pinned $env:HECRAS_SHA256" }
           $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
           "installer exit code: $($p.ExitCode)"
-      - name: Probe (coarsest grid, full diagnostics)
-        timeout-minutes: 30
-        run: python scripts/run_hecras_2d.py --accept-hec-terms --probe
       - name: Run and score HEC-RAS 2D
         timeout-minutes: 50
         run: python scripts/run_hecras_2d.py --accept-hec-terms
@@ -101,8 +98,8 @@ jobs:
         with:
           name: hecras-2d
           path: |
-            out/hecras2d/*.scorecard.json
-            out/hecras2d/*.parquet
+            out/hecras2d/*/*.scorecard.json
+            out/hecras2d/*/*.parquet
             out/hecras2d/work/**/*.txt
             out/hecras2d/work/**/*.p0?
             out/hecras2d/work/**/*.u0?

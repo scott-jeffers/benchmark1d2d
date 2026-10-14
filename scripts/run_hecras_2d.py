@@ -60,6 +60,9 @@ PRJ_WKT = ('PROJCS["NAD_1983_UTM_Zone_18N",GEOGCS["GCS_North_American_1983",DATU
            'PARAMETER["Central_Meridian",-75.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],'
            'UNIT["Meter",1.0]]')
 START = "01JAN2000"
+# HEC-RAS's two full shallow-water options: Eulerian-Lagrangian (the default
+# when SWE is chosen) and Eulerian, which HEC recommends for dam breaks.
+EQUATIONS = {"elm": (1, "SWE-ELM"), "em": (2, "SWE-EM")}
 # HEC-RAS refuses a Manning n of zero ("Face(s) have a zero Manning N value").
 # n = 0.0001 adds a friction slope below 1e-7 at the dam breaks' depths and
 # speeds: negligible against the tolerances, so the runs stay frictionless.
@@ -170,8 +173,8 @@ def write_unsteady(path: Path, title: str, ic_level: float | None, restart: str 
 
 
 def write_plan(path: Path, title: str, short: str, flow: str, t0: str, t1: str, dt: str, out_dt: str,
-               write_restart: bool) -> None:
-    eq = "UNET D2 Equation= 1 "  # full shallow-water equations (SWE-ELM)
+               write_restart: bool, eq_code: int = 1) -> None:
+    eq = f"UNET D2 Equation= {eq_code} "  # 1 = SWE-ELM, 2 = SWE-EM (full shallow-water equations)
     area_block = ["UNET D2 Coriolis=0", "UNET D2 Theta= 1 ", "UNET D2 Theta Warmup= 1 ", "UNET D2 Z Tol= 0.01 ",
                   "UNET D2 Volume Tol= 0.01 ", "UNET D2 Max Iterations= 20 ", eq, "UNET D2 TotalICTime=",
                   "UNET D2 RampUpFraction=0.1", "UNET D2 TimeSlices= 1 ", "UNET D2 Turbulence Formulation=None",
@@ -337,13 +340,13 @@ def _clock(seconds: float) -> str:
     return f"{s // 3600:02d}{(s % 3600) // 60:02d}"
 
 
-def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool) -> dict:
+def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool, eq: str = "elm") -> dict:
     import h5py
 
     xmin, xmax, x0, hl, hr = dam_break_params(m, tid)
     ymin, ymax = 0.0, 2 * dx
     t_end = float(m["simulation"]["t_end"])
-    folder = OUT / "work" / f"{tid}_dx{dx:g}"
+    folder = OUT / "work" / eq / f"{tid}_dx{dx:g}"
     if folder.exists():
         shutil.rmtree(folder)
     folder.mkdir(parents=True)
@@ -359,7 +362,7 @@ def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool) -> d
     write_plan(folder / f"{name}.p01", "Still water (restart)", "init", "01", "0000", "0001", "1SEC", "1MIN", True)
     write_unsteady(folder / f"{name}.u02", "dam break", None, "PLACEHOLDER")
     write_plan(folder / f"{name}.p02", "Dam break", "dambreak", "02", "0001", _clock(60 + max(t_end, 60)),
-               "0.1SEC", "1SEC", False)
+               "0.1SEC", "1SEC", False, EQUATIONS[eq][0])
     log(f"    project: {nseed} cells, terrain {nx}x{ny} at {cell:g} m")
     preprocess_and_associate(folder, ras_exe, terrain)
     hdf1 = compute(folder, ras_exe, "01", 600)
@@ -393,6 +396,12 @@ def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool) -> d
             log("    p02.hdf layout:\n" + h5_tree(hdf2, 200))
     if hdf2 is None:
         raise RuntimeError("dam-break run wrote no results")
+    import h5py as _h5
+
+    with _h5.File(hdf2, "r") as f:
+        msgs = f["Results/Summary/Compute Messages (text)"][0].decode(errors="replace")
+    if EQUATIONS[eq][1] not in msgs:
+        raise RuntimeError(f"HEC-RAS did not run {EQUATIONS[eq][1]}; its messages say:\n{msgs[:1500]}")
     return read_strip(hdf2, folder / f"{name}.g01.hdf", t_end, x0, xmin, xmax, dx)
 
 
@@ -494,6 +503,7 @@ def main() -> int:
     ap.add_argument("--ras-exe", type=Path)
     ap.add_argument("--accept-hec-terms", action="store_true")
     ap.add_argument("--probe", action="store_true", help="coarsest level of the first case, with full diagnostics")
+    ap.add_argument("--equations", nargs="+", choices=list(EQUATIONS), default=list(EQUATIONS))
     args = ap.parse_args()
 
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -507,39 +517,44 @@ def main() -> int:
     if args.accept_hec_terms:
         accept_terms(ras_exe)
     version = ras_exe.parent.name
-    solver = {"name": f"HEC-RAS {version} 2D", "version": version,
-              "adapter": "hecras 2D (headless terrain + seeded mesh, restart-file initial step, SWE-ELM)"}
     key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
-    OUT.mkdir(parents=True, exist_ok=True)
     cases = args.cases[:1] if args.probe else args.cases
-    for tid in cases:
-        m = load_manifest(tid, repo=REPO)
-        levels = sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True)
-        if args.probe:
-            levels = levels[:1]
-        paths = []
-        for dx in levels:
-            t0 = time.perf_counter()
-            log(f"  {tid} dx={dx}")
-            try:
-                cols = CASES[tid](m, tid, float(dx), ras_exe, args.probe)
-            except Exception:  # noqa: BLE001
-                traceback.print_exc()
-                return 1
-            paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols))
-            log(f"  {tid} dx={dx}: {time.perf_counter() - t0:.0f}s")
-        if len(paths) < 2:
-            continue
-        card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)
-        (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-        log(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")
-        for r in card["criteria_results"]:
-            log(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}")
-        c = card.get("convergence_result") or {}
-        log(f"    convergence p={c.get('observed_order')} errors={c.get('errors')}")
-        if not card["passed"]:
-            log(f"::warning title=HEC-RAS 2D {m['test_id']}::fails at least one criterion (a finding, not a harness error)")
-    return 0
+    failed = 0
+    for eq in (["elm"] if args.probe else args.equations):
+        label = EQUATIONS[eq][1]
+        solver = {"name": f"HEC-RAS {version} 2D {label}", "version": version,
+                  "adapter": f"hecras 2D (headless terrain + seeded mesh, restart-file initial step, {label})"}
+        out = OUT / eq
+        out.mkdir(parents=True, exist_ok=True)
+        for tid in cases:
+            m = load_manifest(tid, repo=REPO)
+            levels = sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True)
+            if args.probe:
+                levels = levels[:1]
+            paths = []
+            for dx in levels:
+                t0 = time.perf_counter()
+                log(f"  {label} {tid} dx={dx}")
+                try:
+                    cols = CASES[tid](m, tid, float(dx), ras_exe, args.probe, eq)
+                except Exception:  # noqa: BLE001
+                    traceback.print_exc()
+                    failed += 1
+                    break
+                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols))
+                log(f"  {label} {tid} dx={dx}: {time.perf_counter() - t0:.0f}s")
+            if len(paths) < len(levels) or len(paths) < 2:
+                continue
+            card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)
+            (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            log(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")
+            for r in card["criteria_results"]:
+                log(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}")
+            c = card.get("convergence_result") or {}
+            log(f"    convergence p={c.get('observed_order')} errors={c.get('errors')}")
+            if not card["passed"]:
+                log(f"::warning title=HEC-RAS 2D {label} {m['test_id']}::fails at least one criterion (a finding, not a harness error)")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
