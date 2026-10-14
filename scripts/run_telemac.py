@@ -267,8 +267,18 @@ def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
                 codes[nn] = (4, 5, 5)   # inflow: prescribed discharge
             elif np.isclose(x[nn], xs[-1]):
                 codes[nn] = (5, 4, 4)   # outflow: prescribed elevation
+        # TELEMAC numbers the open boundaries in the order it meets them along
+        # the boundary loop, so start the loop on a wall node (an open segment
+        # must not wrap round the start) and list the values in that order.
+        k0 = next(k for k, nn in enumerate(loop) if nn not in codes)
+        loop = list(loop[k0:]) + list(loop[:k0])
+        for k, nn in enumerate(loop, 1):
+            ipobo[nn] = k
+        order = [codes[nn] for k, nn in enumerate(loop) if nn in codes and (k == 0 or loop[k - 1] not in codes)]
+        flows = ";".join(f"{q * wid:.9f}" if c == (4, 5, 5) else "0." for c in order)
+        levels = ";".join(f"{z_out + h_out:.9f}" if c == (5, 4, 4) else "0." for c in order)
         extra = (f"LAW OF BOTTOM FRICTION = 4\nFRICTION COEFFICIENT = {n}\n"
-                 f"PRESCRIBED FLOWRATES = {q * wid:.9f};0.\nPRESCRIBED ELEVATIONS = 0.;{z_out + h_out:.9f}")
+                 f"PRESCRIBED FLOWRATES = {flows}\nPRESCRIBED ELEVATIONS = {levels}")
     else:
         raise KeyError(tid)
     with tempfile.TemporaryDirectory() as td:

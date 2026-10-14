@@ -91,8 +91,11 @@ Suite releases are independent of schema semver (`schemas/v1`).
   (`scorer.parity_from_series`), with identical numbers on every PR-tier model.
 - **TELEMAC-2D on the Thacker bowl (A2A-001): passes** (depth error 0.05 mm,
   mass −0.0004 %, order 0.88) on a structured triangle mesh through the
-  case's cell centres. MacDonald 2D (A2A-010) is run locally; it is too slow
-  for the CI job.
+  case's cell centres; **and on MacDonald 2D (A2A-010): passes** (0.13 mm,
+  mass 0.005 %, order 0.99) with prescribed discharge in and level out. The
+  open boundaries are listed in the order TELEMAC meets them along the
+  boundary loop. A2A-010 runs locally; its finest grid is too slow for CI.
+- LISFLOOD-FP DG2 also passes all four EA tests (EA 2 and 5 run locally).
 
 ## [0.4.0] — 2026-10-14
 
