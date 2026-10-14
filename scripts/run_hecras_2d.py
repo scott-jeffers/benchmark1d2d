@@ -379,7 +379,8 @@ def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool) -> d
         base = f"Geometry/2D Flow Areas/{AREA}"
         centres = g[f"{base}/Cells Center Coordinate"][()]
         zmin = g[f"{base}/Cells Minimum Elevation"][()] if f"{base}/Cells Minimum Elevation" in g else np.zeros(len(centres))
-    edited = patch_restart(rst, centres, zmin, hl, hr, x0)
+        n_real = int(g["Geometry/2D Flow Areas/Cell Points"].shape[0])
+    edited = patch_restart(rst, centres, zmin, hl, hr, x0, n_real)
     log(f"    restart {rst.name}: set the downstream cells in {edited}")
     if not edited:
         raise RuntimeError("no per-cell water surface found in the restart file")
@@ -395,12 +396,12 @@ def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool) -> d
     return read_strip(hdf2, folder / f"{name}.g01.hdf", t_end, x0, xmin, xmax, dx)
 
 
-def patch_restart(rst: Path, centres: np.ndarray, zmin: np.ndarray, hl: float, hr: float, x0: float) -> list[str]:
+def patch_restart(rst: Path, centres: np.ndarray, zmin: np.ndarray, hl: float, hr: float, x0: float, n_real: int | None = None) -> list[str]:
     """Put the dam-break step into HEC-RAS's binary restart file.
 
     The restart file (HEC-RAS 6.6) is a Fortran unformatted file. After the
     still-water run every cell holds the same water surface, so the per-cell
-    water surface is the one run of ``len(cells)`` identical, non-zero
+    water surface is the one run of ``len(cells)`` equal (to round-off), non-zero
     doubles in it (found at whatever byte offset it sits). HEC-RAS stores it in
     its internal units (feet: 1 m reads 3.281), so values are rescaled rather
     than written in metres: downstream cells get ``old * (bed + hr) / hl``, or
@@ -413,20 +414,29 @@ def patch_restart(rst: Path, centres: np.ndarray, zmin: np.ndarray, hl: float, h
     down = (centres[:, 0] - X0) > x0
     target = (zmin + hr) if hr > 0 else zmin
     edited = []
+    n_real = int(n_real) if n_real else n_all
     for align in range(8):
         arr = np.frombuffer(bytes(buf[align:align + (len(buf) - align) // 8 * 8]), dtype="<f8")
+        ok = np.isfinite(arr) & (np.abs(arr) > 1e-3) & (np.abs(arr) < 1e4)
         i = 0
         while i < len(arr):
+            if not ok[i]:
+                i += 1
+                continue
+            v = arr[i]
             j = i
-            while j < len(arr) and arr[j] == arr[i]:
+            # the still-water surface is flat to round-off (last bits differ on fine grids)
+            while j < len(arr) and ok[j] and abs(arr[j] - v) <= 1e-6 * abs(v):
                 j += 1
             run = j - i
-            if run == n_all and np.isfinite(arr[i]) and arr[i] != 0 and 1e-3 < abs(arr[i]) < 1e4:
-                scale = float(arr[i]) / hl
-                new = np.where(down, target * scale, arr[i]).astype("<f8")
+            ratio = float(v) / hl  # metres, or HEC-RAS's internal feet
+            if run >= n_real and (abs(ratio - 1) < 1e-3 or abs(ratio / 3.280839895 - 1) < 1e-3):
+                k = min(run, n_all)
+                scale = float(v) / hl
+                new = np.where(down[:k], target[:k] * scale, arr[i:i + k]).astype("<f8")
                 start = align + i * 8
-                buf[start:start + n_all * 8] = new.tobytes()
-                edited.append(f"{run} doubles at byte {start} (stored value {arr[i]:.6g} = {hl:g} m)")
+                buf[start:start + k * 8] = new.tobytes()
+                edited.append(f"{run} doubles at byte {start} (stored value {v:.6g} = {hl:g} m), {k} set")
             i = max(j, i + 1)
     if edited:
         rst.write_bytes(bytes(buf))
