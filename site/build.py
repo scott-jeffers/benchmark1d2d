@@ -128,64 +128,11 @@ def size_text(n: int) -> str:
 
 # ── layout ──────────────────────────────────────────────────────────────────
 
-NAV = [
-    ("index.html", "Overview"),
-    ("catalog.html", "Catalog"),
-    ("corpus.html", "SWMM corpus"),
-    ("reports.html", "Reports"),
-    ("downloads.html", "Downloads"),
-    ("method.html", "Method"),
-    ("get-started.html", "Get started"),
-]
-
-
 def layout(title: str, body: str, active: str, depth: int = 0, description: str = "") -> str:
-    up = "../" * depth
-    nav = "".join(
-        f'<a href="{up}{href}"{" aria-current=\"page\"" if href == active else ""}>{esc(label)}</a>' for href, label in NAV
-    )
-    built = datetime.now(timezone.utc).strftime("%d %b %Y")
-    return f"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{esc(title)} · Benchmark1d2d</title>
-<meta name="description" content="{esc(description or 'Open verification and validation benchmarks for 1D, 2D and coupled hydraulic solvers.')}">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,600;0,800;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{up}static/style.css">
-<link rel="icon" href="{up}static/favicon.svg" type="image/svg+xml">
-</head>
-<body>
-<a class="skip" href="#main">Skip to content</a>
-<header class="masthead">
-  <div class="wrap masthead-inner">
-    <a class="wordmark" href="{up}index.html" aria-label="Benchmark1d2d home">
-      <svg viewBox="0 0 40 24" aria-hidden="true"><path class="wm-bed" d="M0 22 L40 22"/><path class="wm-water" d="M0 6 L12 6 C18 6 22 18 40 18"/></svg>
-      Benchmark1d2d
-    </a>
-    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
-    <nav class="nav" id="site-nav" aria-label="Main">{nav}<a class="gh" href="{REPO_URL}">GitHub</a></nav>
-  </div>
-</header>
-<main id="main" class="wrap">
-{body}
-</main>
-<footer class="footer">
-  <div class="wrap">
-    <p>Benchmark1d2d is open source under Apache-2.0. Each dataset keeps its own licence, listed on its test page and in the <a href="{BLOB}DATA_LICENSES.md">data licence register</a>.</p>
-    <p>Site built {built} from <a href="{REPO_URL}">{REPO_URL.split('github.com/')[1]}</a>.</p>
-  </div>
-</footer>
-<script src="{up}static/site.js" defer></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-</body>
-</html>
-"""
+    """Every page uses the site chrome from pages.py (nav, footer, fonts)."""
+    import pages
+
+    return pages.layout(title, body, active, depth=depth, description=description, math=True)
 
 
 def chip(status: str) -> str:
@@ -737,327 +684,26 @@ def checklist_html(items: list[dict]) -> str:
     return '<ul class="checklist">' + "".join(li) + "</ul>"
 
 
-def test_page(m: dict, card: dict | None, result_dirs: list[Path], assets: Path, evidence: list[dict] | None = None) -> str:
-    from benchmark1d2d.catalog.promotion import checklist, next_stage
-
+def legacy_figures(m: dict, result_dirs: list[Path], assets: Path) -> str:
+    """Server-drawn figures for a case (boundary conditions, maps, Track B traces, …)."""
     tid = m["test_id"]
-    comp = dict((c[0], c[1]) for c in COMPONENTS)[m["_component"]]
     kind = m["reference"]["kind"]
-    figs = ""
     try:
         if kind == "analytic" and tid.startswith("A2A-001"):
-            figs = fig_thacker(m, result_dirs)
-        elif kind == "analytic" and tid.startswith("A2A-010"):
-            figs = fig_macdonald_2d(m, result_dirs)
-        elif kind == "analytic" and tid.startswith("A2A-020"):
-            figs = fig_oblique_jump(m, result_dirs, assets)
-        elif kind == "analytic" and m["physics"]["dimensionality"] == "1D":
-            figs = fig_analytic_1d(m, result_dirs)
-        elif kind == "intercomparison" or (tid.startswith("A2L-EA6A")):
-            figs = fig_ea(m, result_dirs, assets)
-        elif kind == "pinned_engine":
-            figs = fig_track_b(m)
+            return fig_thacker(m, result_dirs)
+        if kind == "analytic" and tid.startswith("A2A-010"):
+            return fig_macdonald_2d(m, result_dirs)
+        if kind == "analytic" and tid.startswith("A2A-020"):
+            return fig_oblique_jump(m, result_dirs, assets)
+        if kind == "analytic" and m["physics"]["dimensionality"] == "1D":
+            return fig_analytic_1d(m, result_dirs)
+        if kind == "intercomparison" or tid.startswith("A2L-EA6A"):
+            return fig_ea(m, result_dirs, assets)
+        if kind == "pinned_engine":
+            return fig_track_b(m)
     except Exception as exc:  # a missing optional input must not break the build
         print(f"WARN figures for {tid}: {exc}", file=sys.stderr)
-    ref_desc = {
-        "analytic": f"Exact solution from <code>{esc(m['reference'].get('generator', {}).get('module', ''))}.{esc(m['reference'].get('generator', {}).get('function', ''))}</code>.",
-        "intercomparison": "No exact or measured answer exists. The case is scored on states that follow from the inputs alone; published package results are context only.",
-        "measured": f"Measured data at <code>{esc(m['reference'].get('data_path', ''))}</code> — availability: <b>{esc(m['reference'].get('availability', 'unknown').replace('_', ' '))}</b>.",
-        "pinned_engine": f"{esc(m['reference'].get('engine'))} {esc(m['reference'].get('version'))}, run on the case's own input ({esc(m['reference'].get('build', 'build recorded in manifest'))}).",
-    }[kind]
-    states = ""
-    if kind == "intercomparison":
-        states = '<div class="table-scroll"><table class="data"><thead><tr><th>Expected state</th><th class=num>Value</th><th>Why it must hold</th></tr></thead><tbody>' + "".join(
-            f"<tr><td><b>{esc(s['id'])}</b><div class=muted>{esc(s['variable'])}{(' at ' + esc(s['where'])) if s.get('where') else ''}</div></td>"
-            f"<td class=num>{fmt(s['value'])} {esc(s['units'])}</td><td>{esc(s['derivation'])}</td></tr>"
-            for s in m["reference"]["expected_states"]) + "</tbody></table></div>"
-        ens = m["reference"]["ensemble"]
-        states += f'<p class="callout">Published package results: {esc(ens["availability"].replace("_", " "))}. {esc(ens.get("notes", ""))}</p>'
-    pending = [e for e in m["inputs"] if e.get("pending")]
-    missing = ""
-    if pending or (kind == "measured" and m["reference"].get("availability") != "available"):
-        items = "".join(f"<li><b>{esc(e['path'])}</b>: {esc(e['pending']['reason'])} <span class=muted>Source: {esc(e['pending'].get('obtain_from', ''))}</span></li>" for e in pending)
-        if kind == "measured" and m["reference"].get("availability") != "available":
-            items += f"<li><b>Reference data</b>: {esc(m['reference'].get('availability', '').replace('_', ' '))}.</li>"
-        missing = f'<section class="callout warn"><h2>What this case still needs</h2><ul>{items}</ul></section>'
-    readme = m["_case_dir"] / "README.md"
-    readme_html = md(readme.read_text(encoding="utf-8")) if readme.is_file() else ""
-    notes = m["provenance"].get("adaptation_notes", "")
-    readme_html = _dedupe_paragraphs(readme_html, [m.get("description", ""), notes]).strip()
-    if readme_html and not readme_html.startswith("<h2"):
-        readme_html = "<h2>About this case</h2>" + readme_html
-    sid = short_id(tid)
-    downloads = [f'<li><a href="../data/cases/{sid}.zip" download>Case bundle (.zip)</a> <span class=muted>manifest, README, committed inputs</span></li>',
-                 f'<li><a href="../data/cases/{sid}/manifest.json">manifest.json</a></li>']
-    if kind == "pinned_engine" and m["reference"].get("results_path"):
-        downloads.append(f'<li><a href="../data/cases/{sid}/{esc(m["reference"]["results_path"])}" download>Reference results (.parquet)</a></li>')
-    if card:
-        downloads.append(f'<li><a href="../data/scorecards/{esc(card["_path"].name)}" download>Latest score card (.json)</a></li>')
-    conv = fig_convergence(card) if card else ""
-    if card:
-        claims = ", ".join(card.get("certification_claims") or []) or "none"
-        score_block = (f'<p class="lede">Latest run: {verdict(card)} by <b>{esc(card["solver"]["name"])}</b> {esc(card["solver"].get("version", ""))}. '
-                       f'Certification claims: <b>{esc(claims)}</b>.</p>')
-    else:
-        score_block = '<p class="lede">No solver has been scored on this case yet.</p>'
-    cards_for = ([card] if card else []) + list(evidence or [])
-    items = checklist(m, cards_for)
-    nxt = next_stage(m, cards_for)
-    if nxt["next"]:
-        need = [b["label"].lower() for b in nxt["blockers"]]
-        next_html = (f'Ready to become <b>{esc(nxt["next"])}</b> pending review' if not need else
-                     f'To become <b>{esc(nxt["next"])}</b>:<small>{esc("; ".join(need))}</small>')
-    else:
-        next_html = "Frozen: counts toward certification"
-    latest = (f'{verdict(card)} <small>{esc(card["solver"]["name"].split(" (")[0])}</small>' if card else
-              '<span class="verdict v-none">Not scored</span><small>no published run yet</small>')
-    glance = f"""<div class="glance" role="region" aria-label="At a glance">
-  <div><span class="k">Status</span><span class="v">{chip(m['status'])}<small>{esc(STATUS_TEXT.get(m['status'], ''))}</small></span></div>
-  <div><span class="k">Truth</span><span class="v">{esc(REF_SHORT.get(kind, kind))}<small>{esc(CLASS_NAMES.get(m['test_class'], m['test_class']))}</small></span></div>
-  <div><span class="k">Latest run</span><span class="v">{latest}</span></div>
-  <div><span class="k">Next step</span><span class="v">{next_html}</span></div>
-</div>"""
-    sections = [("reference", "Reference"), ("scoring", "Scoring"), ("status", "Status"), ("inputs", "Inputs")]
-    if readme_html:
-        sections.append(("about", "About"))
-    sections.append(("sources", "Sources"))
-    toc = '<ul class="toc" aria-label="On this page">' + "".join(f'<li><a href="#{a}">{esc(b)}</a></li>' for a, b in sections) + "</ul>"
-    xb = ""
-    if kind == "pinned_engine":
-        rb = [c for c in (evidence or []) if "official" in str(c.get("solver", {}).get("name", ""))]
-        if rb:
-            c = rb[0]
-            worst = "; ".join(f"{r['id']} {fmt(r['observed'])} {r['threshold']['units']}" for r in c["criteria_results"])
-            xb = (f'<p class="callout{"" if c["passed"] else " warn"}"><b>Second build of the reference.</b> The official EPA {esc(c["solver"]["name"].replace("EPA ", ""))} binaries, '
-                  f'run on this input and scored against the reference: {verdict(c)} ({esc(worst)}). '
-                  + ("Both builds agree, so the reference does not depend on the compiler." if c["passed"] else
-                     "The two builds of the same version disagree beyond this case's tolerances; see the case history below.") + "</p>")
-    phen = ", ".join(p.replace("_", " ") for p in m["physics"]["phenomena"])
-    eqs = ", ".join(p.replace("_", " ") for p in m["physics"]["governing_equations"])
-    cites = "".join(f"<li>{citation_text(c)}</li>" for c in m["provenance"]["citations"])
-    body = f"""
-<nav class="crumbs"><a href="../catalog.html">Catalog</a> / <a href="../catalog.html#{esc(m['_component'])}">{esc(comp)}</a></nav>
-<header class="page-head">
-  <p class="test-id">{esc(sid)} {chip(m['status'])}</p>
-  <h1>{esc(m.get('title', tid))}</h1>
-  <p class="lede">{esc(m.get('description', ''))}</p>
-  {glance}
-  {toc}
-</header>
-<div class="test-layout">
-  <aside class="facts">
-    <dl>
-      <dt>Track</dt><dd>{'A — physics' if m['track'] == 'A' else 'B — industry parity'}</dd>
-      <dt>Class</dt><dd>{esc(CLASS_NAMES.get(m['test_class'], m['test_class']))}</dd>
-      <dt>Dimension</dt><dd>{esc(m['physics']['dimensionality'])}, {esc(m['physics']['flow_type'].replace('_', ' '))}</dd>
-      <dt>Equations</dt><dd>{esc(eqs)}</dd>
-      <dt>Phenomena</dt><dd>{esc(phen)}</dd>
-      <dt>Data licence</dt><dd><a href="{BLOB}DATA_LICENSES.md">{esc(m['provenance']['license'])}</a></dd>
-      <dt>Case version</dt><dd>{esc(m['case_version'])}</dd>
-      <dt>Run length</dt><dd>{run_length(float(m['simulation']['t_end']), bool(m['simulation'].get('steady')))}</dd>
-    </dl>
-    <h2 class="h-small">Downloads</h2>
-    <ul class="downloads">{''.join(downloads)}</ul>
-    <p class="small"><a href="{TREE}{esc(m['_rel'])}">View this case on GitHub</a></p>
-  </aside>
-  <article class="test-main">
-    {missing}
-    <section id="reference"><h2>Reference</h2><p>{ref_desc}</p>{states}{figs}</section>
-    <section id="scoring"><h2>Scoring</h2>{score_block}{criteria_table(m, card)}{conv}{xb}</section>
-    <section id="status"><h2>Status and next steps</h2>
-      <p>Only frozen cases count toward certification. The rules are in the <a href="../method.html#promoting-a-case-draft-candidate-frozen">method</a>; this list is computed from the manifest and the published score cards.</p>
-      {checklist_html(items)}</section>
-    <section id="inputs"><h2>Inputs</h2>{inputs_table(m)}</section>
-    {f'<section id="about" class="prose">{readme_html}' + (f'<p class="small">{esc(notes)}</p>' if notes else "") + "</section>" if readme_html else ""}
-    <section id="sources"><h2>Sources</h2><ul class="cites">{cites}</ul></section>
-  </article>
-</div>"""
-    return layout(m.get("title", tid), body, "catalog.html", depth=1, description=m.get("description", ""))
-
-
-def coverage_matrix(manifests: list[dict], cards: dict) -> str:
-    rows = []
-    for code, name, blurb in COMPONENTS:
-        ms = [m for m in manifests if m["_component"] == code]
-        cells = "".join(
-            f'<a class="cell st-{esc(m["status"])} {"scored-pass" if cards.get(m["test_id"], {}).get("passed") else ("scored-fail" if m["test_id"] in cards else "")}" '
-            f'href="{page_name(m["test_id"])}" title="{esc(short_id(m["test_id"]))}: {esc(m.get("title", ""))} ({esc(m["status"])}{", scored " + ("pass" if cards[m["test_id"]]["passed"] else "fail") if m["test_id"] in cards else ""})">'
-            f'<span>{esc(short_id(m["test_id"]).split("-", 1)[1] if "-" in short_id(m["test_id"]) else short_id(m["test_id"]))}</span></a>'
-            for m in ms
-        )
-        rows.append(f'<div class="cov-row" id="{esc(code)}"><div class="cov-name"><b>{esc(name)}</b><span>{esc(blurb)}</span></div><div class="cov-cells">{cells}</div></div>')
-    key = legend([("Frozen", "st-frozen"), ("Candidate", "st-candidate"), ("Draft", "st-draft")])
-    return f'<div class="coverage">{"".join(rows)}</div><div class="cov-key">{key}<span class="muted">A dot marks a scored case: filled for pass, ringed for fail.</span></div>'
-
-
-def catalog_page(manifests: list[dict], cards: dict, evidence: dict[str, list[dict]] | None = None) -> str:
-    from benchmark1d2d.catalog.promotion import next_stage
-
-    rows = []
-    for m in manifests:
-        c = cards.get(m["test_id"])
-        nxt = next_stage(m, ([c] if c else []) + (evidence or {}).get(m["test_id"], []))
-        short = {"licence": "licence", "inputs": "inputs", "reference": "reference data", "rationale": "tolerance rationale",
-                 "passing_run": "a passing run", "order": "convergence evidence", "independent": "second code", "review": "review"}
-        blockers = ", ".join(short[b["id"]] for b in nxt["blockers"]) or "–"
-        comp = dict((x[0], x[1]) for x in COMPONENTS)[m["_component"]]
-        rows.append(
-            f'<tr data-track="{esc(m["track"])}" data-status="{esc(m["status"])}" data-comp="{esc(m["_component"])}" '
-            f'data-text="{esc((m["test_id"] + " " + m.get("title", "") + " " + " ".join(m["physics"]["phenomena"])).lower())}">'
-            f'<td><a href="{page_name(m["test_id"])}"><b>{esc(short_id(m["test_id"]))}</b></a></td>'
-            f'<td><a href="{page_name(m["test_id"])}">{esc(m.get("title", ""))}</a><div class=muted>{esc(comp)}</div></td>'
-            f"<td>{esc(CLASS_NAMES.get(m['test_class'], m['test_class']))}</td><td>{chip(m['status'])}</td>"
-            f"<td>{verdict(c)}</td><td class=blockers>{esc(blockers)}</td></tr>"
-        )
-    comp_opts = "".join(f'<option value="{c}">{esc(n)}</option>' for c, n, _ in COMPONENTS)
-    counts = Counter(m["status"] for m in manifests)
-    body = f"""
-<header class="page-head">
-  <h1>Test catalog</h1>
-  <p class="lede">{len(manifests)} cases: {counts.get('frozen', 0)} frozen, {counts.get('candidate', 0)} candidate, {counts.get('draft', 0)} draft. Each one has a manifest that fixes its inputs by SHA-256, its reference, and every tolerance with the reason for it.</p>
-</header>
-<div class="status-explain">
-  <div><b>{counts.get('frozen', 0)}</b>{chip('frozen')}<p class="small">Reviewed, passed by two independent codes, and fixed. Only these count toward certification claims.</p></div>
-  <div><b>{counts.get('candidate', 0)}</b>{chip('candidate')}<p class="small">Complete: inputs, reference and justified tolerances. Scored and waiting for a second code and a review.</p></div>
-  <div><b>{counts.get('draft', 0)}</b>{chip('draft')}<p class="small">Defined but blocked, usually on a data licence or measurements still to be obtained from the authors.</p></div>
-</div>
-<p class="small">Promotion rules: <a href="method.html#promoting-a-case-draft-candidate-frozen">draft → candidate → frozen</a>. Each case page shows its own checklist.</p>
-<section><h2>Coverage</h2>{coverage_matrix(manifests, cards)}</section>
-<section>
-  <h2>All cases</h2>
-  <form class="filters" role="search" onsubmit="return false">
-    <label>Search <input type="search" id="q" placeholder="ID, title or phenomenon"></label>
-    <label>Track <select id="f-track"><option value="">Both</option><option value="A">A — physics</option><option value="B">B — parity</option></select></label>
-    <label>Component <select id="f-comp"><option value="">All</option>{comp_opts}</select></label>
-    <label>Status <select id="f-status"><option value="">Any</option><option>frozen</option><option>candidate</option><option>draft</option></select></label>
-    <output id="count" aria-live="polite"></output>
-  </form>
-  <div class="table-scroll"><table class="data catalog" id="catalog">
-    <thead><tr><th>ID</th><th>Case</th><th>Class</th><th>Status</th><th>Latest run</th><th>Still needs</th></tr></thead>
-    <tbody>{''.join(rows)}</tbody>
-  </table></div>
-  <p class="small">Download the whole catalog as <a href="data/catalog.json">JSON</a> or <a href="data/catalog.csv">CSV</a>.</p>
-</section>"""
-    return layout("Catalog", body, "catalog.html")
-
-
-def hero_svg(cards: dict, result_dirs: list[Path]) -> str:
-    from references.ritter import depth_velocity
-
-    x = np.linspace(400, 1600, 900)
-    W_, H_ = 1100, 360
-    px = lambda v: 40 + (np.asarray(v) - 400) / 1200 * (W_ - 80)  # noqa: E731
-    py = lambda v: H_ - 60 - np.asarray(v) * (H_ - 110)  # noqa: E731
-    parts = [f'<svg class="hero-svg" viewBox="0 0 {W_} {H_}" role="img" aria-label="Exact Ritter dam-break water surface at 0, 15, 30, 45 and 60 seconds, with the demo solver\'s computed depths at 60 seconds">']
-    parts.append(f'<rect class="bed-fill" x="40" y="{py(0):.1f}" width="{W_ - 80}" height="22"/>')
-    for k, t in enumerate([0, 15, 30, 45, 60]):
-        h = depth_velocity(x, float(t), h0=1.0, x0=1000.0)["h"]
-        pts = " ".join(f"{a:.1f},{b:.1f}" for a, b in zip(px(x), py(h)))
-        parts.append(f'<polygon class="hero-water hw{k}" points="{px(x[0]):.1f},{py(0):.1f} {pts} {px(x[-1]):.1f},{py(0):.1f}"/>')
-        parts.append(f'<polyline class="hero-line hl{k}" style="--i:{k}" points="{pts}"/>')
-        xf = 1000 + 2 * t * np.sqrt(9.81) if t else 1000
-        parts.append(f'<text class="hero-t" x="{px(min(xf, 1590)) + 6:.1f}" y="{py(0) - 8:.1f}">{t} s</text>')
-    demo = _demo_profile("A1F-010_ritter_dry_bed_dambreak", result_dirs)
-    if demo is not None:
-        sel = demo[(demo["x"] >= 400) & (demo["x"] <= 1600)]
-        sel = sel.iloc[:: max(1, len(sel) // 70)]
-        for a, b in zip(px(sel["x"]), py(sel["h"])):
-            parts.append(f'<circle class="hero-dot" cx="{a:.1f}" cy="{b:.1f}" r="3.4"/>')
-    parts.append(f'<line class="hero-gate" x1="{px(1000):.1f}" x2="{px(1000):.1f}" y1="{py(1.08):.1f}" y2="{py(0):.1f}"/>')
-    parts.append(f'<text class="hero-cap" x="{px(1000) + 8:.1f}" y="{py(1.04):.1f}">dam, removed at t = 0</text>')
-    parts.append("</svg>")
-    return "".join(parts)
-
-
-def index_page(manifests: list[dict], cards: dict, census: pd.DataFrame | None, result_dirs: list[Path]) -> str:
-    status_rows = []
-    for code, name, _ in COMPONENTS:
-        ms = [m for m in manifests if m["_component"] == code]
-        c = Counter(m["status"] for m in ms)
-        status_rows.append((name, [(c.get("frozen", 0), "st-frozen", "Frozen"), (c.get("candidate", 0), "st-candidate", "Candidate"), (c.get("draft", 0), "st-draft", "Draft")]))
-    bars = hbars("Cases by component and status", status_rows, link={name: f"catalog.html#{code}" for code, name, _ in COMPONENTS})
-    scored = [cards[m["test_id"]] for m in manifests if m["test_id"] in cards]
-    scored_rows = "".join(
-        f'<tr><td><a href="{page_name(c["test_id"])}">{esc(short_id(c["test_id"]))}</a></td><td>{esc(next(m.get("title", "") for m in manifests if m["test_id"] == c["test_id"]))}</td>'
-        f'<td>{esc(c["solver"]["name"].split(" (")[0])}</td><td>{verdict(c)}</td>'
-        f'<td class=num>{fmt(c["convergence_result"]["observed_order"]) if c.get("convergence_result") and c["convergence_result"].get("observed_order") is not None else "–"}</td></tr>'
-        for c in scored
-    )
-    n_scored = len(scored)
-    n_pass = sum(1 for c in scored if c.get("passed"))
-    counts = Counter(m["status"] for m in manifests)
-    stats = f"""<div class="stats">
-  <div><b>{len(manifests)}</b><span>test cases ({counts.get('candidate', 0)} candidate, {counts.get('draft', 0)} draft, {counts.get('frozen', 0)} frozen)</span></div>
-  <div><b>{n_pass} / {n_scored}</b><span>scored cases with a passing published run</span></div>
-  <div><b>{(int((census["status"] == "ran").sum()) if census is not None else 0):,}</b><span>SWMM corpus models that run on the reference engine</span></div>
-  <div><b>2</b><span>pinned reference engines: EPA SWMM 5.2.4, EPANET 2.2</span></div>
-</div>"""
-    n_ran = int((census["status"] == "ran").sum()) if census is not None else 0
-    n_models = len(census) if census is not None else 0
-    corpus_block = (
-        f"""<section>
-  <h2>Track B corpus</h2>
-  <p>{n_models:,} SWMM models federated from HydroCouple's <code>openswmm.engine.benchmarks</code>, pinned to one commit. {n_ran:,} of them run cleanly on EPA SWMM 5.2.4; those form the PR, nightly and release tiers, and any SWMM-compatible engine can be scored against 5.2.4 across a whole tier. <a href="corpus.html">See the corpus and the SWMM 5.1.15 parity results</a>.</p>
-</section>"""
-        if census is not None
-        else ""
-    )
-    ritter = cards.get("A1F-010_ritter_dry_bed_dambreak")
-    ritter_line = ""
-    if ritter:
-        front = next((r for r in ritter["criteria_results"] if r["id"] == "front_position"), None)
-        if front:
-            ritter_line = f"The dots are the demo solver: its wet front sits {front['observed']:.2f} m from the exact one after 60 s, inside the 2.5 m tolerance."
-    body = f"""
-<section class="hero">
-  <div class="hero-copy">
-    <h1>Is your water solver right, and does it match SWMM?</h1>
-    <p class="lede">Benchmark1d2d is an open suite that answers those as two separate questions, for 1D, 2D and coupled hydraulic models written in any language, including neural surrogates.</p>
-    <p class="cta"><a class="button" href="catalog.html">Browse the {len(manifests)} test cases</a> <a class="button ghost" href="get-started.html">Score your solver</a></p>
-  </div>
-  <figure class="hero-fig">{hero_svg(cards, result_dirs)}
-    <figcaption>Ritter (1892): a dam holding 1 m of water vanishes at t = 0. Shaded profiles are the exact solution every 15 s. {esc(ritter_line)} <a href="{page_name('A1F-010')}">See test A1F-010</a>.</figcaption>
-  </figure>
-</section>
-{stats}
-<section>
-  <h2>Start here</h2>
-  <div class="paths">
-    <a class="path" href="get-started.html"><h3>I develop a solver</h3><p>Run a case, write results in the common format, and get a signed score card.</p>
-      <ul><li>Install and score in five commands</li><li>Results contract (Parquet)</li></ul></a>
-    <a class="path" href="reports.html"><h3>I review results</h3><p>Check what each score means, how tolerances were set, and what was found wrong and fixed.</p>
-      <ul><li>Score cards and the audit log</li><li>Method and tolerance rationale</li></ul></a>
-    <a class="path" href="downloads.html"><h3>I want the data</h3><p>Download a case, the whole catalog, reference results or the SWMM corpus index, each with a hash.</p>
-      <ul><li>Which file do I need?</li><li>Case bundles and schemas</li></ul></a>
-  </div>
-</section>
-<section class="tracks">
-  <h2>Two tracks, kept apart on purpose</h2>
-  <div class="table-scroll"><table class="data compare">
-    <thead><tr><th></th><th class="track-a">Track A — physics</th><th class="track-b">Track B — industry parity</th></tr></thead>
-    <tbody>
-      <tr><th>Question</th><td>Does it solve the equations correctly?</td><td>Does it behave like EPA SWMM 5.2.4 and EPANET 2.2?</td></tr>
-      <tr><th>Ground truth</th><td>Exact solutions, conservation laws, laboratory and field measurements</td><td>Element-by-element output of the pinned engine on the same input</td></tr>
-      <tr><th>A failure means</th><td>The solver is <b>wrong</b></td><td>The solver <b>differs</b> from the reference engine</td></tr>
-      <tr><th>Scored on</th><td>L1/L2/L∞ error, observed order of accuracy, mass error, arrival time</td><td>Peak, volume and timing at every node and link; the worst element is reported</td></tr>
-      <tr><th>Claims</th><td>A-V verified, A-C conserves, A-L / A-F validated</td><td>B-x %: within x % of the reference everywhere</td></tr>
-    </tbody>
-  </table></div>
-</section>
-<section>
-  <h2>Where the catalog stands</h2>
-  <p>Only <b>frozen</b> cases count toward certification. Drafts are listed so you can see what is coming and what is blocked, usually on data licences.</p>
-  {bars}
-  {legend([("Frozen", "st-frozen"), ("Candidate", "st-candidate"), ("Draft", "st-draft")])}
-</section>
-<section>
-  <h2>Latest scored runs</h2>
-  <p>Track A runs use the demo solvers shipped in <code>examples/</code> (deliberately plain first- and second-order schemes) and EPA EPANET 2.2 for the pipe networks. Track B runs score an older engine release, EPA SWMM 5.1.15 and EPANET 2.0, against the pinned references. None of these is a certification claim for any product.</p>
-  <div class="table-scroll"><table class="data"><thead><tr><th>Case</th><th>Title</th><th>Solver</th><th>Result</th><th class=num>Observed order</th></tr></thead><tbody>{scored_rows}</tbody></table></div>
-  <p><a href="reports.html">All score cards and the audit log</a></p>
-</section>
-{corpus_block}"""
-    return layout("Open V&V benchmarks for water solvers", body, "index.html")
+    return ""
 
 
 PARITY_DIR = ROOT / "test_catalog" / "track_b" / "parity"
@@ -1399,14 +1045,23 @@ def write_bundles(manifests: list[dict], cards: dict, index: pd.DataFrame | None
 
 
 def main() -> int:
+    import checkdata
+    import pages
+    import profiles as prof
+
+    pages.H = sys.modules[__name__]
     ap = argparse.ArgumentParser()
     ap.add_argument("--scorecards", action="append", default=[], help="directories with *.scorecard.json (later wins)")
     ap.add_argument("--results", action="append", default=[], help="directories with demo results Parquet")
     args = ap.parse_args()
-    score_dirs = [Path(p) for p in (args.scorecards or ["site/fixtures/scorecards", "out/track_b", "out/vertical_slice", "out/networks", "out/demo_2d"])]
+    suite_dirs = ["site/fixtures/scorecards", "out/track_b", "out/vertical_slice", "out/networks", "out/demo_2d"]
+    production_dirs = ["site/fixtures/telemac", "site/fixtures/hecras", "site/fixtures/anuga", "site/fixtures/geoclaw",
+                       "site/fixtures/lisflood", "out/telemac", "out/hecras", "out/hecras2d", "out/anuga", "out/geoclaw", "out/lisflood"]
+    score_dirs = [Path(p) for p in (args.scorecards or suite_dirs)]
     result_dirs = [Path(p) for p in (args.results or ["out/vertical_slice", "out/networks", "out/demo_2d"])]
     score_dirs = [p if p.is_absolute() else ROOT / p for p in score_dirs]
     result_dirs = [p if p.is_absolute() else ROOT / p for p in result_dirs]
+    all_dirs = score_dirs + [ROOT / p for p in production_dirs]
 
     if DIST.exists():
         shutil.rmtree(DIST)
@@ -1416,9 +1071,9 @@ def main() -> int:
     shutil.copytree(SITE / "static", DIST / "static")
 
     manifests = load_manifests()
-    cards = load_scorecards(score_dirs)
     known = {m["test_id"] for m in manifests}
-    cards = {k: v for k, v in cards.items() if k in known}
+    cards = {k: v for k, v in load_scorecards(score_dirs).items() if k in known}  # one card per test (bundles, reports)
+    runs = {k: v for k, v in pages.load_runs(all_dirs).items() if k in known}      # every solver's card per test
     idx_path = ROOT / "test_catalog/track_b/corpus_index.parquet"
     index = pd.read_parquet(idx_path) if idx_path.is_file() else None
     if index is not None and "status" not in index.columns:
@@ -1433,22 +1088,60 @@ def main() -> int:
         evidence[c["test_id"]] = [c]  # later (fresh CI output) wins
     parity = load_parity()
     files = write_bundles(manifests, cards, index)
-    pages = {
-        "index.html": index_page(manifests, cards, census, result_dirs),
-        "catalog.html": catalog_page(manifests, cards, evidence),
+    for tid, by in runs.items():  # every run's signed card, by solver
+        for k, c in by.items():
+            d = DIST / "data" / "scorecards" / k
+            d.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(c["_path"], d / c["_path"].name)
+    names = {pages.sid_of(m["test_id"]): pages.story(m)["name"] for m in manifests}
+    checkable = checkdata.build(manifests, result_dirs, DIST / "data" / "check", names)
+
+    out_pages = {
+        "index.html": pages.home_page(manifests, runs, census, parity, evidence),
+        "results.html": pages.results_page(manifests, runs, parity, census),
+        "score.html": pages.score_page(manifests, checkable),
+        "how-it-works.html": pages.how_page(manifests, runs),
+        "catalog.html": pages.redirect("results.html"),
         "corpus.html": corpus_page(index, census, parity),
         "reports.html": reports_page(manifests, cards, evidence),
         "method.html": doc_page("Method", "method.html", [ROOT / "docs/methodology/vv_plan.md", ROOT / "docs/methodology/promotion.md", ROOT / "docs/methodology/tolerance_rationale.md", ROOT / "docs/bibliography.md"],
-                                '<p class="lede">How cases are verified and validated, how tolerances are chosen, and the literature behind every test.</p>'),
-        "get-started.html": doc_page("Get started", "get-started.html", [ROOT / "docs/get_started.md"]),
+                                '<p class="lede">How tests are verified and validated, how limits are chosen, and the literature behind every test.</p>'),
+        "get-started.html": doc_page("Command line", "get-started.html", [ROOT / "docs/get_started.md"]),
     }
     for m in manifests:
-        pages[page_name(m["test_id"])] = test_page(m, cards.get(m["test_id"]), result_dirs, assets, evidence.get(m["test_id"], []))
-    pages["downloads.html"] = downloads_page(files)
-    for name, html_text in pages.items():
+        sid = short_id(m["test_id"])
+        by = runs.get(m["test_id"], {})
+        exact = None
+        try:
+            exact = prof.exact_curves(m)
+        except Exception as exc:  # noqa: BLE001
+            print(f"WARN exact curve for {sid}: {exc}", file=sys.stderr)
+        curves = {}
+        fixture = SITE / "fixtures" / "profiles" / f"{sid}.json"
+        if fixture.is_file():
+            curves.update({k: v for k, v in json.loads(fixture.read_text(encoding="utf-8")).items() if k in by})
+        for k in ("demo1d", "demo2d"):
+            if k in by:
+                for d in result_dirs:
+                    pq = prof.finest(d, m["test_id"])
+                    if pq is not None:
+                        try:
+                            cv = prof.model_curve(m, pq)
+                        except Exception as exc:  # noqa: BLE001
+                            print(f"WARN demo curve for {sid}: {exc}", file=sys.stderr)
+                            cv = None
+                        if cv:
+                            curves[k] = cv
+                            break
+        figs = legacy_figures(m, result_dirs, assets)
+        out_pages[page_name(m["test_id"])] = pages.case_page(m, by, exact, curves, figs, evidence.get(m["test_id"], []))
+    out_pages["downloads.html"] = downloads_page(files)
+    for name, html_text in out_pages.items():
         (DIST / name).write_text(html_text, encoding="utf-8")
     (DIST / ".nojekyll").write_text("", encoding="utf-8")
-    print(f"site: {len(pages)} pages, {len(cards)} score cards, {len(files)} downloads -> {DIST.relative_to(ROOT)}")
+    n_runs = sum(len(v) for v in runs.values())
+    print(f"site: {len(out_pages)} pages, {n_runs} runs from {len({k for v in runs.values() for k in v})} solvers, "
+          f"{len(checkable)} browser-checkable tests, {len(files)} downloads -> {DIST.relative_to(ROOT)}")
     return 0
 
 

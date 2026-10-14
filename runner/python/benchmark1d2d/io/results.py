@@ -66,7 +66,16 @@ def write_results_parquet(path: str | Path, columns: Mapping[str, Any]) -> Path:
 
 
 def read_results_parquet(path: str | Path) -> pd.DataFrame:
-    """Read and validate a results Parquet file."""
+    """Read and validate a results file: Parquet, or CSV with the same columns.
+
+    CSV is accepted so a results template filled in by hand or by any tool can
+    be scored directly; empty cells are read as missing values.
+    """
     path = Path(path)
-    df = pd.read_parquet(path, engine="pyarrow")
+    if path.suffix.lower() == ".csv":
+        df = pd.read_csv(path)
+        if "element_id" in df.columns:
+            df["element_id"] = df["element_id"].astype(str)
+    else:
+        df = pd.read_parquet(path, engine="pyarrow")
     return validate_results_columns(df)

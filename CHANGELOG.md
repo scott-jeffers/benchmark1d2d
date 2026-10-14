@@ -5,6 +5,18 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ## [Unreleased]
 
+### Changed
+
+- **The website is rebuilt as OpenHydro Bench**, in plain language: a home
+  page that asks one question, a *Tests & results* matrix of every test
+  against every model with a detail panel, a story page per test (what
+  happens, why it matters, an exact-answer replay with each model's result,
+  every model's checks in words and numbers, technical details folded away),
+  *Score your model* with results templates and an in-browser check that
+  mirrors the scorer, and *How it works*. Old `catalog.html` redirects.
+- The scorer reads CSV results as well as Parquet, so a filled-in template
+  can be scored directly.
+
 ### Added
 
 - **HEC-RAS 6.6 scored** (`scripts/run_hecras.py`, `.github/workflows/hecras.yml`):

@@ -18,8 +18,8 @@ not flat at the start. All three are made here without the GUI:
   run starts from it. HEC-RAS's own restart mechanism carries the step in.
 
 The 2D equation set is the full shallow-water one (SWE, HEC-RAS's default
-SWE-ELM variant); time step by HEC-RAS's Courant control; friction zero, as
-in the reference. Everything else is HEC-RAS's default.
+SWE-ELM variant); time step by HEC-RAS's Courant control; friction as close
+to the reference's zero as HEC-RAS allows (n = 0.0001). Everything else is HEC-RAS's default.
 
 Usage (Windows, HEC-RAS 6.6, ``ras-commander``, ``pythonnet``)::
 
@@ -60,6 +60,10 @@ PRJ_WKT = ('PROJCS["NAD_1983_UTM_Zone_18N",GEOGCS["GCS_North_American_1983",DATU
            'PARAMETER["Central_Meridian",-75.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],'
            'UNIT["Meter",1.0]]')
 START = "01JAN2000"
+# HEC-RAS refuses a Manning n of zero ("Face(s) have a zero Manning N value").
+# n = 0.0001 adds a friction slope below 1e-7 at the dam breaks' depths and
+# speeds: negligible against the tolerances, so the runs stay frictionless.
+N_MIN = 0.0001
 
 
 def log(msg: str) -> None:
@@ -346,7 +350,7 @@ def run_dam_break(m: dict, tid: str, dx: float, ras_exe: Path, probe: bool) -> d
     name = "DamBreak"
     write_project(folder, name, f"{tid} dx={dx:g}", ["01", "02"], ["01", "02"])
     write_rasmap(folder, name)
-    nseed = write_geometry(folder / f"{name}.g01", f"{tid} strip", xmin, xmax, ymin, ymax, dx, 0.0)
+    nseed = write_geometry(folder / f"{name}.g01", f"{tid} strip", xmin, xmax, ymin, ymax, dx, N_MIN)
     cell = min(dx / 2, 1.0)
     nx, ny = int(round((xmax - xmin + 4 * dx) / cell)), int(round((ymax - ymin + 4 * dx) / cell))
     terrain = create_terrain(folder, ras_exe.parent, np.zeros((ny, nx)), xmin - 2 * dx, ymax + 2 * dx, cell)

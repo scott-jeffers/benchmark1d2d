@@ -1,7 +1,8 @@
-# benchmark1d2d static site
+# OpenHydro Bench site
 
-Dependency-light Python generator. No Jinja, Next.js, or Astro — plain HTML
-written from catalog manifests, pinned engine metadata, and optional scorecards.
+A dependency-light Python generator: plain HTML written from the catalog
+manifests, the score cards and the corpus data. Published by
+`.github/workflows/pages.yml`.
 
 ## Build
 
@@ -9,30 +10,39 @@ From the repository root:
 
 ```bash
 python site/build.py
-python site/build.py --scorecards out --scorecards site/fixtures/scorecards
 ```
 
-By default the builder merges `site/fixtures/scorecards` then `out/`. Repeat
-`--scorecards` to add more directories (later directories override earlier keys).
+The Pages workflow re-runs the suite's demo solvers first, so their score cards
+and results are fresh; production solvers (HEC-RAS, TELEMAC-2D, ANUGA,
+GeoClaw, LISFLOOD-FP) are read from `site/fixtures/<solver>/` and, when
+present, `out/<solver>/`.
 
 Output lands in `site/dist/`:
 
-| Page | Role |
-|------|------|
-| `index.html` | Home — brand, dual-track story, how it works, pinned engines |
-| `catalog.html` | Separate Track A / Track B result tables |
-| `get-started.html` | Install, first run, local site build |
-| `engines.html` | SWMM 5.2.4 pin (version, upstream, SHA-256) |
-| `methodology.html` | Rendered from `docs/methodology/` |
-| `tests/<test_id>.html` | Physics, run commands, citations, tolerances, scorecard |
-| `style.css` | Copied from `site/static/` |
+| Page | Built by | Role |
+|------|----------|------|
+| `index.html` | `pages.home_page` | Home: the question, findings, featured tests |
+| `results.html` | `pages.results_page` | Every test against every model, with a detail panel |
+| `tests/<ID>.html` | `pages.case_page` | One test in plain words, chart/replay, each model's checks, technical details |
+| `score.html` | `pages.score_page` | Downloads, results templates and the in-browser check |
+| `how-it-works.html` | `pages.how_page` | The method in plain words |
+| `corpus.html`, `reports.html`, `downloads.html`, `method.html`, `get-started.html` | `build.py` | Reference pages |
 
-Optional `<test_id>.png` plots appear when a scorecard and results parquet are both present.
+## Files
 
-Open `site/dist/index.html` in a browser after building.
+| File | What it holds |
+|------|---------------|
+| `build.py` | Loading, bundles, server-drawn figures, reference pages, `main()` |
+| `pages.py` | Layout and the plain-language pages; solver list and notes |
+| `stories.py` | Plain-language text for every test |
+| `profiles.py` | Exact curves and model curves for the case charts; `python site/profiles.py` refreshes `fixtures/profiles/` from `out/` |
+| `checkdata.py` | Report points, exact answers and templates for the in-browser check |
+| `static/chart.js` | Case-page chart and replay |
+| `static/check.js` | In-browser check; mirrors the scorer's norms, mass, front and observed order |
 
 ## Fixtures
 
-`site/fixtures/scorecards/` holds published demo scorecards (Track A vertical
-slice + SWMM self-parity) so GitHub Pages stays populated without requiring a
-local Windows SWMM fetch.
+`fixtures/scorecards/` holds the demo and compatibility score cards,
+`fixtures/<solver>/` the production solvers' cards, `fixtures/profiles/` their
+final-state curves, and `fixtures/cross_build/` second builds of the reference
+engines. See `fixtures/README.md` for how to refresh them.
