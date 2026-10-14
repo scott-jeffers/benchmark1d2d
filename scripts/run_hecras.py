@@ -86,7 +86,7 @@ def write_geometry(path: Path, title: str, x: np.ndarray, zb: np.ndarray, width:
                   "#Mann= 3 ,0,0", *rows([0.0, n, 0.0, 0.0, n, 0.0, width, n, 0.0], 9),
                   f"Bank Sta=0,{width:g}", "XS Rating Curve= 0 ,0", "XS HTab Horizontal Distribution= 5 , 5 , 5 ",
                   "Exp/Cntr=0,0", ""]
-    path.write_text("\r\n".join(lines) + "\r\n", encoding="ascii")
+    path.write_text("\n".join(lines) + "\n", encoding="ascii", newline="\r\n")
 
 
 def write_steady_flow(path: Path, title: str, rs_up: str, q: float, ws_down: float) -> None:
@@ -94,7 +94,7 @@ def write_steady_flow(path: Path, title: str, rs_up: str, q: float, ws_down: flo
              f"River Rch & RM={RIVER},{REACH:<16},{rs_up:<8}", f8(q),
              f"Boundary for River Rch & Prof#={RIVER},{REACH:<16}, 1 ", "Up Type= 0 ", "Dn Type= 1 ",
              f"Dn Known WS={ws_down:.6f}"]
-    path.write_text("\r\n".join(lines) + "\r\n", encoding="ascii")
+    path.write_text("\n".join(lines) + "\n", encoding="ascii", newline="\r\n")
 
 
 def write_plan(path: Path, title: str, short: str) -> None:
@@ -102,7 +102,7 @@ def write_plan(path: Path, title: str, short: str) -> None:
              "Flow File=f01", "Subcritical Flow", "K Sum by GR= 0", "Std Step Tol= .0001", "Critical Tol= .0001",
              "Num of Std Step Trials= 40", "Max Error Tol= .3", "Flow Tol Ratio= .001", "Log Output Level= 0",
              "Friction Slope Method= 1"]
-    path.write_text("\r\n".join(lines) + "\r\n", encoding="ascii")
+    path.write_text("\n".join(lines) + "\n", encoding="ascii", newline="\r\n")
 
 
 def write_project(folder: Path, name: str, title: str) -> Path:
@@ -110,7 +110,7 @@ def write_project(folder: Path, name: str, title: str) -> Path:
     prj.write_text("\r\n".join([f"Proj Title={title}", "Current Plan=p01", "Default Exp/Contr=0,0", "SI Units",
                                 "Geom File=g01", "Flow File=f01", "Plan File=p01", "Y Axis Title=Elevation",
                                 "X Axis Title(PF)=Main Channel Distance", "X Axis Title(XS)=Station",
-                                "BEGIN DESCRIPTION:", title, "END DESCRIPTION:"]) + "\r\n", encoding="ascii")
+                                "BEGIN DESCRIPTION:", title, "END DESCRIPTION:"]) + "\n", encoding="ascii", newline="\r\n")
     return prj
 
 
@@ -216,7 +216,9 @@ def run_plan(folder: Path, ras_exe: Path, timeout: float = 300.0) -> Path:
     hdfs = sorted(folder.glob("*.p01.hdf"))
     if not hdfs:
         prj = next(folder.glob("*.prj"))
-        proc = subprocess.Popen([str(ras_exe), "-c", str(prj), str(prj.with_suffix(".p01"))], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # HEC-RAS parses its own command line and needs the quotes literally.
+        cmd = f'"{ras_exe}" -c "{prj}" "{prj.with_suffix(".p01")}"'
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         t0 = time.monotonic()
         reported = False
         while proc.poll() is None and time.monotonic() - t0 < timeout:
