@@ -1,0 +1,21 @@
+{
+  "tier": "nightly",
+  "upstream_commit": "63eb8bc5b4e741c82195ed65c4d7d146b86da1cc",
+  "reference": "EPA SWMM 5.2.4 (swmm-toolkit 0.17.0)",
+  "candidate": "openswmm-6",
+  "candidate_version": "6.0.0a4.dev1",
+  "models": 500,
+  "status": {
+    "scored": 493,
+    "candidate_timeout": 3,
+    "nothing_reported": 3,
+    "candidate_error": 1
+  },
+  "within_pct": {
+    "1": 376,
+    "2": 393,
+    "5": 422
+  },
+  "median_worst_pct": 0.011320824458308277,
+  "metrics": "peak_depth = worst node, relative peak depth; volume = worst link, relative integral of |Q|"
+}

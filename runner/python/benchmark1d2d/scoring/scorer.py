@@ -444,8 +444,11 @@ def _element_series(df: pd.DataFrame, variable: str) -> dict[str, tuple[np.ndarr
 
 def _parity_metric(metric: str, variable: str, sim: pd.DataFrame, ref: pd.DataFrame) -> tuple[float, str]:
     """Worst-element parity error and a human-readable detail string."""
-    s_series = _element_series(sim, variable)
-    r_series = _element_series(ref, variable)
+    return parity_from_series(metric, _element_series(sim, variable), _element_series(ref, variable), variable)
+
+
+def parity_from_series(metric: str, s_series: dict, r_series: dict, variable: str = "") -> tuple[float, str]:
+    """``_parity_metric`` on ``{element: (t, values)}`` maps (elements in name order)."""
     if not r_series:
         raise ReferenceUnavailable(f"reference has no {variable!r} series")
     missing = sorted(set(r_series) - set(s_series))

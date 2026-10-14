@@ -60,6 +60,40 @@ Suite releases are independent of schema semver (`schemas/v1`).
     goes to zero, 1 mm of depth error moves the contour ~10 m, and production
     codes treat depths under 1 mm as dry.
 
+- **OpenSWMM Engine v6 (HydroCouple's SWMM 6) scored** — pre-release
+  `openswmm` 6.0.0a4 from PyPI, run with its new engine
+  (`benchmark1d2d.adapters.openswmm`).
+  - Track B: B-EXTRAN-001 is identical to SWMM 5.2.4; B-RTC-001 differs (node 1
+    peaks at 0.697 m after 35 h against 0.463 m after 12 h, although the pumps
+    switch the same 74 times). Reported to the engine's developers as a lead.
+  - Corpus, nightly tier (500 models): 205 identical to 5.2.4, 422 of 493
+    scored within 5 %, 71 over 5 %; it runs 496 (SWMM 5.1.15: 477). In 20 of
+    the 71 the worst node is an outfall. `weir-overtopping` creates water at
+    an outfall (routing continuity −48 %). Leads for the developers in
+    `docs/openswmm.md`; the corpus page shows both candidates.
+  - `scripts/corpus_parity.py --candidate-engine openswmm` scores it against
+    5.2.4 on any tier; the nightly workflow runs it on the nightly tier.
+- **SWMM on the 1D channel physics cases** (`scripts/run_swmm_track_a.py`):
+  EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and OpenSWMM v6 finite-volume
+  routing (`FLOW_ROUTING FV`), each channel written as one conduit per grid
+  cell. SWMM 5.2.4 passes the backwater curve (A1F-001) and fails both dam
+  breaks; v6 dynamic wave reproduces 5.2.4 bit for bit. v6 finite volume
+  passes Stoker (A1F-011, order 0.91, mass 0.003 %) — the first SWMM engine to
+  pass a dam break — but its backwater curve converges at 0.76 (minimum 0.8).
+- **LISFLOOD-FP 8.3 on the EA inter-comparison tests** (A2C-EA1, 2, 4, 5) at
+  the specification's resolutions (EA4 at 5 m), with LISFLOOD-FP's own
+  boundaries (`HVAR` level for EA1, `QVAR` point sources on the inflow line):
+  FV1 and ACC pass all four. ACC's EA1 pond settles 5 mm above the sill and its
+  stored volume is 2.7 % high (non-gating check).
+- **Corpus parity no longer builds a results table per model.** A big model's
+  long-form table needed several GB and the nightly run was killed for memory;
+  parity is now computed from the binary output's series directly
+  (`scorer.parity_from_series`), with identical numbers on every PR-tier model.
+- **TELEMAC-2D on the Thacker bowl (A2A-001): passes** (depth error 0.05 mm,
+  mass −0.0004 %, order 0.88) on a structured triangle mesh through the
+  case's cell centres. MacDonald 2D (A2A-010) is run locally; it is too slow
+  for the CI job.
+
 ## [0.4.0] — 2026-10-14
 
 A second review. Every scored Track A case now has a run that passes it, and

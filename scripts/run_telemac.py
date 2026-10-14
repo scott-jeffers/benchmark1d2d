@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Score openTELEMAC-2D on the dam-break cases (an independent, production solver).
+"""Score openTELEMAC-2D on the dam breaks, the Thacker bowl and the 2D MacDonald channel.
 
 TELEMAC-2D (openTELEMAC v9.1, conda-forge ``opentelemac``) is run as a black
 box on each refinement level of A1F-010 (Ritter, dry bed) and A1F-011
@@ -13,7 +13,12 @@ box on each refinement level of A1F-010 (Ritter, dry bed) and A1F-011
   variants were tried and leave the wet-front lag on A1F-010 unchanged.
 - initial state: the dam-break step, written as a "previous computation" file
 
-The centreline nodes at the final time become the results file; scoring is
+A2A-001 (Thacker) and A2A-010 (MacDonald 2D) use a triangle mesh whose nodes
+are the case's cell centres (walls all round; for A2A-010 a prescribed
+discharge west, a prescribed level east, Manning friction).
+
+The centreline nodes (dam breaks) or all nodes (2D cases) at the final time
+become the results file; scoring is
 the same as for any other solver. Score cards go to ``out/telemac/``.
 
 Usage::
@@ -187,6 +192,113 @@ def run_level(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
             "v": nan.copy(), "p": nan.copy(), "Q": hv[centre] * uv[centre]}
 
 
+# ── 2D cases: a structured triangle mesh whose nodes are the case's cell centres ─
+
+
+def rect_mesh(xs: np.ndarray, ys: np.ndarray):
+    nx, ny = len(xs) - 1, len(ys) - 1
+    X, Y = np.meshgrid(xs, ys)
+    x, y = X.ravel(), Y.ravel()
+    node = lambda i, j: j * (nx + 1) + i  # noqa: E731
+    tri = []
+    for j in range(ny):
+        for i in range(nx):
+            a, b, c, d = node(i, j), node(i + 1, j), node(i + 1, j + 1), node(i, j + 1)
+            tri += [(a, b, c), (a, c, d)] if (i + j) % 2 == 0 else [(a, b, d), (b, c, d)]  # alternate diagonals
+    loop = [node(i, 0) for i in range(nx + 1)] + [node(nx, j) for j in range(1, ny + 1)]
+    loop += [node(i, ny) for i in range(nx - 1, -1, -1)] + [node(0, j) for j in range(ny - 1, 0, -1)]
+    ipobo = np.zeros(len(x), dtype=int)
+    for k, n in enumerate(loop, 1):
+        ipobo[n] = k
+    return x, y, np.array(tri), ipobo, loop
+
+
+STEERING_2D = """TITLE = '{title}'
+GEOMETRY FILE = 'geo.slf'
+BOUNDARY CONDITIONS FILE = 'geo.cli'
+PREVIOUS COMPUTATION FILE = 'ini.slf'
+INITIAL TIME SET TO ZERO = YES
+RESULTS FILE = 'res.slf'
+EQUATIONS = 'SAINT-VENANT FV'
+FINITE VOLUME SCHEME = 1
+VARIABLE TIME-STEP = YES
+DESIRED COURANT NUMBER = 0.45
+TIME STEP = 0.001
+DURATION = {t_end}
+GRAPHIC PRINTOUT PERIOD = 100000000
+LISTING PRINTOUT PERIOD = 100000000
+VARIABLES FOR GRAPHIC PRINTOUTS = 'U,V,H,B'
+TIDAL FLATS = YES
+{extra}
+"""
+
+
+def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
+    prm = m["reference"]["generator"]["parameters"]
+    t_end = float(m["simulation"]["t_end"])
+    codes = None  # per boundary node: (LIHBOR, LIUBOR, LIVBOR) else wall 2 2 2
+    extra = "LAW OF BOTTOM FRICTION = 0"
+    if tid == "A2A-001":
+        from references.thacker import bed_elevation, depth_velocity
+
+        dom = json.loads((Path(m["_case_dir"]) / "inputs/params.json").read_text())["domain"]
+        xs = np.arange(dom["xmin"] + dx / 2, dom["xmax"] - dx / 4, dx)
+        ys = np.arange(dom["ymin"] + dx / 2, dom["ymax"] - dx / 4, dx)
+        x, y, ikle, ipobo, loop = rect_mesh(xs, ys)
+        z = bed_elevation(x, y, prm["h0"], prm["L"])
+        r0 = depth_velocity(x, y, 0.0, h0=prm["h0"], L=prm["L"], eta=prm["eta"], g=prm.get("g", 9.81))
+        h, u, v = np.maximum(r0["h"], 0.0), np.where(r0["h"] > 0, r0["u"], 0.0), np.where(r0["h"] > 0, r0["v"], 0.0)
+    elif tid == "A2A-010":
+        from references.macdonald_2d import bed_elevation, depth_profile
+
+        L, W, q, n = prm["L"], prm["W"], prm["q"], prm["n_manning"]
+        xs = np.arange(dx / 2, L - dx / 4, dx)
+        ys = np.arange(dx / 2, W - dx / 4, dx)
+        x, y, ikle, ipobo, loop = rect_mesh(xs, ys)
+        z = bed_elevation(x, L=L, q=q, n_manning=n)
+        h_out = float(depth_profile(xs[-1]))
+        z_out = float(bed_elevation(xs[-1], L=L, q=q, n_manning=n))
+        h = np.full_like(x, h_out)  # uniform depth: the steady profile must emerge
+        u = v = np.zeros_like(x)
+        wid = ys[-1] - ys[0]
+        codes = {}
+        for nn in loop:
+            if np.isclose(x[nn], xs[0]):
+                codes[nn] = (4, 5, 5)   # inflow: prescribed discharge
+            elif np.isclose(x[nn], xs[-1]):
+                codes[nn] = (5, 4, 4)   # outflow: prescribed elevation
+        extra = (f"LAW OF BOTTOM FRICTION = 4\nFRICTION COEFFICIENT = {n}\n"
+                 f"PRESCRIBED FLOWRATES = {q * wid:.9f};0.\nPRESCRIBED ELEVATIONS = 0.;{z_out + h_out:.9f}")
+    else:
+        raise KeyError(tid)
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        write_selafin(d / "geo.slf", x, y, ikle, ipobo, {"BOTTOM          M               ": z})
+        write_selafin(d / "ini.slf", x, y, ikle, ipobo, {
+            "VELOCITY U      M/S             ": u, "VELOCITY V      M/S             ": v,
+            "WATER DEPTH     M               ": h, "BOTTOM          M               ": z})
+        rows = []
+        for k, nn in enumerate(loop, 1):
+            a, b, c = (codes or {}).get(nn, (2, 2, 2))
+            rows.append(f"{a} {b} {c} 0.0 0.0 0.0 0.0 {2 if a == 2 else 4} 0.0 0.0 0.0 {nn + 1} {k}\n")
+        (d / "geo.cli").write_text("".join(rows))
+        (d / "t2d.cas").write_text(STEERING_2D.format(title=tid, t_end=t_end, extra=extra))
+        proc = subprocess.run([py, str(Path(env["HOMETEL"]) / "scripts/python3/telemac2d.py"), "t2d.cas"],
+                              cwd=d, env=env, capture_output=True, text=True, timeout=7200)
+        if proc.returncode != 0 or not (d / "res.slf").is_file():
+            raise RuntimeError(f"TELEMAC failed on {tid} dx={dx}:\n{proc.stdout[-3000:]}\n{proc.stderr[-2000:]}")
+        t, vals = read_selafin_last(d / "res.slf")
+    hv = next(v for k, v in vals.items() if k.startswith("WATER DEPTH"))
+    uv = next(v for k, v in vals.items() if k.startswith("VELOCITY U"))
+    vv = next(v for k, v in vals.items() if k.startswith("VELOCITY V"))
+    nnod = len(x)
+    return {"t": np.full(nnod, t), "x": x, "y": y, "h": np.maximum(hv, 0.0), "u": uv, "v": vv,
+            "p": np.full(nnod, np.nan), "z": z}
+
+
+CASES_2D = {"A2A-001", "A2A-010"}
+
+
 def telemac_env(prefix: Path) -> tuple[dict, str]:
     home = prefix / "opentelemac"
     env = dict(os.environ)
@@ -206,7 +318,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--telemac-prefix", type=Path, default=Path(os.environ.get("TELEMAC_PREFIX", "")),
                     help="conda environment with opentelemac installed")
-    ap.add_argument("cases", nargs="*", default=list(CASES))
+    ap.add_argument("cases", nargs="*", default=list(CASES) + sorted(CASES_2D))
     args = ap.parse_args()
     env, py = telemac_env(args.telemac_prefix)
     meta = json.loads(next((args.telemac_prefix / "conda-meta").glob("opentelemac-*.json")).read_text())
@@ -218,7 +330,7 @@ def main() -> int:
         m = load_manifest(tid, repo=REPO)
         paths = []
         for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
-            cols = run_level(tid, m, float(dx), env, py)
+            cols = (run_level_2d if tid in CASES_2D else run_level)(tid, m, float(dx), env, py)
             paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx}.parquet", cols))
             print(f"  {tid} dx={dx}: t={cols['t'][0]:.3f} s")
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY, solver=solver)

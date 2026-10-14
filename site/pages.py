@@ -57,8 +57,16 @@ SOLVERS: list[dict] = [
          what="LISFLOOD-FP 8.3, second-order discontinuous Galerkin solver"),
     dict(key="lisflood-acc", name="LISFLOOD-FP", sub="8.3 · ACC", kind="production", color="#B9783A",
          what="LISFLOOD-FP 8.3, the local-inertia solver it is best known for; it leaves out the advection term"),
+    dict(key="swmm524", name="EPA SWMM 5.2.4", sub="dynamic wave", kind="production", color="#7A4FA0",
+         what="EPA SWMM 5.2.4 with dynamic-wave routing, the channel written as one conduit per grid cell"),
+    dict(key="openswmm-dw", name="OpenSWMM 6", sub="dynamic wave", kind="production", color="#2E8B8B",
+         what="OpenSWMM Engine v6 (HydroCouple's SWMM 6, pre-release) with dynamic-wave routing"),
+    dict(key="openswmm-fv", name="OpenSWMM 6", sub="finite volume", kind="production", color="#C2185B",
+         what="OpenSWMM Engine v6 with its new explicit finite-volume routing (FLOW_ROUTING FV), one cell per conduit"),
     dict(key="swmm515", name="SWMM 5.1.15", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-2)",
          what="EPA SWMM 5.1.15, the previous release, compared with SWMM 5.2.4"),
+    dict(key="openswmm6", name="OpenSWMM 6", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-5)",
+         what="OpenSWMM Engine v6 (HydroCouple's SWMM 6, pre-release), compared with SWMM 5.2.4"),
     dict(key="epanet20", name="EPANET 2.0", sub="vs EPANET 2.2", kind="compat", color="var(--cat-2)",
          what="EPANET 2.0, compared with EPANET 2.2"),
 ]
@@ -73,6 +81,14 @@ def solver_key(name: str) -> str | None:
         return "demo2d"
     if n.startswith("demo"):
         return "demo1d"
+    if n.startswith("openswmm engine v6 dynamic wave"):
+        return "openswmm-dw"
+    if n.startswith("openswmm engine v6 finite volume"):
+        return "openswmm-fv"
+    if n.startswith("openswmm engine"):
+        return "openswmm6"
+    if n.startswith("epa swmm 5.2.4") and "official" not in n:
+        return "swmm524"
     if "epanet 2.2" in n:
         return "epanet22"
     if "epanet 2.0" in n:
@@ -260,8 +276,19 @@ NOTES = {
     ("A1F-010", "hecras-em"): "SWE-EM, the option HEC recommends for dam breaks, gets 50 m closer than the default SWE-ELM but still stops well short, and does not converge.",
     ("A1F-011", "hecras"): "The bore is in about the right place (depth error 5 mm), but the error does not fall on finer grids.",
     ("A1F-011", "hecras-em"): "Error 8 mm, inside the limit, but it grows slightly on finer grids.",
+    ("A1F-010", "swmm524"): "SWMM's dynamic-wave routing is built for sewer networks, not dam breaks: the flood stalls about 150 m short and the error does not shrink on finer grids.",
+    ("A1F-011", "swmm524"): "The bore smears and lags, and the stored water drifts 4 % above the exact volume: dynamic-wave routing is not built for moving shocks.",
+    ("A1F-010", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver.",
+    ("A1F-011", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver.",
+    ("A1F-001", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4.",
+    ("A1F-011", "openswmm-fv"): "OpenSWMM 6's new finite-volume routing passes the test that SWMM's dynamic wave fails.",
+    ("A1F-010", "openswmm-fv"): "Much closer than dynamic wave (45 m short instead of 152 m) and conserves water, but the thin front still lags.",
+    ("A1F-001", "openswmm-fv"): "Accurate (0.4 mm) but converges at 0.76, just under the 0.8 required, where dynamic wave reaches 1.7.",
+    ("B-RTC-001", "openswmm6"): "Pumps switch the same 74 times, but one node peaks 50 % higher than in SWMM 5.2.4, at a different time; worth a look by the OpenSWMM developers.",
     ("A1F-010", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it is not expected to get a dam break right; it is shown because it is what most LISFLOOD-FP users run.",
     ("A1F-011", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it cannot form the right bore; it is shown because it is what most LISFLOOD-FP users run.",
+    ("A2C-EA1", "lisflood-acc"): "The pond settles 5 mm above the sill (2 cm allowed). The stored volume is 2.7 % above the figure integrated on the EA's 2 m DEM; that check does not gate, because a 10 m grid samples the ground differently.",
+    ("A2C-EA4", "lisflood-fv1"): "Run at the specification's 5 m grid (the demo solver uses the allowed 10 m alternative). The inflow enters as LISFLOOD-FP point sources on the cells the inflow line crosses.",
 }
 CASE_NOTES = {
     "A1F-010": "Every production code so far misses the front check. The check looks for the 1 mm depth contour, and at the thin tip of the wave a 1 mm depth error moves that contour about 10 m; production codes also treat water shallower than about 1 mm as dry. The maintainers are reviewing whether a 2.5 m limit on the 1 mm contour is the right test.",
@@ -381,7 +408,7 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
   <p>HEC-RAS 6.6 stores elevations to the nearest thousandth of a foot, even in a metric model. Its backwater error is tiny (0.1 mm) but cannot shrink on finer grids.</p>
 </a>""")
     for summ, df in parity or []:
-        if summ.get("tier") == "nightly":
+        if summ.get("tier") == "nightly" and summ.get("candidate") == "swmm-5.1.15":
             sc = df[df["status"] == "scored"]
             same = int((sc["worst_pct"].abs() == 0).sum())
             pct = 100 * same / max(len(sc), 1)
@@ -399,7 +426,14 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
   <b>Two builds of SWMM 5.2.4 disagree</b>
   <p>The official Windows release and the Python build give different peak depths on a pump station run by control rules.</p>
 </a>""")
-    findings = "".join(cards[:3])
+    fv = (runs.get("A1F-011_stoker_wet_bed_dambreak") or {})
+    if fv.get("openswmm-fv", {}).get("passed") and not fv.get("swmm524", {"passed": True}).get("passed"):
+        cards.insert(1, """<a class="finding" href="tests/A1F-011.html">
+  <div class="num cool">SWMM 6</div>
+  <b>OpenSWMM 6's new routing passes where SWMM 5 fails</b>
+  <p>On a dam break into shallow water, HydroCouple's finite-volume routing gets the bore right and converges; SWMM's classic dynamic wave, in both 5.2.4 and 6, does not.</p>
+</a>""")
+    findings = "".join(cards[:4])
     featured = [
         ("A1F-010", '<rect x="0" y="100" width="280" height="20" fill="var(--bed-soft)"/><path d="M0 40 H110 C150 40 170 92 280 98 V100 H0 Z" fill="var(--water)" fill-opacity="0.35"/><path d="M0 40 H110 C150 40 170 92 280 98" fill="none" stroke="var(--water)" stroke-width="2.5"/>'),
         ("A1P-020", '<rect x="20" y="50" width="240" height="24" rx="4" fill="none" stroke="var(--ink-2)" stroke-width="2"/><rect x="22" y="52" width="140" height="20" fill="var(--water)" fill-opacity="0.3"/><rect x="162" y="52" width="96" height="20" fill="#C2501C" fill-opacity="0.35"/><rect x="252" y="36" width="10" height="52" fill="var(--ink)"/>'),
@@ -444,7 +478,7 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
 <section class="dark section">
   <div class="wrap">
     <div class="head-row"><h2>What the tests found</h2><a href="results.html">All results →</a></div>
-    <div class="grid wide">{findings}</div>
+    <div class="grid">{findings}</div>
   </div>
 </section>
 <div class="wrap">
@@ -515,11 +549,15 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
         if any(story(m)["group"] == k for m in shown))
     first = "A1F-010|telemac" if "A1F-010|telemac" in cells else next(iter(cells), None)
     panel = _panel_html(cells.get(first)) if first else ""
-    # corpus parity bar
+    # corpus parity bars, one per candidate engine
     corpus = ""
-    for summ, df in parity or []:
+    bars_html = []
+    n_models = 0
+    labels = {"swmm-5.1.15": "SWMM 5.1.15", "openswmm-6": "OpenSWMM Engine v6"}
+    for summ, df in sorted(parity or [], key=lambda p: p[0].get("candidate") != "swmm-5.1.15"):
         if summ.get("tier") != "nightly":
             continue
+        n_models = max(n_models, int(summ["models"]))
         sc = df[df["status"] == "scored"]
         w = sc["worst_pct"].abs()
         parts = [(int((w == 0).sum()), "#155E3B", "identical"), (int(((w > 0) & (w <= 1)).sum()), "#0B6FB8", "within 1 %"),
@@ -528,12 +566,15 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
         bar = "".join(f'<div style="flex:{n} 1 0;background:{col}">{n if n > 40 else ""}</div>' for n, col, _ in parts if n)
         key = "".join(f'<span><span class="sw" style="background:{col}"></span>{lab}</span>' for _, col, lab in parts)
         aria = ", ".join(f"{n} {lab}" for n, _, lab in parts)
+        name = labels.get(summ["candidate"], summ["candidate"])
+        bars_html.append(f'<p style="margin:14px 0 6px"><b>{esc(name)}</b></p><div class="bar" role="img" aria-label="{esc(name)}: {esc(aria)}">{bar}</div>')
+    if bars_html:
         corpus = f"""<div class="card" style="flex:1 1 520px;min-width:0">
   <h2 style="font-size:22px">SWMM compatibility across real models</h2>
-  <p class="muted">SWMM 5.1.15 compared with 5.2.4 on {summ['models']} models from the HydroCouple collection, node by node and pipe by pipe.</p>
-  <div class="bar" role="img" aria-label="{esc(aria)}">{bar}</div>
+  <p class="muted">Other SWMM engines compared with EPA SWMM 5.2.4 on {n_models} models from the HydroCouple collection, node by node and pipe by pipe.</p>
+  {''.join(bars_html)}
   <div class="keyrow">{key}</div>
-  <p style="margin:16px 0 0">Biggest differences are in pump models, green roofs and groundwater: real changes between releases, not noise. <a href="corpus.html">See the corpus →</a></p>
+  <p style="margin:16px 0 0">Biggest differences are in pump models, green roofs and groundwater: real changes between engines, not noise. <a href="corpus.html#parity">See the corpus →</a></p>
 </div>"""
     waits = "".join(f'<li><a href="tests/{sid_of(m["test_id"])}.html"><b>{esc(story(m)["name"])}</b></a><br><span>{esc(_need(m))}</span></li>' for m in drafts[:6])
     more = f'<li class="muted">…and {len(drafts) - 6} more</li>' if len(drafts) > 6 else ""

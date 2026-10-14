@@ -214,9 +214,112 @@ def macdonald_2d(exe, solver, m, dx, tid):
 CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A2A-001": thacker, "A2A-010": macdonald_2d}
 
 
+# ── EA inter-comparison tests (one grid, the specification's resolution) ────
+
+
+def _bdy(name: str, t_s: np.ndarray, v: np.ndarray) -> str:
+    rows = "\n".join(f"{a:.12g} {b:.12g}" for a, b in zip(v, t_s))
+    return f"{name}\n{len(t_s)} seconds\n{rows}\n"
+
+
+def ea(exe, solver, m, tid):
+    """A2C-EA1/2/4/5 on the grid the demo solver uses (same DEM block means,
+    active area and inflow cells), with LISFLOOD-FP's own boundaries:
+
+    * EA1: ``HVAR`` water level on the whole west edge;
+    * EA2/4/5: the inflow hydrograph as ``QVAR`` point sources on the cells the
+      inflow line crosses, the discharge shared equally (LISFLOOD-FP point
+      sources take discharge per unit width, multiplied by the cell size).
+
+    Cells outside the active area are raised to a wall. Probes are LISFLOOD-FP
+    stage points written every probe interval; the whole field is written
+    hourly. The largest step (``initial_tstep``) is 1 s: on a dry bed the CFL
+    condition sets no limit, and LISFLOOD-FP would otherwise take the whole
+    run as one step. DG2 starts from flat cells (zero slope coefficients): the DEM is
+    a raster, so there is no exact function to take slopes from.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("run_demo_2d", REPO / "scripts" / "run_demo_2d.py")
+    demo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(demo)
+    case, _hours, probe_dt = demo.build_ea(m)
+    gx, gy = case.grid.x, case.grid.y
+    dx = float(gx[1] - gx[0])
+    g = Grid(float(gx[0] - dx / 2), float(gy[0] - dx / 2), dx, gx.size, gy.size)
+    z = np.asarray(case.grid.z, dtype=float)
+    d = Path(m["_case_dir"])
+    prm = json.loads((d / "inputs/case.json").read_text())
+    t_end = float(prm["t_end_s"])
+    bc = prm["boundaries"]
+    probes = m["simulation"]["probes"]
+    with tempfile.TemporaryDirectory() as td:
+        w = Path(td)
+        write_asc(w / "c.dem", g, z)
+        write_asc(w / "c.start", g, np.asarray(case.h, dtype=float))
+        if solver == "dg2":
+            for name in ("c.dem", "c.start"):
+                write_asc(w / f"{name}1x", g, np.zeros_like(z))
+                write_asc(w / f"{name}1y", g, np.zeros_like(z))
+        bdy, bci = [], []
+        if "west" in bc:
+            tt, lv = demo.read_table(d / "inputs" / bc["west"]["table"])
+            bdy.append(_bdy("west", tt, lv))
+            bci.append(f"W {g.y0:.12g} {g.y0 + g.ny * dx:.12g} HVAR west")
+        if "inflow" in bc:
+            tt, qq = demo.read_table(d / "inputs" / bc["inflow"]["table"])
+            cells = np.argwhere(case.inflow_cells)
+            bdy.append(_bdy("inflow", tt, qq / (len(cells) * dx)))
+            for j, i in cells:
+                bci.append(f"P {gx[i]:.12g} {gy[j]:.12g} QVAR inflow")
+        (w / "c.bdy").write_text("Benchmark1d2d boundary series\n" + "".join(bdy), encoding="ascii")
+        (w / "c.bci").write_text("\n".join(bci) + "\n", encoding="ascii")
+        (w / "c.stage").write_text(f"{len(probes)}\n" + "".join(f"{p['x']:.12g} {p.get('y', 0.0):.12g}\n" for p in probes), encoding="ascii")
+        save = 3600.0
+        par = [
+            "DEMfile c.dem", "startfile c.start", "resroot c", "dirroot res", "bcifile c.bci", "bdyfile c.bdy",
+            "stagefile c.stage", f"sim_time {t_end:.12g}", "initial_tstep 1", f"saveint {save:.12g}",
+            f"massint {probe_dt:.12g}", f"fpfric {float(prm['manning_n']):.12g}", KEYWORD[solver], "voutput",
+            "output_precision 8",
+        ]
+        (w / "c.par").write_text("\n".join(par) + "\n", encoding="ascii")
+        p = subprocess.run([str(exe), "c.par"], cwd=w, capture_output=True, text=True, timeout=6 * 3600)
+        r = w / "res"
+        n_frames = int(round(t_end / save))
+        if p.returncode != 0 or not (r / f"c-{n_frames:04d}.wd").exists():
+            raise RuntimeError(f"lisflood failed ({p.returncode}):\n{p.stdout[-3000:]}\n{p.stderr[-2000:]}")
+        X, Y = g.centres()
+        act = np.asarray(case.grid.active, dtype=bool)
+        frames = []
+        for k in range(n_frames + 1):
+            f = r / f"c-{k:04d}.wd"
+            if not f.exists():
+                continue
+            h = np.where(act, np.nan_to_num(read_asc(f, g)), 0.0)
+            u = np.nan_to_num(read_asc(r / f"c-{k:04d}.Vx", g)) if (r / f"c-{k:04d}.Vx").exists() else np.zeros_like(h)
+            v = np.nan_to_num(read_asc(r / f"c-{k:04d}.Vy", g)) if (r / f"c-{k:04d}.Vy").exists() else np.zeros_like(h)
+            frames.append(_frame2d({"X": X[act], "Y": Y[act], "h": h[act], "u": u[act], "v": v[act], "z": z[act]}, k * save))
+        # Stage points: depth at each probe's cell (the cell LISFLOOD-FP picks
+        # by floor division, which is also the scorer's nearest cell).
+        lines = (r / "c.stage").read_text().splitlines()
+        start = next(i for i, s in enumerate(lines) if s.startswith("Time;")) + 1
+        st = np.array([[float(v) if v not in ("-",) else np.nan for v in s.split()] for s in lines[start:] if s.strip()])
+        for k, pr in enumerate(probes):
+            i = min(int((pr["x"] - g.x0) // dx), g.nx - 1)
+            j = min(int((pr.get("y", 0.0) - g.y0) // dx), g.ny - 1)
+            keep = ~np.isclose(np.mod(st[:, 0] + 1e-6, save), 1e-6, atol=1e-3)  # field frames already hold these
+            n = int(keep.sum())
+            frames.append({"t": st[keep, 0], "x": np.full(n, gx[i]), "y": np.full(n, gy[j]), "h": st[keep, k + 1],
+                           "u": np.full(n, np.nan), "v": np.full(n, np.nan), "p": np.full(n, np.nan), "z": np.full(n, z[j, i])})
+    return {c: np.concatenate([f[c] for f in frames]) for c in frames[0]}
+
+
+EA_CASES = ("A2C-EA1", "A2C-EA2", "A2C-EA4", "A2C-EA5")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cases", nargs="*", default=list(CASES))
+    ap.add_argument("cases", nargs="*", default=list(CASES) + list(EA_CASES))
     ap.add_argument("--exe", type=Path, required=True, help="the lisflood executable")
     ap.add_argument("--solver", nargs="+", choices=list(KEYWORD), default=list(KEYWORD))
     ap.add_argument("--version", default="8.3")
@@ -237,6 +340,16 @@ def main() -> int:
                   "adapter": f"lisflood ({KEYWORD[sv]} solver, defaults; CPU, double precision)"}
         for tid in args.cases:
             m = load_manifest(tid, repo=REPO)
+            if tid.startswith(EA_CASES):
+                t0 = time.perf_counter()
+                p = write_results_parquet(out / f"{m['test_id']}.parquet", ea(exe, sv, m, tid))
+                print(f"  {sv} {tid}: {time.perf_counter() - t0:.1f}s", flush=True)
+                card = score_case(m, p, timestamp=TS, private_key=key, solver=solver)
+                (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+                print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")
+                for r in card["criteria_results"]:
+                    print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}  {r.get('detail', '')}")
+                continue
             paths = []
             for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
                 t0 = time.perf_counter()

@@ -6,6 +6,9 @@ Demonstrates Track B with engines that genuinely differ from the references:
 - **EPA SWMM 5.1.15** (``swmm-toolkit`` 0.10.0) on the SWMM cases, scored
   against the pinned SWMM 5.2.4 reference. Needs a Python 3.10 environment with
   ``swmm-toolkit==0.10.0``; pass it with ``--swmm51-python``.
+- **OpenSWMM Engine v6** (HydroCouple's SWMM 6, the new C++20 engine in the
+  ``openswmm`` wheel) on the SWMM cases, against SWMM 5.2.4; pass a Python with
+  ``openswmm`` installed as ``--openswmm-python``.
 - **EPANET 2.0** (the 2.00.12 library bundled with WNTR) on the EPANET case,
   scored against EPANET 2.2.
 
@@ -96,8 +99,32 @@ def save(card: dict) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--swmm51-python", help="Python with swmm-toolkit==0.10.0 (EPA SWMM 5.1.15)")
+    ap.add_argument("--openswmm-python", help="Python with the openswmm wheel (OpenSWMM Engine v6)")
+    ap.add_argument("--only-openswmm", action="store_true", help="run only the OpenSWMM v6 cases")
     args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
+    if args.openswmm_python:
+        from benchmark1d2d.adapters import openswmm
+
+        out6 = REPO / "out" / "openswmm"
+        out6.mkdir(parents=True, exist_ok=True)
+        for tid in ("B-EXTRAN-001", "B-RTC-001"):
+            m = load_manifest(tid, repo=REPO)
+            inp = Path(m["_case_dir"]) / "inputs/network.inp"
+            if not inp.is_file():
+                subprocess.run([sys.executable, str(REPO / "scripts" / "fetch_inputs.py"), tid], check=True)
+            res = out6 / f"{m['test_id']}.openswmm.parquet"
+            with tempfile.TemporaryDirectory() as td:
+                version = openswmm.run(args.openswmm_python, inp, Path(td) / "m.rpt", Path(td) / "m.out")
+                swmm5.adapt_out_to_parquet(Path(td) / "m.out", res)
+            card = score_case(m, res, timestamp=TS, private_key=KEY,
+                              solver={"name": f"OpenSWMM Engine {version}", "version": version, "adapter": "openswmm (v6 engine, SWMM binary output)"})
+            (out6 / f"{card['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            print(f"{'PASS' if card['passed'] else 'FAIL'} {card['test_id']} ({card['solver']['name']})")
+            for r in card["criteria_results"]:
+                print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']} — {r.get('detail', '')}")
+    if args.only_openswmm:
+        return 0
     for tid in ("B-EXTRAN-001", "B-RTC-001"):
         if not args.swmm51_python:
             print(f"skip {tid}: no --swmm51-python")

@@ -61,6 +61,11 @@ jobs:
       - run: python scripts/corpus_census.py --corpus hc/corpus --only test_catalog/track_b/tier_nightly/selection.json --timeout 60 --workers 4 --fail-on-error --out out/nightly_census.parquet
       - name: Parity of SWMM 5.1.15 against 5.2.4 across the tier (a finding, not a gate)
         run: python scripts/corpus_parity.py --corpus hc/corpus --tier nightly --candidate-python "${{ steps.py310.outputs.python-path }}" --label swmm-5.1.15 --workers 4 --timeout 90 || true
+      - name: Parity of OpenSWMM Engine v6 (HydroCouple SWMM 6) against 5.2.4 across the tier (a finding, not a gate)
+        run: |
+          python -m venv "$RUNNER_TEMP/openswmm"
+          "$RUNNER_TEMP/openswmm/bin/python" -m pip install -q "openswmm==6.0.0a4.dev1" numpy
+          python scripts/corpus_parity.py --corpus hc/corpus --tier nightly --candidate-python "$RUNNER_TEMP/openswmm/bin/python" --candidate-engine openswmm --label openswmm-6 --workers 4 --timeout 120 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:

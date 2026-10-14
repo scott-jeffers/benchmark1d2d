@@ -709,6 +709,13 @@ def legacy_figures(m: dict, result_dirs: list[Path], assets: Path) -> str:
 PARITY_DIR = ROOT / "test_catalog" / "track_b" / "parity"
 
 
+CANDIDATE_NAMES = {"swmm-5.1.15": "EPA SWMM 5.1.15", "openswmm-6": "OpenSWMM Engine v6"}
+ERR_WHY = {
+    "swmm-5.1.15": "Most use input syntax added after 5.1 (inlets, newer options), which an older engine rejects with ERROR 200.",
+    "openswmm-6": "The v6 pre-release stops on these with a parse or run-time error; each is a lead for its developers.",
+}
+
+
 def load_parity() -> list[tuple[dict, pd.DataFrame]]:
     out = []
     for tier in ("pr", "nightly", "release"):
@@ -717,6 +724,15 @@ def load_parity() -> list[tuple[dict, pd.DataFrame]]:
             if df_path.is_file():
                 out.append((json.loads(summ.read_text(encoding="utf-8")), pd.read_parquet(df_path)))
     return out
+
+
+PARITY_FINDINGS: dict[str, str] = {
+    "openswmm-6": ('<div class="finding"><b>OpenSWMM v6 runs almost everything, and changes more.</b> '
+                   "It runs 496 of 500 nightly models (SWMM 5.1.15: 477), and 422 of the 493 it scores are within 5 % of 5.2.4. "
+                   "In 20 of the 71 over 5 % the worst node is an outfall, where v6 reports a depth and 5.2.4 almost none. "
+                   "One model, <code>weir-overtopping</code>, shows water created at an outfall (routing continuity −48 %). "
+                   'Details for the developers: <a href="https://github.com/scott-jeffers/benchmark1d2d/blob/master/docs/openswmm.md">docs/openswmm.md</a>.</div>'),
+}
 
 
 def parity_section(parity: list[tuple[dict, pd.DataFrame]]) -> str:
@@ -734,7 +750,8 @@ def parity_section(parity: list[tuple[dict, pd.DataFrame]]) -> str:
             (int((w > 5).sum()), "st-fail", "Over 5 %"),
             (int(df["status"].isin(["candidate_error", "candidate_timeout"]).sum()), "st-draft", "Candidate could not run it"),
         ]
-        rows.append((f"{names.get(summ['tier'], summ['tier'])} ({summ['models']})", buckets))
+        cand = CANDIDATE_NAMES.get(summ["candidate"], summ["candidate"])
+        rows.append((f"{cand}, {names.get(summ['tier'], summ['tier']).lower()} ({summ['models']})", buckets))
         top = sc.assign(a=w).sort_values("a", ascending=False).head(12)
         trs = "".join(
             f"<tr><td><code>{esc(r.model_id)}</code></td><td class=num>{fmt(r.worst_pct)} %</td>"
@@ -744,19 +761,20 @@ def parity_section(parity: list[tuple[dict, pd.DataFrame]]) -> str:
         errs = df[df["status"].isin(["candidate_error", "candidate_timeout"])]
         err_txt = (f"<p class=small>{len(errs)} model(s) the candidate could not run: "
                    + ", ".join(f"<code>{esc(x)}</code>" for x in errs["model_id"].head(8)) + (" …" if len(errs) > 8 else "")
-                   + ". Most use input syntax added after 5.1 (inlets, newer options), which an older engine rejects with ERROR 200.</p>") if len(errs) else ""
-        tables.append(f"""<h3>{esc(names.get(summ['tier'], summ['tier']))}: largest differences</h3>
+                   + ". " + ERR_WHY.get(summ["candidate"], "") + "</p>") if len(errs) else ""
+        tables.append(f"""<h3>{esc(cand)}, {esc(names.get(summ['tier'], summ['tier']).lower())}: largest differences</h3>
 <div class="table-scroll"><table class="data"><thead><tr><th>Model</th><th class=num>Worst</th><th>Peak depth (worst node)</th><th>Volume (worst link)</th></tr></thead><tbody>{trs or '<tr><td colspan=4>No differences.</td></tr>'}</tbody></table></div>{err_txt}""")
-    first = parity[0][0]
-    bars = hbars(f"{first['candidate'].replace('swmm-', 'EPA SWMM ')} against EPA SWMM 5.2.4: worst element per model", rows, unit=" models")
+    bars = hbars("Each candidate against EPA SWMM 5.2.4: worst element per model", rows, unit=" models")
+    cands = sorted({summ["candidate"] for summ, _ in parity})
+    v6 = PARITY_FINDINGS.get("openswmm-6", "") if "openswmm-6" in cands else ""
     return f"""<section id="parity"><h2>Does another engine match SWMM 5.2.4?</h2>
-<p>Any SWMM-compatible engine can be scored against the reference across a whole tier with <code>scripts/corpus_parity.py</code>: both engines run every model, and each model gets the worst node (relative peak depth) and worst link (relative volume of |Q|) — the same metrics as the catalog's Track B cases. As a demonstration the candidate here is the previous release, <b>EPA SWMM 5.1.15</b> (OWA build in <code>swmm-toolkit</code> 0.10.0).</p>
+<p>Any SWMM-compatible engine can be scored against the reference across a whole tier with <code>scripts/corpus_parity.py</code>: both engines run every model, and each model gets the worst node (relative peak depth) and worst link (relative volume of |Q|) — the same metrics as the catalog's Track B cases. Two candidates are scored here: the previous release, <b>EPA SWMM 5.1.15</b> (OWA build in <code>swmm-toolkit</code> 0.10.0), and HydroCouple's rewritten <b>OpenSWMM Engine v6</b> (pre-release <code>openswmm</code> 6.0.0a4 on PyPI, run with its new engine).</p>
 {bars}
 {legend([("Identical", "st-frozen"), ("Within 1 %", "st-candidate"), ("1–5 %", "st-release"), ("Over 5 %", "st-fail"), ("Candidate could not run it", "st-draft")])}
 <div class="findings" style="margin-top:18px">
   <div class="finding"><b>Most legacy models are bit-identical.</b> On the EXTRAN examples 5.1.15 and 5.2.4 produce the same numbers to every stored digit, so a tier made only of them cannot detect most engine changes. The PR tier is therefore picked for feature coverage.</div>
   <div class="finding"><b>Differences cluster in features that changed.</b> Low-impact development, groundwater, seepage and some hydrology models differ by tens to hundreds of percent at their worst element: these are real behaviour changes between releases, not noise.</div>
-  <div class="finding"><b>A difference is not a defect.</b> Track B says how far a candidate is from the reference engine, not which one is right. Whether 5.2.4 is physically better is a Track A question.</div>
+  {v6}<div class="finding"><b>A difference is not a defect.</b> Track B says how far a candidate is from the reference engine, not which one is right. Whether 5.2.4 is physically better is a Track A question.</div>
 </div>
 {''.join(tables)}
 <p class="small">The self-check (5.2.4 scored against itself) must give exactly 0 on every PR-tier model; CI runs it on every pull request.</p>
@@ -1056,7 +1074,7 @@ def main() -> int:
     args = ap.parse_args()
     suite_dirs = ["site/fixtures/scorecards", "out/track_b", "out/vertical_slice", "out/networks", "out/demo_2d"]
     production_dirs = ["site/fixtures/telemac", "site/fixtures/hecras", "site/fixtures/anuga", "site/fixtures/geoclaw",
-                       "site/fixtures/lisflood", "site/fixtures/hecras2d", "out/telemac", "out/hecras", "out/hecras2d", "out/anuga", "out/geoclaw", "out/lisflood"]
+                       "site/fixtures/lisflood", "site/fixtures/hecras2d", "site/fixtures/openswmm", "site/fixtures/swmm_track_a", "out/openswmm", "out/swmm_track_a", "out/telemac", "out/hecras", "out/hecras2d", "out/anuga", "out/geoclaw", "out/lisflood"]
     score_dirs = [Path(p) for p in (args.scorecards or suite_dirs)]
     result_dirs = [Path(p) for p in (args.results or ["out/vertical_slice", "out/networks", "out/demo_2d"])]
     score_dirs = [p if p.is_absolute() else ROOT / p for p in score_dirs]

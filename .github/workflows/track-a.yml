@@ -54,7 +54,7 @@ jobs:
             out/demo_2d/*.scorecard.json
 
   telemac:
-    name: openTELEMAC-2D on the dam-break cases (finding, not a gate)
+    name: openTELEMAC-2D (finding, not a gate)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,9 +69,9 @@ jobs:
           environment-name: telemac
           create-args: -c conda-forge opentelemac=v9.1.1 python=3.12
           init-shell: none
-      - name: Score TELEMAC-2D on A1F-010 and A1F-011
+      - name: Score TELEMAC-2D on the dam breaks and the Thacker bowl
         run: |
-          python scripts/run_telemac.py --telemac-prefix "$MAMBA_ROOT_PREFIX/envs/telemac" \
+          python scripts/run_telemac.py --telemac-prefix "$MAMBA_ROOT_PREFIX/envs/telemac" A1F-010 A1F-011 A2A-001 \
             || echo "::warning title=TELEMAC-2D::fails at least one criterion (see score cards); reported, not gating"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -79,3 +79,26 @@ jobs:
           name: telemac-scorecards
           path: out/telemac/*.scorecard.json
 
+
+  swmm:
+    name: SWMM 5.2.4 and OpenSWMM Engine v6 on the 1D channel cases (finding, not a gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,engines]"
+          python -m venv "$RUNNER_TEMP/openswmm"
+          "$RUNNER_TEMP/openswmm/bin/python" -m pip install -q "openswmm==6.0.0a4.dev1" numpy
+      - name: Score the dam breaks and the backwater curve
+        run: |
+          python scripts/run_swmm_track_a.py --openswmm-python "$RUNNER_TEMP/openswmm/bin/python" \
+            || echo "::warning title=SWMM Track A::fails at least one criterion (see score cards); reported, not gating"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: swmm-track-a-scorecards
+          path: out/swmm_track_a/*/*.scorecard.json
