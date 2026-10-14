@@ -19,6 +19,13 @@ A1F-001  MacDonald steady backwater: standard-step steady flow, subcritical.
          tolerance tightened to 0.01 mm so solver tolerance does not mask the
          discretisation error being measured.
 
+Finding (HEC-RAS 6.6): input elevations are stored to the nearest 0.001 ft
+(0.3 mm) even in an SI project -- every cross-section invert and the known
+downstream water surface come back on that grid (0.690867 m in, 2.267 ft =
+0.6909816 m used). On A1F-001 the depth error therefore stops at ~0.1 mm on
+every grid: far inside the 1 cm tolerance, but grid convergence cannot be
+shown, so the convergence criterion fails.
+
 Usage (Windows, HEC-RAS 6.6 installed)::
 
     python scripts/run_hecras.py --accept-hec-terms
