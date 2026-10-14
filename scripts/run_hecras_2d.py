@@ -449,6 +449,7 @@ def read_strip(hdf: Path, ghdf: Path, t_end: float, x0: float, xmin: float, xmax
     with h5py.File(ghdf, "r") as g:
         base = f"Geometry/2D Flow Areas/{AREA}"
         centres = g[f"{base}/Cells Center Coordinate"][()]
+        n_real = int(g["Geometry/2D Flow Areas/Cell Points"].shape[0])  # the rest are ghost cells on the perimeter
     with h5py.File(hdf, "r") as f:
         ts = "Results/Unsteady/Output/Output Blocks/Base Output/Unsteady Time Series"
         days = f[f"{ts}/Time"][()]
@@ -467,14 +468,17 @@ def read_strip(hdf: Path, ghdf: Path, t_end: float, x0: float, xmin: float, xmax
                 vy = a[key][k]
         zb_name = next((n for n in ("Cells Minimum Elevation",) if n in f.get(f"Geometry/2D Flow Areas/{AREA}", {})), None)
         zb = f[f"Geometry/2D Flow Areas/{AREA}/{zb_name}"][()] if zb_name else np.zeros(len(ws))
-    n = len(centres)
-    ws, zb = ws[:n], zb[:n]
+    n = n_real
+    centres = centres[:n]
+    ws, zb = ws[:n], np.nan_to_num(zb[:n])
     h = np.maximum(ws - zb, 0.0)
     x = centres[:, 0] - X0
     u = vx[:n] if vx is not None else np.full(n, np.nan)
     xs = np.arange(xmin + dx / 2, xmax - dx / 4, dx)
     hh = np.array([h[np.abs(x - xi) < dx / 4].mean() for xi in xs])
     uu = np.array([u[np.abs(x - xi) < dx / 4].mean() for xi in xs])
+    log(f"    {n} cells: depth {np.nanmin(hh):.4f}..{np.nanmax(hh):.4f} m, velocity {np.nanmin(uu):.3f}..{np.nanmax(uu):.3f} m/s, "
+        f"volume {np.nansum(h) * dx * dx:.1f} m³")
     nan = np.full(len(xs), np.nan)
     return {"t": np.full(len(xs), t_end), "x": xs, "y": nan.copy(), "h": hh, "u": uu, "v": nan.copy(), "p": nan.copy(), "Q": hh * uu}
 
