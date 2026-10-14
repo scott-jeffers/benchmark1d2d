@@ -53,7 +53,7 @@ jobs:
       - uses: mamba-org/setup-micromamba@v2
         with:
           environment-name: claw
-          create-args: -c conda-forge clawpack=5.9.0 python=3.11 gfortran make pip
+          create-args: -c conda-forge clawpack=5.9.0 python=3.11 gfortran make pip pyarrow pandas
           init-shell: bash
       - name: Build, run and score GeoClaw
         shell: micromamba-shell {0}
@@ -89,7 +89,11 @@ jobs:
       - name: Download (Zenodo, pinned checksum) and build CPU-only, double precision
         run: |
           zip="$RUNNER_TEMP/lisflood-src.zip"
-          [ -f "$zip" ] || curl -fsSL --retry 5 -C - -o "$zip" "$LF_URL"
+          # Zenodo sometimes drops long transfers; resume until the checksum matches.
+          for i in 1 2 3 4 5 6 7 8; do
+            echo "$LF_MD5  $zip" | md5sum -c --status - 2>/dev/null && break
+            curl -fsSL --retry 3 --retry-all-errors -C - -o "$zip" "$LF_URL" || sleep 5
+          done
           echo "$LF_MD5  $zip" | md5sum -c -
           unzip -q "$zip" -d "$RUNNER_TEMP/lf"
           src=$(dirname "$(find "$RUNNER_TEMP/lf" -path '*/source/CMakeLists.txt' | head -1)")
