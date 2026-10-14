@@ -295,7 +295,6 @@ def main() -> int:
     solver = {"name": f"HEC-RAS {version}", "version": version, "adapter": "hecras (text project, ras-commander, plan HDF)"}
     key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
     OUT.mkdir(parents=True, exist_ok=True)
-    ok = True
     for tid in args.cases:
         m = load_manifest(tid, repo=REPO)
         paths = []
@@ -323,8 +322,12 @@ def main() -> int:
             print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}")
         c = card.get("convergence_result") or {}
         print(f"    convergence p={c.get('observed_order')} errors={c.get('errors')}")
-        ok &= card["passed"]
-    return 0 if ok else 1
+        if not card["passed"]:
+            failed = [r["id"] for r in card["criteria_results"] if not r["passed"]] + ([] if (card.get("convergence_result") or {}).get("passed", True) else ["convergence"])
+            print(f"::warning title=HEC-RAS {m['test_id']}::fails {', '.join(failed)} (a finding, not a harness error)")
+    # Exit non-zero only when the harness breaks (exceptions above); a scored
+    # fail is a finding about HEC-RAS and is reported as a warning.
+    return 0
 
 
 if __name__ == "__main__":
