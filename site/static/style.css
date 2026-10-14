@@ -395,3 +395,11 @@ table.data code { white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 .replay svg.narrow .ax, .replay svg.narrow .axl { font-size: 20px; }
 .pill[aria-pressed="true"] .sw.dot { color: var(--paper) !important; }
+.legacy section { margin: 48px 0; }
+.legacy .page-head { padding-top: 40px; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 0; padding: 0; list-style: none; font-size: 14px; }
+.toc a { display: inline-block; padding: 6px 12px; border-radius: 999px; background: var(--rule-2); color: var(--ink); text-decoration: none; }
+.toc a:hover { background: var(--water-soft); color: var(--water-ink); }
+.findings { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.findings .finding { background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); padding: 14px 16px; font-size: 15px; }
+.findings .finding b { font-size: 16px; }

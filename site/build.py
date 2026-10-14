@@ -132,7 +132,7 @@ def layout(title: str, body: str, active: str, depth: int = 0, description: str 
     """Every page uses the site chrome from pages.py (nav, footer, fonts)."""
     import pages
 
-    return pages.layout(title, body, active, depth=depth, description=description, math=True)
+    return pages.layout(title, f'<div class="wrap legacy">{body}</div>', active, depth=depth, description=description, math=True)
 
 
 def chip(status: str) -> str:
