@@ -16,8 +16,8 @@ cp out/vertical_slice/*.scorecard.json out/demo_2d/*.scorecard.json out/track_b/
 
 ## Production solvers
 
-`telemac/`, `hecras/`, `anuga/`, `geoclaw/` and `lisflood/` hold score cards from
+`telemac/`, `hecras/`, `hecras2d/`, `anuga/`, `geoclaw/` and `lisflood/` hold score cards from
 production open-source codes run as black boxes with their own defaults
-(`scripts/run_telemac.py`, `run_hecras.py`, `run_anuga.py`, `run_geoclaw.py`,
+(`scripts/run_telemac.py`, `run_hecras.py`, `run_hecras_2d.py`, `run_anuga.py`, `run_geoclaw.py`,
 `run_lisflood.py`). Their CI jobs (`track-a.yml`, `hecras.yml`, `open-solvers.yml`)
 upload fresh cards as artifacts; copy them here to refresh the site.

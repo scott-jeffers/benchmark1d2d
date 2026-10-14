@@ -202,11 +202,11 @@ def finest(dir_: Path, test_id: str) -> Path | None:
 
 
 # Solver output folders under out/ -> solver key used on the site
-SOURCES = {
-    "telemac": "out/telemac", "anuga": "out/anuga", "geoclaw": "out/geoclaw",
-    "lisflood-fv1": "out/lisflood/fv1", "lisflood-dg2": "out/lisflood/dg2", "lisflood-acc": "out/lisflood/acc",
-    "hecras": "out/hecras", "hecras2d": "out/hecras2d",
-}
+SOURCES = [
+    ("telemac", "out/telemac"), ("anuga", "out/anuga"), ("geoclaw", "out/geoclaw"),
+    ("lisflood-fv1", "out/lisflood/fv1"), ("lisflood-dg2", "out/lisflood/dg2"), ("lisflood-acc", "out/lisflood/acc"),
+    ("hecras", "out/hecras"), ("hecras", "out/hecras2d/elm"), ("hecras-em", "out/hecras2d/em"),
+]
 
 
 def refresh_fixtures() -> None:
@@ -222,7 +222,7 @@ def refresh_fixtures() -> None:
             continue
         path = FIXTURES / f"{sid}.json"
         data = json.loads(path.read_text()) if path.exists() else {}
-        for key, d in SOURCES.items():
+        for key, d in SOURCES:
             p = finest(ROOT / d, m["test_id"])
             if p is None:
                 continue

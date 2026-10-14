@@ -41,8 +41,10 @@ SOLVERS: list[dict] = [
          what="Worked example that ships with the suite: first-order finite volume"),
     dict(key="epanet22", name="EPANET 2.2", sub="US EPA", kind="production", color="var(--cat-3)",
          what="EPA EPANET 2.2, the standard water-network solver"),
-    dict(key="hecras", name="HEC-RAS 6.6", sub="USACE", kind="production", color="#7C6A2E",
-         what="HEC-RAS 6.6 (US Army Corps of Engineers), built and run headless with its default settings"),
+    dict(key="hecras", name="HEC-RAS 6.6", sub="1D · 2D SWE-ELM", kind="production", color="#7C6A2E",
+         what="HEC-RAS 6.6 (US Army Corps of Engineers), built and run headless with its default settings; in 2D, its default full shallow-water option (SWE-ELM)"),
+    dict(key="hecras-em", name="HEC-RAS 6.6", sub="2D · SWE-EM", kind="production", color="#A0522D",
+         what="HEC-RAS 6.6 2D with its Eulerian shallow-water option (SWE-EM), which HEC recommends for dam breaks"),
     dict(key="telemac", name="TELEMAC-2D", sub="openTELEMAC 9.1", kind="production", color="#D9622B",
          what="openTELEMAC-2D 9.1.1, run with its default finite-volume settings"),
     dict(key="anuga", name="ANUGA", sub="4.0.1", kind="production", color="#5E548E",
@@ -61,7 +63,7 @@ SOLVERS: list[dict] = [
          what="EPANET 2.0, compared with EPANET 2.2"),
 ]
 SOLVER = {s["key"]: s for s in SOLVERS}
-PRODUCTION_2D = ["hecras", "telemac", "anuga", "geoclaw", "lisflood-fv1", "lisflood-dg2", "lisflood-acc"]
+PRODUCTION_2D = ["hecras", "hecras-em", "telemac", "anuga", "geoclaw", "lisflood-fv1", "lisflood-dg2", "lisflood-acc"]
 NOT_YET = ["TUFLOW", "MIKE 21", "Iber", "BASEMENT", "Delft3D FM"]
 
 
@@ -80,7 +82,7 @@ def solver_key(name: str) -> str | None:
     if "telemac" in n:
         return "telemac"
     if "hec-ras" in n:
-        return "hecras"
+        return "hecras-em" if "swe-em" in n else "hecras"
     if n.startswith("anuga"):
         return "anuga"
     if n.startswith("geoclaw"):
@@ -254,6 +256,10 @@ def summary_line(m: dict, card: dict) -> str:
 NOTES = {
     ("A1F-010", "telemac"): "The thin leading edge stays dry too long, so the front falls further behind as it travels. HLLC and second-order settings were also tried; the front still stopped about 50 m short. The body of the wave matches the exact answer closely.",
     ("A1F-001", "hecras"): "HEC-RAS stores input elevations to the nearest 0.001 ft (0.3 mm), even in a metric project. The depth error therefore stops at about 0.1 mm on every grid: far inside the limit, but it cannot shrink with the grid, so convergence cannot be shown.",
+    ("A1F-010", "hecras"): "The flood advances as a steep bore that stops about 200 m short of the exact front, and the error does not fall on finer grids. HEC-RAS 2D was built and run with no GUI step; the dam-break step was carried in by a restart file.",
+    ("A1F-010", "hecras-em"): "SWE-EM, the option HEC recommends for dam breaks, gets 50 m closer than the default SWE-ELM but still stops well short, and does not converge.",
+    ("A1F-011", "hecras"): "The bore is in about the right place (depth error 5 mm), but the error does not fall on finer grids.",
+    ("A1F-011", "hecras-em"): "Error 8 mm, inside the limit, but it grows slightly on finer grids.",
     ("A1F-010", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it is not expected to get a dam break right; it is shown because it is what most LISFLOOD-FP users run.",
     ("A1F-011", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it cannot form the right bore; it is shown because it is what most LISFLOOD-FP users run.",
 }

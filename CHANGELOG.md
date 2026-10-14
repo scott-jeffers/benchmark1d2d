@@ -25,6 +25,13 @@ Suite releases are independent of schema semver (`schemas/v1`).
   plain-text projects generated per grid level and run headless through
   `ras-commander`. A1F-001: depth error 0.1 mm (limit 1 cm, passes) but no grid
   convergence (fails), because HEC-RAS stores input elevations to 0.001 ft.
+- **HEC-RAS 6.6 2D scored on the dam breaks, fully headless**
+  (`scripts/run_hecras_2d.py`): terrain by `RasProcess CreateTerrain`, mesh
+  from seed points in the geometry text, the dam-break step carried in by a
+  patched restart file. Both full shallow-water options fail: the dry-bed front
+  stops 209 m (SWE-ELM) / 161 m (SWE-EM) short and errors do not fall on finer
+  grids (order 0.07 / 0.01); into shallow water the depth error is 5–8 mm
+  (passes) but does not converge (order 0.20 / −0.14). Details in `docs/hecras.md`.
 - A1F-001 v1.1.0: inputs now match the reference (10 m, n = 0.03, wide-channel
   hydraulic radius, exact outlet depth).
 

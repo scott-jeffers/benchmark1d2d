@@ -26,25 +26,36 @@ own workflow, `.github/workflows/hecras.yml`, on `windows-latest`:
 | Case | Status | Notes |
 |---|---|---|
 | A1F-001 MacDonald backwater | running | steady standard step; 100 km stand-in width so hydraulic radius = depth; step tolerance 0.01 mm |
-| A1F-010 / 011 dam breaks | next | 1D unsteady needs a dam and instantaneous breach to start from a step; dry bed needs HEC-RAS's minimum-depth handling |
+| A1F-010 / 011 dam breaks | running (2D) | headless 2D strip, SWE-ELM and SWE-EM (`scripts/run_hecras_2d.py`) |
 | A1F-020 stationary jump | not applicable | a steady solver places a jump by momentum balance, which is neutral on a frictionless flat bed; the case tests a time-marching solver holding the jump |
-| 2D cases (A2A, A2C) | needs meshes | see below |
+| other 2D cases (A2A, A2C) | next | need boundary lines; the headless pipeline below applies |
 
-## Adding a 2D case
+## 2D, fully headless
 
-A 2D flow area needs a computational mesh and a terrain built by RAS Mapper.
-Once per case, someone with HEC-RAS 6.6 on Windows:
+`scripts/run_hecras_2d.py` builds and runs a 2D model with no GUI step:
 
-1. Creates a project in `test_catalog/<case>/solvers/hecras/`, imports the
-   case's terrain (or builds the flat/analytic surface) and draws the 2D area
-   covering the case domain.
-2. Sets the cell size to the case's finest refinement level, adds the case's
-   boundary conditions, and saves (geometry `.g01` plus its `.g01.hdf`).
-3. Commits the project folder without results (`*.p??.hdf`, `*.dss`, `*.tmp`).
+1. **Terrain.** The bed is written as a GeoTIFF (UTM 18N, metres) and turned
+   into a HEC-RAS terrain with HEC-RAS's own `RasProcess.exe CreateTerrain`.
+2. **Mesh.** HEC-RAS builds a 2D mesh from the cell-centre seed points stored
+   in the geometry text (`Storage Area 2D Points`). Seeds on the case's regular
+   grid give square cells, the grid every other solver uses.
+3. **Geometry.** Ras.exe compiles the text geometry; the terrain is associated
+   through RasMapperLib (`ras-commander` + `pythonnet`), and property tables
+   are computed.
+4. **The dam-break step.** HEC-RAS 2D starts from one flat level per area, a
+   restart file or earlier results. A one-minute still-water run at the
+   upstream level writes a restart file; in it the per-cell water surface is
+   the one run of doubles equal to round-off (stored in feet), and the cells downstream
+   of the dam are set to the downstream level. The dam-break plan starts from
+   that file ("Initial conditions read from the file … .rst" in its log, with
+   the expected starting volume).
+5. **Run and score** with both full shallow-water options: SWE-ELM (the
+   default when SWE is chosen) and SWE-EM (which HEC recommends for dam breaks).
+   HEC-RAS rejects a Manning n of zero, so n = 0.0001 stands in for the
+   frictionless reference (friction slope below 1e-7 here).
 
-CI then re-runs it on every change. `ras-commander` 0.105 also offers
-headless mesh generation (`GeomMesh`, HEC-RAS 6.6 + pythonnet), which may let
-CI build these meshes itself; that is worth trying before doing it by hand.
+Other 2D cases need inflow and level boundary lines (`BC Line` entries in the
+geometry and the matching unsteady-flow boundaries); the same pipeline applies.
 
 ## Findings so far
 
@@ -53,3 +64,9 @@ CI build these meshes itself; that is worth trying before doing it by hand.
   surface come back on that grid. On A1F-001 the depth error is 0.1 mm on
   every grid — well inside the 1 cm tolerance — so finer grids cannot show
   convergence and the convergence criterion fails.
+- HEC-RAS 6.6 2D, dam break onto dry ground (A1F-010): the flood front
+  advances as a steep bore that stops 209 m (SWE-ELM) or 161 m (SWE-EM) short
+  of the exact front after 60 s, and the depth error does not fall on finer
+  grids (observed order 0.07 and 0.01). Into shallow water (A1F-011) the depth
+  error is 5–8 mm, inside the 5 cm limit, but again does not fall with the grid
+  (order 0.20 and −0.14). Water is conserved to 0.01 % in every run.
