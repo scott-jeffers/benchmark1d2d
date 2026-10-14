@@ -105,8 +105,8 @@ jobs:
           python scripts/fetch_inputs.py  # EA terrain and tables, verified by SHA-256
           python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" --solver fv1 acc
           # DG2 costs several times more per step; the EA valley tests (2, 5) are run locally.
-          python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" --solver dg2 \
-            A1F-010 A1F-011 A2A-001 A2A-010 A2C-EA1 A2C-EA4
+          python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" \
+            A1F-010 A1F-011 A2A-001 A2A-010 A2C-EA1 A2C-EA4 --solver dg2
       - uses: actions/upload-artifact@v4
         if: always()
         with:
