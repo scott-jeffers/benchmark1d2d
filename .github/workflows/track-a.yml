@@ -83,7 +83,7 @@ jobs:
 
 
   swmm:
-    name: SWMM 5.2.4 and OpenSWMM Engine v6 on the 1D channel cases (finding, not a gate)
+    name: SWMM 5.2.4, OpenSWMM Engine v6 and Hydra on the 1D channel cases (finding, not a gate)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,7 +97,8 @@ jobs:
           "$RUNNER_TEMP/openswmm/bin/python" -m pip install -q "openswmm==6.0.0a4.dev1" numpy
       - name: Score the dam breaks and the backwater curve
         run: |
-          python scripts/run_swmm_track_a.py --openswmm-python "$RUNNER_TEMP/openswmm/bin/python" \
+          HYDRA=$(python scripts/fetch_hydra.py "$RUNNER_TEMP/hydra")
+          python scripts/run_swmm_track_a.py --openswmm-python "$RUNNER_TEMP/openswmm/bin/python" --hydra-exe "$HYDRA" \
             || echo "::warning title=SWMM Track A::fails at least one criterion (see score cards); reported, not gating"
       - uses: actions/upload-artifact@v4
         if: always()

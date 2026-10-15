@@ -45,12 +45,20 @@ EPANET_NU = 1.1e-5 * 0.3048**2
 SOLVER = {"name": "EPA EPANET 2.2", "version": "2.2", "adapter": "epanet (WNTR 1.5.0, libepanet22)"}
 
 
+HYDRA_EXE: str | None = None  # set by --hydra-exe: run NEER AI Hydra's wds engine instead of EPANET 2.2
+
+
 def _run_inp(text: str):
     import wntr
 
     with tempfile.TemporaryDirectory() as td:
         inp = Path(td) / "model.inp"
         inp.write_text(text, encoding="utf-8")
+        if HYDRA_EXE:
+            from benchmark1d2d.adapters import hydra
+
+            hydra.run(HYDRA_EXE, inp, Path(td) / "m.rpt", Path(td) / "m.out", "wds")
+            return hydra.epanet_results(Path(td) / "m.out")
         wn = wntr.network.WaterNetworkModel(str(inp))
         res = wntr.sim.EpanetSimulator(wn).run_sim(file_prefix=str(Path(td) / "run"), version=2.2)
     return res
@@ -110,15 +118,30 @@ def two_loop(case_dir: Path) -> dict:
 
 
 def main() -> int:
-    OUT.mkdir(parents=True, exist_ok=True)
+    import argparse
+
+    global HYDRA_EXE
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--hydra-exe", help="score NEER AI Hydra's water-distribution engine (the hydra CLI) instead of EPANET 2.2")
+    args = ap.parse_args()
+    HYDRA_EXE = args.hydra_exe
+    out_dir, solver, tag = OUT, SOLVER, "epanet22"
+    if HYDRA_EXE:
+        from benchmark1d2d.adapters import hydra
+
+        ver = hydra.version(HYDRA_EXE)
+        out_dir, tag = REPO / "out" / "hydra_networks", "hydra"
+        solver = {"name": f"Hydra {ver.split('/')[0]} water distribution", "version": ver,
+                  "adapter": f"hydra CLI {ver.split('/')[-1]} (wds engine, EPANET-format binary output)"}
+    out_dir.mkdir(parents=True, exist_ok=True)
     ok = True
     for tid, build in (("A1P-001", single_pipe), ("A1P-010", two_loop)):
         m = load_manifest(tid, repo=REPO)
-        res = OUT / f"{m['test_id']}.epanet22.parquet"
+        res = out_dir / f"{m['test_id']}.{tag}.parquet"
         write_results_parquet(res, build(Path(m["_case_dir"])))
-        card = score_case(m, res, timestamp=TS, private_key=KEY, solver=SOLVER)
-        (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-        print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} (EPANET 2.2)")
+        card = score_case(m, res, timestamp=TS, private_key=KEY, solver=solver)
+        (out_dir / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+        print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")
         for r in card["criteria_results"]:
             print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']:.4g} {r['threshold']['units']} — {r.get('detail', '')}")
         ok &= card["passed"]

@@ -40,6 +40,17 @@ Suite releases are independent of schema semver (`schemas/v1`).
   the whole channel (front 713 m ahead, mass +3.3 %). Neither improves on
   finer grids. The volume front now reads
   "still at the dam" when no water has crossed.
+- **Hydra (NEER AI) scored on both its engines** (`benchmark1d2d.adapters.hydra`,
+  `scripts/fetch_hydra.py` pins CLI 4.1.1 / library 17.0.0 by SHA-256;
+  `docs/hydra.md`). Water distribution: passes both exact pipe-network tests
+  and Net1 parity; on six independent EPANET networks
+  (`scripts/epanet_parity.py`) it matches EPANET 2.2 within 1 % on four with
+  its defaults and five with EPANET's tank stepping (`--tank-tolerance 0`);
+  the rest of the gap is its deliberate second-order tank integration. Urban
+  drainage: passes the backwater curve; fails both dam breaks (as SWMM 5.2.4
+  does) but conserves water on Stoker (−0.015 % vs SWMM's +4.1 %); differs
+  from SWMM 5.2.4 on both Track B cases, with a declared list of input
+  changes. Corpus parity runs nightly (`--candidate-engine hydra`).
 - `.github/workflows/slow-runs.yml`: weekly LISFLOOD-FP DG2, ANUGA and
   TELEMAC on EA Tests 2 and 5.
 - **A1F-010 v2.0.0: the gating front check is now integral.** The front is

@@ -12,7 +12,9 @@ element by element exactly as the catalog cases do:
 A candidate is a Python interpreter (``--candidate-python``) with either a
 ``swmm.toolkit`` build (e.g. SWMM 5.1.15 in ``swmm-toolkit`` 0.10.0) or the
 ``openswmm`` wheel (``--candidate-engine openswmm``: HydroCouple's SWMM 6
-engine) — or the reference itself, which must score exactly zero (a
+engine), or the ``hydra`` CLI (``--candidate-engine hydra``, the path given as
+``--candidate-python``: NEER AI Hydra's urban-drainage engine) — or the
+reference itself, which must score exactly zero (a
 self-check of the harness).
 
 Writes ``<out>/<tier>_<label>.parquet`` (one row per model) and a summary JSON
@@ -60,6 +62,11 @@ _RUN = (
 def _run(python: str, inp: Path, td: Path, tag: str, timeout: float, engine: str = "toolkit") -> tuple[Path, float, str]:
     rpt, out = td / f"{tag}.rpt", td / f"{tag}.out"
     t0 = time.perf_counter()
+    if engine == "hydra":
+        from benchmark1d2d.adapters import hydra
+
+        hydra.run(python, inp, rpt, out, "uds", timeout=timeout)
+        return out, round(time.perf_counter() - t0, 3), hydra.version(python)
     if engine == "openswmm":
         from benchmark1d2d.adapters import openswmm
 
@@ -126,8 +133,9 @@ def main() -> int:
     ap.add_argument("--corpus", type=Path, required=True, help="HydroCouple corpus/ directory at the pinned commit")
     ap.add_argument("--tier", default="pr", choices=["pr", "nightly", "release"])
     ap.add_argument("--candidate-python", default=sys.executable, help="interpreter with the candidate swmm-toolkit (default: the reference itself)")
-    ap.add_argument("--candidate-engine", default="toolkit", choices=["toolkit", "openswmm"],
-                    help="toolkit: a swmm.toolkit build; openswmm: the OpenSWMM Engine v6 in the openswmm wheel")
+    ap.add_argument("--candidate-engine", default="toolkit", choices=["toolkit", "openswmm", "hydra"],
+                    help="toolkit: a swmm.toolkit build; openswmm: the OpenSWMM Engine v6 in the openswmm wheel; "
+                         "hydra: NEER AI Hydra's urban-drainage engine (--candidate-python is then the hydra CLI)")
     ap.add_argument("--label", default="self", help="short name for the candidate, used in file names")
     ap.add_argument("--out", type=Path, default=REPO / "out" / "corpus_parity")
     ap.add_argument("--timeout", type=float, default=120.0)

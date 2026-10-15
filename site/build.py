@@ -709,7 +709,7 @@ def legacy_figures(m: dict, result_dirs: list[Path], assets: Path) -> str:
 PARITY_DIR = ROOT / "test_catalog" / "track_b" / "parity"
 
 
-CANDIDATE_NAMES = {"swmm-5.1.15": "EPA SWMM 5.1.15", "openswmm-6": "OpenSWMM Engine v6"}
+CANDIDATE_NAMES = {"swmm-5.1.15": "EPA SWMM 5.1.15", "openswmm-6": "OpenSWMM Engine v6", "hydra": "Hydra 17 (urban drainage)"}
 ERR_WHY = {
     "swmm-5.1.15": "Most use input syntax added after 5.1 (inlets, newer options), which an older engine rejects with ERROR 200.",
     "openswmm-6": "The v6 pre-release stops at initialisation with an unexplained parse error; see docs/openswmm.md.",
@@ -781,6 +781,39 @@ def parity_section(parity: list[tuple[dict, pd.DataFrame]]) -> str:
 </section>"""
 
 
+EPANET_PARITY_NAMES = {"hydra": "Hydra 17 water distribution, its defaults",
+                       "hydra-tank0": "Hydra 17 water distribution, EPANET tank stepping (--tank-tolerance 0)",
+                       "epanet20": "EPANET 2.0 (2.00.12), for scale"}
+
+
+def epanet_parity_section() -> str:
+    """Six EPANET networks scored against EPANET 2.2 (scripts/epanet_parity.py)."""
+    files = [PARITY_DIR / f"epanet_{k}.parquet" for k in EPANET_PARITY_NAMES]
+    files = [f for f in files if f.is_file()]
+    if not files:
+        return ""
+    head = "".join(f"<th class=num>{esc(EPANET_PARITY_NAMES[f.stem[len('epanet_'):]])}</th>" for f in files)
+    frames = {f.stem[len("epanet_"):]: pd.read_parquet(f).set_index("network") for f in files}
+    nets = list(next(iter(frames.values())).index)
+    trs = ""
+    for net in nets:
+        cells = ""
+        for k, df in frames.items():
+            r = df.loc[net] if net in df.index else None
+            if r is None or r["status"] != "scored":
+                cells += "<td class=num>–</td>"
+                continue
+            cells += (f"<td class=num>{fmt(r['peak_pressure_pct'])} % / {fmt(r['volume_pct'])} %</td>")
+        trs += f"<tr><td><code>{esc(net)}</code></td>{cells}</tr>"
+    return f"""<section id="epanet-parity"><h2>Does another engine match EPANET 2.2?</h2>
+<p>The same comparison for water-distribution engines, on the six example networks bundled with WNTR 1.5.0 (EPANET's Net1, Net2, Net3 and Net6 and two Kentucky utility networks), so the set is independent of any candidate's own test fixtures. Each cell gives the worst node's relative peak pressure and the worst pipe's relative volume of |Q| against EPANET 2.2, from <code>scripts/epanet_parity.py</code>.</p>
+<div class="table-scroll"><table class="data"><thead><tr><th>Network</th>{head}</tr></thead><tbody>{trs}</tbody></table></div>
+<div class="findings" style="margin-top:18px">
+  <div class="finding"><b>Hydra's tanks are deliberately different.</b> With its default second-order tank integration Hydra matches EPANET 2.2 within 1 % on four networks and differs by up to 27 % in pipe volume on Net6. With EPANET's first-order tank stepping (<code>--tank-tolerance 0</code>) five of six match within 1 % and Net6 within 3.4 %; pressures agree within 0.7 % either way.</div>
+</div>
+</section>"""
+
+
 def corpus_page(index: pd.DataFrame | None, census: pd.DataFrame | None, parity: list | None = None) -> str:
     if index is None or census is None:
         return layout("Track B corpus", "<header class=page-head><h1>Track B corpus</h1><p class=lede>The corpus census has not been run yet.</p></header>", "corpus.html")
@@ -825,6 +858,7 @@ def corpus_page(index: pd.DataFrame | None, census: pd.DataFrame | None, parity:
 <tr><td>Release</td><td class=num>{int((index['tier'] != 'none').sum())}</td><td>Every model that runs, keeps continuity within ±5 % and has a verified licence</td><td><a href="data/track_b/tier_release.json">selection.json</a></td></tr>
 </tbody></table></div></section>
 {parity_section(parity or [])}
+{epanet_parity_section()}
 <section><h2>Runtime</h2>{rt_bars}</section>
 <section id="coverage"><h2>What the tiers cover</h2>{tag_bars}{legend([("PR", "st-frozen"), ("Nightly", "st-candidate"), ("Release only", "st-release"), ("Not in a tier", "st-draft")])}</section>
 <section id="continuity"><h2>Largest routing continuity errors on SWMM 5.2.4</h2>
@@ -1074,7 +1108,7 @@ def main() -> int:
     args = ap.parse_args()
     suite_dirs = ["site/fixtures/scorecards", "out/track_b", "out/vertical_slice", "out/networks", "out/demo_2d"]
     production_dirs = ["site/fixtures/telemac", "site/fixtures/hecras", "site/fixtures/anuga", "site/fixtures/geoclaw",
-                       "site/fixtures/lisflood", "site/fixtures/hecras2d", "site/fixtures/openswmm", "site/fixtures/swmm_track_a", "out/openswmm", "out/swmm_track_a", "site/fixtures/hydronet", "out/hydronet", "out/telemac", "out/hecras", "out/hecras2d", "out/anuga", "out/geoclaw", "out/lisflood"]
+                       "site/fixtures/lisflood", "site/fixtures/hecras2d", "site/fixtures/openswmm", "site/fixtures/swmm_track_a", "out/openswmm", "out/swmm_track_a", "site/fixtures/hydronet", "out/hydronet", "site/fixtures/hydra", "out/hydra", "out/hydra_networks", "out/telemac", "out/hecras", "out/hecras2d", "out/anuga", "out/geoclaw", "out/lisflood"]
     score_dirs = [Path(p) for p in (args.scorecards or suite_dirs)]
     result_dirs = [Path(p) for p in (args.results or ["out/vertical_slice", "out/networks", "out/demo_2d"])]
     score_dirs = [p if p.is_absolute() else ROOT / p for p in score_dirs]

@@ -34,6 +34,11 @@ def run_to_parquet(inp: str | Path, out_parquet: str | Path) -> Path:
     wn = wntr.network.WaterNetworkModel(str(inp))
     with tempfile.TemporaryDirectory() as td:  # WNTR writes scratch files next to file_prefix
         results = wntr.sim.EpanetSimulator(wn).run_sim(file_prefix=str(Path(td) / "run"), version=2.2)
+    return results_to_parquet(results, out_parquet)
+
+
+def results_to_parquet(results, out_parquet: str | Path) -> Path:
+    """Write WNTR simulation results (SI units) in the results contract."""
     head = results.node["head"]
     pressure = results.node["pressure"]
     flow = results.link["flowrate"]

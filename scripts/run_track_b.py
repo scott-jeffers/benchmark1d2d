@@ -9,6 +9,9 @@ Demonstrates Track B with engines that genuinely differ from the references:
 - **OpenSWMM Engine v6** (HydroCouple's SWMM 6, the new C++20 engine in the
   ``openswmm`` wheel) on the SWMM cases, against SWMM 5.2.4; pass a Python with
   ``openswmm`` installed as ``--openswmm-python``.
+- **Hydra** (NEER AI, Rust; ``--hydra-exe``): its urban-drainage engine on the
+  SWMM cases against SWMM 5.2.4 and its water-distribution engine on the
+  EPANET case against EPANET 2.2.
 - **EPANET 2.0** (the 2.00.12 library bundled with WNTR) on the EPANET case,
   scored against EPANET 2.2.
 
@@ -101,8 +104,32 @@ def main() -> int:
     ap.add_argument("--swmm51-python", help="Python with swmm-toolkit==0.10.0 (EPA SWMM 5.1.15)")
     ap.add_argument("--openswmm-python", help="Python with the openswmm wheel (OpenSWMM Engine v6)")
     ap.add_argument("--only-openswmm", action="store_true", help="run only the OpenSWMM v6 cases")
+    ap.add_argument("--hydra-exe", help="the hydra CLI (NEER AI Hydra): its drainage and water-distribution engines")
+    ap.add_argument("--only-hydra", action="store_true", help="run only the Hydra cases")
     args = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
+    if args.hydra_exe:
+        from benchmark1d2d.adapters import hydra
+
+        outh = REPO / "out" / "hydra"
+        outh.mkdir(parents=True, exist_ok=True)
+        ver = hydra.version(args.hydra_exe)
+        names = {"uds": "urban drainage", "wds": "water distribution"}
+        for tid, eng in (("B-EXTRAN-001", "uds"), ("B-RTC-001", "uds"), ("B-EPANET-001", "wds")):
+            m = load_manifest(tid, repo=REPO)
+            inp = Path(m["_case_dir"]) / "inputs/network.inp"
+            if not inp.is_file():
+                subprocess.run([sys.executable, str(REPO / "scripts" / "fetch_inputs.py"), tid], check=True)
+            res = hydra.adapt(inp, outh / f"{m['test_id']}.hydra.parquet", exe=args.hydra_exe, engine=eng)
+            card = score_case(m, res, timestamp=TS, private_key=KEY,
+                              solver={"name": f"Hydra {ver.split('/')[0]} {names[eng]}", "version": ver,
+                                      "adapter": f"hydra CLI {ver.split('/')[-1]} ({eng} engine, {'EPANET' if eng == 'wds' else 'SWMM'}-format binary output)"})
+            (outh / f"{card['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            print(f"{'PASS' if card['passed'] else 'FAIL'} {card['test_id']} ({card['solver']['name']})")
+            for r in card["criteria_results"]:
+                print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']} — {r.get('detail', '')}")
+    if args.only_hydra:
+        return 0
     if args.openswmm_python:
         from benchmark1d2d.adapters import openswmm
 

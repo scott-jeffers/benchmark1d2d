@@ -54,8 +54,11 @@ jobs:
           python scripts/run_demo_2d.py || true
 
       # Track B demonstration: older engine releases scored against the pinned references.
-      - name: Track B demo runs (SWMM 5.1.15, OpenSWMM Engine v6, EPANET 2.0)
+      - name: Track B demo runs (SWMM 5.1.15, OpenSWMM Engine v6, Hydra, EPANET 2.0)
         run: |
+          HYDRA=$(python scripts/fetch_hydra.py "$RUNNER_TEMP/hydra") || echo "::warning::Hydra CLI not fetched"
+          [ -x "$HYDRA" ] && python scripts/run_track_b.py --hydra-exe "$HYDRA" --only-hydra || true
+          [ -x "$HYDRA" ] && python scripts/run_network_cases.py --hydra-exe "$HYDRA" || true
           python -m venv "$RUNNER_TEMP/openswmm"
           "$RUNNER_TEMP/openswmm/bin/python" -m pip install -q "openswmm==6.0.0a4.dev1" numpy || echo "::warning::openswmm wheel not installed"
           OS_ARG=""; [ -x "$RUNNER_TEMP/openswmm/bin/python" ] && "$RUNNER_TEMP/openswmm/bin/python" -c "import openswmm.engine" && OS_ARG="--openswmm-python $RUNNER_TEMP/openswmm/bin/python"
@@ -65,7 +68,7 @@ jobs:
         run: |
           python site/build.py \
             --scorecards site/fixtures/scorecards \
-            --scorecards out/track_b --scorecards out/openswmm --scorecards out/vertical_slice --scorecards out/networks --scorecards out/demo_2d
+            --scorecards out/track_b --scorecards out/openswmm --scorecards out/hydra --scorecards out/hydra_networks --scorecards out/vertical_slice --scorecards out/networks --scorecards out/demo_2d
           for f in index catalog corpus reports downloads method get-started; do test -f "site/dist/$f.html"; done
           test -f site/dist/data/benchmark1d2d-catalog.zip
 

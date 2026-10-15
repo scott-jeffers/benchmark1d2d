@@ -63,6 +63,10 @@ SOLVERS: list[dict] = [
          what="OpenSWMM Engine v6 (HydroCouple's SWMM 6, pre-release) with dynamic-wave routing"),
     dict(key="openswmm-fv", name="OpenSWMM 6", sub="finite volume", kind="production", color="#C2185B",
          what="OpenSWMM Engine v6 with its new explicit finite-volume routing (FLOW_ROUTING FV), one cell per conduit"),
+    dict(key="hydra-uds", name="Hydra", sub="urban drainage", kind="production", color="#1F6F8B",
+         what="Hydra 17 (NEER AI, Rust): its urban-drainage engine on the SWMM data model, run through its CLI with default settings"),
+    dict(key="hydra-wds", name="Hydra", sub="water distribution", kind="production", color="#4A90A4",
+         what="Hydra 17 (NEER AI, Rust): its water-distribution engine on the EPANET data model, run through its CLI with default settings"),
     dict(key="hydronet-fvm", name="HydroNet", sub="finite volume", kind="research", color="#8E3B46",
          what="HydroNet (Penn State) — its differentiable Roe finite-volume solver (Heun RK2, CFL 0.3), the engine inside its FVM-PINN"),
     dict(key="hydronet-pinn", name="HydroNet", sub="FVM-PINN", kind="research", color="#C46B7A",
@@ -107,6 +111,8 @@ def solver_key(name: str) -> str | None:
         return "anuga"
     if n.startswith("geoclaw"):
         return "geoclaw"
+    if n.startswith("hydra "):
+        return "hydra-wds" if "water distribution" in n else "hydra-uds"
     if n.startswith("hydronet"):
         return "hydronet-pinn" if "pinn" in n else "hydronet-fvm"
     if n.startswith("lisflood"):
