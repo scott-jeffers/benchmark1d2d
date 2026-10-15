@@ -6,7 +6,7 @@
   "test_id": "A1F-043_swashes_lake_at_rest_emerged_bump",
   "test_class": "verification_analytic",
   "title": "Lake at rest with an emerged bump (SWASHES)",
-  "description": "Still water at level 0.1 m over the 0.2 m bump, whose top stands out of the water between x = 9.55 and 10.45 m. Nothing should move: the depth stays max(0.1 − z, 0) and the velocity zero. A scheme that does not balance the bed slope against the pressure gradient, or mishandles the dry shoreline on a slope, sets the lake in motion.",
+  "description": "Still water at level 0.1 m over the 0.2 m bump, whose top stands out of the water between x = 8.59 and 11.41 m. Nothing should move: the depth stays max(0.1 − z, 0) and the velocity zero. A scheme that does not balance the bed slope against the pressure gradient, or mishandles the dry shoreline on a slope, sets the lake in motion.",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "free_surface",

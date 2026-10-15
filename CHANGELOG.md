@@ -3,7 +3,42 @@
 All notable changes to this suite are documented here.
 Suite releases are independent of schema semver (`schemas/v1`).
 
-## [Unreleased]
+## [0.5.0] — 2026-10-15
+
+Exact answers for drainage networks and 1D/2D coupling, the SWASHES cases,
+a route for results from codes the suite cannot run, and an outside-review
+packet.
+
+### Added (0.5.0)
+
+- **SWASHES cases (A1F-040 to 043)**: steady frictionless flow over a bump
+  (subcritical; transcritical; transcritical with a jump at x = 11.666 m,
+  from Rankine–Hugoniot) and a lake at rest with an emerged bump
+  (`references/swashes.py`). ANUGA, TELEMAC-2D and OpenSWMM v6's
+  finite-volume routing pass all four; the SWMM dynamic-wave engines (EPA
+  SWMM 5.2.4, OpenSWMM v6 DW, Hydra) never settle on the bump channel's short
+  frictionless conduits, and Hydra sets up 0.12 m/s currents in the still
+  lake.
+- **Submitting results** (`docs/submitting.md`, `submissions/`,
+  `schemas/v1/submission.schema.json`, `scripts/score_submissions.py`, the
+  Submissions workflow): developers of codes the suite cannot run submit
+  results files; the suite scores them with the same limits, posts the
+  scores on the pull request and shows them in a *submitted by* column.
+  Every case download now has `RESULTS_TEMPLATE.csv` and `HOW_TO_SUBMIT.md`;
+  `benchmark1d2d kit <case>` writes the same folder. Score cards carry
+  `solver.submitted_by`.
+- **A page per model** (`solvers.html`, `solvers/<model>.html`): every test it
+  ran, the deciding checks and the notes; the results matrix links to them.
+- **SWMM parity over time**: the result collector appends every nightly run
+  to `test_catalog/track_b/parity/history.csv` and opens an issue when five
+  or more models move in or out of "within 1 %", when the number a candidate
+  cannot run changes, or when its version changes; the corpus page shows the
+  history.
+- **Outside-review packet** (`docs/review/`, `scripts/review_packet.py`,
+  a Case review issue template): every candidate case with its truth, limits
+  and reasons, results and blockers, and the questions we most want answered.
+- `CITATION.cff` (now naming the author) and `.zenodo.json` for a DOI.
+
 
 ### Changed
 

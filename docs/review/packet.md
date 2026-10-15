@@ -248,11 +248,14 @@ Convergence: L1 of h, expected order 1.0, at least 0.8 required.
 
 Convergence: L1 of h, expected order 2.0, at least 0.8 required.
 
-**Before it can be frozen:** a published run passes (no passing score card published yet); order of accuracy shown (no passing run with multi-grid evidence); two independent codes pass (passing codes: none — needs a second, independently written solver or engine); maintainer review recorded (no maintainer review recorded).
+**Passes:** TELEMAC-2D openTELEMAC 9.1, ANUGA 4.0.1, OpenSWMM 6 finite volume.  
+**Fails:** EPA SWMM 5.2.4 dynamic wave, OpenSWMM 6 dynamic wave, Hydra urban drainage.
+
+**Before it can be frozen:** maintainer review recorded (no maintainer review recorded).
 
 ## A1F-041 — Transcritical flow over a bump, no shock (SWASHES)
 
-*verification analytic, version 1.0.0, candidate.* Steady frictionless flow of q = 1.53 m²/s over the 0.2 m bump with a free outflow. The flow passes through critical depth at the crest, subcritical upstream and supercritical downstream, with no jump: the depth falls from 1.01 m to 0.41 m.
+*verification analytic, version 1.0.0, candidate.* Steady frictionless flow of q = 1.53 m²/s over the 0.2 m bump, with 0.66 m held downstream only while the outflow is subcritical (as in SWASHES). The flow passes through critical depth at the crest, subcritical upstream and supercritical downstream, with no jump: the depth falls from 1.01 m to 0.41 m.
 
 **Reference:** exact solution, `references.swashes.steady_bump`.
 **Sources:** Delestre et al. (2013) doi:10.1002/fld.3741; Goutal and Maurel (1997).
@@ -264,7 +267,10 @@ Convergence: L1 of h, expected order 2.0, at least 0.8 required.
 
 Convergence: L1 of h, expected order 1.0, at least 0.8 required.
 
-**Before it can be frozen:** a published run passes (no passing score card published yet); order of accuracy shown (no passing run with multi-grid evidence); two independent codes pass (passing codes: none — needs a second, independently written solver or engine); maintainer review recorded (no maintainer review recorded).
+**Passes:** TELEMAC-2D openTELEMAC 9.1, ANUGA 4.0.1, OpenSWMM 6 finite volume.  
+**Fails:** EPA SWMM 5.2.4 dynamic wave, OpenSWMM 6 dynamic wave, Hydra urban drainage.
+
+**Before it can be frozen:** maintainer review recorded (no maintainer review recorded).
 
 ## A1F-042 — Transcritical flow over a bump with a hydraulic jump (SWASHES)
 
@@ -280,11 +286,14 @@ Convergence: L1 of h, expected order 1.0, at least 0.8 required.
 
 Convergence: L1 of h, expected order 1.0, at least 0.8 required.
 
-**Before it can be frozen:** a published run passes (no passing score card published yet); order of accuracy shown (no passing run with multi-grid evidence); two independent codes pass (passing codes: none — needs a second, independently written solver or engine); maintainer review recorded (no maintainer review recorded).
+**Passes:** TELEMAC-2D openTELEMAC 9.1, ANUGA 4.0.1, OpenSWMM 6 finite volume.  
+**Fails:** EPA SWMM 5.2.4 dynamic wave, OpenSWMM 6 dynamic wave, Hydra urban drainage.
+
+**Before it can be frozen:** maintainer review recorded (no maintainer review recorded).
 
 ## A1F-043 — Lake at rest with an emerged bump (SWASHES)
 
-*verification analytic, version 1.0.0, candidate.* Still water at level 0.1 m over the 0.2 m bump, whose top stands out of the water between x = 9.55 and 10.45 m. Nothing should move: the depth stays max(0.1 − z, 0) and the velocity zero. A scheme that does not balance the bed slope against the pressure gradient, or mishandles the dry shoreline on a slope, sets the lake in motion.
+*verification analytic, version 1.0.0, candidate.* Still water at level 0.1 m over the 0.2 m bump, whose top stands out of the water between x = 8.59 and 11.41 m. Nothing should move: the depth stays max(0.1 − z, 0) and the velocity zero. A scheme that does not balance the bed slope against the pressure gradient, or mishandles the dry shoreline on a slope, sets the lake in motion.
 
 **Reference:** exact solution, `references.swashes.lake_at_rest`.
 **Sources:** Delestre et al. (2013) doi:10.1002/fld.3741; Goutal and Maurel (1997).
@@ -297,7 +306,10 @@ Convergence: L1 of h, expected order 1.0, at least 0.8 required.
 
 Convergence: not applicable — The exact state is the initial state; a well-balanced scheme keeps it to rounding error on any grid, so there is no error to converge.
 
-**Before it can be frozen:** a published run passes (no passing score card published yet); two independent codes pass (passing codes: none — needs a second, independently written solver or engine); maintainer review recorded (no maintainer review recorded).
+**Passes:** TELEMAC-2D openTELEMAC 9.1, ANUGA 4.0.1, EPA SWMM 5.2.4 dynamic wave, OpenSWMM 6 dynamic wave, OpenSWMM 6 finite volume.  
+**Fails:** Hydra urban drainage.
+
+**Before it can be frozen:** maintainer review recorded (no maintainer review recorded).
 
 ## A1P-001 — Darcy–Weisbach single pipe
 

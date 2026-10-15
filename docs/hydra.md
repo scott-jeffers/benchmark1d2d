@@ -64,6 +64,14 @@ channels reversed, negative offsets zeroed, a maximum depth raised,
 storage node whose parameters are all zero. The difference is a declared
 modelling divergence, not an obvious defect on either side.
 
+### Urban drainage: SWASHES bump channel
+
+On the frictionless bump channel (A1F-040 to 042) Hydra, like the SWMM
+dynamic-wave engines, does not settle (average depth errors 0.24–1.50 m on
+every grid). On the lake at rest with an emerged bump (A1F-043) it keeps the
+water level (0.4 mm) but sets up currents of up to 0.12 m/s, where SWMM
+5.2.4 and OpenSWMM stay under 0.5 mm/s.
+
 ### Urban drainage: exact network answers
 
 On the five drainage networks with exact answers (A1D-001 to 005, worst depth

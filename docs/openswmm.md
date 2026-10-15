@@ -37,6 +37,23 @@ depth and velocity read at the cell centres (details in the script's header).
 v6 dynamic wave reproduces SWMM 5.2.4 bit for bit on all three. The new
 finite-volume routing is the first SWMM engine to pass a dam break.
 
+### Track A — SWASHES bump channel (frictionless, exact)
+
+| Case | EPA SWMM 5.2.4 | v6 dynamic wave | v6 finite volume |
+|---|---|---|---|
+| A1F-040 subcritical over a bump | fails: unsettled, 1.45 m | fails: 1.86 m | **passes**: 0.6 mm, order 0.99 |
+| A1F-041 transcritical | fails: 0.56 m | fails: 0.53 m | **passes**: 0.8 mm, order 1.04 |
+| A1F-042 transcritical with a jump | fails: 0.29 m | fails: 0.24 m | **passes**: 0.6 mm, order 0.89 |
+| A1F-043 lake at rest, emerged bump | passes: 0.5 mm/s | passes: 0.5 mm/s | passes: 0.008 mm/s |
+
+On the 10 and 5 cm conduits these grids need, dynamic wave never settles on
+a frictionless channel, even with a 0.0025 s routing step; on 20 cm conduits
+SWMM 5.2.4 is within 8 mm on the subcritical case. The routing step must be
+matched to the conduit length (`scripts/run_swmm_track_a.py` uses dx/20):
+SWMM's variable step follows the flow velocity, so in still water it stays
+at the routing step, and with a 1 s step a lake on a 0.4 % slope starts
+sloshing at 1.3 m/s.
+
 ### Track A — drainage networks (exact answers)
 
 Five networks with exact answers (`test_catalog/track_a/1d_drainage`,
