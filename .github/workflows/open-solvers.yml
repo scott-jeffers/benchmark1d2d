@@ -62,6 +62,10 @@ jobs:
         shell: micromamba-shell {0}
         env:
           FC: gfortran
+          # An MPI library in the conda environment initialises UCX, whose
+          # InfiniBand transport fails on some runner images (MANA NIC);
+          # TCP and shared memory are enough on one machine.
+          UCX_TLS: tcp,self,sm
         run: |
           python -m pip install -q -e ".[dev]"
           PYTHONPATH="$RUNNER_TEMP/clawpack" python scripts/run_geoclaw.py --claw "$RUNNER_TEMP/clawpack"
