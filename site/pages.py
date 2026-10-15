@@ -251,6 +251,13 @@ CHECK_LABELS = {
 }
 
 
+STATE_LABELS = {
+    "exchange_flow": "Manhole outflow", "street_depth": "Street depth", "final_level": "Final level",
+    "discharged_volume": "Water discharged", "surface_empty": "Left on the surface", "final_level_p1": "Final level at P1",
+    "final_level_p2": "Final level at P2", "peak_level": "Peak level", "final_volume": "Water stored at the end",
+}
+
+
 def check_label(c: dict) -> str:
     if c["id"] in CHECK_LABELS:
         return CHECK_LABELS[c["id"]]
@@ -260,6 +267,8 @@ def check_label(c: dict) -> str:
     if metric in ("L1", "L2", "Linf"):
         word = {"L1": "Average", "L2": "Typical", "Linf": "Worst"}[metric]
         return f"{word} {VAR_WORDS.get(var, var)} error"
+    if metric == "expected_state_error":
+        return STATE_LABELS.get(c["id"], c["id"].replace("_", " ").capitalize())
     return CHECK_NAMES.get(metric, c["id"].replace("_", " ").capitalize())
 
 
@@ -1196,7 +1205,7 @@ def score_page(manifests: list[dict], checkable: list[dict]) -> str:
     rows = "".join(
         f'<tr id="{esc(c["sid"])}"><td><a href="tests/{esc(c["sid"])}.html"><b>{esc(c["name"])}</b></a><div class="muted small">{esc(c["sid"])}</div></td>'
         f'<td><a href="data/cases/{esc(c["sid"])}.zip" download>Inputs (.zip)</a></td>'
-        f'<td>{" · ".join(f"<a href=\"data/check/{esc(c["sid"])}_dx{esc(lv)}_template.csv\" download>{esc(lv)}</a>" for lv in c["level_names"])}</td></tr>'
+        f'<td>{" · ".join(f"<a href=\"data/check/{esc(f)}\" download>{esc(lab)}</a>" for lab, f in c["templates"])}</td></tr>'
         for c in checkable)
     others = [m for m in manifests if sid_of(m["test_id"]) not in {c["sid"] for c in checkable} and m["status"] != "draft"]
     other_rows = "".join(f'<li><a href="tests/{sid_of(m["test_id"])}.html">{esc(story(m)["name"])}</a> <span class="muted">({esc(sid_of(m["test_id"]))})</span></li>' for m in others)
@@ -1230,7 +1239,7 @@ def score_page(manifests: list[dict], checkable: list[dict]) -> str:
 </section>
 <section class="section tight">
   <h2>Tests you can check here</h2>
-  <p class="muted">These tests have exact answers, so your results can be compared point by point. Templates list the points to report at, one file per grid size.</p>
+  <p class="muted">These tests have exact answers, so your results can be compared point by point, node by node, or state by state. Templates list what to report: one file per grid size for the channel and flood tests, one file for the drainage and coupled tests.</p>
   <div class="table-scroll"><table class="data"><thead><tr><th>Test</th><th>Inputs</th><th>Results templates (grid size)</th></tr></thead><tbody>{rows}</tbody></table></div>
 </section>
 <section class="section tight">
@@ -1240,7 +1249,7 @@ def score_page(manifests: list[dict], checkable: list[dict]) -> str:
 benchmark1d2d score A1F-010 --results mine_dx1.25.csv \\
   --refinement mine_dx10.csv mine_dx5.csv mine_dx2.5.csv mine_dx1.25.csv \\
   --solver-name my-solver --solver-version 1.0</code></pre>
-  <p>Then open a pull request adding your score cards, or <a href="{REPO_URL}/issues/new">open an issue</a> and attach them. The <a href="get-started.html">command-line guide</a> covers network and compatibility tests.</p>
+  <p>To publish results, <a href="{REPO_URL}/blob/master/docs/submitting.md">submit your results files</a>: the suite scores them itself and lists them on the site as submitted by you. The <a href="get-started.html">command-line guide</a> covers network and compatibility tests.</p>
   {f'<h3>Tests scored with the command line only</h3><ul class="small">{other_rows}</ul>' if other_rows else ''}
 </section>
 </div>"""

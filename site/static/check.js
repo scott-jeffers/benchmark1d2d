@@ -1,6 +1,8 @@
 // In-browser results check. Mirrors benchmark1d2d's scorer for the checks it
-// supports (L1/L2/Linf norms, mass, flood front, observed order). Files are
-// read locally and never leave the browser.
+// supports: on grids (L1/L2/Linf norms, mass, flood front, observed order), on
+// networks (node and link values against the exact answer) and on exact states
+// (a probe's depth, an exchange flow or a volume account at a time, and the
+// water balance). Files are read locally and never leave the browser.
 (function () {
   var sel = document.getElementById("case"), input = document.getElementById("files"),
       drop = document.getElementById("drop"), report = document.getElementById("report");
@@ -31,10 +33,13 @@
     if (!lines.length) throw new Error("the file is empty");
     var sep = lines[0].indexOf(";") >= 0 && lines[0].indexOf(",") < 0 ? ";" : ",";
     var head = lines[0].split(sep).map(function (h) { return h.trim().replace(/^"|"$/g, ""); });
-    var cols = {}; head.forEach(function (h, i) { cols[h] = []; });
+    var cols = {}, STR = { element_id: 1, element_type: 1 }; head.forEach(function (h, i) { cols[h] = []; });
     for (var r = 1; r < lines.length; r++) {
       var f = lines[r].split(sep);
-      head.forEach(function (h, i) { var v = f[i] === undefined ? "" : f[i].trim(); cols[h].push(v === "" ? NaN : parseFloat(v)); });
+      head.forEach(function (h, i) {
+        var v = f[i] === undefined ? "" : f[i].trim().replace(/^"|"$/g, "");
+        cols[h].push(STR[h] ? v : (v === "" ? NaN : parseFloat(v)));
+      });
     }
     if (!cols.x) throw new Error("no x column");
     return cols;
@@ -172,7 +177,8 @@
     var finest = results[results.length - 1];
     var all = finest.checks.filter(function (c) { return c.supported && c.gating; });
     var ok = all.every(function (c) { return c.ok; }) && (!conv || conv.ok !== false);
-    h += '<div class="card"><div class="head-row" style="margin-bottom:12px"><div><h2 style="margin:0">' + esc(meta.name) + '</h2><div class="muted">Finest file: grid ' + esc(finest.level) + " · " + esc(finest.file) + "</div></div>" +
+    var sub = meta.mode === "grid" || !meta.mode ? "Finest file: grid " + esc(finest.level) + " · " + esc(finest.file) : "File: " + esc(finest.file);
+    h += '<div class="card"><div class="head-row" style="margin-bottom:12px"><div><h2 style="margin:0">' + esc(meta.name) + '</h2><div class="muted">' + sub + "</div></div>" +
       (ok ? '<span class="badge pass">✓ Passes these checks</span>' : '<span class="badge fail">✗ Fails at least one check</span>') + "</div>";
     h += '<div class="checks-grid">';
     finest.checks.forEach(function (c) {
@@ -186,7 +192,9 @@
         (conv.p === null ? "needs 2+ grids" : "rate " + nice(conv.p, 2)) + '</div><div class="lim">needed: ' + nice(meta.conv.min_observed_order, 2) + " or better</div></div>";
     }
     h += "</div>";
-    if (results.length > 1) {
+    if (meta.mode === "elements" || meta.mode === "states") {
+      // one file per test: no grids
+    } else if (results.length > 1) {
       h += '<div class="table-scroll" style="margin-top:16px"><table class="data"><thead><tr><th>Grid</th><th>File</th><th class="num">' + esc(meta.conv ? meta.conv.norm + " error in " + meta.conv.variable : "") + "</th></tr></thead><tbody>";
       results.forEach(function (r) { h += "<tr><td>" + esc(r.level) + "</td><td>" + esc(r.file) + '</td><td class="num">' + (r.convErr === undefined ? "–" : r.convErr.toPrecision(4)) + "</td></tr>"; });
       h += "</tbody></table></div>";
@@ -197,10 +205,118 @@
     report.innerHTML = h;
   }
 
+  // ── networks: node and link values against the exact answer ──────────────
+  function checkElements(meta, name, cols) {
+    if (!cols.element_id) throw new Error("no element_id column: list every node and link, as in the template");
+    var row = {};
+    for (var i = 0; i < cols.element_id.length; i++) row[(cols.element_type ? cols.element_type[i] : "") + "|" + cols.element_id[i]] = i;
+    var checks = meta.criteria.map(function (c) {
+      var r = { label: c.label, threshold: c.threshold, gating: c.gating, supported: c.supported };
+      if (!c.supported) return r;
+      try {
+        var refv = meta.ref[c.variable] || [], e = [], z = [], missing = [];
+        meta.elements.forEach(function (el, k) {
+          var f = refv[k]; if (f === null || f === undefined) return;
+          var j = row[el[0] + "|" + el[1]];
+          if (j === undefined || !isFinite(cols[c.variable] ? cols[c.variable][j] : NaN)) { missing.push(el[0] + " " + el[1]); return; }
+          e.push(cols[c.variable][j] - f); z.push(f);
+        });
+        if (missing.length) throw new Error("no " + c.variable + " for " + missing.length + " element(s), e.g. " + missing[0]);
+        var v = norm(c.metric, e);
+        if ((c.threshold.units || "").trim() === "%") v = 100 * v / Math.max(norm(c.metric, z), 1e-300);
+        r.value = v; r.ok = pass(v, c.threshold);
+      } catch (err) { r.error = err.message; r.ok = false; }
+      return r;
+    });
+    return [{ level: "network", dx: 0, file: name, checks: checks }];
+  }
+
+  // ── exact states and the water balance (coupled tests) ───────────────────
+  function rowsWhere(cols, pred) { var out = []; for (var i = 0; i < cols.t.length; i++) if (pred(i)) out.push(i); return out; }
+  function seriesOf(cols, idx, v) {
+    var pts = idx.map(function (i) { return [cols.t[i], cols[v] ? cols[v][i] : NaN]; }).filter(function (p) { return isFinite(p[0]); });
+    pts.sort(function (a, b) { return a[0] - b[0]; });
+    return pts;
+  }
+  function interpAt(pts, t) {
+    if (!pts.length) throw new Error("no rows");
+    if (t <= pts[0][0]) return pts[0][1];
+    for (var i = 1; i < pts.length; i++) if (t <= pts[i][0]) { var f = (t - pts[i - 1][0]) / (pts[i][0] - pts[i - 1][0] || 1); return pts[i - 1][1] + f * (pts[i][1] - pts[i - 1][1]); }
+    return pts[pts.length - 1][1];
+  }
+  function stateValue(meta, st, cols) {
+    var hasT = st.time !== undefined && st.time !== null;
+    if (st.element) {
+      var idx = rowsWhere(cols, function (i) {
+        var typ = cols.element_type ? cols.element_type[i] : "";
+        return cols.element_id && cols.element_id[i] === st.element && (st.variable === "V" ? typ === "account" : typ !== "account");
+      });
+      if (!idx.length) throw new Error("no rows for " + st.element);
+      var pts = seriesOf(cols, idx, st.variable);
+      return hasT ? interpAt(pts, st.time) : pts[pts.length - 1][1];
+    }
+    var worst = null;
+    String(st.where || "").split(",").forEach(function (pid) {
+      var pr = meta.probes.filter(function (p) { return p.id === pid.trim(); })[0];
+      if (!pr) throw new Error("probe " + pid + " not in the test");
+      var best = Infinity, bx = null, by = null;
+      for (var i = 0; i < cols.t.length; i++) {
+        if (!isFinite(cols.x[i]) || !cols.y || !isFinite(cols.y[i])) continue;
+        var d = Math.pow(cols.x[i] - pr.x, 2) + Math.pow(cols.y[i] - (pr.y || 0), 2);
+        if (d < best) { best = d; bx = cols.x[i]; by = cols.y[i]; }
+      }
+      if (bx === null) throw new Error("no rows with x and y for probe " + pid);
+      var pts = seriesOf(cols, rowsWhere(cols, function (i) { return cols.x[i] === bx && cols.y[i] === by; }), "h");
+      var v = hasT ? interpAt(pts, st.time) : Math.max.apply(null, pts.map(function (p) { return p[1]; }));
+      if (worst === null || Math.abs(v - st.value) > Math.abs(worst - st.value)) worst = v;
+    });
+    return worst;
+  }
+  function balance(cols) {
+    if (!cols.V || !cols.element_type) throw new Error("no volume accounts: add element_type 'account' rows with column V");
+    var acc = {};
+    ["surface", "network", "inflow", "outflow"].forEach(function (a) {
+      acc[a] = seriesOf(cols, rowsWhere(cols, function (i) { return cols.element_type[i] === "account" && cols.element_id[i] === a; }), "V");
+    });
+    if (!acc.surface.length || !acc.network.length) throw new Error("the surface and network accounts are needed");
+    var t = acc.surface.map(function (p) { return p[0]; });
+    var at = function (a, tt) { return acc[a].length ? interpAt(acc[a], tt) : 0; };
+    var s0 = at("surface", t[0]) + at("network", t[0]), i0 = at("inflow", t[0]), o0 = at("outflow", t[0]), tn = t[t.length - 1];
+    var imb = at("surface", tn) + at("network", tn) - s0 - (at("inflow", tn) - i0) + (at("outflow", tn) - o0);
+    var scale = Math.max(at("inflow", tn) - i0, s0, 1e-12);
+    return 100 * imb / scale;
+  }
+  function checkStates(meta, name, cols) {
+    if (!cols.t) throw new Error("no t column");
+    var states = {}; meta.states.forEach(function (s) { states[s.id] = s; });
+    var checks = meta.criteria.map(function (c) {
+      var r = { label: c.label, threshold: c.threshold, gating: c.gating, supported: c.supported };
+      if (!c.supported) return r;
+      try {
+        if (c.metric === "continuity_error") r.value = balance(cols);
+        else {
+          var st = states[c.against], got = stateValue(meta, st, cols);
+          r.value = (c.threshold.units || "").trim() === "%" ? 100 * (got - st.value) / st.value : got - st.value;
+        }
+        r.ok = pass(r.value, c.threshold);
+      } catch (err) { r.error = err.message; r.ok = false; }
+      return r;
+    });
+    return [{ level: "states", dx: 0, file: name, checks: checks }];
+  }
+
   function run(files) {
     var sid = sel.value;
     report.innerHTML = '<div class="card">Checking…</div>';
     getJSON("data/check/" + sid + ".json").then(function (meta) {
+      if (meta.mode === "elements" || meta.mode === "states") {
+        var f = files[0];
+        return f.text().then(function (t) {
+          var cols = parseCSV(t);
+          var res = meta.mode === "elements" ? checkElements(meta, f.name, finalSlice(cols)) : checkStates(meta, f.name, cols);
+          render(meta, res, null);
+        });
+      }
       return Promise.all(Array.prototype.map.call(files, function (f) { return f.text().then(function (t) { return { name: f.name, cols: finalSlice(parseCSV(t)) }; }); }))
         .then(function (parsed) {
           return Promise.all(parsed.map(function (p) {
