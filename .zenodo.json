@@ -1,0 +1,12 @@
+{
+  "title": "OpenHydro Bench (benchmark1d2d): open verification and validation benchmarks for 1D, 2D and coupled hydraulic models",
+  "upload_type": "software",
+  "description": "An open, engine-agnostic suite that scores flood, drainage and pipe-network models against exact solutions, conservation laws, laboratory and field measurements, and the pinned EPA SWMM 5.2.4 and EPANET 2.2 reference engines. Every result is a signed score card; production codes (HEC-RAS 6.6, TELEMAC-2D, ANUGA, GeoClaw, LISFLOOD-FP, EPA SWMM, OpenSWMM, Hydra) are run as black boxes, and results submitted by other developers are scored with the same limits.",
+  "creators": [{"name": "Jeffers, Scott"}],
+  "license": "Apache-2.0",
+  "keywords": ["verification", "validation", "benchmark", "shallow water", "SWMM", "EPANET", "flood modelling", "urban drainage", "1D/2D coupling"],
+  "related_identifiers": [
+    {"identifier": "https://github.com/scott-jeffers/benchmark1d2d", "relation": "isSupplementTo", "scheme": "url"},
+    {"identifier": "https://scott-jeffers.github.io/benchmark1d2d", "relation": "isDocumentedBy", "scheme": "url"}
+  ]
+}

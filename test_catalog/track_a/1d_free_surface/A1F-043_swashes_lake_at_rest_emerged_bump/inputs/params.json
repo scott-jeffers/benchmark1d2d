@@ -1,0 +1,19 @@
+{
+ "domain": {
+  "xmin": 0.0,
+  "xmax": 25.0
+ },
+ "bed": "z = 0.2 − 0.05 (x − 10)² on 8 < x < 12, 0 elsewhere",
+ "friction": "none",
+ "g": 9.81,
+ "upstream": {
+  "wall": true
+ },
+ "downstream": {
+  "wall": true
+ },
+ "initial": {
+  "level_m": 0.1,
+  "velocity_ms": 0.0
+ }
+}

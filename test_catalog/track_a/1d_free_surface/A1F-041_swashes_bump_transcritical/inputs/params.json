@@ -1,0 +1,21 @@
+{
+ "domain": {
+  "xmin": 0.0,
+  "xmax": 25.0
+ },
+ "bed": "z = 0.2 − 0.05 (x − 10)² on 8 < x < 12, 0 elsewhere",
+ "friction": "none",
+ "g": 9.81,
+ "q": 1.53,
+ "upstream": {
+  "discharge_m2s": 1.53
+ },
+ "downstream": {
+  "depth_m": 0.66,
+  "applies": "only while the outflow is subcritical (SWASHES): once the flow leaving the channel is supercritical it needs no downstream condition"
+ },
+ "initial": {
+  "level_m": 0.66,
+  "velocity_ms": 0.0
+ }
+}

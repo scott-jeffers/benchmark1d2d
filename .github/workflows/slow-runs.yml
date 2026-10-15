@@ -53,7 +53,7 @@ jobs:
           path: out/lisflood/*/*.scorecard.json
 
   anuga-ea:
-    name: ANUGA 4.0.1 on EA Tests 2 and 5
+    name: ANUGA 4.0.1 on EA Tests 2 and 5 and the SWASHES bump
     runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:
@@ -69,6 +69,7 @@ jobs:
           python -m pip install -q -e ".[dev]"
           python scripts/fetch_inputs.py
           python scripts/run_anuga.py A2C-EA2 A2C-EA5
+          python scripts/run_anuga.py A1F-040 A1F-041 A1F-042 A1F-043  # SWASHES bump: ~10 min each on the finest grid
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -28,6 +28,12 @@ A1F-001 MacDonald backwater: bed shaped to the exact profile, Manning
         depth (as the reference assumes), constant inflow upstream, fixed
         water level downstream, run for the case's hour.
 
+A1F-040–043 SWASHES bump channel (frictionless, n = 0.0001): steady flow
+        over the bump with inflow q upstream and a fixed stage (or free
+        outfall) downstream; the lake at rest is held by a fixed stage at its
+        own level. The channel is 1 km wide so that SWMM's minimum node
+        surface area stays negligible on 5 cm conduits.
+
 A1F-020 (stationary jump) is not run: SWMM cannot hold both the depth and
 the discharge of a supercritical inflow at its upstream boundary.
 
@@ -61,6 +67,9 @@ OUT = REPO / "out" / "swmm_track_a"
 TS = "2024-01-01T00:00:00Z"
 W_DAMBREAK = 10.0
 W_WIDE = 100_000.0
+# SWASHES bump: 1 km wide, so that even a 5 cm conduit's plan area (50 m²) dwarfs
+# SWMM's MIN_SURFAREA (1.17 m²), which would otherwise add storage at every node
+W_SWASHES = 1000.0
 # EPA SWMM rejects a Manning n of zero (ERROR 113); 0.0001 adds a friction slope
 # below 1e-7 at the dam breaks' depths and speeds, and is used for every engine.
 N_MIN = 0.0001
@@ -209,7 +218,26 @@ def macdonald(m: dict, dx: float, routing: str, inp: Path) -> tuple[list[str], n
     return links, 0.5 * (faces[1:] + faces[:-1]), list(range(len(links)))
 
 
-CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A1F-001": macdonald}
+def swashes(m: dict, dx: float, routing: str, inp: Path) -> tuple[list[str], np.ndarray, list[int]]:
+    """A1F-040–043 (SWASHES bump): bed shaped to the bump at the faces, inflow q upstream."""
+    from references.swashes import bed
+
+    prm = json.loads((Path(m["_case_dir"]) / "inputs/params.json").read_text())
+    L = prm["domain"]["xmax"]
+    faces = np.linspace(0.0, L, int(round(L / dx)) + 1)
+    z = bed(faces)
+    level = prm["initial"]["level_m"]
+    depth0 = np.maximum(level - z, 0.0)
+    up, down = prm["upstream"], prm["downstream"]
+    inflow = up["discharge_m2s"] * W_SWASHES if "discharge_m2s" in up else None
+    stage = down.get("depth_m", level if down.get("wall") else None)
+    links = write_inp(inp, faces, z, depth0, W_SWASHES, N_MIN, float(m["simulation"]["t_end"]), routing, dx,
+                      inflow=inflow, stage_out=None if stage is None else float(z[-1] + stage))
+    return links, 0.5 * (faces[1:] + faces[:-1]), list(range(len(links)))
+
+
+CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A1F-001": macdonald,
+         "A1F-040": swashes, "A1F-041": swashes, "A1F-042": swashes, "A1F-043": swashes}
 
 
 def main() -> int:

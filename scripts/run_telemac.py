@@ -329,6 +329,32 @@ def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
         # supercritical inflow (velocities of thousands of m/s within 50 s);
         # HLLC (scheme 5) runs, so it is used here and named on the card.
         scheme = 5
+    elif tid in SWASHES:
+        from references.swashes import bed
+
+        sp = json.loads((Path(m["_case_dir"]) / "inputs/params.json").read_text())
+        L = sp["domain"]["xmax"]
+        xs = np.arange(dx / 2, L - dx / 4, dx)
+        ys = np.arange(dx / 2, 3 * dx, dx)  # a strip three nodes wide
+        x, y, ikle, ipobo, loop = rect_mesh(xs, ys)
+        z = bed(x)
+        h = np.maximum(sp["initial"]["level_m"] - z, 0.0)
+        u = v = np.zeros_like(x)
+        up, down = sp["upstream"], sp["downstream"]
+        codes = {}
+        for nn in loop:
+            if np.isclose(x[nn], xs[0]) and "discharge_m2s" in up:
+                codes[nn] = (4, 5, 5)
+            elif np.isclose(x[nn], xs[-1]) and "depth_m" in down:
+                codes[nn] = (5, 4, 4)
+            elif np.isclose(x[nn], xs[-1]) and down.get("free_outflow"):
+                codes[nn] = (4, 4, 4)
+        if codes:
+            loop, order = open_boundary_order(loop, codes, ipobo)
+            wid = ys[-1] - ys[0]
+            flows = ";".join(f"{up['discharge_m2s'] * wid:.9f}" if c == (4, 5, 5) else "0." for c in order)
+            levels = ";".join(f"{down['depth_m']:.9f}" if c == (5, 4, 4) else "0." for c in order)
+            extra += f"\nPRESCRIBED FLOWRATES = {flows}\nPRESCRIBED ELEVATIONS = {levels}"
     else:
         raise KeyError(tid)
     with tempfile.TemporaryDirectory() as td:
@@ -353,12 +379,19 @@ def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
     hv = next(v for k, v in vals.items() if k.startswith("WATER DEPTH"))
     uv = next(v for k, v in vals.items() if k.startswith("VELOCITY U"))
     vv = next(v for k, v in vals.items() if k.startswith("VELOCITY V"))
+    if tid in SWASHES:  # a 1D case: the strip's middle row of nodes
+        mid = np.isclose(y, ys[1])
+        n1 = int(mid.sum())
+        nan = np.full(n1, np.nan)
+        return {"t": np.full(n1, t), "x": x[mid], "y": nan.copy(), "h": np.maximum(hv[mid], 0.0), "u": uv[mid], "v": nan.copy(),
+                "p": nan.copy(), "Q": np.maximum(hv[mid], 0.0) * uv[mid]}
     nnod = len(x)
     return {"t": np.full(nnod, t), "x": x, "y": y, "h": np.maximum(hv, 0.0), "u": uv, "v": vv,
             "p": np.full(nnod, np.nan), "z": z}
 
 
-CASES_2D = {"A2A-001", "A2A-010", "A2A-020"}
+SWASHES = {"A1F-040", "A1F-041", "A1F-042", "A1F-043"}
+CASES_2D = {"A2A-001", "A2A-010", "A2A-020"} | SWASHES
 
 
 # ── EA inter-comparison tests ───────────────────────────────────────────────

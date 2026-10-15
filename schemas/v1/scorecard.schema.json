@@ -58,6 +58,11 @@
         "adapter": {
           "type": "string",
           "minLength": 1
+        },
+        "submitted_by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Organisation that ran the solver and submitted the results (vendor submissions, scored by the suite from submissions/). Absent when the suite ran the solver itself."
         }
       }
     },

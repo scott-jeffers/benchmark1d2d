@@ -128,6 +128,25 @@ def solver_key(name: str) -> str | None:
     return None
 
 
+SUBMITTED_COLORS = ["#8C564B", "#17807E", "#B8860B", "#5D6D7E", "#A23B72", "#3B7A57"]
+
+
+def register_submitted(solver: dict) -> str:
+    """A column for results a solver's developer or user ran and submitted."""
+    import re as _re
+
+    key = "sub-" + _re.sub(r"[^a-z0-9]+", "-", f"{solver['name']}".lower()).strip("-")
+    if key not in SOLVER:
+        n = sum(1 for s in SOLVERS if s["kind"] == "submitted")
+        entry = dict(key=key, name=solver["name"], sub=f"submitted by {solver['submitted_by']}", kind="submitted",
+                     color=SUBMITTED_COLORS[n % len(SUBMITTED_COLORS)],
+                     what=(f"{solver['name']}, run by {solver['submitted_by']} and submitted as results files; "
+                           "scored by the suite with the same scorer and limits as every other run"))
+        SOLVERS.append(entry)
+        SOLVER[key] = entry
+    return key
+
+
 def load_runs(dirs: list[Path]) -> dict[str, dict[str, dict]]:
     """test_id -> solver key -> score card (later directories win)."""
     runs: dict[str, dict[str, dict]] = {}
@@ -141,7 +160,12 @@ def load_runs(dirs: list[Path]) -> dict[str, dict[str, dict]]:
                 c = json.loads(p.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 continue
-            k = solver_key((c.get("solver") or {}).get("name", ""))
+            if (c.get("solver") or {}).get("submitted_by"):
+                if any(part.startswith("_") for part in p.parts[-3:]):
+                    continue  # worked examples are scored in CI, not shown
+                k = register_submitted(c["solver"])
+            else:
+                k = solver_key((c.get("solver") or {}).get("name", ""))
             if k is None or "test_id" not in c:
                 continue
             c["_path"] = p
@@ -337,7 +361,7 @@ CASE_NOTES = {
 # ── layout ──────────────────────────────────────────────────────────────────
 
 NAV = [("results.html", "Tests &amp; results"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
-FOOT = [("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
+FOOT = [("solvers.html", "Models"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
         ("method.html", "Method"), ("get-started.html", "Command line")]
 LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 2 11 14 17 8 S27 2 33 8" fill="none" stroke-width="3" stroke-linecap="round"/>'
         '<path class="b" d="M1 18 H33" stroke-width="3" stroke-linecap="round"/></svg>')
@@ -397,6 +421,65 @@ def badge(card: dict | None) -> str:
     if card is None:
         return '<span class="badge none">Not run</span>'
     return '<span class="badge pass">✓ Passes</span>' if card.get("passed") else '<span class="badge fail">✗ Fails</span>'
+
+
+SOLVER_DOCS = {"hecras": "hecras.md", "hecras-em": "hecras.md", "openswmm-dw": "openswmm.md", "openswmm-fv": "openswmm.md",
+               "openswmm6": "openswmm.md", "hydra-uds": "hydra.md", "hydra-wds": "hydra.md", "hydronet-fvm": "hydronet.md",
+               "hydronet-pinn": "hydronet.md", "swmm-anuga": "coupled.md"}
+KIND_WORDS = {"production": "Production software, run by the suite as a black box with its own default settings.",
+              "research": "Research code, run with the settings of its own examples.",
+              "suite": "A worked example that ships with the suite.",
+              "compat": "Scored for compatibility with the current release, not for physics.",
+              "submitted": "Run by others and submitted as results files; scored by the suite with the same limits as every other run."}
+
+
+def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
+    """One model: every test it ran, with the checks and the notes."""
+    s = SOLVER[key]
+    mine = [(m, runs[m["test_id"]][key]) for m in manifests if key in (runs.get(m["test_id"]) or {})]
+    n_pass = sum(1 for _, c in mine if c.get("passed"))
+    versions = sorted({(c.get("solver") or {}).get("name", "") for _, c in mine})
+    rows = []
+    for m, c in mine:
+        sid = sid_of(m["test_id"])
+        checks = "; ".join(f'{"✓" if ck["ok"] else "✗"} {ck["label"]} {ck["value"]}' for ck in checks_for(m, c) if ck.get("gating", True))
+        note = NOTES.get((sid, key), "")
+        rows.append(f'<tr><td><a href="../tests/{sid}.html#m-{key}"><b>{esc(story(m)["name"])}</b></a><div class="muted small">{esc(sid)}</div></td>'
+                    f'<td>{badge(c)}</td><td class="small">{esc(checks)}{("<p class=note>" + esc(note) + "</p>") if note else ""}</td></tr>')
+    doc = SOLVER_DOCS.get(key)
+    doc_link = f'<p><a href="{REPO_URL}/blob/master/docs/{doc}">How it is run, and what was found →</a></p>' if doc else ""
+    body = f"""<div class="wrap">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="../solvers.html">Models</a> / {esc(s['name'])}</nav>
+<section class="page-head">
+  <h1><span class="sw" style="background:{s['color']}"></span>{esc(s['name'])} <small class="muted">{esc(s['sub'])}</small></h1>
+  <p class="lede">{esc(s['what'])}.</p>
+  <p class="muted">{esc(KIND_WORDS.get(s['kind'], ''))} Passes <b>{n_pass} of {len(mine)}</b> tests it ran. Score cards from: {esc(', '.join(versions))}.</p>
+  {doc_link}
+</section>
+<section class="section"><div class="table-scroll"><table class="data"><thead><tr><th>Test</th><th>Result</th><th>Checks that decide the result</th></tr></thead>
+<tbody>{''.join(rows)}</tbody></table></div></section>
+</div>"""
+    return layout(s["name"] + " " + s["sub"], body, "solvers.html", depth=1, description=f"Every benchmark result for {s['name']} ({s['sub']}).")
+
+
+def solvers_index(manifests: list[dict], runs: dict) -> str:
+    keys = SOLVERS_ORDER({k for v in runs.values() for k in v})
+    groups = [("production", "Production software"), ("submitted", "Submitted results"), ("research", "Research codes"),
+              ("suite", "Worked examples"), ("compat", "Compatibility")]
+    out = []
+    for kind, title in groups:
+        ks = [k for k in keys if SOLVER[k]["kind"] == kind]
+        if not ks:
+            continue
+        lis = []
+        for k in ks:
+            cards = [runs[m["test_id"]][k] for m in manifests if k in (runs.get(m["test_id"]) or {})]
+            lis.append(f'<li><a href="solvers/{k}.html"><span class="sw" style="background:{SOLVER[k]["color"]}"></span><b>{esc(SOLVER[k]["name"])}</b> '
+                       f'<span class="muted">{esc(SOLVER[k]["sub"])}</span></a> — passes {sum(1 for c in cards if c.get("passed"))} of {len(cards)}</li>')
+        out.append(f'<section class="section"><h2>{title}</h2><p class="muted">{esc(KIND_WORDS[kind])}</p><ul class="waitlist">{"".join(lis)}</ul></section>')
+    body = f"""<div class="wrap"><section class="page-head"><h1>Models</h1>
+<p class="lede">Every model scored on the benchmark, with all of its results on one page.</p></section>{''.join(out)}</div>"""
+    return layout("Models", body, "solvers.html", description="Every model scored on the benchmark.")
 
 
 def json_script(id_: str, data: Any) -> str:
@@ -562,7 +645,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
     shown = [m for m in manifests if m["status"] != "draft" or runs.get(m["test_id"])]
     drafts = [m for m in manifests if m not in shown]
     cols = SOLVERS_ORDER({k for m in shown for k in (runs.get(m["test_id"]) or {})})
-    head = "".join(f'<th scope="col">{esc(SOLVER[k]["name"])}<small>{esc(SOLVER[k]["sub"])}</small></th>' for k in cols)
+    head = "".join(f'<th scope="col"><a href="solvers/{k}.html">{esc(SOLVER[k]["name"])}</a><small>{esc(SOLVER[k]["sub"])}</small></th>' for k in cols)
     cells: dict[str, dict] = {}
     rows = []
     for gkey, gname in GROUPS.items():
@@ -626,6 +709,24 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
   <ul class="waitlist">{waits}{more}</ul>
 </div>""" if drafts else ""
     prod_list = ", ".join(SOLVER[k]["name"] + (" " + SOLVER[k]["sub"].split("·")[-1].strip() if k.startswith("lisflood") else "") for k in cols if SOLVER[k]["kind"] == "production")
+    subs = [k for k in cols if SOLVER[k]["kind"] == "submitted"]
+    if subs:
+        items = "".join(
+            f'<li><b>{esc(SOLVER[k]["name"])}</b> <span class="muted">{esc(SOLVER[k]["sub"])}</span>: '
+            f'{sum(1 for m in shown if (runs.get(m["test_id"]) or {}).get(k, {}).get("passed"))} of '
+            f'{sum(1 for m in shown if k in (runs.get(m["test_id"]) or {}))} tests pass</li>' for k in subs)
+        submitted = f"""<div class="card" style="flex:1 1 340px;min-width:0">
+  <h2 style="font-size:22px">Submitted results</h2>
+  <p class="muted">Run by the solver's developer or user and submitted as results files; the suite scores them with the same limits as every other run.</p>
+  <ul class="waitlist">{items}</ul>
+  <p style="margin:12px 0 0"><a href="{REPO_URL}/blob/master/docs/submitting.md">Submit yours →</a></p>
+</div>"""
+    else:
+        submitted = f"""<div class="card" style="flex:1 1 340px;min-width:0">
+  <h2 style="font-size:22px">Submitted results</h2>
+  <p class="muted">None yet. Commercial codes the suite cannot run itself (TUFLOW, MIKE, InfoWorks ICM, Flood Modeller and others) can be run by their developers or users, who submit the results files; the suite scores them with the same limits as everything here.</p>
+  <p style="margin:12px 0 0"><a href="{REPO_URL}/blob/master/docs/submitting.md">How to submit results →</a></p>
+</div>"""
     body = f"""
 <div class="wrap">
 <section class="page-head">
@@ -640,8 +741,8 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
     <tbody>{''.join(rows)}</tbody>
   </table>
 </div>
-<p class="small" style="margin-top:14px;max-width:90ch">The demo solvers are simple worked examples that ship with the suite. {esc(prod_list)} are production software, each run as a black box with its own default settings. HydroNet is a research code (physics-informed machine learning), scored with the settings of its own examples. SWMM 5.1.15 and EPANET 2.0 are scored for compatibility with the current releases, not for physics.</p>
-<section class="section" style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">{corpus}{wait}</section>
+<p class="small" style="margin-top:14px;max-width:90ch">The demo solvers are simple worked examples that ship with the suite. {esc(prod_list)} are production software, each run as a black box with its own default settings. HydroNet is a research code (physics-informed machine learning), scored with the settings of its own examples. SWMM 5.1.15 and EPANET 2.0 are scored for compatibility with the current releases, not for physics. Columns marked <i>submitted by …</i> were run by others and scored here.</p>
+<section class="section" style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">{corpus}{wait}{submitted}</section>
 </div>
 {json_script("cells", cells)}"""
     script = """<script>

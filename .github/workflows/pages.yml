@@ -64,6 +64,9 @@ jobs:
           OS_ARG=""; [ -x "$RUNNER_TEMP/openswmm/bin/python" ] && "$RUNNER_TEMP/openswmm/bin/python" -c "import openswmm.engine" && OS_ARG="--openswmm-python $RUNNER_TEMP/openswmm/bin/python"
           python scripts/run_track_b.py --swmm51-python "${{ steps.py310.outputs.python-path }}" $OS_ARG
 
+      - name: Score submitted results (submissions/)
+        run: python scripts/score_submissions.py --summary out/submissions.md || echo "::warning title=Submissions::a submission could not be scored (see the step log)"
+
       - name: Build site
         run: |
           python site/build.py \

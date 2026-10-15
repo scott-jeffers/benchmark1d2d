@@ -822,6 +822,25 @@ def epanet_parity_section() -> str:
 </section>"""
 
 
+def parity_history_section() -> str:
+    """Each nightly SWMM parity run, appended by the result collector (parity/history.csv)."""
+    f = PARITY_DIR / "history.csv"
+    if not f.is_file():
+        return ""
+    h = pd.read_csv(f, dtype=str).fillna("")
+    if h.empty:
+        return ""
+    trs = "".join(
+        f"<tr><td>{esc(r.date)}</td><td>{esc(CANDIDATE_NAMES.get(r.candidate, r.candidate))}</td><td><code>{esc(r.candidate_version)}</code></td>"
+        f"<td class=num>{esc(r.models)}</td><td class=num>{esc(r.within_1pct)}</td><td class=num>{esc(r.within_5pct)}</td>"
+        f"<td class=num>{esc(r.candidate_error)}</td></tr>"
+        for r in h.iloc[::-1].head(30).itertuples())
+    return f"""<section id="history"><h2>Parity over time</h2>
+<p>One row per nightly run of each candidate (newest first). The result collector appends a row after every nightly run and opens an issue when five or more models move in or out of "within 1 %", when the number of models a candidate cannot run changes, or when its version changes.</p>
+<div class="table-scroll"><table class="data"><thead><tr><th>Date</th><th>Candidate</th><th>Version</th><th class=num>Models</th><th class=num>Within 1 %</th><th class=num>Within 5 %</th><th class=num>Cannot run</th></tr></thead><tbody>{trs}</tbody></table></div>
+<p class="small"><a href="data/track_b/history.csv" download>history.csv</a></p></section>"""
+
+
 def corpus_page(index: pd.DataFrame | None, census: pd.DataFrame | None, parity: list | None = None) -> str:
     if index is None or census is None:
         return layout("Track B corpus", "<header class=page-head><h1>Track B corpus</h1><p class=lede>The corpus census has not been run yet.</p></header>", "corpus.html")
@@ -866,6 +885,7 @@ def corpus_page(index: pd.DataFrame | None, census: pd.DataFrame | None, parity:
 <tr><td>Release</td><td class=num>{int((index['tier'] != 'none').sum())}</td><td>Every model that runs, keeps continuity within ±5 % and has a verified licence</td><td><a href="data/track_b/tier_release.json">selection.json</a></td></tr>
 </tbody></table></div></section>
 {parity_section(parity or [])}
+{parity_history_section()}
 {epanet_parity_section()}
 <section><h2>Runtime</h2>{rt_bars}</section>
 <section id="coverage"><h2>What the tiers cover</h2>{tag_bars}{legend([("PR", "st-frozen"), ("Nightly", "st-candidate"), ("Release only", "st-release"), ("Not in a tier", "st-draft")])}</section>
@@ -1030,6 +1050,12 @@ def write_bundles(manifests: list[dict], cards: dict, index: pd.DataFrame | None
             zpath = data / "cases" / f"{sid}.zip"
             cdir.mkdir(parents=True, exist_ok=True)
             with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
+                from benchmark1d2d.catalog.kit import kit_files
+
+                if m["status"] != "draft":
+                    for name, text in kit_files(m).items():
+                        (cdir / name).write_text(text, encoding="utf-8")
+                        z.writestr(f"{m['test_id']}/{name}", text)
                 for p in committed_files(m):
                     rel = p.relative_to(m["_case_dir"])
                     (cdir / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -1095,6 +1121,9 @@ def write_bundles(manifests: list[dict], cards: dict, index: pd.DataFrame | None
             shutil.copy2(ROOT / f"test_catalog/track_b/tier_{tier}/selection.json", tb / f"tier_{tier}.json")
         files += [("Track B corpus", "corpus_index.csv", tb / "corpus_index.csv"), ("Track B corpus", "corpus_index.parquet", tb / "corpus_index.parquet")]
         files += [("Track B corpus", f"tier_{t}.json", tb / f"tier_{t}.json") for t in ("pr", "nightly", "release")]
+        if (PARITY_DIR / "history.csv").is_file():
+            shutil.copy2(PARITY_DIR / "history.csv", tb / "history.csv")
+            files.append(("Track B corpus", "Nightly parity history (history.csv)", tb / "history.csv"))
         for pq in sorted(PARITY_DIR.glob("*.parquet")):
             shutil.copy2(pq, tb / f"parity_{pq.name}")
             files.append(("Track B corpus", f"Parity results {pq.stem.replace('_', ', ')} (.parquet)", tb / f"parity_{pq.name}"))
@@ -1116,7 +1145,7 @@ def main() -> int:
     args = ap.parse_args()
     suite_dirs = ["site/fixtures/scorecards", "out/track_b", "out/vertical_slice", "out/networks", "out/demo_2d"]
     production_dirs = ["site/fixtures/telemac", "site/fixtures/hecras", "site/fixtures/anuga", "site/fixtures/geoclaw",
-                       "site/fixtures/lisflood", "site/fixtures/hecras2d", "site/fixtures/openswmm", "site/fixtures/swmm_track_a", "out/openswmm", "out/swmm_track_a", "site/fixtures/hydronet", "out/hydronet", "site/fixtures/hydra", "out/hydra", "out/hydra_networks", "site/fixtures/coupled", "out/coupled", "out/telemac", "out/hecras", "out/hecras2d", "out/anuga", "out/geoclaw", "out/lisflood"]
+                       "site/fixtures/lisflood", "site/fixtures/hecras2d", "site/fixtures/openswmm", "site/fixtures/swmm_track_a", "out/openswmm", "out/swmm_track_a", "site/fixtures/hydronet", "out/hydronet", "site/fixtures/hydra", "out/hydra", "out/hydra_networks", "site/fixtures/coupled", "out/coupled", "out/submitted", "out/telemac", "out/hecras", "out/hecras2d", "out/anuga", "out/geoclaw", "out/lisflood"]
     score_dirs = [Path(p) for p in (args.scorecards or suite_dirs)]
     result_dirs = [Path(p) for p in (args.results or ["out/vertical_slice", "out/networks", "out/demo_2d"])]
     score_dirs = [p if p.is_absolute() else ROOT / p for p in score_dirs]
@@ -1196,6 +1225,10 @@ def main() -> int:
         figs = legacy_figures(m, result_dirs, assets)
         out_pages[page_name(m["test_id"])] = pages.case_page(m, by, exact, curves, figs, evidence.get(m["test_id"], []))
     out_pages["downloads.html"] = downloads_page(files)
+    out_pages["solvers.html"] = pages.solvers_index(manifests, runs)
+    (DIST / "solvers").mkdir(exist_ok=True)
+    for k in {k for v in runs.values() for k in v}:
+        out_pages[f"solvers/{k}.html"] = pages.solver_page(k, manifests, runs)
     for name, html_text in out_pages.items():
         (DIST / name).write_text(html_text, encoding="utf-8")
     (DIST / ".nojekyll").write_text("", encoding="utf-8")

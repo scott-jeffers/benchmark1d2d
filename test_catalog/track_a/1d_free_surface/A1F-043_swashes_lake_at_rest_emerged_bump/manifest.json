@@ -1,0 +1,130 @@
+{
+  "schema_version": "1.1.0",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_id": "A1F-043_swashes_lake_at_rest_emerged_bump",
+  "test_class": "verification_analytic",
+  "title": "Lake at rest with an emerged bump (SWASHES)",
+  "description": "Still water at level 0.1 m over the 0.2 m bump, whose top stands out of the water between x = 9.55 and 10.45 m. Nothing should move: the depth stays max(0.1 − z, 0) and the velocity zero. A scheme that does not balance the bed slope against the pressure gradient, or mishandles the dry shoreline on a slope, sets the lake in motion.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "saint_venant_dynamic"
+    ],
+    "phenomena": [
+      "well_balancing",
+      "wetting_drying"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Delestre, O.",
+          "Lucas, C.",
+          "Ksinant, P.-A.",
+          "Darboux, F.",
+          "Laguerre, C.",
+          "Vo, T. N. T.",
+          "James, F.",
+          "Cordier, S."
+        ],
+        "year": 2013,
+        "title": "SWASHES: a compilation of shallow water analytic solutions for hydraulic and environmental studies",
+        "doi": "10.1002/fld.3741"
+      },
+      {
+        "authors": [
+          "Goutal, N.",
+          "Maurel, F."
+        ],
+        "year": 1997,
+        "title": "Proceedings of the 2nd workshop on dam-break wave simulation (EDF HE-43/97/016/B)",
+        "url": "https://www.irit.fr/swashes"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/params.json",
+      "role": "parameters",
+      "format": "json",
+      "sha256": "eb5589de2de47b1f659d521f126599519c7ae5b0e4a687010dc9ea91838a0343"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.swashes",
+      "function": "lake_at_rest",
+      "parameters": {
+        "level": 0.1
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 100.0,
+    "output_interval": 100.0,
+    "required_outputs": [
+      "h",
+      "u",
+      "Q"
+    ],
+    "mesh_refinement": {
+      "levels": [
+        0.2,
+        0.1,
+        0.05
+      ],
+      "fixed_courant": 0.5
+    },
+    "steady": false
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "Linf_u",
+        "metric": "Linf",
+        "variable": "u",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.001,
+          "units": "m/s"
+        },
+        "gating": true,
+        "rationale": "Nothing may move: worst velocity under 1 mm/s after 100 s. A scheme that does not balance the bed slope against the pressure gradient, or leaks at the dry shoreline on the bump, sets up currents of centimetres per second."
+      },
+      {
+        "id": "L1_h",
+        "metric": "L1",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.0005,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Average depth change under 0.5 mm: the lake must keep its water where it was."
+      },
+      {
+        "id": "Linf_h",
+        "metric": "Linf",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.001,
+          "units": "m"
+        },
+        "gating": false,
+        "rationale": "Informational: the worst depth difference sits in the cells cut by the shoreline, where a cell-mean depth over a sloping bed differs from the exact depth at the cell centre by up to a few millimetres on these grids even when nothing moves."
+      }
+    ],
+    "convergence": {
+      "not_applicable": "The exact state is the initial state; a well-balanced scheme keeps it to rounding error on any grid, so there is no error to converge."
+    },
+    "pass_rule": "all_gating"
+  }
+}

@@ -96,6 +96,7 @@ def build_scorecard(
             "name": solver["name"],
             "version": solver["version"],
             "adapter": solver["adapter"],
+            **({"submitted_by": solver["submitted_by"]} if solver.get("submitted_by") else {}),
         },
         "catalog_version": catalog_version,
         "timestamp": timestamp,

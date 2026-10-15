@@ -1,19 +1,21 @@
 cff-version: 1.2.0
-title: "Benchmark1d2d — Open V&V Benchmarks for Hydraulic Solvers"
+title: "OpenHydro Bench (benchmark1d2d): open V&V benchmarks for hydraulic models"
 message: "If you use this software, please cite it using the metadata from this file."
 type: software
 authors:
-  - family-names: OpenHydro
-    given-names: Contributors
-    alias: "@Scott"
+  - family-names: Jeffers
+    given-names: Scott
 repository-code: "https://github.com/scott-jeffers/benchmark1d2d"
+url: "https://scott-jeffers.github.io/benchmark1d2d"
 license: Apache-2.0
-version: "0.4.0"
-date-released: "2026-10-14"
+version: "0.5.0"
+date-released: "2026-10-15"
 abstract: >-
   An open, engine-agnostic suite for verifying and validating 1D, 2D and
   coupled 1D/2D hydraulic solvers against exact solutions, laboratory
-  measurements and the EPA SWMM / EPANET reference engines.
+  measurements and the EPA SWMM / EPANET reference engines, with signed
+  score cards for every result and a route for developers of other codes to
+  submit theirs.
 keywords:
   - verification
   - validation

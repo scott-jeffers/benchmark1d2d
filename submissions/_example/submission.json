@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0.0",
+  "solver": {
+    "name": "Demo 1D solver",
+    "version": "0.1.0",
+    "options": "First-order finite volume (HLL), CFL 0.5, as shipped in runner/python/benchmark1d2d/exec."
+  },
+  "submitted_by": "benchmark1d2d maintainers",
+  "date": "2026-10-15",
+  "results_licence": "CC0-1.0",
+  "cases": [
+    {
+      "test_id": "A1F-011",
+      "case_version": "1.0.0",
+      "results": [
+        "A1F-011_dx10.csv",
+        "A1F-011_dx5.csv",
+        "A1F-011_dx2.5.csv",
+        "A1F-011_dx1.25.csv"
+      ],
+      "notes": "The finest grid is listed last; it is the one scored."
+    }
+  ],
+  "notes": "A worked example of the submission format. Folders whose name starts with an underscore are scored in CI but not shown on the site."
+}

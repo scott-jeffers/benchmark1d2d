@@ -1,0 +1,123 @@
+{
+  "schema_version": "1.1.0",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_id": "A1F-042_swashes_bump_shock",
+  "test_class": "verification_analytic",
+  "title": "Transcritical flow over a bump with a hydraulic jump (SWASHES)",
+  "description": "Steady frictionless flow of q = 0.18 m²/s over the 0.2 m bump, held at 0.33 m downstream. The flow goes critical at the crest, accelerates down the bump and jumps back to subcritical at x = 11.666 m, where the Rankine–Hugoniot condition holds.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "saint_venant_dynamic"
+    ],
+    "phenomena": [
+      "steady_hydraulics",
+      "bed_slope",
+      "hydraulic_jump"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Delestre, O.",
+          "Lucas, C.",
+          "Ksinant, P.-A.",
+          "Darboux, F.",
+          "Laguerre, C.",
+          "Vo, T. N. T.",
+          "James, F.",
+          "Cordier, S."
+        ],
+        "year": 2013,
+        "title": "SWASHES: a compilation of shallow water analytic solutions for hydraulic and environmental studies",
+        "doi": "10.1002/fld.3741"
+      },
+      {
+        "authors": [
+          "Goutal, N.",
+          "Maurel, F."
+        ],
+        "year": 1997,
+        "title": "Proceedings of the 2nd workshop on dam-break wave simulation (EDF HE-43/97/016/B)",
+        "url": "https://www.irit.fr/swashes"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/params.json",
+      "role": "parameters",
+      "format": "json",
+      "sha256": "60030aae58473d9853e18773692e659a3cdba77d73bfb7480a4912b4bb4445d4"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.swashes",
+      "function": "steady_bump",
+      "parameters": {
+        "case": "shock",
+        "g": 9.81
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 300.0,
+    "output_interval": 300.0,
+    "required_outputs": [
+      "h",
+      "u",
+      "Q"
+    ],
+    "mesh_refinement": {
+      "levels": [
+        0.2,
+        0.1,
+        0.05
+      ],
+      "fixed_courant": 0.5
+    },
+    "steady": true
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "L1_h",
+        "metric": "L1",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.005,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Average depth error under 5 mm (1.5 % of the downstream depth) once steady; a jump one cell out of place costs about 0.2 m over one cell, about 1 mm of average error on the finest grid."
+      },
+      {
+        "id": "L1_Q",
+        "metric": "L1",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.0018,
+          "units": "m²/s"
+        },
+        "gating": true,
+        "rationale": "Discharge within 1 % of q on average."
+      }
+    ],
+    "convergence": {
+      "norm": "L1",
+      "variable": "h",
+      "expected_order": 1.0,
+      "min_observed_order": 0.8
+    },
+    "pass_rule": "all_gating"
+  }
+}

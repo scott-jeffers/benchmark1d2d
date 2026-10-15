@@ -179,12 +179,43 @@ def oblique_jump(m: dict, dx: float, tid: str) -> dict:
     return _frame2d(pts, _sample(d, pts), t)
 
 
+def swashes_bump(m: dict, dx: float, tid: str) -> dict:
+    """A1F-040/041/042/043 (SWASHES): the 25 m bump channel as a strip two cells wide."""
+    from references.swashes import bed
+
+    prm = json.loads((Path(m["_case_dir"]) / "inputs/params.json").read_text())
+    L, width = prm["domain"]["xmax"], 2 * dx
+    d = _domain(L, width, dx)
+    d.set_quantity("elevation", lambda x, y: bed(x), location="centroids")
+    d.set_quantity("friction", 0.0)
+    level = prm["initial"]["level_m"]
+    d.set_quantity("stage", lambda x, y: np.maximum(bed(x), level), location="centroids")
+    br = anuga.Reflective_boundary(d)
+    up, down = prm["upstream"], prm["downstream"]
+    if "discharge_m2s" in up:
+        anuga.Inlet_operator(d, [[0.25 * dx, 0.0], [0.25 * dx, width]], Q=up["discharge_m2s"] * width)
+    if "depth_m" in down:
+        right = anuga.Transmissive_n_momentum_zero_t_momentum_set_stage_boundary(d, lambda t: down["depth_m"])
+    elif down.get("free_outflow"):
+        right = anuga.Transmissive_boundary(d)
+    else:
+        right = br
+    d.set_boundary({"left": br, "right": right, "top": br, "bottom": br})
+    t = _evolve(d, float(m["simulation"]["t_end"]))
+    xs = np.arange(dx / 2, L, dx)
+    s = CellSampler(d, np.column_stack([xs, np.full_like(xs, width / 2)]))()
+    n = len(xs)
+    nan = np.full(n, np.nan)
+    return {"t": np.full(n, t), "x": xs, "y": nan.copy(), "h": s["h"], "u": s["u"], "v": nan.copy(), "p": nan.copy(), "Q": s["h"] * s["u"]}
+
+
 def _frame2d(pts, s, t):
     n = len(pts)
     return {"t": np.full(n, t), "x": pts[:, 0], "y": pts[:, 1], "h": s["h"], "u": s["u"], "v": s["v"], "p": np.full(n, np.nan), "z": s["z"]}
 
 
-CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A2A-001": thacker, "A2A-010": macdonald_2d, "A2A-020": oblique_jump}
+CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A2A-001": thacker, "A2A-010": macdonald_2d, "A2A-020": oblique_jump,
+         "A1F-040": swashes_bump, "A1F-041": swashes_bump, "A1F-042": swashes_bump, "A1F-043": swashes_bump}
 
 
 # ── EA inter-comparison tests ───────────────────────────────────────────────

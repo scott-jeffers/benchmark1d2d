@@ -63,6 +63,12 @@ ROUTES = [
     (r"^Hydra urban drainage \(", "swmm_track_a/hydra-uds"),
     (r"^SWMM–ANUGA coupled", "coupled/swmm-anuga"),
 ]
+HISTORY = PARITY / "history.csv"
+HISTORY_COLS = ["date", "run", "tier", "candidate", "candidate_version", "upstream_commit", "models", "scored",
+                "within_1pct", "within_5pct", "candidate_error", "median_worst_pct"]
+# a nightly parity change worth an issue: this many models moving in or out of "within 1 %",
+# or any change in the number the candidate cannot run
+SHIFT_MODELS = 5
 PARITY_FILES = re.compile(r"^(nightly|pr|release)_(?!census)[\w.-]+\.(parquet|summary\.json)$|^epanet_[\w.-]+\.(parquet|summary\.json)$")
 
 
@@ -116,6 +122,48 @@ def case_version(test_id: str) -> str | None:
     return _VERSIONS[test_id]
 
 
+def history_row(summary: dict, run: dict) -> dict:
+    st = summary.get("status") or {}
+    w = summary.get("within_pct") or {}
+    return {"date": run["createdAt"][:10], "run": str(run["databaseId"]), "tier": summary.get("tier", ""),
+            "candidate": summary.get("candidate", ""), "candidate_version": summary.get("candidate_version", ""),
+            "upstream_commit": (summary.get("upstream_commit") or "")[:7], "models": summary.get("models", ""),
+            "scored": st.get("scored", ""), "within_1pct": w.get("1", ""), "within_5pct": w.get("5", ""),
+            "candidate_error": st.get("candidate_error", 0), "median_worst_pct": summary.get("median_worst_pct", "")}
+
+
+def append_history(row: dict, dry_run: bool) -> str | None:
+    """Append a nightly parity summary to history.csv; describe a shift from the previous run, if any."""
+    import csv
+
+    rows = []
+    if HISTORY.is_file():
+        with HISTORY.open(encoding="utf-8", newline="") as fh:
+            rows = list(csv.DictReader(fh))
+    if any(r["run"] == row["run"] and r["candidate"] == row["candidate"] and r["tier"] == row["tier"] for r in rows):
+        return None
+    prev = next((r for r in reversed(rows) if r["candidate"] == row["candidate"] and r["tier"] == row["tier"]), None)
+    shift = None
+    if prev is not None:
+        try:
+            d1 = int(row["within_1pct"]) - int(prev["within_1pct"])
+            de = int(row["candidate_error"] or 0) - int(prev["candidate_error"] or 0)
+        except (TypeError, ValueError):
+            d1 = de = 0
+        if abs(d1) >= SHIFT_MODELS or de != 0 or row["candidate_version"] != prev["candidate_version"]:
+            shift = (f"**{row['candidate']} ({row['tier']}) parity shift**: within 1 % {prev['within_1pct']} → {row['within_1pct']}, "
+                     f"cannot run {prev['candidate_error'] or 0} → {row['candidate_error'] or 0}"
+                     + (f", version {prev['candidate_version']} → {row['candidate_version']}" if row["candidate_version"] != prev["candidate_version"] else ""))
+    if not dry_run:
+        new = not HISTORY.is_file()
+        with HISTORY.open("a", encoding="utf-8", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=HISTORY_COLS)
+            if new:
+                w.writeheader()
+            w.writerow(row)
+    return shift
+
+
 def summarise_change(old: dict | None, new: dict) -> str | None:
     if old is None:
         return f"new: {'PASS' if new['passed'] else 'FAIL'}"
@@ -157,6 +205,11 @@ def main() -> int:
                         n_changed += 1
                         if not args.dry_run:
                             shutil.copyfile(path, dest)
+                    if path.name.endswith(".summary.json") and path.name.startswith("nightly_"):
+                        shift = append_history(history_row(json.loads(path.read_text(encoding="utf-8")), run), args.dry_run)
+                        if shift:
+                            lines.append(f"  - {shift}")
+                            flips += 1
                     continue
                 if not path.name.endswith(".scorecard.json"):
                     continue

@@ -146,6 +146,27 @@ def _cmd_verify_card(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_kit(args: argparse.Namespace) -> int:
+    """Copy a case's inputs and write its results template and submission notes."""
+    import shutil
+
+    from benchmark1d2d.catalog.kit import kit_files
+
+    repo = find_repo_root()
+    m = load_manifest(args.test_id, repo=repo)
+    out = Path(args.out) / m["test_id"]
+    case_dir = Path(m["_case_dir"])
+    for p in case_dir.rglob("*"):
+        if p.is_file() and "__pycache__" not in p.parts:
+            dest = out / p.relative_to(case_dir)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(p, dest)
+    for name, text in kit_files(m).items():
+        (out / name).write_text(text, encoding="utf-8")
+    print(f"kit for {m['test_id']} written to {out}: see HOW_TO_SUBMIT.md")
+    return 0
+
+
 def _cmd_verify(args: argparse.Namespace) -> int:
     import jsonschema
 
@@ -281,6 +302,11 @@ def build_parser() -> argparse.ArgumentParser:
     score.add_argument("--solver-version", default=None)
     score.add_argument("--adapter", default="generic_parquet")
     score.set_defaults(func=_cmd_score)
+
+    kit = sub.add_parser("kit", help="Write a case's submission kit: inputs, results template, instructions")
+    kit.add_argument("test_id")
+    kit.add_argument("--out", default="kits", help="directory to write into (default: kits/)")
+    kit.set_defaults(func=_cmd_kit)
 
     verify = sub.add_parser("verify", help="Validate manifest schema and input hashes")
     verify.add_argument("test_id")

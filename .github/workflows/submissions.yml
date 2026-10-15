@@ -1,0 +1,49 @@
+name: Submissions
+
+# A pull request that adds or changes submitted results is validated and
+# scored with the suite's scorer; the scores are posted on the pull request.
+on:
+  pull_request:
+    paths:
+      - submissions/**
+      - schemas/v1/submission.schema.json
+      - scripts/score_submissions.py
+  push:
+    branches: [master]
+    paths:
+      - submissions/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -q -e ".[dev]"
+      - name: Validate and score every submission
+        id: score
+        run: |
+          set +e
+          python scripts/score_submissions.py --summary out/submissions.md
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+          cat out/submissions.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Post the scores on the pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file out/submissions.md || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: submitted-scorecards
+          path: out/submitted/*/*.scorecard.json
+      - name: Fail on a malformed submission
+        if: steps.score.outputs.status != '0'
+        run: exit 1
