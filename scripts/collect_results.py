@@ -33,7 +33,8 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 
 FIXTURES = REPO / "site" / "fixtures"
-CURVES = FIXTURES / "curves"  # chart extracts (scripts/export_curves.py), one per test and model
+CURVES = FIXTURES / "curves"
+NEWS = FIXTURES / "news.jsonl"  # one line per collection that changed something: the site's "What's new" page  # chart extracts (scripts/export_curves.py), one per test and model
 PARITY = REPO / "test_catalog" / "track_b" / "parity"
 
 # workflow file -> artifact names to collect (None = all of the run's artifacts)
@@ -165,6 +166,23 @@ def append_history(row: dict, dry_run: bool) -> str | None:
     return shift
 
 
+def record_news(lines: list[str]) -> None:
+    """Append what changed, per workflow, to the site's news log."""
+    from datetime import datetime, timezone
+
+    items, wf = [], None
+    for ln in lines:
+        if ln.startswith("- `"):
+            wf = ln.split("`")[1]
+        elif ln.startswith("  - ") and not ln.startswith(("  - skipped", "  - REJECTED")):
+            items.append({"workflow": wf, "text": ln[4:]})
+    if not items:
+        return
+    entry = {"date": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "items": items}
+    with NEWS.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
 def summarise_change(old: dict | None, new: dict) -> str | None:
     if old is None:
         return f"new: {'PASS' if new['passed'] else 'FAIL'}"
@@ -252,6 +270,8 @@ def main() -> int:
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     dest.write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
     lines += ["", f"{n_changed} file(s) changed, {flips} pass/fail change(s), {n_curves} chart curve(s) updated."]
+    if n_changed and not args.dry_run:
+        record_news(lines)
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))

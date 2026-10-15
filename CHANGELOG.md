@@ -3,6 +3,32 @@
 All notable changes to this suite are documented here.
 Suite releases are independent of schema semver (`schemas/v1`).
 
+## [Unreleased]
+
+The website grows up: a picture and a chart for every test, a model-against-
+model comparison, a browser check for 20 tests, and pages that keep in step
+with the results by themselves.
+
+### Added
+
+- **A picture tile for every test** and a *Cards* view of all tests, grouped
+  by topic, with how many models pass each; new topics *Sewers and drainage*
+  and *Sewers meeting streets*.
+- **Charts for the drainage, coupled, SWASHES and Environment Agency tests**:
+  water along the pipes and each manhole's difference from the exact answer,
+  tank and pump transients, the coupled water balance over time, the bump
+  channel's water level, and gauge levels over time. Models far off the exact
+  answer start hidden; hiding one rescales the chart.
+- **Charts follow the scores**: every solver workflow exports its chart data
+  (`scripts/export_curves.py`) and the result collector files it with the
+  score cards.
+- **Browser check for 20 tests** (was 8): the SWASHES bump channel, the
+  drainage networks node by node and the coupled tests on their exact states
+  and water balance.
+- **Compare two models** (`compare.html`), **a page per model**, **result
+  badges** and **shareable result links**, **preview images** for every page
+  shared on social media, and **What's new** (`news.html`, `feed.xml`).
+
 ## [0.5.0] — 2026-10-15
 
 Exact answers for drainage networks and 1D/2D coupling, the SWASHES cases,

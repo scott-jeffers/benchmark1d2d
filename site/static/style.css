@@ -472,3 +472,14 @@ details.share { margin-top: 10px; font-size: 14px; }
 details.share summary { cursor: pointer; color: var(--water); font-weight: 600; }
 details.share label { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 details.share input { font: 13px var(--mono); padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--ink); width: 100%; }
+
+/* what's new */
+.news-cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 900px) { .news-cols { grid-template-columns: minmax(0, 1fr); } }
+.news-item { margin-bottom: 16px; }
+.news-item h3 { margin: 0 0 8px; }
+.news-item ul { margin: 10px 0; padding-left: 20px; }
+.news-item details summary { cursor: pointer; color: var(--water); font-weight: 600; margin-top: 6px; }
+.news-change { border-left: 3px solid var(--rule); padding: 4px 0 4px 16px; margin: 0 0 18px; }
+.news-change ul { margin: 6px 0 0; padding-left: 18px; font-size: 15px; }
+.news-change .kicker { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }

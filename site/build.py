@@ -1277,6 +1277,10 @@ def main() -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"WARN home preview image: {exc}", file=sys.stderr)
     out_pages["downloads.html"] = downloads_page(files)
+    import news
+
+    out_pages["news.html"] = news.news_page(pages.layout, md, ROOT / "CHANGELOG.md", SITE / "fixtures" / "news.jsonl")
+    news.atom_feed(ROOT / "CHANGELOG.md", SITE / "fixtures" / "news.jsonl", DIST / "feed.xml")
     out_pages["solvers.html"] = pages.solvers_index(manifests, runs)
     out_pages["compare.html"] = pages.compare_page(manifests, runs)
     (DIST / "solvers").mkdir(exist_ok=True)

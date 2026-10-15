@@ -378,7 +378,7 @@ CASE_NOTES = {
 # ── layout ──────────────────────────────────────────────────────────────────
 
 NAV = [("results.html", "Tests &amp; results"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
-FOOT = [("solvers.html", "Models"), ("compare.html", "Compare models"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
+FOOT = [("news.html", "What's new"), ("solvers.html", "Models"), ("compare.html", "Compare models"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
         ("method.html", "Method"), ("get-started.html", "Command line")]
 LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 2 11 14 17 8 S27 2 33 8" fill="none" stroke-width="3" stroke-linecap="round"/>'
         '<path class="b" d="M1 18 H33" stroke-width="3" stroke-linecap="round"/></svg>')
