@@ -23,7 +23,7 @@ Suite releases are independent of schema semver (`schemas/v1`).
     oblique jump (HLLC, since its default kinetic scheme goes unstable with
     a supercritical inflow) the depth is right (1 cm, order 0.94) but the
     stored water is 0.15 % high (0.1 % allowed).
-  - ANUGA passes the EA tests 1 and 4 (2 and 5 run weekly).
+  - ANUGA passes EA Tests 1, 2 and 4 (2 and 5 also run weekly).
   - HEC-RAS 2D with boundary lines (`scripts/run_hecras_2d_cases.py`): passes
     EA 1, 4 and 5; fails EA 2's mass check (its own accounting: +1.4 %);
     MacDonald 2D accurate to 0.1 mm but its error levels off near HEC-RAS's
