@@ -31,8 +31,13 @@ A1F-001 MacDonald backwater: bed shaped to the exact profile, Manning
 A1F-040–043 SWASHES bump channel (frictionless, n = 0.0001): steady flow
         over the bump with inflow q upstream and a fixed stage (or free
         outfall) downstream; the lake at rest is held by a fixed stage at its
-        own level. The channel is 1 km wide so that SWMM's minimum node
-        surface area stays negligible on 5 cm conduits.
+        own level. ``MIN_SURFAREA`` is set to 0.001 m²: on 5 cm conduits
+        SWMM's default (1.17 m²) exceeds a node's own plan area. The routing
+        step is dx/20 (0.01 s on the 0.2 m grid): SWMM's variable step is
+        set by the flow velocity, so in still or slow deep water it stays at
+        the routing step, far above the gravity-wave limit on short
+        conduits, and a lake at rest starts to slosh (1.3 m/s on a 0.4 %
+        slope with a 1 s step; 0.00007 m/s with 0.05 s).
 
 A1F-020 (stationary jump) is not run: SWMM cannot hold both the depth and
 the discharge of a supercritical inflow at its upstream boundary.
@@ -67,9 +72,11 @@ OUT = REPO / "out" / "swmm_track_a"
 TS = "2024-01-01T00:00:00Z"
 W_DAMBREAK = 10.0
 W_WIDE = 100_000.0
-# SWASHES bump: 1 km wide, so that even a 5 cm conduit's plan area (50 m²) dwarfs
-# SWMM's MIN_SURFAREA (1.17 m²), which would otherwise add storage at every node
-W_SWASHES = 1000.0
+# SWASHES bump: on 5 cm conduits a node's own plan area (0.5 m² at 10 m wide) is below
+# SWMM's default MIN_SURFAREA (1.17 m²), which would add storage at every node; the
+# bump cases set MIN_SURFAREA to 0.001 m² instead.
+W_SWASHES = W_DAMBREAK
+MIN_SURFAREA_SWASHES = 0.001
 # EPA SWMM rejects a Manning n of zero (ERROR 113); 0.0001 adds a friction slope
 # below 1e-7 at the dam breaks' depths and speeds, and is used for every engine.
 N_MIN = 0.0001
@@ -88,7 +95,8 @@ def _hms(seconds: float) -> str:
 
 
 def write_inp(path: Path, faces: np.ndarray, z: np.ndarray, depth0: np.ndarray, width: float, n: float,
-              t_end: float, routing: str, dx: float, inflow: float | None = None, stage_out: float | None = None) -> list[str]:
+              t_end: float, routing: str, dx: float, inflow: float | None = None, stage_out: float | None = None,
+              extra: tuple[str, ...] = (), routing_step: float = 1.0) -> list[str]:
     """Chain of conduits between face nodes; returns the conduit names in order."""
     nn = len(faces)
     nodes = [f"N{i:05d}" for i in range(nn)]
@@ -97,9 +105,9 @@ def write_inp(path: Path, faces: np.ndarray, z: np.ndarray, depth0: np.ndarray, 
             "START_DATE 01/01/2000", "START_TIME 00:00:00", "REPORT_START_DATE 01/01/2000", "REPORT_START_TIME 00:00:00",
             "END_DATE 01/01/2000", f"END_TIME {_hms(t_end)}", "SWEEP_START 01/01", "SWEEP_END 12/31", "DRY_DAYS 0",
             f"REPORT_STEP {_hms(min(t_end, 60.0) if t_end % 60 == 0 else 5)}", "WET_STEP 00:05:00", "DRY_STEP 01:00:00",
-            "ROUTING_STEP 1", "VARIABLE_STEP 0.75", "MINIMUM_STEP 0.001", "ALLOW_PONDING NO", "INERTIAL_DAMPING PARTIAL",
+            f"ROUTING_STEP {routing_step:g}", "VARIABLE_STEP 0.75", "MINIMUM_STEP 0.001", "ALLOW_PONDING NO", "INERTIAL_DAMPING PARTIAL",
             "NORMAL_FLOW_LIMITED BOTH", "FORCE_MAIN_EQUATION H-W", "MAX_TRIALS 8", "HEAD_TOLERANCE 0.0005",
-            "SYS_FLOW_TOL 5", "LAT_FLOW_TOL 5", "THREADS 1"]
+            "SYS_FLOW_TOL 5", "LAT_FLOW_TOL 5", "THREADS 1", *extra]
     if routing == "FV":
         opts += ["FV_MIN_CELLS 1"]
     lines = opts + ["", "[JUNCTIONS]", ";;Name Elev MaxDepth InitDepth SurDepth Aponded"]
@@ -232,7 +240,8 @@ def swashes(m: dict, dx: float, routing: str, inp: Path) -> tuple[list[str], np.
     inflow = up["discharge_m2s"] * W_SWASHES if "discharge_m2s" in up else None
     stage = down.get("depth_m", level if down.get("wall") else None)
     links = write_inp(inp, faces, z, depth0, W_SWASHES, N_MIN, float(m["simulation"]["t_end"]), routing, dx,
-                      inflow=inflow, stage_out=None if stage is None else float(z[-1] + stage))
+                      inflow=inflow, stage_out=None if stage is None else float(z[-1] + stage),
+                      extra=(f"MIN_SURFAREA {MIN_SURFAREA_SWASHES}",), routing_step=dx / 20.0)
     return links, 0.5 * (faces[1:] + faces[:-1]), list(range(len(links)))
 
 
