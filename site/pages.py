@@ -63,6 +63,10 @@ SOLVERS: list[dict] = [
          what="OpenSWMM Engine v6 (HydroCouple's SWMM 6, pre-release) with dynamic-wave routing"),
     dict(key="openswmm-fv", name="OpenSWMM 6", sub="finite volume", kind="production", color="#C2185B",
          what="OpenSWMM Engine v6 with its new explicit finite-volume routing (FLOW_ROUTING FV), one cell per conduit"),
+    dict(key="hydronet-fvm", name="HydroNet", sub="finite volume", kind="research", color="#8E3B46",
+         what="HydroNet (Penn State) — its differentiable Roe finite-volume solver (Heun RK2, CFL 0.3), the engine inside its FVM-PINN"),
+    dict(key="hydronet-pinn", name="HydroNet", sub="FVM-PINN", kind="research", color="#C46B7A",
+         what="HydroNet's FVM-PINN neural network, trained per grid with the recipe of its own dam-break example (64×5 network, 5000 Adam epochs)"),
     dict(key="swmm515", name="SWMM 5.1.15", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-2)",
          what="EPA SWMM 5.1.15, the previous release, compared with SWMM 5.2.4"),
     dict(key="openswmm6", name="OpenSWMM 6", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-5)",
@@ -103,6 +107,8 @@ def solver_key(name: str) -> str | None:
         return "anuga"
     if n.startswith("geoclaw"):
         return "geoclaw"
+    if n.startswith("hydronet"):
+        return "hydronet-pinn" if "pinn" in n else "hydronet-fvm"
     if n.startswith("lisflood"):
         for k in ("fv1", "dg2", "acc"):
             if k in n:
@@ -299,6 +305,8 @@ NOTES = {
     ("A2C-EA1", "hecras"): "Run on the EA's own 2 m DEM, which HEC-RAS uses as sub-grid terrain. The pond settles 1.3 cm above the sill (2 cm allowed).",
     ("A2C-EA2", "hecras"): "HEC-RAS's own volume accounting reports 1.4 % more water stored than flowed in (98,576 m³ from 97,194 m³). Integrating its water levels over the 2 m DEM gives +0.76 %, also over the limit. Run on the EA's own 2 m DEM as sub-grid terrain.",
     ("A2C-EA2", "hecras-em"): "As SWE-ELM: HEC-RAS's own accounting shows a 1.4 % volume error.",
+    ("A1F-010", "hydronet-fvm"): "The dam never breaks: no water crosses onto the dry bed. HydroNet's Roe residual uses a fixed 1 cm dry threshold and, at a face between a wet and a dry cell, the wet cell's own flux, so still water next to dry ground feels no net force. The same happens below a 1 cm downstream layer. Mass is conserved because nothing moves.",
+    ("A1F-011", "hydronet-fvm"): "Into 10 cm of water the dam break runs normally: depth error 1.4 mm (passes) and mass 0.016 %, but the error falls at order 0.69 (minimum 0.8).",
 }
 CASE_NOTES = {
     "A1F-010": "Since version 2 the front is measured by volume: the point beyond which the last 5 % of the released water lies. Version 1 used the 1 mm depth contour, which every production code failed by 12 to 211 m: on the thin tip a millimetre of depth moves that contour about 10 m, and production codes treat water shallower than about 1 mm as dry. The 1 mm edge is still reported, but no longer decides the result.",
@@ -611,7 +619,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
     <tbody>{''.join(rows)}</tbody>
   </table>
 </div>
-<p class="small" style="margin-top:14px;max-width:90ch">The demo solvers are simple worked examples that ship with the suite. {esc(prod_list)} are production software, each run as a black box with its own default settings. SWMM 5.1.15 and EPANET 2.0 are scored for compatibility with the current releases, not for physics.</p>
+<p class="small" style="margin-top:14px;max-width:90ch">The demo solvers are simple worked examples that ship with the suite. {esc(prod_list)} are production software, each run as a black box with its own default settings. HydroNet is a research code (physics-informed machine learning), scored with the settings of its own examples. SWMM 5.1.15 and EPANET 2.0 are scored for compatibility with the current releases, not for physics.</p>
 <section class="section" style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">{corpus}{wait}</section>
 </div>
 {json_script("cells", cells)}"""

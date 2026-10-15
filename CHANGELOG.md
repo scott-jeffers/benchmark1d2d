@@ -23,11 +23,19 @@ Suite releases are independent of schema semver (`schemas/v1`).
     oblique jump (HLLC, since its default kinetic scheme goes unstable with
     a supercritical inflow) the depth is right (1 cm, order 0.94) but the
     stored water is 0.15 % high (0.1 % allowed).
-  - ANUGA passes EA Tests 1, 2 and 4 (2 and 5 also run weekly).
+  - ANUGA passes all four EA tests (2 and 5 run weekly).
   - HEC-RAS 2D with boundary lines (`scripts/run_hecras_2d_cases.py`): passes
     EA 1, 4 and 5; fails EA 2's mass check (its own accounting: +1.4 %);
     MacDonald 2D accurate to 0.1 mm but its error levels off near HEC-RAS's
     iteration tolerance, so it does not converge.
+- **HydroNet (Penn State) scored** (`scripts/run_hydronet.py`, `docs/hydronet.md`),
+  a physics-informed machine-learning framework, as two solvers: its Roe
+  finite-volume engine and its FVM-PINN network. The finite-volume engine
+  passes Stoker's depth and mass checks (order 0.69), never starts the
+  dry-bed dam break (a fixed 1 cm dry threshold and a one-sided wet/dry flux
+  leave still water next to dry ground without a net force), and goes
+  unstable on the Thacker bowl below 10 cm grids. The volume front now reads
+  "still at the dam" when no water has crossed.
 - `.github/workflows/slow-runs.yml`: weekly LISFLOOD-FP DG2, ANUGA and
   TELEMAC on EA Tests 2 and 5.
 - **A1F-010 v2.0.0: the gating front check is now integral.** The front is

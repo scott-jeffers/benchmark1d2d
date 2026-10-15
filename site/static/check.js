@@ -144,7 +144,7 @@
     }
     var tail = new Array(n), sum = 0;
     for (var j = n - 1; j >= 0; j--) { sum += vol[j]; tail[j] = sum; }
-    if (!(tail[0] > 0)) throw new Error("no water downstream of the dam");
+    if (!(tail[0] > 0)) return x0;  // no water has crossed: the front is still at the dam
     var target = frac * tail[0], q = 0;
     while (q < n && tail[q] > target) q++;
     if (q === 0) return lo[0];

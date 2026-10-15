@@ -164,7 +164,7 @@ def volume_front_position(x, h, fraction: float, x_from: float) -> float:
     tail = np.cumsum(vol[::-1])[::-1]  # volume from each cell's left edge to the end
     total = float(tail[0])
     if total <= 0.0:
-        raise ValueError("no water downstream of x_from")
+        return float(x_from)  # no water has crossed: the front is still at x_from
     target = fraction * total
     i = int(np.searchsorted(-tail, -target, side="left"))  # first cell whose tail <= target
     if i == 0:

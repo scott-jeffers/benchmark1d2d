@@ -133,3 +133,10 @@ def test_volume_front_ignores_a_thin_film():
     base = volume_front_position(x, h, 0.1, 0.0)
     film = volume_front_position(x, np.where(x < 50, 1.0, 1e-6), 0.1, 0.0)
     assert abs(base - 45.0) < 1e-9 and abs(film - base) < 0.01
+
+
+def test_volume_front_without_water_downstream_is_at_the_dam():
+    from benchmark1d2d.metrics import volume_front_position
+
+    x = np.arange(0.5, 100.0, 1.0)
+    assert volume_front_position(x, np.where(x < 50, 1.0, 0.0), 0.05, 50.0) == 50.0
