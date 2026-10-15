@@ -1,0 +1,158 @@
+{
+  "schema_version": "1.1.0",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_id": "A12-011_flood_draining_into_pipe",
+  "test_class": "verification_analytic",
+  "title": "Flood draining into a pipe",
+  "description": "A 30 × 30 m walled yard holds 0.3 m of water (270 m³). It drains through a gully whose crest stands 5 cm above the yard floor into a 0.3 m pipe to a free outfall. The water above the crest leaves through the pipe; the 5 cm below it cannot. After two hours the yard is ponded at the crest level (45 m³ stays), and 225 m³ has left by the outfall.",
+  "physics": {
+    "dimensionality": "1D2D",
+    "flow_type": "mixed",
+    "governing_equations": [
+      "saint_venant_dynamic",
+      "shallow_water_2d",
+      "manhole_exchange"
+    ],
+    "phenomena": [
+      "sewer_surface_exchange",
+      "manhole",
+      "volume_balance"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Chen, A. S.",
+          "Djordjević, S.",
+          "Leandro, J.",
+          "Savić, D. A."
+        ],
+        "year": 2007,
+        "title": "The urban inundated area: a coupled 1D/2D model for the interaction between sewer and surface",
+        "url": "https://www.researchgate.net/publication/257306339"
+      },
+      {
+        "authors": [
+          "Rubinato, M.",
+          "Martins, R.",
+          "Kesserwani, G.",
+          "Leandro, J.",
+          "Djordjević, S.",
+          "Shucksmith, J."
+        ],
+        "year": 2017,
+        "title": "Experimental calibration and validation of sewer/surface flow exchange equations in steady and unsteady flow conditions",
+        "doi": "10.1016/j.jhydrol.2017.06.024"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/coupling.json",
+      "role": "coupling",
+      "format": "json",
+      "sha256": "a94ee75f36fa520bc1a140e9d2ef23cde3391f2626f7e205dc37bb22dccc29d6"
+    }
+  ],
+  "reference": {
+    "kind": "exact_states",
+    "expected_states": [
+      {
+        "id": "final_level",
+        "variable": "h",
+        "where": "P1,P2",
+        "time": 7200,
+        "value": 0.05,
+        "units": "m",
+        "derivation": "Water drains until the yard level reaches the gully crest, 0.05 m above the flat floor; nothing below the crest can enter."
+      },
+      {
+        "id": "discharged_volume",
+        "variable": "V",
+        "element": "outflow",
+        "time": 7200,
+        "value": 225.0,
+        "units": "m3",
+        "derivation": "Initial 270 m³ (900 m² × 0.3 m) less the 45 m³ held below the crest (900 m² × 0.05 m); the pipe drains freely, so it holds none at the end."
+      }
+    ]
+  },
+  "simulation": {
+    "t_end": 7200.0,
+    "output_interval": 60.0,
+    "required_outputs": [
+      "h",
+      "Q",
+      "V"
+    ],
+    "probes": [
+      {
+        "id": "P1",
+        "x": 5.0,
+        "y": 5.0,
+        "variables": [
+          "h"
+        ]
+      },
+      {
+        "id": "P2",
+        "x": 25.0,
+        "y": 25.0,
+        "variables": [
+          "h"
+        ]
+      }
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "final_level",
+        "metric": "expected_state_error",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.01,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Yard level within 1 cm of the crest after two hours: the last of the water over a crest drains slowly (as a weir it slows with the head to the 3/2), so a coupling with any reasonable exchange law is within a few millimetres.",
+        "against": "final_level",
+        "variable": "h",
+        "where": "P1,P2"
+      },
+      {
+        "id": "discharged_volume",
+        "metric": "expected_state_error",
+        "threshold": {
+          "op": "abs<=",
+          "value": 2.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Outfall volume within 2 % of 225 m³: the water above the crest has gone through the pipe.",
+        "against": "discharged_volume",
+        "variable": "V"
+      },
+      {
+        "id": "water_balance",
+        "metric": "continuity_error",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.5,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "By the end of the run, the water stored on the surface and in the pipes has changed by exactly what came in minus what went out. A coupling that moves water between the two models must not make or lose any; each engine's own continuity error is allowed within this limit.",
+        "variable": "volume"
+      }
+    ],
+    "convergence": {
+      "not_applicable": "Scored on exact states that follow from conservation (exchanged and discharged volumes, settled levels): they do not depend on the grid."
+    },
+    "pass_rule": "all_gating"
+  }
+}

@@ -617,6 +617,9 @@
         },
         {
           "$ref": "#/$defs/reference_intercomparison"
+        },
+        {
+          "$ref": "#/$defs/reference_exact_states"
         }
       ]
     },
@@ -813,7 +816,8 @@
               "p",
               "Q",
               "c",
-              "z"
+              "z",
+              "V"
             ]
           }
         },
@@ -1170,6 +1174,66 @@
             },
             "notes": {
               "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "reference_exact_states": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "expected_states"
+      ],
+      "description": "Exact states that follow from the inputs by conservation or hydrostatics (no closed-form field): settled levels, exchanged and discharged volumes, steady exchange flows. Scored like inter-comparison expected states, but the values are exact.",
+      "properties": {
+        "kind": {
+          "const": "exact_states"
+        },
+        "expected_states": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "variable",
+              "value",
+              "units",
+              "derivation"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9_]+$"
+              },
+              "variable": {
+                "type": "string"
+              },
+              "where": {
+                "type": "string"
+              },
+              "time": {
+                "type": "number",
+                "description": "Seconds; omit for end of run."
+              },
+              "value": {
+                "type": "number"
+              },
+              "units": {
+                "type": "string"
+              },
+              "derivation": {
+                "type": "string",
+                "minLength": 1,
+                "description": "How the value follows from the inputs (conservation, hydrostatics, published statement)."
+              },
+              "element": {
+                "type": "string",
+                "description": "Element id (manhole, account) the state refers to, for network or coupled results."
+              }
             }
           }
         }

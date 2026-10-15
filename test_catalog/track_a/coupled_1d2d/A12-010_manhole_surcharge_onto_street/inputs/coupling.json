@@ -1,0 +1,86 @@
+{
+ "surface": {
+  "x0": 0.0,
+  "x1": 200.0,
+  "y0": 0.0,
+  "y1": 10.0,
+  "cell_size": 1.0,
+  "manning_n": 0.02,
+  "bed": {
+   "type": "plane",
+   "z0": 1.0,
+   "slope_x": 0.005
+  },
+  "boundaries": {
+   "left": "wall",
+   "top": "wall",
+   "bottom": "wall",
+   "right": "normal_depth"
+  },
+  "open_boundary": true
+ },
+ "normal_depth_q": 0.05,
+ "manholes": [
+  {
+   "id": "M1",
+   "x": 25.0,
+   "y": 5.0,
+   "crest": 0.875,
+   "perimeter": 1.884956,
+   "area": 0.282743,
+   "cw": 0.5,
+   "co": 0.6
+  }
+ ],
+ "network": {
+  "junctions": [
+   {
+    "id": "J0",
+    "invert": -1.0,
+    "max_depth": 10.0
+   },
+   {
+    "id": "M1",
+    "invert": -1.125,
+    "max_depth": 2.0
+   }
+  ],
+  "outfalls": [
+   {
+    "id": "CAP",
+    "invert": -1.125,
+    "type": "FIXED",
+    "stage": 50.0,
+    "gated": true
+   }
+  ],
+  "conduits": [
+   {
+    "id": "P1",
+    "from": "J0",
+    "to": "M1",
+    "length": 50.0,
+    "D": 0.6,
+    "n": 0.013
+   },
+   {
+    "id": "STUB",
+    "from": "M1",
+    "to": "CAP",
+    "length": 1.0,
+    "D": 0.1,
+    "n": 0.013
+   }
+  ],
+  "inflows": [
+   {
+    "node": "J0",
+    "Q": 0.5
+   }
+  ],
+  "duration_s": 1800,
+  "report_step_s": 60
+ },
+ "duration_s": 1800,
+ "output_interval_s": 30
+}

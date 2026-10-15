@@ -662,6 +662,7 @@ def citation_text(c: dict) -> str:
 REF_SHORT = {
     "analytic": "Exact solution",
     "intercomparison": "Objective expected states",
+    "exact_states": "Exact states (conservation)",
     "measured": "Measurements",
     "pinned_engine": "Pinned engine output",
 }
@@ -1115,7 +1116,7 @@ def main() -> int:
     args = ap.parse_args()
     suite_dirs = ["site/fixtures/scorecards", "out/track_b", "out/vertical_slice", "out/networks", "out/demo_2d"]
     production_dirs = ["site/fixtures/telemac", "site/fixtures/hecras", "site/fixtures/anuga", "site/fixtures/geoclaw",
-                       "site/fixtures/lisflood", "site/fixtures/hecras2d", "site/fixtures/openswmm", "site/fixtures/swmm_track_a", "out/openswmm", "out/swmm_track_a", "site/fixtures/hydronet", "out/hydronet", "site/fixtures/hydra", "out/hydra", "out/hydra_networks", "out/telemac", "out/hecras", "out/hecras2d", "out/anuga", "out/geoclaw", "out/lisflood"]
+                       "site/fixtures/lisflood", "site/fixtures/hecras2d", "site/fixtures/openswmm", "site/fixtures/swmm_track_a", "out/openswmm", "out/swmm_track_a", "site/fixtures/hydronet", "out/hydronet", "site/fixtures/hydra", "out/hydra", "out/hydra_networks", "site/fixtures/coupled", "out/coupled", "out/telemac", "out/hecras", "out/hecras2d", "out/anuga", "out/geoclaw", "out/lisflood"]
     score_dirs = [Path(p) for p in (args.scorecards or suite_dirs)]
     result_dirs = [Path(p) for p in (args.results or ["out/vertical_slice", "out/networks", "out/demo_2d"])]
     score_dirs = [p if p.is_absolute() else ROOT / p for p in score_dirs]

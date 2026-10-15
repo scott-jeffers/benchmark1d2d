@@ -576,6 +576,7 @@ def _series_at(df: pd.DataFrame, x: float, y: float, col: str) -> tuple[np.ndarr
     broken towards the smallest x, then the smallest y, so depth and bed always
     come from the same cell.
     """
+    df = df[np.isfinite(df["x"].to_numpy(dtype=float)) & np.isfinite(df["y"].to_numpy(dtype=float))]
     cells = df[["x", "y"]].drop_duplicates().to_numpy(dtype=float)
     d2 = (cells[:, 0] - x) ** 2 + (cells[:, 1] - y) ** 2
     tied = cells[np.isclose(d2, d2.min(), rtol=1e-12, atol=1e-12)]
@@ -588,6 +589,20 @@ def _series_at(df: pd.DataFrame, x: float, y: float, col: str) -> tuple[np.ndarr
 def _expected_state_value(manifest: dict[str, Any], state: dict[str, Any], df: pd.DataFrame) -> float:
     var = state["variable"]
     t_target = float(state.get("time", df["t"].max()))
+    if state.get("element"):
+        # a network or coupling element: exchange flow (Q) or a volume account (V)
+        if "element_id" not in df.columns:
+            raise ValueError("this state is keyed by element; add element_id/element_type rows to your results")
+        sub = df[df["element_id"].astype(str) == str(state["element"])]
+        if var == "V":
+            sub = sub[sub["element_type"].astype(str) == "account"] if "element_type" in sub.columns else sub
+        elif "element_type" in sub.columns:
+            sub = sub[sub["element_type"].astype(str) != "account"]
+        sub = sub.sort_values("t").drop_duplicates("t")
+        if sub.empty:
+            raise ValueError(f"results have no rows for element {state['element']!r}")
+        t, v = sub["t"].to_numpy(dtype=float), sub[var].to_numpy(dtype=float)
+        return float(np.interp(t_target, t, v)) if "time" in state else float(v[-1])
     if var == "volume":
         times = np.unique(df["t"].to_numpy(dtype=float))
         t_use = times[np.argmin(np.abs(times - t_target))]
@@ -614,14 +629,55 @@ def _expected_state_value(manifest: dict[str, Any], state: dict[str, Any], df: p
     raise ValueError(f"expected-state variable {var!r} not supported")
 
 
+ACCOUNTS = ("surface", "network", "inflow", "outflow")
+
+
+def _continuity_error(df: pd.DataFrame) -> tuple[float, str]:
+    """End-of-run volume imbalance of a coupled model, in % of the water involved.
+
+    The results carry volume accounts (element_type ``account``): ``surface``
+    and ``network`` hold the water stored at each time; ``inflow`` and
+    ``outflow`` are cumulative volumes in and out of the whole system. The
+    imbalance at time t is stored(t) − stored(0) − (inflow(t) − outflow(t));
+    the error is its value at the end of the run divided by the larger of the
+    total inflow and the initial storage (the usual continuity error). The
+    largest imbalance during the run is reported alongside: engines can
+    report stored volumes that disagree with their own internal balance while
+    pipes are surcharged.
+    """
+    if "element_type" not in df.columns or "V" not in df.columns:
+        raise ValueError("continuity scoring needs volume-account rows (element_type 'account', column V)")
+    acc = df[df["element_type"].astype(str) == "account"]
+    series = {}
+    for name in ACCOUNTS:
+        sub = acc[acc["element_id"].astype(str) == name].sort_values("t").drop_duplicates("t")
+        if name in ("surface", "network") and sub.empty:
+            raise ValueError(f"volume account {name!r} missing")
+        series[name] = sub
+    t = series["surface"]["t"].to_numpy(dtype=float)
+    val = {k: (np.interp(t, v["t"].to_numpy(dtype=float), v["V"].to_numpy(dtype=float)) if not v.empty else np.zeros_like(t))
+           for k, v in series.items()}
+    stored = val["surface"] + val["network"]
+    imbalance = stored - stored[0] - (val["inflow"] - val["inflow"][0]) + (val["outflow"] - val["outflow"][0])
+    scale = max(float(val["inflow"][-1] - val["inflow"][0]), float(stored[0]), 1e-12)
+    k = int(np.argmax(np.abs(imbalance)))
+    return 100.0 * float(imbalance[-1]) / scale, (f"imbalance {imbalance[-1]:+.4g} m³ at the end, of {scale:.6g} m³ "
+                                                   f"(inflow {val['inflow'][-1]:.6g}, outflow {val['outflow'][-1]:.6g} m³); "
+                                                   f"largest during the run {imbalance[k]:+.4g} m³ at t = {t[k]:g} s")
+
+
 def _score_expected_states(manifest: dict[str, Any], results_path: Path) -> tuple[list[dict], None, bool]:
     ref = manifest["reference"]
     states = {s["id"]: s for s in ref["expected_states"]}
     df = read_results_parquet(results_path)
     rows = []
     for c in manifest["scoring"]["criteria"]:
+        if c["metric"] == "continuity_error":
+            observed, detail = _continuity_error(df)
+            rows.append(_result_row(c, observed, detail))
+            continue
         if c["metric"] != "expected_state_error":
-            rows.append(_result_row(c, float("nan"), "only expected_state_error criteria gate an inter-comparison case"))
+            rows.append(_result_row(c, float("nan"), "only expected_state_error and continuity_error criteria score this case"))
             continue
         st = states[c["against"]]
         got = _expected_state_value(manifest, st, df)
@@ -733,7 +789,7 @@ def score_case(
         criteria_results, convergence_result, passed = _score_parity(
             manifest, results_path, Path(reference_results) if reference_results else None
         )
-    elif ref_kind == "intercomparison":
+    elif ref_kind in ("intercomparison", "exact_states"):
         criteria_results, convergence_result, passed = _score_expected_states(manifest, results_path)
     elif ref_kind == "measured":
         criteria_results, convergence_result, passed = _score_measured(manifest, results_path)

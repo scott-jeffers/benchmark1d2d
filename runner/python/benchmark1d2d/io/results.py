@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 REQUIRED_COLUMNS = ("t", "x", "y", "h", "u", "v", "p")
-OPTIONAL_COLUMNS = ("Q", "c", "z")
+OPTIONAL_COLUMNS = ("Q", "c", "z", "V")  # V: volume account [m³] (coupled 1D/2D cases)
 STRING_COLUMNS = ("element_id", "element_type")
 ALL_COLUMNS = REQUIRED_COLUMNS + OPTIONAL_COLUMNS + STRING_COLUMNS
 

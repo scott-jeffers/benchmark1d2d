@@ -47,20 +47,26 @@ def _hms(s: float) -> str:
     return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d}"
 
 
-def write_inp(net: dict, path: Path, routing: str) -> None:
-    """A SWMM 5 input file for a drainage network.json."""
+def write_inp(net: dict, path: Path, routing: str, variable_step: float = 0.75, extra_options: tuple = ()) -> None:
+    """A SWMM 5 input file for a drainage network.json.
+
+    An inflow is constant (``Q``) or a hydrograph (``series``: [[t_s, Q], …],
+    linear between points). ``variable_step=0`` fixes the routing step at 1 s
+    (the coupled cases exchange water with the surface every second).
+    """
     opts = ["[OPTIONS]", "FLOW_UNITS CMS", "INFILTRATION HORTON", f"FLOW_ROUTING {routing}", "LINK_OFFSETS DEPTH",
             "START_DATE 01/01/2000", "START_TIME 00:00:00", "REPORT_START_DATE 01/01/2000", "REPORT_START_TIME 00:00:00",
             "END_DATE 01/01/2000", f"END_TIME {_hms(net['duration_s'])}", "DRY_DAYS 0",
             f"REPORT_STEP {_hms(net['report_step_s'])}", "WET_STEP 00:05:00", "DRY_STEP 01:00:00",
-            "ROUTING_STEP 1", "VARIABLE_STEP 0.75", "MINIMUM_STEP 0.01", "ALLOW_PONDING NO", "INERTIAL_DAMPING PARTIAL",
+            "ROUTING_STEP 1", f"VARIABLE_STEP {variable_step:g}", *extra_options, "MINIMUM_STEP 0.01", "ALLOW_PONDING NO", "INERTIAL_DAMPING PARTIAL",
             "NORMAL_FLOW_LIMITED BOTH", "MAX_TRIALS 8", "HEAD_TOLERANCE 0.0005", "SYS_FLOW_TOL 5", "LAT_FLOW_TOL 5", "THREADS 1"]
     L = opts + ["", "[JUNCTIONS]", ";;Name Elev MaxDepth InitDepth SurDepth Aponded"]
-    L += [f"{j['id']} {j['invert']:.6f} {j.get('max_depth', 10.0):g} {j.get('init_depth', 0.0):g} 0 0" for j in net.get("junctions", [])]
+    L += [f"{j['id']} {j['invert']:.6f} {j.get('max_depth', 10.0):g} {j.get('init_depth', 0.0):g} {j.get('surcharge_depth', 0):g} 0" for j in net.get("junctions", [])]
     L += ["", "[OUTFALLS]", ";;Name Elev Type Stage Gated"]
     for o in net.get("outfalls", []):
-        L.append(f"{o['id']} {o['invert']:.6f} {o['type']} {o['stage']:.6f} NO" if o["type"] == "FIXED"
-                 else f"{o['id']} {o['invert']:.6f} {o['type']} NO")
+        gate = "YES" if o.get("gated") else "NO"
+        L.append(f"{o['id']} {o['invert']:.6f} {o['type']} {o['stage']:.6f} {gate}" if o["type"] == "FIXED"
+                 else f"{o['id']} {o['invert']:.6f} {o['type']} {gate}")
     if net.get("storages"):
         L += ["", "[STORAGE]", ";;Name Elev MaxDepth InitDepth Shape Coeff Expon Const SurDepth Fevap"]
         L += [f"{s['id']} {s['invert']:.6f} {s['max_depth']:g} {s['init_depth']:g} FUNCTIONAL {s['area']:g} 0 0 0 0"
@@ -84,7 +90,12 @@ def write_inp(net: dict, path: Path, routing: str) -> None:
                 L.append(f"{p['id']}_CURVE {'PUMP3' if k == 0 else ''} {head:g} {q:g}")
     if net.get("inflows"):
         L += ["", "[INFLOWS]", ";;Node Constituent TimeSeries Type Mfactor Sfactor Baseline"]
-        L += [f'{i["node"]} FLOW "" FLOW 1.0 1.0 {i["Q"]:g}' for i in net["inflows"]]
+        L += [f'{i["node"]} FLOW "" FLOW 1.0 1.0 {i["Q"]:g}' if "series" not in i else f'{i["node"]} FLOW TS_{i["node"]} FLOW 1.0 1.0 0'
+              for i in net["inflows"]]
+        series = [i for i in net["inflows"] if "series" in i]
+        if series:
+            L += ["", "[TIMESERIES]", ";;Name Date Time Value"]
+            L += [f"TS_{i['node']} {t / 3600.0:.6f} {q:g}" for i in series for t, q in i["series"]]
     L += ["", "[REPORT]", "INPUT NO", "CONTROLS NO", "NODES ALL", "LINKS ALL"]
     path.write_text("\n".join(L) + "\n", encoding="ascii")
 

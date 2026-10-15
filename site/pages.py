@@ -71,6 +71,8 @@ SOLVERS: list[dict] = [
          what="HydroNet (Penn State) — its differentiable Roe finite-volume solver (Heun RK2, CFL 0.3), the engine inside its FVM-PINN"),
     dict(key="hydronet-pinn", name="HydroNet", sub="FVM-PINN", kind="research", color="#C46B7A",
          what="HydroNet's FVM-PINN neural network, trained per grid with the recipe of its own dam-break example (64×5 network, 5000 Adam epochs)"),
+    dict(key="swmm-anuga", name="SWMM + ANUGA", sub="coupled 1D/2D", kind="suite", color="#6B4E9B",
+         what="EPA SWMM 5.2.4 pipes coupled to an ANUGA 4.0.1 surface by the suite's own explicit coupler (1 s weir/orifice exchange at the manholes): a worked example of a 1D/2D model, not a product"),
     dict(key="swmm515", name="SWMM 5.1.15", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-2)",
          what="EPA SWMM 5.1.15, the previous release, compared with SWMM 5.2.4"),
     dict(key="openswmm6", name="OpenSWMM 6", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-5)",
@@ -81,6 +83,7 @@ SOLVERS: list[dict] = [
 SOLVER = {s["key"]: s for s in SOLVERS}
 PRODUCTION_2D = ["hecras", "hecras-em", "telemac", "anuga", "geoclaw", "lisflood-fv1", "lisflood-dg2", "lisflood-acc"]
 NOT_YET = ["TUFLOW", "MIKE 21", "Iber", "BASEMENT", "Delft3D FM"]
+NOT_YET_COUPLED = ["TUFLOW", "InfoWorks ICM", "MIKE+", "HEC-RAS 6.6 (pipe networks)", "PCSWMM 2D", "Flood Modeller"]
 NOT_YET_DRAINAGE = ["InfoWorks ICM", "MIKE+ (MOUSE)", "PCSWMM", "XPSWMM", "Flood Modeller", "HEC-RAS"]
 
 
@@ -112,6 +115,8 @@ def solver_key(name: str) -> str | None:
         return "anuga"
     if n.startswith("geoclaw"):
         return "geoclaw"
+    if n.startswith("swmm–anuga coupled") or n.startswith("swmm-anuga coupled"):
+        return "swmm-anuga"
     if n.startswith("hydra "):
         return "hydra-wds" if "water distribution" in n else "hydra-uds"
     if n.startswith("hydronet"):
@@ -319,6 +324,9 @@ NOTES = {
     ("A1D-002", "openswmm-fv"): "The pipes are surcharged and the finite-volume routing overestimates the friction loss: the hydraulic grade line falls 1.42 m over the five pipes instead of 1.19 m (19 % more), so the upstream manholes stand up to 28 cm too high. Dynamic wave in the same engine is 0.4 mm from exact.",
     ("A1D-001", "hydra-uds"): "Exact to rounding (0.0005 mm): Hydra computes the circular section exactly, where the SWMM engines interpolate a 51-entry table (0.27 mm off).",
     ("A1D-005", "openswmm-fv"): "Passes (3.7 mm). With one cell per pipe (FV_MIN_CELLS 1, as on the channel tests) it is 2.2 cm off and fails; the default subdivides each pipe.",
+    ("A12-010", "swmm-anuga"): "The street carries exactly what the manhole releases (0.5 m³/s, depth 0.1 mm from exact), but 5 m³ of the 885 m³ is missing at the end (0.56 %; 0.5 % allowed). The coupler moves water exactly; the loss is SWMM's own continuity error (0.50 % in its report), made as the dead-end pipe filled and surcharged.",
+    ("A12-011", "swmm-anuga"): "Passes. While the pipe runs full, SWMM's reported pipe and manhole volumes exceed its own balance by up to 3.1 m³ (1.2 %), which disappears as the pipe empties: its end-of-run continuity error is 0.000 %.",
+    ("A12-012", "swmm-anuga"): "Passes: 180.05 m³ out of 180 m³ in. As in A12-011, SWMM's reported storage is off by up to 2.4 m³ while surcharged, and back to balance once the pipes drain.",
     ("A1F-010", "hydronet-pinn"): "The trained network spreads 0.3–0.4 m of water over the whole dry channel downstream, so its front is 713 m ahead of the exact one; it gains 3.3 % of the water, and the error grows on finer grids. Its own finite-volume engine, by contrast, never starts the flow.",
 }
 CASE_NOTES = {
@@ -684,7 +692,8 @@ def _need(m: dict) -> str:
 def _tags(m: dict) -> str:
     kind = (m.get("reference") or {}).get("kind")
     first = {"analytic": ("Exact answer known", "blue"), "measured": ("Measured in a lab or the field", "blue"),
-             "intercomparison": ("Benchmark with known end states", "blue"), "pinned_engine": ("Compared with a pinned engine", "blue")}.get(kind, (kind, ""))
+             "intercomparison": ("Benchmark with known end states", "blue"),
+             "exact_states": ("Exact answer known", "blue"), "pinned_engine": ("Compared with a pinned engine", "blue")}.get(kind, (kind, ""))
     dim = m["physics"]["dimensionality"]
     flow = m["physics"]["flow_type"].replace("_", " ")
     status = {"frozen": "Frozen: counts toward certification", "candidate": "Candidate", "draft": "Draft: needs data"}.get(m["status"], m["status"])
@@ -831,8 +840,9 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
                 if len(levels) > 1 else "Each model runs the same inputs.")
     case_note = CASE_NOTES.get(sid)
     not_yet = ""
-    if sid.startswith("A1D") and m["status"] != "draft":
-        not_yet = (f'<div class="notyet"><div><b>Not run yet:</b> {esc(", ".join(NOT_YET_DRAINAGE))}</div>'
+    if (sid.startswith("A1D") or sid.startswith("A12")) and m["status"] != "draft":
+        nyl = NOT_YET_DRAINAGE if sid.startswith("A1D") else NOT_YET_COUPLED
+        not_yet = (f'<div class="notyet"><div><b>Not run yet:</b> {esc(", ".join(nyl))}</div>'
                    f'<a href="../score.html" style="font-weight:600">Run it and add yours →</a></div>')
     elif m["track"] == "A" and m["physics"]["dimensionality"] in ("1D", "2D") and m["status"] != "draft":
         missing = [SOLVER[k]["name"] for k in PRODUCTION_2D if k not in runs and not k.startswith("lisflood-")]
@@ -878,13 +888,14 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     ref_desc = {
         "analytic": f"Exact solution from <code>{esc(m['reference'].get('generator', {}).get('module', ''))}.{esc(m['reference'].get('generator', {}).get('function', ''))}</code>.",
         "intercomparison": "No exact or measured answer exists. The test is scored on states that follow from the inputs alone; published package results are context only.",
+        "exact_states": "Exact states that follow from the inputs by conservation and hydrostatics: exchanged and discharged volumes, settled levels and steady flows, plus the model's own volume balance.",
         "measured": f"Measured data at <code>{esc(m['reference'].get('data_path', ''))}</code>; availability: <b>{esc(str(m['reference'].get('availability', 'unknown')).replace('_', ' '))}</b>.",
         "pinned_engine": f"{esc(m['reference'].get('engine'))} {esc(m['reference'].get('version'))}, run on the test's own input.",
     }.get(kind, "")
     states = ""
-    if kind == "intercomparison":
+    if kind in ("intercomparison", "exact_states"):
         states = '<div class="table-scroll"><table class="data"><thead><tr><th>Expected state</th><th class=num>Value</th><th>Why it must hold</th></tr></thead><tbody>' + "".join(
-            f"<tr><td><b>{esc(s['id'])}</b><div class=muted>{esc(s['variable'])}{(' at ' + esc(s['where'])) if s.get('where') else ''}</div></td>"
+            f"<tr><td><b>{esc(s['id'])}</b><div class=muted>{esc(s['variable'])}{(' at ' + esc(s.get('where') or s.get('element'))) if (s.get('where') or s.get('element')) else ''}</div></td>"
             f"<td class=num>{H.fmt(s['value'])} {esc(s['units'])}</td><td>{esc(s['derivation'])}</td></tr>"
             for s in m["reference"]["expected_states"]) + "</tbody></table></div>"
     pending = [e for e in m["inputs"] if e.get("pending")]

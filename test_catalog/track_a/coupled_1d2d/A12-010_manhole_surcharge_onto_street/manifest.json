@@ -1,0 +1,157 @@
+{
+  "schema_version": "1.1.0",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_id": "A12-010_manhole_surcharge_onto_street",
+  "test_class": "verification_analytic",
+  "title": "Manhole surcharge onto a sloping street",
+  "description": "A 0.6 m pipe delivers 0.5 m³/s to a manhole with no outlet, which surcharges onto a 10 m wide street sloping at 0.005 (Manning n = 0.02). At steady state the manhole passes the whole inflow onto the street, and downstream the street carries it as uniform sheet flow at the exact normal depth (n q / √S)^(3/5) = 77.7 mm.",
+  "physics": {
+    "dimensionality": "1D2D",
+    "flow_type": "mixed",
+    "governing_equations": [
+      "saint_venant_dynamic",
+      "shallow_water_2d",
+      "manhole_exchange"
+    ],
+    "phenomena": [
+      "sewer_surface_exchange",
+      "manhole",
+      "volume_balance"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Chen, A. S.",
+          "Djordjević, S.",
+          "Leandro, J.",
+          "Savić, D. A."
+        ],
+        "year": 2007,
+        "title": "The urban inundated area: a coupled 1D/2D model for the interaction between sewer and surface",
+        "url": "https://www.researchgate.net/publication/257306339"
+      },
+      {
+        "authors": [
+          "Rubinato, M.",
+          "Martins, R.",
+          "Kesserwani, G.",
+          "Leandro, J.",
+          "Djordjević, S.",
+          "Shucksmith, J."
+        ],
+        "year": 2017,
+        "title": "Experimental calibration and validation of sewer/surface flow exchange equations in steady and unsteady flow conditions",
+        "doi": "10.1016/j.jhydrol.2017.06.024"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/coupling.json",
+      "role": "coupling",
+      "format": "json",
+      "sha256": "cd6872b93d6f5544888199b8f1c006592556058b5f7e5303829857effe0b08ac"
+    }
+  ],
+  "reference": {
+    "kind": "exact_states",
+    "expected_states": [
+      {
+        "id": "steady_exchange",
+        "variable": "Q",
+        "element": "M1",
+        "value": 0.5,
+        "units": "m3/s",
+        "derivation": "At steady state the manhole has no outlet but the street, so it must pass the full pipe inflow (continuity)."
+      },
+      {
+        "id": "normal_depth",
+        "variable": "h",
+        "where": "P1,P2",
+        "time": 1800,
+        "value": 0.07768,
+        "units": "m",
+        "derivation": "Uniform sheet flow of q = Q/B = 0.05 m²/s on slope 0.005 with Manning n = 0.02 (hydraulic radius = depth in 2D shallow-water models): h = (n q / √S)^(3/5)."
+      }
+    ]
+  },
+  "simulation": {
+    "t_end": 1800.0,
+    "output_interval": 30.0,
+    "required_outputs": [
+      "h",
+      "Q",
+      "V"
+    ],
+    "probes": [
+      {
+        "id": "P1",
+        "x": 100.5,
+        "y": 5.0,
+        "variables": [
+          "h"
+        ]
+      },
+      {
+        "id": "P2",
+        "x": 150.5,
+        "y": 5.0,
+        "variables": [
+          "h"
+        ]
+      }
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "exchange_flow",
+        "metric": "expected_state_error",
+        "threshold": {
+          "op": "abs<=",
+          "value": 1.0,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Steady manhole outflow within 1 % of the inflow.",
+        "against": "steady_exchange",
+        "variable": "Q"
+      },
+      {
+        "id": "street_depth",
+        "metric": "expected_state_error",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.003,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Street depth 75–125 m below the manhole within 3 mm (4 %) of normal depth: the sheet must carry exactly what the manhole released.",
+        "against": "normal_depth",
+        "variable": "h",
+        "where": "P1,P2"
+      },
+      {
+        "id": "water_balance",
+        "metric": "continuity_error",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.5,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "By the end of the run, the water stored on the surface and in the pipes has changed by exactly what came in minus what went out. A coupling that moves water between the two models must not make or lose any; each engine's own continuity error is allowed within this limit.",
+        "variable": "volume"
+      }
+    ],
+    "convergence": {
+      "not_applicable": "Scored on exact states that follow from conservation (exchanged and discharged volumes, settled levels): they do not depend on the grid."
+    },
+    "pass_rule": "all_gating"
+  }
+}

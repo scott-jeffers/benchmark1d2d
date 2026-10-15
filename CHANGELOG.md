@@ -24,6 +24,15 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ### Added
 
+- **Exact coupled 1D/2D tests (A12-010 to 012)**: a manhole surcharging onto a
+  sloping street (steady exchange and normal depth), a flooded yard draining
+  into a pipe (settles at the gully crest) and a surcharge-and-return round
+  trip (all 180 m³ out), each also scored on the coupled water balance. New
+  reference kind `exact_states`, metric `continuity_error` and results column
+  `V` (volume accounts). `scripts/run_coupled_cases.py` couples SWMM 5.2.4 to
+  ANUGA 4.0.1 (explicit 1 s weir/orifice exchange) as a worked example: it
+  passes A12-011 and 012 and fails A12-010 on SWMM's own 0.5 % continuity
+  error (`docs/coupled.md`).
 - **Exact-answer drainage-network tests (A1D-001 to 005)**, so SWMM-engine
   parity differences can be judged against physics: normal depth in part-full
   circular pipes, a surcharged hydraulic grade line, a storage draining

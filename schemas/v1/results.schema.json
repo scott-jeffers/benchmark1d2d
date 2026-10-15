@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openhydro.org/schemas/v1/results.schema.json",
   "title": "Benchmark1d2d Results Parquet Contract",
-  "description": "Documents the Arrow/Parquet column contract for solver output. Required columns are t, x, y, h, u, v, p. Optional Q and c are used for 1D pressurized/free-surface and water-quality cases. This schema describes the column metadata embedded in (or alongside) a Parquet file — it is not a row-oriented JSON results dump. Network solvers (SWMM, EPANET, any 1D network) SHOULD add element_id (node/link name) and element_type (e.g. node, link, junction, pipe) so Track B parity is computed per element rather than by row order; when present, h is node depth and Q is link flow at that element. 2D solvers SHOULD add z (bed elevation of the cell, m) so water levels h + z are computed on the solver's own bed rather than a resampled DEM.",
+  "description": "Documents the Arrow/Parquet column contract for solver output. Required columns are t, x, y, h, u, v, p. Optional Q and c are used for 1D pressurized/free-surface and water-quality cases. This schema describes the column metadata embedded in (or alongside) a Parquet file — it is not a row-oriented JSON results dump. Network solvers (SWMM, EPANET, any 1D network) SHOULD add element_id (node/link name) and element_type (e.g. node, link, junction, pipe) so Track B parity is computed per element rather than by row order; when present, h is node depth and Q is link flow at that element. 2D solvers SHOULD add z (bed elevation of the cell, m) so water levels h + z are computed on the solver's own bed rather than a resampled DEM. Coupled 1D/2D solvers report volume accounts as rows with element_type 'account' (element_id surface, network, inflow, outflow; V = stored or cumulative volume, m3) and exchange flows as rows with element_type 'exchange' (element_id = manhole name; Q > 0 from the network onto the surface).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -93,7 +93,8 @@
             "c",
             "element_id",
             "element_type",
-            "z"
+            "z",
+            "V"
           ]
         },
         "type": {

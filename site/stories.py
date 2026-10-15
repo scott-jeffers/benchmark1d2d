@@ -229,6 +229,27 @@ STORIES: dict[str, dict] = {
         why="Urban flooding happens where sewers and streets exchange water. The coupling equations are the weakest link of most models.",
         must=["match the measured exchange flow", "get the surface depth peak within 5 %"],
     ),
+    "A12-010": dict(
+        name="Manhole overflowing onto a street", group="floods2d",
+        question="Does a coupled model put all of the sewer's overflow onto the street?",
+        what="A pipe delivers a steady flow to a manhole with no way out but up. It overflows onto a sloping street, and downstream the street carries the whole flow as a thin sheet whose depth is fixed exactly by the slope and roughness.",
+        why="Surcharging manholes are where urban flooding starts. If the coupling loses or invents water here, every flood map built on it is wrong.",
+        must=["release the full pipe flow onto the street", "get the street depth within 3 mm", "end with the water accounted for (0.5 %)"],
+    ),
+    "A12-011": dict(
+        name="Flooded yard draining into a pipe", group="floods2d",
+        question="Does the flood drain down to the right level, and all of it out of the pipe?",
+        what="A walled yard holds 30 cm of water that drains through a gully, raised 5 cm above the floor, into a pipe too small to take it all at once. The water above the gully's lip must leave through the pipe; the 5 cm below it must stay.",
+        why="How quickly and how completely floodwater drains back into sewers decides how long streets stay flooded.",
+        must=["leave the yard at the gully's lip (within 1 cm)", "send 225 m³ out of the pipe (within 2 %)", "end with the water accounted for (0.5 %)"],
+    ),
+    "A12-012": dict(
+        name="Overflow and return", group="floods2d",
+        question="When a sewer overflows and then drains back, does every drop come out?",
+        what="A storm overloads a sewer, which overflows into a hollow above a manhole. As the storm passes, the water runs back down the manhole and out of the system.",
+        why="Water that surcharges onto streets usually returns to the sewer. A coupling that loses or gains water on the round trip gets flood volumes and outflows wrong.",
+        must=["discharge all 180 m³ that came in (within 2 %)", "leave nothing on the surface", "end with the water accounted for (0.5 %)"],
+    ),
     # ── compatibility ────────────────────────────────────────────────────────
     "B-EPANET-001": dict(
         name="Water distribution network", group="compat",
@@ -256,6 +277,7 @@ STORIES: dict[str, dict] = {
 # Criteria in plain words: metric -> (label, how to phrase the observed value)
 CHECK_NAMES = {
     "volume_front_error": "Flood front",
+    "continuity_error": "Water balance",
     "front_position_error": "Leading edge (1 mm deep)",
     "global_mass_error": "Water conserved",
     "L1": "Average error",

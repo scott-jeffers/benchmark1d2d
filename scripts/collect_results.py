@@ -61,6 +61,7 @@ ROUTES = [
     (r"^OpenSWMM Engine v6 dynamic wave", "swmm_track_a/openswmm-dw"),
     (r"^OpenSWMM Engine v6 finite volume", "swmm_track_a/openswmm-fv"),
     (r"^Hydra urban drainage \(", "swmm_track_a/hydra-uds"),
+    (r"^SWMM–ANUGA coupled", "coupled/swmm-anuga"),
 ]
 PARITY_FILES = re.compile(r"^(nightly|pr|release)_(?!census)[\w.-]+\.(parquet|summary\.json)$|^epanet_[\w.-]+\.(parquet|summary\.json)$")
 

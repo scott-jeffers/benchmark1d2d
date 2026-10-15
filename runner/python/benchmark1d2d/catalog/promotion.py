@@ -51,6 +51,8 @@ def _reference_ok(m: dict[str, Any]) -> tuple[bool, str]:
         return bool((ref.get("generator") or {}).get("module")), "analytic generator"
     if kind == "intercomparison":
         return bool(ref.get("expected_states")), "objective expected states"
+    if kind == "exact_states":
+        return bool(ref.get("expected_states")), "exact states from conservation"
     if kind in ("pinned_engine", "measured"):
         path = ref.get("results_path")
         if ref.get("availability") and ref["availability"] != "committed":
