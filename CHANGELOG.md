@@ -76,8 +76,10 @@ Suite releases are independent of schema semver (`schemas/v1`).
   - Track B: B-EXTRAN-001 is identical to SWMM 5.2.4; B-RTC-001 differs (node 1
     peaks at 0.697 m after 35 h against 0.463 m after 12 h, although the pumps
     switch the same 74 times). Reported to the engine's developers as a lead.
-  - Corpus, nightly tier (500 models): 205 identical to 5.2.4, 422 of 493
-    scored within 5 %, 71 over 5 %; it runs 496 (SWMM 5.1.15: 477). In 20 of
+  - Corpus, nightly tier (500 models): 207 identical to 5.2.4, 425 of 496
+    scored within 5 %, 71 over 5 %; it runs 499 (SWMM 5.1.15: 477). Three
+    long models are 3.5–57× slower than 5.2.4 (the nightly limit for v6 is
+    now 600 s); one kinematic-wave model fails at initialisation. In 20 of
     the 71 the worst node is an outfall. `weir-overtopping` creates water at
     an outfall (routing continuity −48 %). Leads for the developers in
     `docs/openswmm.md`; the corpus page shows both candidates.

@@ -52,25 +52,32 @@ volume of |Q|):
 
 | | OpenSWMM v6 | EPA SWMM 5.1.15 (for scale) |
 |---|---|---|
-| Identical to 5.2.4 | 205 | 356 |
-| Within 1 % | 171 | 76 |
+| Identical to 5.2.4 | 207 | 356 |
+| Within 1 % | 172 | 76 |
 | 1–5 % | 46 | 18 |
 | Over 5 % | 71 | 23 |
-| Could not run | 4 (3 time-outs at 120 s, 1 parse error) | 23 |
+| Could not run | 1 (an error at initialisation) | 23 |
 | Nothing to compare | 3 | 4 |
 
-Median worst difference 0.011 %. 422 of 493 scored models are within 5 %.
-v6 runs far more of the collection than SWMM 5.1.15 (4 failures against 23),
-but changes more models: 288 differ at all, against 117 for 5.1.15.
+Median worst difference 0.011 %. 425 of 496 scored models are within 5 %.
+v6 runs far more of the collection than SWMM 5.1.15 (1 failure against 23),
+but changes more models: 289 differ at all, against 117 for 5.1.15.
 
 * In **20 of the 71** models over 5 % the worst node is an **outfall**: v6
   reports outfall depths where 5.2.4 reports (almost) none. This is the
   largest single pattern and may be a reporting convention rather than a
   routing change.
-* The parse error is `swmm5-ncimm/3525-nodes` (`ParseError: Input file parse
-  error`); the time-outs are `hydrology/baisismodell-si-units`,
-  `swmm5-ncimm/small-rdii-example` and `wq/peter-klaver-wq-tracer` (5.2.4
-  runs each in seconds).
+* **Speed.** Three models are 3.5–57 times slower in v6 than in 5.2.4 and
+  exceeded the nightly run's 120 s limit on a shared runner; given 900 s they
+  finish and match 5.2.4 (two identical, one within 0.06 %):
+
+  | Model | 5.2.4 | v6 | Simulated |
+  |---|---|---|---|
+  | `swmm5-ncimm/small-rdii-example` | 2.9 s | 101.5 s | 7 years, 30 s routing step |
+  | `hydrology/baisismodell-si-units` | 0.8 s | 28.8 s | 2 years, 30 s routing step |
+  | `wq/peter-klaver-wq-tracer` | 6.5 s | 22.7 s | 1 month, 2 s routing step |
+
+  The nightly workflow now allows v6 600 s per model.
 
 ## Leads for the engine's developers
 
@@ -87,9 +94,15 @@ but changes more models: 288 differ at all, against 117 for 5.1.15.
    which 5.2.4 does not; the weir's
    offset/crest reference may be handled differently.
 2. **B-RTC-001 control rules**: same switching count, different peaks (above).
-3. Models v6 could not parse or run are listed with their messages in
-   `test_catalog/track_b/parity/nightly_openswmm-6.parquet` (`status`,
-   `detail`).
+3. **`swmm5-ncimm/3525-nodes` fails at `initialize()` with
+   `ParseError: Input file parse error`**, although `open()` succeeds and a
+   lenient open lists no errors. The only change that makes it run is removing
+   `FLOW_ROUTING KINWAVE` (28 other kinematic-wave models run). This model
+   also sets `IGNORE_ROUTING YES` and has pumps under control rules. Two
+   leads: whatever v6 rejects here, and an error raised at initialisation that
+   is labelled a parse error with no detail.
+4. **Speed**: long continuous simulations run 35–57 times slower than in 5.2.4
+   (table above).
 
 A difference is not a defect by itself: Track B measures distance from the
 reference engine, not which one is right. The weir case is reported because

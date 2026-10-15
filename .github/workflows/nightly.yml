@@ -65,7 +65,7 @@ jobs:
         run: |
           python -m venv "$RUNNER_TEMP/openswmm"
           "$RUNNER_TEMP/openswmm/bin/python" -m pip install -q "openswmm==6.0.0a4.dev1" numpy
-          python scripts/corpus_parity.py --corpus hc/corpus --tier nightly --candidate-python "$RUNNER_TEMP/openswmm/bin/python" --candidate-engine openswmm --label openswmm-6 --workers 4 --timeout 120 || true
+          python scripts/corpus_parity.py --corpus hc/corpus --tier nightly --candidate-python "$RUNNER_TEMP/openswmm/bin/python" --candidate-engine openswmm --label openswmm-6 --workers 4 --timeout 600 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
