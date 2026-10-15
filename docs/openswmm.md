@@ -52,15 +52,15 @@ volume of |Q|):
 
 | | OpenSWMM v6 | EPA SWMM 5.1.15 (for scale) |
 |---|---|---|
-| Identical to 5.2.4 | 207 | 356 |
+| Identical to 5.2.4 | 207 | 358 |
 | Within 1 % | 172 | 76 |
 | 1–5 % | 46 | 18 |
 | Over 5 % | 71 | 23 |
-| Could not run | 1 (an error at initialisation) | 23 |
+| Could not run | 1 (an error at initialisation) | 21 |
 | Nothing to compare | 3 | 4 |
 
 Median worst difference 0.011 %. 425 of 496 scored models are within 5 %.
-v6 runs far more of the collection than SWMM 5.1.15 (1 failure against 23),
+v6 runs far more of the collection than SWMM 5.1.15 (1 failure against 21),
 but changes more models: 289 differ at all, against 117 for 5.1.15.
 
 * In **20 of the 71** models over 5 % the worst node is an **outfall**: v6

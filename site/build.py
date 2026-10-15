@@ -734,7 +734,7 @@ PARITY_FINDINGS: dict[str, str] = {
               "(median 7.5 %), so the difference is its Preissmann-slot routing rather than units or input reading. "
               'Details: <a href="https://github.com/scott-jeffers/benchmark1d2d/blob/master/docs/hydra.md">docs/hydra.md</a>.</div>'),
     "openswmm-6": ('<div class="finding"><b>OpenSWMM v6 runs almost everything, and changes more.</b> '
-                   "It runs 499 of 500 nightly models (SWMM 5.1.15: 477), and 425 of the 496 it scores are within 5 % of 5.2.4. "
+                   "It runs 499 of 500 nightly models (SWMM 5.1.15: 479), and 425 of the 496 it scores are within 5 % of 5.2.4. "
                    "In 20 of the 71 over 5 % the worst node is an outfall, where v6 reports a depth and 5.2.4 almost none. "
                    "One model, <code>weir-overtopping</code>, shows water created at an outfall (routing continuity −48 %), and long continuous runs are up to 57 times slower. "
                    'Details for the developers: <a href="https://github.com/scott-jeffers/benchmark1d2d/blob/master/docs/openswmm.md">docs/openswmm.md</a>.</div>'),

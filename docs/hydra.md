@@ -72,11 +72,11 @@ Nightly tier, 500 models, worst node (relative peak depth) and worst link
 
 | | Hydra 17 | OpenSWMM v6 | SWMM 5.1.15 |
 |---|---|---|---|
-| Identical | 33 | 207 | 356 |
+| Identical | 33 | 207 | 358 |
 | Within 1 % | 32 | 172 | 76 |
 | 1–5 % | 60 | 46 | 18 |
 | Over 5 % | 351 | 71 | 23 |
-| Refused or timed out (600 s) | 21 | 1 | 23 |
+| Refused or timed out (600 s) | 21 | 1 | 21 |
 
 * **Hydrology agrees, routing differs.** 16 of 17 LID models are within
   5 %; the classic EXTRAN examples differ by a median 7.5 %, and 115 models
