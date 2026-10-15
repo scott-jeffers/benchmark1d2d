@@ -17,7 +17,8 @@ from typing import Any
 
 import numpy as np
 
-from stories import CHECK_NAMES, GROUPS, STORIES, VAR_WORDS
+from stories import CHECK_NAMES, GROUP_BLURBS, GROUPS, STORIES, VAR_WORDS
+from tiles import tile_svg
 
 H: Any = None  # the build module, set by build.main()
 
@@ -565,16 +566,13 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
   <p>On a dam break into shallow water, HydroCouple's finite-volume routing gets the bore right and converges; SWMM's classic dynamic wave, in both 5.2.4 and 6, does not.</p>
 </a>""")
     findings = "".join(cards[:4])
-    featured = [
-        ("A1F-010", '<rect x="0" y="100" width="280" height="20" fill="var(--bed-soft)"/><path d="M0 40 H110 C150 40 170 92 280 98 V100 H0 Z" fill="var(--water)" fill-opacity="0.35"/><path d="M0 40 H110 C150 40 170 92 280 98" fill="none" stroke="var(--water)" stroke-width="2.5"/>'),
-        ("A1P-020", '<rect x="20" y="50" width="240" height="24" rx="4" fill="none" stroke="var(--ink-2)" stroke-width="2"/><rect x="22" y="52" width="140" height="20" fill="var(--water)" fill-opacity="0.3"/><rect x="162" y="52" width="96" height="20" fill="#C2501C" fill-opacity="0.35"/><rect x="252" y="36" width="10" height="52" fill="var(--ink)"/>'),
-        ("A2C-EA4", '<ellipse cx="60" cy="62" rx="56" ry="40" fill="var(--water)" fill-opacity="0.4"/><ellipse cx="72" cy="62" rx="92" ry="54" fill="var(--water)" fill-opacity="0.18"/><rect x="0" y="52" width="10" height="20" fill="#C2501C"/>'),
-        ("B-RTC-001", '<path d="M30 30 V96 H110 V30" fill="none" stroke="var(--ink-2)" stroke-width="2"/><rect x="32" y="62" width="76" height="32" fill="var(--water)" fill-opacity="0.35"/><circle cx="150" cy="80" r="14" fill="none" stroke="var(--ink)" stroke-width="2"/><path d="M164 80 H250 V40" fill="none" stroke="var(--water)" stroke-width="3"/>'),
-    ]
-    tcards = "".join(
-        f'<a class="card test-card" href="tests/{s}.html"><svg viewBox="0 0 280 120" aria-hidden="true">{svg}</svg>'
-        f'<div class="body"><h3>{esc(STORIES[s]["name"])}</h3><p>{esc(STORIES[s]["question"])}</p></div></a>'
-        for s, svg in featured if s in STORIES)
+    by_sid = {sid_of(m["test_id"]): m for m in manifests}
+    featured = ["A1F-010", "A2C-EA4", "A1F-042", "A1D-002", "A12-012", "A1P-020", "B-RTC-001"]
+    tcards = "".join(test_card(by_sid[s_], runs) for s_ in featured if s_ in by_sid)
+    n_live = sum(1 for m in manifests if m["status"] != "draft")
+    tcards += (f'<a class="card more-card" href="results.html"><div><b>{n_live}</b><span>tests with a known right answer</span></div>'
+               f'<div class="more-groups">{"".join(f"<span>{esc(v)}</span>" for v in GROUPS.values())}</div>'
+               f'<span class="more-link">Browse every test →</span></a>')
     body = f"""
 <div class="wrap">
 <section class="hero">
@@ -614,8 +612,9 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
 </section>
 <div class="wrap">
 <section class="section">
-  <h2>Tests built from real engineering questions</h2>
-  <p class="muted">Each one isolates something a model has to get right on a real project.</p>
+  <div class="head-row"><div><h2>Tests built from real engineering questions</h2>
+  <p class="muted" style="margin:0">Each one isolates something a model has to get right on a real project, from a sewer pipe running full to a dam failing above a city.</p></div>
+  <a href="results.html" style="font-weight:600">All {n_live} tests →</a></div>
   <div class="grid narrow">{tcards}</div>
 </section>
 <section class="section" id="how">
@@ -638,6 +637,46 @@ if(red){t=40;draw();return;}
 setInterval(function(){t=t>=72?0:t+0.4;draw();},50);draw();})();
 </script>"""
     return layout(SITE_NAME, body, "index.html", scripts=script)
+
+
+def test_card(m: dict, runs: dict, up: str = "", status_text: str | None = None) -> str:
+    """A tile for one test: picture, topic, question and how the models did."""
+    sid = sid_of(m["test_id"])
+    st = story(m)
+    by = runs.get(m["test_id"]) or {}
+    scored = [k for k in by if SOLVER.get(k, {}).get("kind") != "compat" or m["track"] == "B"]
+    n_ok = sum(1 for k in scored if by[k].get("passed"))
+    if status_text:
+        score = f'<div class="tc-score">{esc(status_text)}</div>'
+    elif scored:
+        n = len(scored)
+        score = (f'<div class="tc-score"><div class="tc-bar" aria-hidden="true"><i class="p" style="width:{100 * n_ok / n:.1f}%"></i>'
+                 f'<i class="f" style="width:{100 * (n - n_ok) / n:.1f}%"></i></div>'
+                 f'<span>{n_ok} of {n} model{"s" if n != 1 else ""} pass</span></div>')
+    else:
+        score = '<div class="tc-score">Not run yet</div>'
+    return (f'<a class="card test-card" href="{up}tests/{sid}.html" data-group="{st["group"]}">{tile_svg(sid)}'
+            f'<div class="body"><div class="tc-kick"><span>{esc(GROUPS.get(st["group"], ""))}</span><span>{esc(sid)}</span></div>'
+            f'<h3>{esc(st["name"])}</h3><p>{esc(st["question"])}</p>{score}</div></a>')
+
+
+def _short_need(text: str) -> str:
+    t = text.split(";")[0].split(" (")[0].strip()
+    return t if len(t) <= 70 else t[:68].rsplit(" ", 1)[0] + "…"
+
+
+def test_gallery(manifests: list[dict], runs: dict, drafts_need=None) -> str:
+    """Every test as a tile, grouped by topic."""
+    out = []
+    for gkey, gname in GROUPS.items():
+        ms = [m for m in manifests if story(m)["group"] == gkey]
+        if not ms:
+            continue
+        cards = "".join(test_card(m, runs, status_text=("Waiting on data: " + _short_need(drafts_need(m)) if m["status"] == "draft"
+                                                         and not runs.get(m["test_id"]) and drafts_need else None)) for m in ms)
+        out.append(f'<section class="tile-group" data-group="{gkey}"><h3>{esc(gname)}</h3><p class="muted">{esc(GROUP_BLURBS.get(gkey, ""))}</p>'
+                   f'<div class="grid narrow">{cards}</div></section>')
+    return "".join(out)
 
 
 def SOLVERS_ORDER(keys) -> list[str]:
@@ -739,13 +778,18 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
   <h1>Tests and results</h1>
   <p class="lede">Every model runs the same inputs against a known right answer. Click any result to see the numbers behind it.</p>
 </section>
-<div class="filters" role="group" aria-label="Filter tests">{filters}</div>
+<div class="filters" role="group" aria-label="Filter tests">{filters}
+  <div class="view-toggle" role="group" aria-label="View"><button type="button" data-view="cards" aria-pressed="true">Cards</button><button type="button" data-view="table" aria-pressed="false">Table</button></div>
+</div>
+<div id="view-cards">{test_gallery(manifests, runs, _need)}</div>
+<div id="view-table">
 <aside class="card panel" aria-live="polite" id="panel">{panel}</aside>
 <div class="matrix-wrap">
   <table class="matrix" id="matrix">
     <thead><tr><th scope="col" class="test-col">Test</th>{head}</tr></thead>
     <tbody>{''.join(rows)}</tbody>
   </table>
+</div>
 </div>
 <p class="small" style="margin-top:14px;max-width:90ch">The demo solvers are simple worked examples that ship with the suite. {esc(prod_list)} are production software, each run as a black box with its own default settings. HydroNet is a research code (physics-informed machine learning), scored with the settings of its own examples. SWMM 5.1.15 and EPANET 2.0 are scored for compatibility with the current releases, not for physics. Columns marked <i>submitted by …</i> were run by others and scored here.</p>
 <section class="section" style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">{corpus}{wait}{submitted}</section>
@@ -764,7 +808,13 @@ document.querySelectorAll('.cellbtn').forEach(function(b){b.addEventListener('cl
 var first=document.querySelector('.cellbtn[data-cell="'+(%FIRST%)+'"]');if(first)first.setAttribute('aria-pressed','true');
 document.querySelectorAll('[data-filter]').forEach(function(f){f.addEventListener('click',function(){var g=f.dataset.filter;
 document.querySelectorAll('[data-filter]').forEach(function(o){o.setAttribute('aria-pressed',o===f?'true':'false');});
-document.querySelectorAll('#matrix tbody tr').forEach(function(r){r.hidden=!(g==='all'||r.dataset.group===g);});});});})();
+document.querySelectorAll('#matrix tbody tr, .tile-group').forEach(function(r){r.hidden=!(g==='all'||r.dataset.group===g);});});});
+var vc=document.getElementById('view-cards'),vt=document.getElementById('view-table');
+function view(v){vc.hidden=v!=='cards';vt.hidden=v!=='table';document.querySelectorAll('[data-view]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.view===v?'true':'false');});try{localStorage.setItem('ohb-view',v);}catch(e){}}
+var saved=null;try{saved=localStorage.getItem('ohb-view');}catch(e){}
+if(location.hash==='#table')saved='table';
+view(saved==='table'?'table':'cards');
+document.querySelectorAll('[data-view]').forEach(function(b){b.addEventListener('click',function(){view(b.dataset.view);});});})();
 </script>""".replace("%FIRST%", json.dumps(first or ""))
     return layout("Tests and results", body, "results.html", scripts=script,
                   description="Which flood, river, drainage and network models pass which tests, and by how much.")
@@ -959,14 +1009,14 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         not_yet = (f'<div class="notyet"><div><b>Not run yet:</b> {esc(", ".join(missing))}</div>'
                    f'<a href="../score.html" style="font-weight:600">Run it and add yours →</a></div>')
     if mcards:
-        models = f"""<section class="section" style="padding-bottom:0">
+        models = f"""<section class="section" style="padding-bottom:0" id="models">
   <h2>How models did</h2>
   <p class="muted">{esc(grid_txt)}</p>
   {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
   <div class="models">{''.join(mcards)}{not_yet}</div>
 </section>"""
     else:
-        models = f"""<section class="section" style="padding-bottom:0"><h2>How models did</h2>
+        models = f"""<section class="section" style="padding-bottom:0" id="models"><h2>How models did</h2>
   <p>No model has been scored on this test yet.</p>{not_yet}</section>"""
     # convergence + status
     conv = conv_chart(m, runs)
@@ -1054,7 +1104,18 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
   </div>
   <div class="case-id">Test {esc(sid)}<br>{esc(_source_short(m))}<br>Version {esc(m['case_version'])}</div>
 </header>"""
-    body = f'<div class="wrap">{head}{figure}{story_cards}{models}{split}{tech}</div>{chart_data}'
+    kind = (m.get("reference") or {}).get("kind")
+    truth = {"analytic": "Exact solution", "exact_states": "Exact, from conservation", "intercomparison": "Known end states",
+             "measured": "Laboratory or field measurements", "pinned_engine": "A pinned reference engine"}.get(kind, "")
+    n_run = len(runs)
+    n_ok = sum(1 for c in runs.values() if c.get("passed"))
+    result_line = (f"<b>{n_ok} of {n_run}</b> model{'s' if n_run != 1 else ''} pass" if n_run else "No model run yet")
+    art = (f'<figure class="case-art">{tile_svg(sid, "Sketch of the test: " + st["name"], fit="meet")}'
+           f'<figcaption><dl class="glance"><dt>Right answer</dt><dd>{esc(truth)}{(" · " + esc(_source_short(m))) if _source_short(m) else ""}</dd>'
+           f'<dt>Results</dt><dd>{result_line} · <a href="#models">see them ↓</a></dd>'
+           f'<dt>Must</dt><dd>{esc(st["must"][0])}</dd></dl>'
+           f'<span class="small">Sketch, not to scale.</span></figcaption></figure>') if not chart_html else ""
+    body = f'<div class="wrap">{head}{art}{figure}{story_cards}{models}{split}{tech}</div>{chart_data}'
     scripts = '<script src="../static/chart.js" defer></script>' if chart_html else ""
     return layout(st["name"], body, "results.html", depth=1, description=st["question"], scripts=scripts, math=True)
 

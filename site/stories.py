@@ -7,7 +7,7 @@ details"; this file only says what the test is about, in everyday words.
 Fields
 ------
 name      short everyday title
-group     rivers | pipes | floods2d | compat  (the filter chips on Tests & results)
+group     rivers | floods2d | drainage | coupled | pipes | compat  (the filter chips on Tests & results)
 question  the one question the test answers
 what      what physically happens
 why       why an engineer should care
@@ -15,10 +15,20 @@ must      what a good model must do (one line each)
 """
 
 GROUPS = {
-    "rivers": "Floods and channels",
-    "pipes": "Pipes and networks",
+    "rivers": "Rivers and channels",
     "floods2d": "2D floods",
+    "drainage": "Sewers and drainage",
+    "coupled": "Sewers meeting streets",
+    "pipes": "Water mains",
     "compat": "SWMM and EPANET compatibility",
+}
+GROUP_BLURBS = {
+    "rivers": "One-dimensional flow along a channel: dam breaks, backwater, jumps and flow over a hump.",
+    "floods2d": "Water spreading over ground: moving shorelines, floodplains, model cities and real dam failures.",
+    "drainage": "Sewer pipes part full and surcharged, storage, pumps and backwater through manholes.",
+    "coupled": "Water passing between the pipes and the street through manholes, both ways.",
+    "pipes": "Pressurised networks: friction, loops, water hammer and pollutant transport.",
+    "compat": "Does another engine give the same answers as EPA SWMM 5.2.4 or EPANET 2.2 on the same input?",
 }
 
 STORIES: dict[str, dict] = {
@@ -87,7 +97,7 @@ STORIES: dict[str, dict] = {
         must=["keep every velocity under 1 mm/s", "keep the water where it is (average depth change under 0.5 mm)"],
     ),
     "A1F-100": dict(
-        name="Real sewer network, Odense", group="rivers",
+        name="Real sewer network, Odense", group="drainage",
         question="Does a sewer model reproduce ten years of measured water levels?",
         what="The Bellinge combined sewer system in Denmark has a published SWMM model and years of level, flow and pump records.",
         why="Field data is the final test of a drainage model: real rainfall, real pipes, real measurements.",
@@ -131,35 +141,35 @@ STORIES: dict[str, dict] = {
     ),
     # ── drainage networks (exact answers for link–node models) ───────────────
     "A1D-001": dict(
-        name="Sewer pipes running part full", group="pipes",
+        name="Sewer pipes running part full", group="drainage",
         question="Does a drainage model get the depth right in a round pipe?",
         what="Three lines of 1 m sewer pipes, on a steady slope, carry three different flows that fill them to about a quarter, a half and three quarters. The depth in each pipe is fixed exactly by Manning's formula for a circle.",
         why="Pipe capacity checks, surcharge warnings and flood risk all start from the depth in a partly full pipe. This is the simplest thing a sewer model has to get right.",
         must=["keep every pipe and manhole depth within 1 cm", "pass the full inflow down every pipe"],
     ),
     "A1D-002": dict(
-        name="Sewer pipes running full", group="pipes",
+        name="Sewer pipes running full", group="drainage",
         question="When pipes surcharge, does the model get the water level in the manholes right?",
         what="Five pipes carry more water than they can as open channels, with the outlet held above the pipe tops, so they run full like water mains. The level in each manhole rises by an exact friction loss along each pipe.",
         why="Surcharged pipes push water up manholes and out onto streets. How high it rises decides whether a street floods.",
         must=["keep manhole levels within 1 cm", "pass the full inflow down every pipe"],
     ),
     "A1D-003": dict(
-        name="Tank emptying through an outlet", group="pipes",
+        name="Tank emptying through an outlet", group="drainage",
         question="Does a storage tank drain at the right rate?",
         what="A 2 m deep tank drains through an outlet whose flow grows with the square root of the depth. The depth after five minutes follows an exact formula.",
         why="Storage tanks and ponds are how drainage systems hold back floods. Their draining rate sets how much room is ready for the next storm.",
         must=["get the tank depth within 5 mm", "get the outlet flow within 5 L/s"],
     ),
     "A1D-004": dict(
-        name="Pump working on its curve", group="pipes",
+        name="Pump working on its curve", group="drainage",
         question="Does the model run a pump at the right operating point?",
         what="A pump lifts water from a wet well into a rising main held at a fixed level. At steady state it must pass exactly the inflow, and its curve then fixes the water level in the well.",
         why="Pumping stations keep low-lying areas dry. A wrong operating point means the wrong wet-well level, the wrong switching and the wrong energy bill.",
         must=["get the wet-well level within 1 cm", "pump exactly the inflow"],
     ),
     "A1D-005": dict(
-        name="Backwater up a sewer", group="pipes",
+        name="Backwater up a sewer", group="drainage",
         question="Does a high water level at the outlet back up the right distance?",
         what="A kilometre of 1.2 m sewer drains to an outlet whose level is held high (as by a river in flood). Water backs up through twenty manholes, its depth falling gradually towards normal depth upstream, along an exactly integrated curve.",
         why="Outfalls into rivers and the sea are often submerged. How far the backwater reaches decides which basements and gullies flood.",
@@ -251,28 +261,28 @@ STORIES: dict[str, dict] = {
         must=["match the gauge records", "time the front's arrival within 0.5 s"],
     ),
     "A12-001": dict(
-        name="Sewer overflowing through a manhole", group="floods2d",
+        name="Sewer overflowing through a manhole", group="coupled",
         question="Does a coupled model exchange the right flow between sewer and street?",
         what="A laboratory rig where water surges up a manhole onto a surface and drains back.",
         why="Urban flooding happens where sewers and streets exchange water. The coupling equations are the weakest link of most models.",
         must=["match the measured exchange flow", "get the surface depth peak within 5 %"],
     ),
     "A12-010": dict(
-        name="Manhole overflowing onto a street", group="floods2d",
+        name="Manhole overflowing onto a street", group="coupled",
         question="Does a coupled model put all of the sewer's overflow onto the street?",
         what="A pipe delivers a steady flow to a manhole with no way out but up. It overflows onto a sloping street, and downstream the street carries the whole flow as a thin sheet whose depth is fixed exactly by the slope and roughness.",
         why="Surcharging manholes are where urban flooding starts. If the coupling loses or invents water here, every flood map built on it is wrong.",
         must=["release the full pipe flow onto the street", "get the street depth within 3 mm", "end with the water accounted for (0.5 %)"],
     ),
     "A12-011": dict(
-        name="Flooded yard draining into a pipe", group="floods2d",
+        name="Flooded yard draining into a pipe", group="coupled",
         question="Does the flood drain down to the right level, and all of it out of the pipe?",
         what="A walled yard holds 30 cm of water that drains through a gully, raised 5 cm above the floor, into a pipe too small to take it all at once. The water above the gully's lip must leave through the pipe; the 5 cm below it must stay.",
         why="How quickly and how completely floodwater drains back into sewers decides how long streets stay flooded.",
         must=["leave the yard at the gully's lip (within 1 cm)", "send 225 m³ out of the pipe (within 2 %)", "end with the water accounted for (0.5 %)"],
     ),
     "A12-012": dict(
-        name="Overflow and return", group="floods2d",
+        name="Overflow and return", group="coupled",
         question="When a sewer overflows and then drains back, does every drop come out?",
         what="A storm overloads a sewer, which overflows into a hollow above a manhole. As the storm passes, the water runs back down the manhole and out of the system.",
         why="Water that surcharges onto streets usually returns to the sewer. A coupling that loses or gains water on the round trip gets flood volumes and outflows wrong.",
