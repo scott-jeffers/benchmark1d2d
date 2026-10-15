@@ -1254,8 +1254,31 @@ def main() -> int:
                             break
         figs = legacy_figures(m, result_dirs, assets)
         out_pages[page_name(m["test_id"])] = pages.case_page(m, by, exact, curves, figs, evidence.get(m["test_id"], []), extra)
+    # social preview images and result badges
+    import og
+
+    for m in manifests:
+        sid = short_id(m["test_id"])
+        by = runs.get(m["test_id"], {})
+        st = pages.story(m)
+        try:
+            og.og_image(DIST / "assets" / "og" / f"{sid}.png", sid, pages.GROUPS.get(st["group"], ""), st["name"], st["question"],
+                        sum(1 for c in by.values() if c.get("passed")), len(by))
+        except Exception as exc:  # noqa: BLE001 - a preview image must not break the build
+            print(f"WARN preview image for {sid}: {exc}", file=sys.stderr)
+        for k, c in by.items():
+            bp = DIST / "badges" / sid / f"{k}.svg"
+            bp.parent.mkdir(parents=True, exist_ok=True)
+            bp.write_text(og.badge_svg(f"OpenHydro Bench {sid}", bool(c.get("passed"))), encoding="utf-8")
+    try:
+        og.og_image(DIST / "assets" / "og" / "home.png", "A1F-010", "Open benchmarks for water models",
+                    "Does your flood model get the water right?", "Every test has a known right answer. Run your model, compare, and get a result anyone can check.",
+                    0, 0, footer=f"{sum(1 for m in manifests if m['status'] != 'draft')} tests · {len({k for v in runs.values() for k in v})} models · open source")
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARN home preview image: {exc}", file=sys.stderr)
     out_pages["downloads.html"] = downloads_page(files)
     out_pages["solvers.html"] = pages.solvers_index(manifests, runs)
+    out_pages["compare.html"] = pages.compare_page(manifests, runs)
     (DIST / "solvers").mkdir(exist_ok=True)
     for k in {k for v in runs.values() for k in v}:
         out_pages[f"solvers/{k}.html"] = pages.solver_page(k, manifests, runs)

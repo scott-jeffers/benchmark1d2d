@@ -24,6 +24,7 @@ H: Any = None  # the build module, set by build.main()
 
 SITE_NAME = "OpenHydro Bench"
 REPO_URL = "https://github.com/scott-jeffers/benchmark1d2d"
+SITE_URL = "https://scott-jeffers.github.io/benchmark1d2d/"
 BLOB = REPO_URL + "/blob/master/"
 TREE = REPO_URL + "/tree/master/"
 
@@ -377,13 +378,14 @@ CASE_NOTES = {
 # ── layout ──────────────────────────────────────────────────────────────────
 
 NAV = [("results.html", "Tests &amp; results"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
-FOOT = [("solvers.html", "Models"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
+FOOT = [("solvers.html", "Models"), ("compare.html", "Compare models"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
         ("method.html", "Method"), ("get-started.html", "Command line")]
 LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 2 11 14 17 8 S27 2 33 8" fill="none" stroke-width="3" stroke-linecap="round"/>'
         '<path class="b" d="M1 18 H33" stroke-width="3" stroke-linecap="round"/></svg>')
 
 
-def layout(title: str, body: str, active: str, depth: int = 0, description: str = "", scripts: str = "", math: bool = False) -> str:
+def layout(title: str, body: str, active: str, depth: int = 0, description: str = "", scripts: str = "", math: bool = False,
+           og_image: str = "assets/og/home.png", path: str = "") -> str:
     up = "../" * depth
     nav = "".join(f'<a href="{up}{href}"{" aria-current=\"page\"" if href == active else ""}>{label}</a>' for href, label in NAV)
     foot = "".join(f'<a href="{up}{href}">{label}</a>' for href, label in FOOT)
@@ -401,6 +403,15 @@ def layout(title: str, body: str, active: str, depth: int = 0, description: str 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(full_title)}</title>
 <meta name="description" content="{esc(description or 'Open benchmarks for flood, river, drainage and water-network models. Every test has a known right answer.')}">
+<meta property="og:site_name" content="{SITE_NAME}">
+<meta property="og:title" content="{esc(full_title)}">
+<meta property="og:description" content="{esc(description or 'Open benchmarks for flood, river, drainage and water-network models. Every test has a known right answer.')}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{SITE_URL}{esc(path or active)}">
+<meta property="og:image" content="{SITE_URL}{esc(og_image)}">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" type="application/atom+xml" title="{SITE_NAME}: what's new" href="{up}feed.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -471,11 +482,71 @@ def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
   <p class="lede">{esc(s['what'])}.</p>
   <p class="muted">{esc(KIND_WORDS.get(s['kind'], ''))} Passes <b>{n_pass} of {len(mine)}</b> tests it ran. Score cards from: {esc(', '.join(versions))}.</p>
   {doc_link}
+  <p><a href="../compare.html?a={esc(key)}">Compare {esc(s['name'])} with another model →</a></p>
 </section>
 <section class="section"><div class="table-scroll"><table class="data"><thead><tr><th>Test</th><th>Result</th><th>Checks that decide the result</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table></div></section>
 </div>"""
     return layout(s["name"] + " " + s["sub"], body, "solvers.html", depth=1, description=f"Every benchmark result for {s['name']} ({s['sub']}).")
+
+
+def compare_page(manifests: list[dict], runs: dict) -> str:
+    """Two models side by side, test by test."""
+    keys = SOLVERS_ORDER({k for v in runs.values() for k in v})
+    models = [dict(key=k, name=series_label(k, keys) if SOLVER[k]["name"] in {SOLVER[o]["name"] for o in keys if o != k} else SOLVER[k]["name"],
+                   sub=SOLVER[k]["sub"], color=SOLVER[k]["color"], kind=SOLVER[k]["kind"]) for k in keys]
+    for mm in models:
+        mm["full"] = mm["name"] if mm["sub"].split("·")[-1].strip() in mm["name"] else f'{mm["name"]} · {mm["sub"]}'
+    tests = []
+    for gkey, gname in GROUPS.items():
+        for m in manifests:
+            if story(m)["group"] != gkey or not runs.get(m["test_id"]):
+                continue
+            sid = sid_of(m["test_id"])
+            res = {}
+            for k, c in runs[m["test_id"]].items():
+                res[k] = dict(p=bool(c.get("passed")), c=[[ck["label"], ck["value"], bool(ck["ok"])] for ck in checks_for(m, c) if ck.get("gating", True)],
+                              n=NOTES.get((sid, k), ""))
+            tests.append(dict(sid=sid, name=story(m)["name"], group=gname, r=res))
+    data = dict(models=models, tests=tests)
+    opts = "".join(f'<option value="{esc(mm["key"])}">{esc(mm["full"])}</option>' for mm in models)
+    body = f"""<div class="wrap">
+<section class="page-head">
+  <h1>Compare two models</h1>
+  <p class="lede">Pick two models to see, test by test, where they agree and where they part ways.</p>
+</section>
+<div class="cmp-pick">
+  <label>Model A<select id="cmp-a">{opts}</select></label>
+  <span class="vs" aria-hidden="true">vs</span>
+  <label>Model B<select id="cmp-b">{opts}</select></label>
+  <button type="button" class="pill" id="cmp-swap">Swap</button>
+</div>
+<div id="cmp-summary" class="cmp-summary" aria-live="polite"></div>
+<div class="table-scroll"><table class="data cmp" id="cmp-table"><thead><tr><th>Test</th><th id="cmp-ha">A</th><th id="cmp-hb">B</th></tr></thead><tbody></tbody></table></div>
+<p class="small" id="cmp-only"></p>
+</div>
+{json_script("cmp-data", data)}"""
+    script = """<script>
+(function(){var D=JSON.parse(document.getElementById('cmp-data').textContent),A=document.getElementById('cmp-a'),B=document.getElementById('cmp-b');
+var M={};D.models.forEach(function(m){M[m.key]=m;});
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+var q=new URLSearchParams(location.search);A.value=M[q.get('a')]?q.get('a'):(M['swmm524']?'swmm524':D.models[0].key);
+B.value=M[q.get('b')]?q.get('b'):(M['openswmm-fv']?'openswmm-fv':D.models[1].key);
+function cell(r){if(!r)return '<td class="muted">not run</td>';var h='<td><span class="badge '+(r.p?'pass">✓ Passes':'fail">✗ Fails')+'</span><ul class="cmp-checks">';
+r.c.forEach(function(c){h+='<li class="'+(c[2]?'ok':'no')+'">'+(c[2]?'✓ ':'✗ ')+esc(c[0])+': '+esc(c[1])+'</li>';});return h+'</ul></td>';}
+function draw(){var a=A.value,b=B.value,both=[],onlyA=0,onlyB=0,s={bp:0,ap:0,bpo:0,bf:0};
+history.replaceState(null,'','?a='+encodeURIComponent(a)+'&b='+encodeURIComponent(b));
+document.getElementById('cmp-ha').textContent=M[a].full;document.getElementById('cmp-hb').textContent=M[b].full;
+D.tests.forEach(function(t){var ra=t.r[a],rb=t.r[b];if(ra&&rb){both.push(t);if(ra.p&&rb.p)s.bp++;else if(ra.p)s.ap++;else if(rb.p)s.bpo++;else s.bf++;}else if(ra)onlyA++;else if(rb)onlyB++;});
+both.sort(function(x,y){var dx=x.r[a].p!==x.r[b].p?0:1,dy=y.r[a].p!==y.r[b].p?0:1;return dx-dy;});
+var rows='';both.forEach(function(t){var diff=t.r[a].p!==t.r[b].p;rows+='<tr'+(diff?' class="cmp-diff"':'')+'><th scope="row"><a href="tests/'+esc(t.sid)+'.html">'+esc(t.name)+'</a><small>'+esc(t.sid)+' · '+esc(t.group)+'</small></th>'+cell(t.r[a])+cell(t.r[b])+'</tr>';});
+document.querySelector('#cmp-table tbody').innerHTML=rows||'<tr><td colspan="3">These two models have no test in common yet.</td></tr>';
+var n=both.length;document.getElementById('cmp-summary').innerHTML=n?('<div><b>'+n+'</b><span>tests both ran</span></div><div><b>'+s.bp+'</b><span>both pass</span></div><div class="hl"><b>'+s.ap+'</b><span>only '+esc(M[a].name)+' passes</span></div><div class="hl"><b>'+s.bpo+'</b><span>only '+esc(M[b].name)+' passes</span></div><div><b>'+s.bf+'</b><span>both fail</span></div>'):'';
+document.getElementById('cmp-only').textContent=(onlyA||onlyB)?('Not compared: '+onlyA+' test(s) only '+M[a].name+' ran, '+onlyB+' only '+M[b].name+' ran.'):'';}
+A.addEventListener('change',draw);B.addEventListener('change',draw);
+document.getElementById('cmp-swap').addEventListener('click',function(){var t=A.value;A.value=B.value;B.value=t;draw();});draw();})();
+</script>"""
+    return layout("Compare two models", body, "solvers.html", scripts=script, description="Two benchmark models side by side, test by test.")
 
 
 def solvers_index(manifests: list[dict], runs: dict) -> str:
@@ -494,7 +565,7 @@ def solvers_index(manifests: list[dict], runs: dict) -> str:
                        f'<span class="muted">{esc(SOLVER[k]["sub"])}</span></a> — passes {sum(1 for c in cards if c.get("passed"))} of {len(cards)}</li>')
         out.append(f'<section class="section"><h2>{title}</h2><p class="muted">{esc(KIND_WORDS[kind])}</p><ul class="waitlist">{"".join(lis)}</ul></section>')
     body = f"""<div class="wrap"><section class="page-head"><h1>Models</h1>
-<p class="lede">Every model scored on the benchmark, with all of its results on one page.</p></section>{''.join(out)}</div>"""
+<p class="lede">Every model scored on the benchmark, with all of its results on one page. <a href="compare.html">Compare two models side by side →</a></p></section>{''.join(out)}</div>"""
     return layout("Models", body, "solvers.html", description="Every model scored on the benchmark.")
 
 
@@ -813,7 +884,7 @@ c.checks.forEach(function(k){h+='<li><span class="'+(k.ok?'ok':'no')+'" aria-lab
 h+='</ul>'+(c.note?'<p class="small">'+esc(c.note)+'</p>':'')+'<a href="tests/'+esc(c.sid)+'.html#m-'+esc(id.split('|')[1])+'" style="font-weight:600">Open the test →</a>'+
 '<div class="legend-mini"><span><b class="ok">✓</b> passes every check</span><span><b class="no">✗</b> fails at least one check</span><span><b style="color:#A7B4BC">—</b> not run yet</span></div>';
 panel.innerHTML=h;var rc=panel.getBoundingClientRect();if(rc.top<60||rc.top>innerHeight-80)panel.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.cellbtn').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.cell===id?'true':'false');});}
-document.querySelectorAll('.cellbtn').forEach(function(b){b.addEventListener('click',function(){render(b.dataset.cell);});});
+document.querySelectorAll('.cellbtn').forEach(function(b){b.addEventListener('click',function(){render(b.dataset.cell);try{history.replaceState(null,'','#cell='+encodeURIComponent(b.dataset.cell));}catch(e){}});});
 var first=document.querySelector('.cellbtn[data-cell="'+(%FIRST%)+'"]');if(first)first.setAttribute('aria-pressed','true');
 document.querySelectorAll('[data-filter]').forEach(function(f){f.addEventListener('click',function(){var g=f.dataset.filter;
 document.querySelectorAll('[data-filter]').forEach(function(o){o.setAttribute('aria-pressed',o===f?'true':'false');});
@@ -822,6 +893,8 @@ var vc=document.getElementById('view-cards'),vt=document.getElementById('view-ta
 function view(v){vc.hidden=v!=='cards';vt.hidden=v!=='table';document.querySelectorAll('[data-view]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.view===v?'true':'false');});try{localStorage.setItem('ohb-view',v);}catch(e){}}
 var saved=null;try{saved=localStorage.getItem('ohb-view');}catch(e){}
 if(location.hash==='#table')saved='table';
+var hc=decodeURIComponent(location.hash).match(/^#cell=(.+)$/);
+if(hc&&data[hc[1]]){saved='table';setTimeout(function(){render(hc[1]);var b=document.querySelector('.cellbtn[data-cell="'+hc[1]+'"]');if(b)b.scrollIntoView({block:'center'});},0);}
 view(saved==='table'?'table':'cards');
 document.querySelectorAll('[data-view]').forEach(function(b){b.addEventListener('click',function(){view(b.dataset.view);});});})();
 </script>""".replace("%FIRST%", json.dumps(first or ""))
@@ -930,6 +1003,20 @@ def compare_chart(m: dict, runs: dict, exact: dict | None, profiles: dict) -> tu
   {_data_script(data)}
 </section>"""
     return html_, ""
+
+
+def share_block(sid: str, k: str, card: dict) -> str:
+    """A link to this result and a badge to embed it."""
+    link = f"{SITE_URL}results.html#cell={sid}|{k}"
+    badge = f"{SITE_URL}badges/{sid}/{k}.svg"
+    md = f"[![OpenHydro Bench {sid}: {'passes' if card.get('passed') else 'fails'}]({badge})]({link})"
+    html_ = f'<a href="{link}"><img src="{badge}" alt="OpenHydro Bench {sid}: {"passes" if card.get("passed") else "fails"}"></a>'
+    return (f'<details class="share"><summary>Share or embed this result</summary>'
+            f'<p class="small"><img src="../badges/{esc(sid)}/{esc(k)}.svg" alt="" height="20"></p>'
+            f'<label class="small">Link<input type="text" readonly value="{esc(link)}" onclick="this.select()"></label>'
+            f'<label class="small">Badge (Markdown)<input type="text" readonly value="{esc(md)}" onclick="this.select()"></label>'
+            f'<label class="small">Badge (HTML)<input type="text" readonly value="{esc(html_)}" onclick="this.select()"></label>'
+            f'<p class="small muted">The badge always shows the latest published result.</p></details>')
 
 
 def series_label(k: str, keys: list[str]) -> str:
@@ -1066,6 +1153,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
   <div class="checks-grid">{checks}</div>
   {f'<p class="note">{esc(note)}</p>' if note else ''}
   <p class="note small">Signed score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>
+  {share_block(sid, k, c)}
 </article>""")
     levels = (m["simulation"].get("mesh_refinement") or {}).get("levels") or []
     grid_txt = (f"Each model runs the same inputs on {len(levels)} grids, from {nice(max(levels), 3)} m down to {nice(min(levels), 3)} m cells."
@@ -1193,7 +1281,8 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
            f'<span class="small">Sketch, not to scale.</span></figcaption></figure>') if not hero_chart else ""
     body = f'<div class="wrap">{head}{art}{figure}{story_cards}{netsec}{models}{split}{tech}</div>{chart_data}'
     scripts = '<script src="../static/chart.js" defer></script>' if chart_html else ""
-    return layout(st["name"], body, "results.html", depth=1, description=st["question"], scripts=scripts, math=True)
+    return layout(st["name"], body, "results.html", depth=1, description=st["question"], scripts=scripts, math=True,
+                  og_image=f"assets/og/{sid}.png", path=f"tests/{sid}.html")
 
 
 # ── score your model ────────────────────────────────────────────────────────

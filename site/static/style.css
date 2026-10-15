@@ -450,3 +450,25 @@ table.data code { white-space: nowrap; }
 .findings { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 .findings .finding { background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); padding: 14px 16px; font-size: 15px; }
 .findings .finding b { font-size: 16px; }
+
+/* compare two models */
+.cmp-pick { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 18px; margin: 0 0 22px; }
+.cmp-pick label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); }
+.cmp-pick select { font: inherit; font-size: 16px; text-transform: none; letter-spacing: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); min-width: min(100%, 300px); }
+.cmp-pick .vs { font-weight: 700; color: var(--ink-2); padding-bottom: 10px; }
+.cmp-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; margin-bottom: 22px; }
+.cmp-summary > div { background: var(--sheet); padding: 16px 18px; }
+.cmp-summary > div.hl { background: var(--water-wash); }
+.cmp-summary b { display: block; font-size: 30px; font-weight: 800; line-height: 1.1; }
+.cmp-summary span { color: var(--ink-2); font-size: 14px; }
+table.cmp th[scope=row] small { display: block; color: var(--ink-2); font-weight: 400; }
+table.cmp td { vertical-align: top; min-width: 220px; }
+.cmp-checks { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; color: var(--ink-2); }
+.cmp-checks li.no { color: var(--fail-ink); }
+tr.cmp-diff th[scope=row] { box-shadow: inset 3px 0 0 var(--water); }
+
+/* share a result */
+details.share { margin-top: 10px; font-size: 14px; }
+details.share summary { cursor: pointer; color: var(--water); font-weight: 600; }
+details.share label { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+details.share input { font: 13px var(--mono); padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--ink); width: 100%; }
