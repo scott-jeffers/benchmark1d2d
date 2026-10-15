@@ -307,6 +307,8 @@ NOTES = {
     ("A2C-EA2", "hecras-em"): "As SWE-ELM: HEC-RAS's own accounting shows a 1.4 % volume error.",
     ("A1F-010", "hydronet-fvm"): "The dam never breaks: no water crosses onto the dry bed. HydroNet's Roe residual uses a fixed 1 cm dry threshold and, at a face between a wet and a dry cell, the wet cell's own flux, so still water next to dry ground feels no net force. The same happens below a 1 cm downstream layer. Mass is conserved because nothing moves.",
     ("A1F-011", "hydronet-fvm"): "Into 10 cm of water the dam break runs normally: depth error 1.4 mm (passes) and mass 0.016 %, but the error falls at order 0.69 (minimum 0.8).",
+    ("A1F-011", "hydronet-pinn"): "The trained network smears the bore and the rarefaction: average depth error 12.6 cm (1 cm allowed), 4.5 % of the water lost, and no improvement on finer grids. Trained with the recipe of HydroNet's own dam-break example, which on its own 20 m, 1 s case gives an RMS error of 6 cm on a 2 m dam (3 %); this case is 2 km over 30 s.",
+    ("A1F-010", "hydronet-pinn"): "The trained network spreads 0.3–0.4 m of water over the whole dry channel downstream, so its front is 713 m ahead of the exact one; it gains 3.3 % of the water, and the error grows on finer grids. Its own finite-volume engine, by contrast, never starts the flow.",
 }
 CASE_NOTES = {
     "A1F-010": "Since version 2 the front is measured by volume: the point beyond which the last 5 % of the released water lies. Version 1 used the 1 mm depth contour, which every production code failed by 12 to 211 m: on the thin tip a millimetre of depth moves that contour about 10 m, and production codes treat water shallower than about 1 mm as dry. The 1 mm edge is still reported, but no longer decides the result.",

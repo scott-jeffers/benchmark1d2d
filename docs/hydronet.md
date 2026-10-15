@@ -39,4 +39,23 @@ PyTorch (CPU is enough) and pyHMT2D, which HydroNet imports.
 3. **Stoker (A1F-011) runs normally**: depth error 1.4 mm, mass 0.016 %, but
    the error falls at order 0.69 (minimum 0.8).
 
-FVM-PINN results: see the score cards (`site/fixtures/hydronet/pinn/`).
+## FVM-PINN
+
+Trained on each grid with the dam-break example's recipe, unchanged, and
+evaluated at the end time (training takes 7–20 minutes per grid on two CPU
+cores):
+
+* **Stoker (A1F-011)**: average depth error 12.6 cm (limit 1 cm), mass
+  −4.5 %, and the error does not fall on finer grids (order −0.07). As a
+  control, HydroNet's own example run here unchanged (20 m channel, 2 m →
+  0.5 m, 1 s) gives an RMS depth error of 6 cm on a 2 m dam (3 %), peak
+  26 cm. On this case, 2 km over 30 s with a 10:1 depth ratio, the same
+  recipe does about four times worse relative to the dam height.
+* **Ritter (A1F-010)**: the network fills the whole downstream channel with
+  0.3–0.4 m of water where the exact answer is dry beyond 1376 m, so its
+  volume front is 713 m *ahead*; mass +3.3 %, and the error grows on finer
+  grids. (Its finite-volume engine, by contrast, never starts the flow.)
+* The Thacker bowl is not trained: its finite-volume residual is unstable
+  (above), and its finest grid (31 000 cells) would take many hours.
+
+The weekly `slow-runs.yml` workflow retrains the dam breaks.

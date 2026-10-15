@@ -34,7 +34,11 @@ Suite releases are independent of schema semver (`schemas/v1`).
   passes Stoker's depth and mass checks (order 0.69), never starts the
   dry-bed dam break (a fixed 1 cm dry threshold and a one-sided wet/dry flux
   leave still water next to dry ground without a net force), and goes
-  unstable on the Thacker bowl below 10 cm grids. The volume front now reads
+  unstable on the Thacker bowl below 10 cm grids. FVM-PINN, trained with its
+  own dam-break example's recipe, fails both dam breaks: Stoker depth error
+  12.6 cm (limit 1 cm), mass −4.5 %; on the dry bed it spreads water over
+  the whole channel (front 713 m ahead, mass +3.3 %). Neither improves on
+  finer grids. The volume front now reads
   "still at the dam" when no water has crossed.
 - `.github/workflows/slow-runs.yml`: weekly LISFLOOD-FP DG2, ANUGA and
   TELEMAC on EA Tests 2 and 5.
