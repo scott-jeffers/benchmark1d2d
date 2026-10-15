@@ -1,0 +1,75 @@
+name: Slow runs
+
+# Runs too long for the per-push workflows, refreshed weekly: LISFLOOD-FP's
+# second-order DG2 solver on the EA valley tests (2 and 5) and ANUGA on the
+# same two tests. Score cards are uploaded as artifacts; copy them into
+# site/fixtures/ to publish. A scored fail is a finding, not a broken build.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 2 * * 6"  # weekly, Saturday 02:17 UTC
+
+jobs:
+  lisflood-dg2:
+    name: LISFLOOD-FP 8.3 DG2 on EA Tests 2 and 5
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      LF_URL: https://zenodo.org/api/records/13121119/files/LISFLOOD-FP-8.3.zip/content
+      LF_MD5: abaa2e41b58f6c7df4443274bf130d4a
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build dependencies
+        run: sudo apt-get update -q && sudo apt-get install -y -q libnetcdf-dev libnuma-dev
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/lisflood-src.zip
+          key: lisflood-8.3-src-v1
+      - name: Download (Zenodo, pinned checksum) and build CPU-only, double precision
+        run: |
+          zip="$RUNNER_TEMP/lisflood-src.zip"
+          for i in 1 2 3 4 5 6 7 8; do
+            echo "$LF_MD5  $zip" | md5sum -c --status - 2>/dev/null && break
+            curl -fsSL --retry 3 --retry-all-errors -C - -o "$zip" "$LF_URL" || sleep 5
+          done
+          echo "$LF_MD5  $zip" | md5sum -c -
+          unzip -q "$zip" -d "$RUNNER_TEMP/lf"
+          src=$(dirname "$(find "$RUNNER_TEMP/lf" -path '*/source/CMakeLists.txt' | head -1)")
+          cmake -S "$src" -B "$RUNNER_TEMP/lf/build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/lf/build" -j4 --target lisflood
+      - name: Run and score
+        run: |
+          python -m pip install -q -e ".[dev]"
+          python scripts/fetch_inputs.py
+          python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" A2C-EA2 A2C-EA5 --solver dg2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lisflood-dg2-ea-scorecards
+          path: out/lisflood/*/*.scorecard.json
+
+  anuga-ea:
+    name: ANUGA 4.0.1 on EA Tests 2 and 5
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: anuga
+          create-args: -c conda-forge anuga=4.0.1 python=3.12 pip scipy
+          init-shell: bash
+      - name: Run and score
+        shell: micromamba-shell {0}
+        run: |
+          python -m pip install -q -e ".[dev]"
+          python scripts/fetch_inputs.py
+          python scripts/run_anuga.py A2C-EA2 A2C-EA5
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anuga-ea-scorecards
+          path: out/anuga/*.scorecard.json

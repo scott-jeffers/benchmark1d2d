@@ -378,9 +378,10 @@ def run_ea(tid: str, m: dict, env: dict, py: str) -> tuple[dict, float | None]:
     open boundary following the boundary level table (liquid boundaries file);
     there the ring is left out. Inflows are TELEMAC point sources on the
     inflow cells, the hydrograph shared equally (sources file). Results are
-    written every probe interval (``TIME STEP``, the largest step allowed, set
-    to that interval); the scorer gets the whole field hourly and the probe
-    cells in between.
+    written every probe interval; the scorer gets the whole field hourly and
+    the probe cells in between. The largest step (``TIME STEP``) is 1 s: on a
+    dry start the Courant condition sets no limit, and a long first step
+    samples the inflow hydrograph too coarsely (LISFLOOD-FP has the same cap).
     """
     import importlib.util
 
@@ -437,7 +438,8 @@ def run_ea(tid: str, m: dict, env: dict, py: str) -> tuple[dict, float | None]:
         files["src.txt"] = head + "".join(f"{t:.6f} " + " ".join([f"{q / n:.9f}"] * n) + "\n" for t, q in zip(tt, qq))
     t_end = float(prm["t_end_s"])
     cas = (STEERING_2D.format(title=tid, t_end=t_end, extra="\n".join(extra))
-           .replace(f"TIME STEP = {t_end}", f"TIME STEP = {probe_dt}")
+           .replace(f"TIME STEP = {t_end}", "TIME STEP = 1.")
+           .replace("GRAPHIC PRINTOUT PERIOD = 1", f"GRAPHIC PRINTOUT PERIOD = {int(round(probe_dt))}")
            .replace("VARIABLES FOR GRAPHIC PRINTOUTS = 'U,V,H,B'", "VARIABLES FOR GRAPHIC PRINTOUTS = 'U,V,H'"))
     # probe cells and the active field, as indices into the extended grid
     probes = m["simulation"]["probes"]

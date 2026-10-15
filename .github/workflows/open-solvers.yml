@@ -29,13 +29,15 @@ jobs:
       - uses: mamba-org/setup-micromamba@v2
         with:
           environment-name: anuga
-          create-args: -c conda-forge anuga=4.0.1 python=3.12 pip
+          create-args: -c conda-forge anuga=4.0.1 python=3.12 pip scipy
           init-shell: bash
       - name: Run and score ANUGA
         shell: micromamba-shell {0}
         run: |
           python -m pip install -q -e ".[dev]"
-          python scripts/run_anuga.py
+          python scripts/fetch_inputs.py  # EA terrain and tables, verified by SHA-256
+          # EA Tests 2 and 5 take hours with ANUGA; they run in slow-runs.yml.
+          python scripts/run_anuga.py A1F-010 A1F-011 A2A-001 A2A-010 A2A-020 A2C-EA1 A2C-EA4
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -104,7 +106,7 @@ jobs:
           python -m pip install -q -e ".[dev]"
           python scripts/fetch_inputs.py  # EA terrain and tables, verified by SHA-256
           python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" --solver fv1 acc
-          # DG2 costs several times more per step; the EA valley tests (2, 5) are run locally.
+          # DG2 costs several times more per step; EA Tests 2 and 5 run in slow-runs.yml.
           python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" \
             A1F-010 A1F-011 A2A-001 A2A-010 A2C-EA1 A2C-EA4 --solver dg2
       - uses: actions/upload-artifact@v4

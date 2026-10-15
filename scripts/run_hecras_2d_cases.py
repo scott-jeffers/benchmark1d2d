@@ -15,6 +15,10 @@ to preprocess and compute), plus what these cases add:
   archive's 2 m or 10 m raster, so HEC-RAS uses its sub-grid terrain as it
   normally would); a fine raster of the exact bed for MacDonald 2D; flat for
   EA 4. The mesh cells are the cell centres every other solver uses.
+* **Output**: HEC-RAS writes the results HDF at its *mapping* interval, so
+  that is set to the output interval (the probe interval for the EA tests).
+  A run restarted at 00:01 needs an output interval that divides 00:01, so
+  MacDonald 2D writes every minute.
 * **Initial state**: EA 1 starts from its water level (``Initial Storage
   Elev``); EA 2, 4 and 5 start dry. MacDonald 2D starts at a uniform depth
   over a sloping bed, which one level cannot express, so a short still-water
@@ -283,12 +287,12 @@ def build_and_run(tag: str, eq: str, ras_exe: Path, *, perim, seeds, dx, n, bc_l
         write_unsteady(folder / f"{name}.u02", "main", None, "PLACEHOLDER", bcs_main)
         d1, c1 = date_clock(60.0 + t_end)
         base.write_plan(folder / f"{name}.p02", "Main", "main", "02", "0001", c1, dt, interval(out_dt), False, eq_code,
-                        end_date=d1, map_dt="1HOUR")
+                        end_date=d1, map_dt=interval(out_dt))
     else:
         write_unsteady(folder / f"{name}.u01", "main", ic_level, None, bcs_main)
         d1, c1 = date_clock(t_end)
         base.write_plan(folder / f"{name}.p01", "Main", "main", "01", "0000", c1, dt, interval(out_dt), False, eq_code,
-                        end_date=d1, map_dt="1HOUR")
+                        end_date=d1, map_dt=interval(out_dt))
     log(f"    project {tag}: {len(seeds)} seeds, {len(bc_lines)} boundary lines, terrain {tz.shape[1]}x{tz.shape[0]} at {tcell:g} m")
     base.preprocess_and_associate(folder, ras_exe, tif_terrain)
     main_plan = "01"
@@ -363,7 +367,7 @@ def macdonald_2d(m: dict, dx: float, eq: str, ras_exe: Path) -> dict:
                 dict(name="Outflow", kind="stage", interval="1HOUR", values=[z_out + h_out] * 3)]
     zc = bed_elevation(seeds[:, 0], L=L, q=q, n_manning=n)
     res = build_and_run(f"A2A-010_dx{dx:g}", eq, ras_exe, perim=np.array([[0, W], [L, W], [L, 0], [0, 0], [0, W]], float),
-                        seeds=seeds, dx=dx, n=n, bc_lines=bc_lines, terrain=terrain, t_end=t_end, out_dt=600.0,
+                        seeds=seeds, dx=dx, n=n, bc_lines=bc_lines, terrain=terrain, t_end=t_end, out_dt=60.0,
                         bcs_main=bcs_main, restart=(still, zc + h_out, bcs_still), dt="1SEC")
     k = int(np.argmin(np.abs(res["t"] - t_end)))
     log(f"    result time {res['t'][k]:.0f} s (wanted {t_end:g})")
