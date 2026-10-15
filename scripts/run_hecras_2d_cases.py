@@ -218,6 +218,16 @@ def read_results(hdf: Path, ghdf: Path) -> dict:
             if "cell velocity" in kl and kl.endswith("y"):
                 vy = a[key][()][:, :n_real]
         msgs = f["Results/Summary/Compute Messages (text)"][0].decode(errors="replace")
+        # HEC-RAS's own volume accounting, for comparison with the depths reported
+        acc = []
+        def visit(name, obj):
+            if "olume" in name and ("ccounting" in name or "Summary" in name):
+                if hasattr(obj, "attrs") and obj.attrs:
+                    acc.append(f"{name}: " + ", ".join(f"{k}={v}" for k, v in obj.attrs.items()))
+                if hasattr(obj, "shape") and obj.size <= 64:
+                    acc.append(f"{name} = {obj[()]!r}")
+        f.visititems(visit)
+        log("    HEC-RAS volume accounting:\n      " + "\n      ".join(acc[:40]))
     return {"t": (days - days[0]) * 86400.0, "ws": ws, "vx": vx, "vy": vy, "xy": centres[:n_real] - (X0, Y0),
             "n_real": n_real, "messages": msgs}
 

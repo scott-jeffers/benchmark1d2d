@@ -1,8 +1,8 @@
 name: Slow runs
 
 # Runs too long for the per-push workflows, refreshed weekly: LISFLOOD-FP's
-# second-order DG2 solver on the EA valley tests (2 and 5) and ANUGA on the
-# same two tests. Score cards are uploaded as artifacts; copy them into
+# second-order DG2 solver, ANUGA and TELEMAC-2D on the EA valley tests
+# (2 and 5). Score cards are uploaded as artifacts; copy them into
 # site/fixtures/ to publish. A scored fail is a finding, not a broken build.
 on:
   workflow_dispatch:
@@ -73,3 +73,29 @@ jobs:
         with:
           name: anuga-ea-scorecards
           path: out/anuga/*.scorecard.json
+
+  telemac-ea:
+    name: openTELEMAC-2D on EA Tests 2 and 5
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python scripts/fetch_inputs.py
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: telemac
+          create-args: -c conda-forge opentelemac=v9.1.1 python=3.12
+          init-shell: none
+      - name: Run and score
+        run: python scripts/run_telemac.py --telemac-prefix "$MAMBA_ROOT_PREFIX/envs/telemac" A2C-EA2 A2C-EA5 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: telemac-ea-scorecards
+          path: out/telemac/*.scorecard.json

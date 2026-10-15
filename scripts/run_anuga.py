@@ -227,6 +227,10 @@ def ea(m: dict, tid: str) -> tuple[dict, float | None]:
         return j, i
 
     d = _domain(gx.size * dx, gy.size * dx, dx, origin=(x0, y0))
+    # Largest step 1 s (ANUGA's default is 1000 s): on a dry start the Courant
+    # condition sets no limit, and long steps sample the inflow hydrograph too
+    # coarsely. The same cap as LISFLOOD-FP and TELEMAC.
+    d.set_evolve_max_timestep(1.0)
     d.set_quantity("elevation", lambda x, y: z[cell(x, y)], location="centroids")
     d.set_quantity("friction", float(case.manning_n))
     d.set_quantity("stage", lambda x, y: z[cell(x, y)] + h0[cell(x, y)], location="centroids")

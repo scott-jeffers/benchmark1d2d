@@ -69,9 +69,11 @@ jobs:
           environment-name: telemac
           create-args: -c conda-forge opentelemac=v9.1.1 python=3.12
           init-shell: none
-      - name: Score TELEMAC-2D on the dam breaks and the Thacker bowl
+      - name: Score TELEMAC-2D (EA Tests 2 and 5 run in slow-runs.yml)
         run: |
-          python scripts/run_telemac.py --telemac-prefix "$MAMBA_ROOT_PREFIX/envs/telemac" A1F-010 A1F-011 A2A-001 \
+          python scripts/fetch_inputs.py
+          python scripts/run_telemac.py --telemac-prefix "$MAMBA_ROOT_PREFIX/envs/telemac" \
+            A1F-010 A1F-011 A2A-001 A2A-010 A2A-020 A2C-EA1 A2C-EA4 \
             || echo "::warning title=TELEMAC-2D::fails at least one criterion (see score cards); reported, not gating"
       - uses: actions/upload-artifact@v4
         if: always()

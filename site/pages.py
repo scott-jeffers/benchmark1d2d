@@ -291,6 +291,9 @@ NOTES = {
     ("A1F-011", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it cannot form the right bore; it is shown because it is what most LISFLOOD-FP users run.",
     ("A2C-EA1", "lisflood-acc"): "The pond settles 5 mm above the sill (2 cm allowed). The stored volume is 2.7 % above the figure integrated on the EA's 2 m DEM; that check does not gate, because a 10 m grid samples the ground differently.",
     ("A2C-EA4", "lisflood-fv1"): "Run at the specification's 5 m grid (the demo solver uses the allowed 10 m alternative). The inflow enters as LISFLOOD-FP point sources on the cells the inflow line crosses.",
+    ("A2A-020", "telemac"): "Run with TELEMAC's HLLC scheme: its default kinetic scheme goes unstable with this supercritical inflow. The depth is right (1 cm) and converges, but the stored water is 0.15 % above exact (0.1 % allowed), as with ANUGA (0.13 % below).",
+    ("A2A-010", "telemac"): "Passes: 0.13 mm from the exact water level, converging at first order. The inflow discharge and outlet level are listed in the order TELEMAC numbers its open boundaries.",
+    ("A2C-EA2", "telemac"): "Run with a 1 s largest step, as for the other codes: with TELEMAC's step left to the 5-minute output interval, the dry start took long first steps that undersampled the inflow and lost 6 % of the water.",
 }
 CASE_NOTES = {
     "A1F-010": "Since version 2 the front is measured by volume: the point beyond which the last 5 % of the released water lies. Version 1 used the 1 mm depth contour, which every production code failed by 12 to 211 m: on the thin tip a millimetre of depth moves that contour about 10 m, and production codes treat water shallower than about 1 mm as dry. The 1 mm edge is still reported, but no longer decides the result.",
