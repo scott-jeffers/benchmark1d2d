@@ -1,0 +1,95 @@
+{
+  "schema_version": "1.1.0",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_id": "A1D-003_storage_power_law_outlet",
+  "test_class": "verification_analytic",
+  "title": "Storage draining through a power-law outlet",
+  "description": "A 100 m² storage, 2 m deep, empties through an outlet rated Q = 0.5 h^0.5 to a free outfall. Its depth follows h(t) = (√h0 − C t/(2A))² exactly: 0.441 m and 0.332 m³/s at 300 s.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "storage_continuity",
+      "outlet_rating"
+    ],
+    "phenomena": [
+      "storage",
+      "unsteady",
+      "drain_down"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Rossman, L. A."
+        ],
+        "year": 2017,
+        "title": "Storm Water Management Model Reference Manual Volume II – Hydraulics (EPA/600/R-17/111)",
+        "url": "https://www.epa.gov/water-research/storm-water-management-model-swmm"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/network.json",
+      "role": "network",
+      "format": "json",
+      "sha256": "884ebb86b5520a35487369c2025958dbf9f29810a13c52e39237e0133ccf77d9"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.drainage",
+      "function": "storage_drain",
+      "parameters": {
+        "network_path": "inputs/network.json"
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 300.0,
+    "output_interval": 10.0,
+    "required_outputs": [
+      "h",
+      "Q"
+    ],
+    "steady": false
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "storage_depth",
+        "metric": "Linf",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.005,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Storage depth within 5 mm (about 1 %) after 300 s. A first-order time integration with SWMM's default steps errs by well under a millimetre."
+      },
+      {
+        "id": "outlet_flow",
+        "metric": "Linf",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.005,
+          "units": "m³/s"
+        },
+        "gating": true,
+        "rationale": "Outlet flow within 5 L/s (1.5 %), the rating applied to the depth."
+      }
+    ],
+    "convergence": {
+      "not_applicable": "One storage node and one outlet: there is no grid to refine; the time step is the engine's own."
+    },
+    "pass_rule": "all_gating"
+  }
+}

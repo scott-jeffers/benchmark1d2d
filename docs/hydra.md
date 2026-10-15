@@ -64,6 +64,21 @@ channels reversed, negative offsets zeroed, a maximum depth raised,
 storage node whose parameters are all zero. The difference is a declared
 modelling divergence, not an obvious defect on either side.
 
+### Urban drainage: exact network answers
+
+On the five drainage networks with exact answers (A1D-001 to 005, worst depth
+error, limit in brackets) Hydra passes everything and is the most accurate
+engine on the steady pipe cases, because it computes the circular section
+exactly where the SWMM engines interpolate a 51-entry table:
+
+| Case | EPA SWMM 5.2.4 | v6 dynamic wave | v6 finite volume | Hydra 17 |
+|---|---|---|---|---|
+| A1D-001 normal depth, part-full pipes (1 cm) | 0.27 mm | 0.27 mm | **fails**: 1.4 cm | 0.0005 mm |
+| A1D-002 surcharged grade line (1 cm) | 0.40 mm | 0.40 mm | **fails**: 28 cm | 0.0001 mm |
+| A1D-003 storage drain-down (5 mm) | 1.4 mm | 1.4 mm | 1.3 mm | 1.1 mm |
+| A1D-004 pump on its curve (1 cm) | 0.0001 mm | 0.0001 mm | 0.0001 mm | 0.0001 mm |
+| A1D-005 backwater through manholes (2 cm) | 0.30 mm | 0.30 mm | 3.7 mm | 0.29 mm |
+
 ### Urban drainage across the HydroCouple collection
 
 Nightly tier, 500 models, worst node (relative peak depth) and worst link

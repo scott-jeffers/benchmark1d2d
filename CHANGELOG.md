@@ -24,6 +24,17 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ### Added
 
+- **Exact-answer drainage-network tests (A1D-001 to 005)**, so SWMM-engine
+  parity differences can be judged against physics: normal depth in part-full
+  circular pipes, a surcharged hydraulic grade line, a storage draining
+  through a power-law outlet, a pump on its head–flow curve and an M1
+  backwater through twenty manholes (`references/drainage.py`, integrated to
+  1e-11). `scripts/run_drainage_cases.py` writes each network as one SWMM
+  input file and runs EPA SWMM 5.2.4, OpenSWMM v6 (dynamic wave and finite
+  volume) and Hydra on it, in the Track A workflow. SWMM 5.2.4, OpenSWMM
+  dynamic wave and Hydra pass all five; OpenSWMM's finite-volume routing fails
+  the surcharged pipes (grade line 28 cm high) and normal depth (1.4 cm next
+  to the outfalls).
 - **More production codes on the 2D cases:**
   - TELEMAC-2D passes the EA tests (1, 2, 4, 5) and MacDonald 2D; on the
     oblique jump (HLLC, since its default kinetic scheme goes unstable with

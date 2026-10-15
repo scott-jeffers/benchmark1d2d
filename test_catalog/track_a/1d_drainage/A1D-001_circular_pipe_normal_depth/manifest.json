@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.1.0",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_id": "A1D-001_circular_pipe_normal_depth",
+  "test_class": "verification_analytic",
+  "title": "Normal depth in partly full circular pipes",
+  "description": "Three chains of ten 1 m circular pipes (n = 0.013, slope 0.002) carry 0.15, 0.5 and 1.0 m³/s to normal-depth outfalls, filling them to about a quarter, a half and three quarters. At steady state every interior manhole and every pipe runs at Manning normal depth in the exact circular section.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "manning",
+      "network_continuity"
+    ],
+    "phenomena": [
+      "partly_full_pipe",
+      "steady_hydraulics",
+      "uniform_flow"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Chow, V. T."
+        ],
+        "year": 1959,
+        "title": "Open-Channel Hydraulics",
+        "isbn": "9780070107762"
+      },
+      {
+        "authors": [
+          "Rossman, L. A."
+        ],
+        "year": 2017,
+        "title": "Storm Water Management Model Reference Manual Volume II – Hydraulics (EPA/600/R-17/111)",
+        "url": "https://www.epa.gov/water-research/storm-water-management-model-swmm"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/network.json",
+      "role": "network",
+      "format": "json",
+      "sha256": "69bd619bc8fa036f71c64c7077037e1d13831721f4fcc866b6875b72650b3ae5"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.drainage",
+      "function": "uniform_flow",
+      "parameters": {
+        "network_path": "inputs/network.json"
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 21600.0,
+    "output_interval": 300.0,
+    "required_outputs": [
+      "h",
+      "Q"
+    ],
+    "steady": true
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "normal_depth",
+        "metric": "Linf",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.01,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Worst node or pipe depth within 1 cm (1 % of the diameter). SWMM-family engines store circular-pipe area and hydraulic radius in 51-entry tables and interpolate between them; that alone moves a normal depth by a few millimetres."
+      },
+      {
+        "id": "pipe_flow",
+        "metric": "L2",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.5,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Pipe flows within 0.5 %: at steady state every pipe carries its chain's inflow."
+      }
+    ],
+    "convergence": {
+      "not_applicable": "A link–node network with a closed-form (or 1e-11 integrated) reference at fixed elements: there is no grid to refine."
+    },
+    "pass_rule": "all_gating"
+  }
+}

@@ -101,6 +101,42 @@ STORIES: dict[str, dict] = {
         why="Contamination warnings, chlorine decay and sewer water quality all depend on getting both the travel and the spreading right.",
         must=["match the concentration profile within 2 %", "conserve the tracer within 0.5 %", "show second-order accuracy on finer grids"],
     ),
+    # ── drainage networks (exact answers for link–node models) ───────────────
+    "A1D-001": dict(
+        name="Sewer pipes running part full", group="pipes",
+        question="Does a drainage model get the depth right in a round pipe?",
+        what="Three lines of 1 m sewer pipes, on a steady slope, carry three different flows that fill them to about a quarter, a half and three quarters. The depth in each pipe is fixed exactly by Manning's formula for a circle.",
+        why="Pipe capacity checks, surcharge warnings and flood risk all start from the depth in a partly full pipe. This is the simplest thing a sewer model has to get right.",
+        must=["keep every pipe and manhole depth within 1 cm", "pass the full inflow down every pipe"],
+    ),
+    "A1D-002": dict(
+        name="Sewer pipes running full", group="pipes",
+        question="When pipes surcharge, does the model get the water level in the manholes right?",
+        what="Five pipes carry more water than they can as open channels, with the outlet held above the pipe tops, so they run full like water mains. The level in each manhole rises by an exact friction loss along each pipe.",
+        why="Surcharged pipes push water up manholes and out onto streets. How high it rises decides whether a street floods.",
+        must=["keep manhole levels within 1 cm", "pass the full inflow down every pipe"],
+    ),
+    "A1D-003": dict(
+        name="Tank emptying through an outlet", group="pipes",
+        question="Does a storage tank drain at the right rate?",
+        what="A 2 m deep tank drains through an outlet whose flow grows with the square root of the depth. The depth after five minutes follows an exact formula.",
+        why="Storage tanks and ponds are how drainage systems hold back floods. Their draining rate sets how much room is ready for the next storm.",
+        must=["get the tank depth within 5 mm", "get the outlet flow within 5 L/s"],
+    ),
+    "A1D-004": dict(
+        name="Pump working on its curve", group="pipes",
+        question="Does the model run a pump at the right operating point?",
+        what="A pump lifts water from a wet well into a rising main held at a fixed level. At steady state it must pass exactly the inflow, and its curve then fixes the water level in the well.",
+        why="Pumping stations keep low-lying areas dry. A wrong operating point means the wrong wet-well level, the wrong switching and the wrong energy bill.",
+        must=["get the wet-well level within 1 cm", "pump exactly the inflow"],
+    ),
+    "A1D-005": dict(
+        name="Backwater up a sewer", group="pipes",
+        question="Does a high water level at the outlet back up the right distance?",
+        what="A kilometre of 1.2 m sewer drains to an outlet whose level is held high (as by a river in flood). Water backs up through twenty manholes, its depth falling gradually towards normal depth upstream, along an exactly integrated curve.",
+        why="Outfalls into rivers and the sea are often submerged. How far the backwater reaches decides which basements and gullies flood.",
+        must=["keep every manhole and pipe depth within 2 cm", "pass the full inflow down every pipe"],
+    ),
     # ── 2D floods ────────────────────────────────────────────────────────────
     "A2A-001": dict(
         name="Water sloshing in a bowl", group="floods2d",

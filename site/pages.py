@@ -58,11 +58,11 @@ SOLVERS: list[dict] = [
     dict(key="lisflood-acc", name="LISFLOOD-FP", sub="8.3 · ACC", kind="production", color="#B9783A",
          what="LISFLOOD-FP 8.3, the local-inertia solver it is best known for; it leaves out the advection term"),
     dict(key="swmm524", name="EPA SWMM 5.2.4", sub="dynamic wave", kind="production", color="#7A4FA0",
-         what="EPA SWMM 5.2.4 with dynamic-wave routing, the channel written as one conduit per grid cell"),
+         what="EPA SWMM 5.2.4 with dynamic-wave routing; on the channel tests, the channel is written as one conduit per grid cell"),
     dict(key="openswmm-dw", name="OpenSWMM 6", sub="dynamic wave", kind="production", color="#2E8B8B",
          what="OpenSWMM Engine v6 (HydroCouple's SWMM 6, pre-release) with dynamic-wave routing"),
     dict(key="openswmm-fv", name="OpenSWMM 6", sub="finite volume", kind="production", color="#C2185B",
-         what="OpenSWMM Engine v6 with its new explicit finite-volume routing (FLOW_ROUTING FV), one cell per conduit"),
+         what="OpenSWMM Engine v6 with its new explicit finite-volume routing (FLOW_ROUTING FV): one cell per conduit on the channel tests, its default cells per pipe on the drainage networks"),
     dict(key="hydra-uds", name="Hydra", sub="urban drainage", kind="production", color="#1F6F8B",
          what="Hydra 17 (NEER AI, Rust): its urban-drainage engine on the SWMM data model, run through its CLI with default settings"),
     dict(key="hydra-wds", name="Hydra", sub="water distribution", kind="production", color="#4A90A4",
@@ -81,6 +81,7 @@ SOLVERS: list[dict] = [
 SOLVER = {s["key"]: s for s in SOLVERS}
 PRODUCTION_2D = ["hecras", "hecras-em", "telemac", "anuga", "geoclaw", "lisflood-fv1", "lisflood-dg2", "lisflood-acc"]
 NOT_YET = ["TUFLOW", "MIKE 21", "Iber", "BASEMENT", "Delft3D FM"]
+NOT_YET_DRAINAGE = ["InfoWorks ICM", "MIKE+ (MOUSE)", "PCSWMM", "XPSWMM", "Flood Modeller", "HEC-RAS"]
 
 
 def solver_key(name: str) -> str | None:
@@ -314,6 +315,10 @@ NOTES = {
     ("A1F-010", "hydronet-fvm"): "The dam never breaks: no water crosses onto the dry bed. HydroNet's Roe residual uses a fixed 1 cm dry threshold and, at a face between a wet and a dry cell, the wet cell's own flux, so still water next to dry ground feels no net force. The same happens below a 1 cm downstream layer. Mass is conserved because nothing moves.",
     ("A1F-011", "hydronet-fvm"): "Into 10 cm of water the dam break runs normally: depth error 1.4 mm (passes) and mass 0.016 %, but the error falls at order 0.69 (minimum 0.8).",
     ("A1F-011", "hydronet-pinn"): "The trained network smears the bore and the rarefaction: average depth error 12.6 cm (1 cm allowed), 4.5 % of the water lost, and no improvement on finer grids. Trained with the recipe of HydroNet's own dam-break example, which on its own 20 m, 1 s case gives an RMS error of 6 cm on a 2 m dam (3 %); this case is 2 km over 30 s.",
+    ("A1D-001", "openswmm-fv"): "Accurate mid-line (under 2 mm), but up to 1.4 cm too deep in the pipes next to the normal-depth outfalls and 7 mm too deep in the first pipes below the inflows. EPA SWMM 5.2.4 holds normal depth to 0.3 mm everywhere.",
+    ("A1D-002", "openswmm-fv"): "The pipes are surcharged and the finite-volume routing overestimates the friction loss: the hydraulic grade line falls 1.42 m over the five pipes instead of 1.19 m (19 % more), so the upstream manholes stand up to 28 cm too high. Dynamic wave in the same engine is 0.4 mm from exact.",
+    ("A1D-001", "hydra-uds"): "Exact to rounding (0.0005 mm): Hydra computes the circular section exactly, where the SWMM engines interpolate a 51-entry table (0.27 mm off).",
+    ("A1D-005", "openswmm-fv"): "Passes (3.7 mm). With one cell per pipe (FV_MIN_CELLS 1, as on the channel tests) it is 2.2 cm off and fails; the default subdivides each pipe.",
     ("A1F-010", "hydronet-pinn"): "The trained network spreads 0.3–0.4 m of water over the whole dry channel downstream, so its front is 713 m ahead of the exact one; it gains 3.3 % of the water, and the error grows on finer grids. Its own finite-volume engine, by contrast, never starts the flow.",
 }
 CASE_NOTES = {
@@ -826,7 +831,10 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
                 if len(levels) > 1 else "Each model runs the same inputs.")
     case_note = CASE_NOTES.get(sid)
     not_yet = ""
-    if m["track"] == "A" and m["physics"]["dimensionality"] in ("1D", "2D") and m["status"] != "draft":
+    if sid.startswith("A1D") and m["status"] != "draft":
+        not_yet = (f'<div class="notyet"><div><b>Not run yet:</b> {esc(", ".join(NOT_YET_DRAINAGE))}</div>'
+                   f'<a href="../score.html" style="font-weight:600">Run it and add yours →</a></div>')
+    elif m["track"] == "A" and m["physics"]["dimensionality"] in ("1D", "2D") and m["status"] != "draft":
         missing = [SOLVER[k]["name"] for k in PRODUCTION_2D if k not in runs and not k.startswith("lisflood-")]
         if not any(k.startswith("lisflood") for k in runs):
             missing.append("LISFLOOD-FP")

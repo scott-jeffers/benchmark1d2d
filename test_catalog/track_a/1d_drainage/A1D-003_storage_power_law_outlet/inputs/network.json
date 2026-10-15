@@ -1,0 +1,31 @@
+{
+ "units": "SI (m, m3/s)",
+ "storages": [
+  {
+   "id": "T",
+   "invert": 10.0,
+   "max_depth": 3.0,
+   "init_depth": 2.0,
+   "area": 100.0
+  }
+ ],
+ "outfalls": [
+  {
+   "id": "OUT",
+   "invert": 5.0,
+   "type": "FREE"
+  }
+ ],
+ "outlets": [
+  {
+   "id": "OR1",
+   "from": "T",
+   "to": "OUT",
+   "offset": 0.0,
+   "C": 0.5,
+   "exponent": 0.5
+  }
+ ],
+ "duration_s": 300,
+ "report_step_s": 10
+}

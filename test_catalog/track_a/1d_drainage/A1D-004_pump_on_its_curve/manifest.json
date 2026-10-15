@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.1.0",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_id": "A1D-004_pump_on_its_curve",
+  "test_class": "verification_analytic",
+  "title": "Pump operating on its head–flow curve",
+  "description": "A 20 m² wet well receives 0.1 m³/s and is emptied by a pump (head–flow curve 12 m/0, 10 m/0.08, 6 m/0.15 m³/s) against an outfall held at 10 m. At steady state the pump passes the inflow at a head rise of 8.857 m, so the wet well stands at 1.143 m.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "pressurized",
+    "governing_equations": [
+      "storage_continuity",
+      "pump_curve"
+    ],
+    "phenomena": [
+      "pump",
+      "steady_hydraulics"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Rossman, L. A."
+        ],
+        "year": 2017,
+        "title": "Storm Water Management Model Reference Manual Volume II – Hydraulics (EPA/600/R-17/111)",
+        "url": "https://www.epa.gov/water-research/storm-water-management-model-swmm"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/network.json",
+      "role": "network",
+      "format": "json",
+      "sha256": "2c974666927f0260d5f20132c754778ca8c7b0c49e18c00c8db11fbe207cbaaa"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.drainage",
+      "function": "pump_curve",
+      "parameters": {
+        "network_path": "inputs/network.json"
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 21600.0,
+    "output_interval": 300.0,
+    "required_outputs": [
+      "h",
+      "Q"
+    ],
+    "steady": true
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "wet_well_depth",
+        "metric": "Linf",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.01,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Wet-well depth within 1 cm. The operating point is the curve read at the inflow; the curve is linear between its points in every engine that accepts this input."
+      },
+      {
+        "id": "pump_flow",
+        "metric": "Linf",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.001,
+          "units": "m³/s"
+        },
+        "gating": true,
+        "rationale": "Pump flow within 1 L/s of the inflow (1 %)."
+      }
+    ],
+    "convergence": {
+      "not_applicable": "A link–node network with a closed-form (or 1e-11 integrated) reference at fixed elements: there is no grid to refine."
+    },
+    "pass_rule": "all_gating"
+  }
+}

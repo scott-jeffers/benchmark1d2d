@@ -1,0 +1,49 @@
+{
+ "units": "SI (m, m3/s)",
+ "storages": [
+  {
+   "id": "WW",
+   "invert": 0.0,
+   "max_depth": 5.0,
+   "init_depth": 1.0,
+   "area": 20.0
+  }
+ ],
+ "outfalls": [
+  {
+   "id": "RISE",
+   "invert": 8.0,
+   "type": "FIXED",
+   "stage": 10.0
+  }
+ ],
+ "pumps": [
+  {
+   "id": "PMP",
+   "from": "WW",
+   "to": "RISE",
+   "curve": [
+    [
+     12.0,
+     0.0
+    ],
+    [
+     10.0,
+     0.08
+    ],
+    [
+     6.0,
+     0.15
+    ]
+   ]
+  }
+ ],
+ "inflows": [
+  {
+   "node": "WW",
+   "Q": 0.1
+  }
+ ],
+ "duration_s": 21600,
+ "report_step_s": 300
+}

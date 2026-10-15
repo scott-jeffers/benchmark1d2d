@@ -28,7 +28,7 @@
     "test_id": {
       "type": "string",
       "description": "Unique test identifier. Prefix encodes track and class (A1P, A1F, A2A, A2C = 2D code inter-comparison, A2L, A2F, A12, B).",
-      "pattern": "^(A1P|A1F|A2A|A2C|A2L|A2F|A12|B)-[A-Za-z0-9._-]+$"
+      "pattern": "^(A1P|A1F|A1D|A2A|A2C|A2L|A2F|A12|B)-[A-Za-z0-9._-]+$"
     },
     "case_version": {
       "type": "string",

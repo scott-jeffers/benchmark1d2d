@@ -100,6 +100,10 @@ jobs:
           HYDRA=$(python scripts/fetch_hydra.py "$RUNNER_TEMP/hydra")
           python scripts/run_swmm_track_a.py --openswmm-python "$RUNNER_TEMP/openswmm/bin/python" --hydra-exe "$HYDRA" \
             || echo "::warning title=SWMM Track A::fails at least one criterion (see score cards); reported, not gating"
+      - name: Score the exact drainage-network cases (A1D)
+        run: |
+          python scripts/run_drainage_cases.py --openswmm-python "$RUNNER_TEMP/openswmm/bin/python" \
+            --hydra-exe "$(python scripts/fetch_hydra.py "$RUNNER_TEMP/hydra")"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

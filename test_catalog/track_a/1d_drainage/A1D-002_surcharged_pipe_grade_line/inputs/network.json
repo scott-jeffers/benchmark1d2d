@@ -1,0 +1,88 @@
+{
+ "units": "SI (m, m3/s)",
+ "junctions": [
+  {
+   "id": "S0",
+   "invert": 100.5,
+   "max_depth": 10.0
+  },
+  {
+   "id": "S1",
+   "invert": 100.4,
+   "max_depth": 10.0
+  },
+  {
+   "id": "S2",
+   "invert": 100.3,
+   "max_depth": 10.0
+  },
+  {
+   "id": "S3",
+   "invert": 100.2,
+   "max_depth": 10.0
+  },
+  {
+   "id": "S4",
+   "invert": 100.1,
+   "max_depth": 10.0
+  }
+ ],
+ "outfalls": [
+  {
+   "id": "S5",
+   "invert": 100.0,
+   "type": "FIXED",
+   "stage": 101.5
+  }
+ ],
+ "conduits": [
+  {
+   "id": "SP1",
+   "from": "S0",
+   "to": "S1",
+   "length": 100.0,
+   "D": 0.6,
+   "n": 0.013
+  },
+  {
+   "id": "SP2",
+   "from": "S1",
+   "to": "S2",
+   "length": 100.0,
+   "D": 0.6,
+   "n": 0.013
+  },
+  {
+   "id": "SP3",
+   "from": "S2",
+   "to": "S3",
+   "length": 100.0,
+   "D": 0.6,
+   "n": 0.013
+  },
+  {
+   "id": "SP4",
+   "from": "S3",
+   "to": "S4",
+   "length": 100.0,
+   "D": 0.6,
+   "n": 0.013
+  },
+  {
+   "id": "SP5",
+   "from": "S4",
+   "to": "S5",
+   "length": 100.0,
+   "D": 0.6,
+   "n": 0.013
+  }
+ ],
+ "inflows": [
+  {
+   "node": "S0",
+   "Q": 0.3
+  }
+ ],
+ "duration_s": 7200,
+ "report_step_s": 300
+}

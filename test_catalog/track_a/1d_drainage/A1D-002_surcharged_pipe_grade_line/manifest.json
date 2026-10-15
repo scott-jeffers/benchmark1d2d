@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.1.0",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_id": "A1D-002_surcharged_pipe_grade_line",
+  "test_class": "verification_analytic",
+  "title": "Surcharged pipes: hydraulic grade line",
+  "description": "Five 0.6 m pipes (100 m, n = 0.013) carry 0.3 m³/s to an outfall held 1.5 m above its invert, so every pipe runs full. The hydraulic grade line falls by n²Q²L/(A²R^(4/3)) = 0.239 m along each pipe (1.19 m in all); manhole depths follow exactly.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "pressurized",
+    "governing_equations": [
+      "manning",
+      "network_continuity"
+    ],
+    "phenomena": [
+      "surcharge",
+      "full_pipe",
+      "steady_hydraulics"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Chow, V. T."
+        ],
+        "year": 1959,
+        "title": "Open-Channel Hydraulics",
+        "isbn": "9780070107762"
+      },
+      {
+        "authors": [
+          "Rossman, L. A."
+        ],
+        "year": 2017,
+        "title": "Storm Water Management Model Reference Manual Volume II – Hydraulics (EPA/600/R-17/111)",
+        "url": "https://www.epa.gov/water-research/storm-water-management-model-swmm"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/network.json",
+      "role": "network",
+      "format": "json",
+      "sha256": "c228b0e9e815257b49b1c2b01f77646b63623ab1234489545e57832068690002"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.drainage",
+      "function": "surcharged_pipe",
+      "parameters": {
+        "network_path": "inputs/network.json"
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 7200.0,
+    "output_interval": 300.0,
+    "required_outputs": [
+      "h",
+      "Q"
+    ],
+    "steady": true
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "grade_line",
+        "metric": "Linf",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.01,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Worst manhole head within 1 cm of the 1.19 m friction loss (0.8 %). Full-pipe friction is exact in every engine's geometry; the error is how surcharged heads are solved."
+      },
+      {
+        "id": "pipe_flow",
+        "metric": "L2",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.5,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Pipe flows within 0.5 % of the inflow."
+      }
+    ],
+    "convergence": {
+      "not_applicable": "A link–node network with a closed-form (or 1e-11 integrated) reference at fixed elements: there is no grid to refine."
+    },
+    "pass_rule": "all_gating"
+  }
+}

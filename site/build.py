@@ -42,6 +42,7 @@ TREE = REPO_URL + "/tree/master/"
 
 COMPONENTS = [
     ("A1P", "1D pressurized", "Pipe networks, water hammer and transport, checked against exact solutions."),
+    ("A1D", "1D drainage networks", "Sewer pipes part full and surcharged, storage, pumps and backwater, against exact answers."),
     ("A1F", "1D free surface", "Saint-Venant channels and real drainage networks: dam breaks, backwater, jumps."),
     ("A2A", "2D analytical", "Shallow-water problems with exact solutions, including moving shorelines."),
     ("A2C", "2D code inter-comparison", "Environment Agency tests with no exact answer, scored on conservation and settled states."),

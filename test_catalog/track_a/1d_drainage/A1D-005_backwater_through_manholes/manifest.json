@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.1.0",
+  "case_version": "1.0.0",
+  "status": "candidate",
+  "track": "A",
+  "test_id": "A1D-005_backwater_through_manholes",
+  "test_class": "verification_analytic",
+  "title": "Backwater through a chain of manholes",
+  "description": "Twenty 1.2 m pipes (50 m each, n = 0.013, slope 0.001) carry 0.6 m³/s from normal depth (0.59 m) down to an outfall held 1.0 m above its invert. The M1 backwater profile through the manholes is integrated from the outfall to 1e-11 (gradually varied flow in the exact circular section).",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "gradually_varied_flow",
+      "manning"
+    ],
+    "phenomena": [
+      "backwater",
+      "partly_full_pipe",
+      "steady_hydraulics"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Chow, V. T."
+        ],
+        "year": 1959,
+        "title": "Open-Channel Hydraulics",
+        "isbn": "9780070107762"
+      },
+      {
+        "authors": [
+          "Rossman, L. A."
+        ],
+        "year": 2017,
+        "title": "Storm Water Management Model Reference Manual Volume II – Hydraulics (EPA/600/R-17/111)",
+        "url": "https://www.epa.gov/water-research/storm-water-management-model-swmm"
+      }
+    ],
+    "license": "analytic-public"
+  },
+  "inputs": [
+    {
+      "path": "inputs/network.json",
+      "role": "network",
+      "format": "json",
+      "sha256": "880838ccb4e0ce0cf3486440112e3163063ccff6265d79bf884dd1891c31e27a"
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.drainage",
+      "function": "backwater",
+      "parameters": {
+        "network_path": "inputs/network.json"
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 21600.0,
+    "output_interval": 300.0,
+    "required_outputs": [
+      "h",
+      "Q"
+    ],
+    "steady": true
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "profile_depth",
+        "metric": "Linf",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.02,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Worst manhole or pipe depth within 2 cm. A link–node model represents each 50 m pipe by its end heads and a mid-pipe depth, a second-order discretisation of the profile whose error here is a few millimetres; the rest is the section tables."
+      },
+      {
+        "id": "pipe_flow",
+        "metric": "L2",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.5,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Pipe flows within 0.5 % of the inflow."
+      }
+    ],
+    "convergence": {
+      "not_applicable": "A link–node network with a closed-form (or 1e-11 integrated) reference at fixed elements: there is no grid to refine."
+    },
+    "pass_rule": "all_gating"
+  }
+}

@@ -1,0 +1,283 @@
+{
+ "units": "SI (m, m3/s)",
+ "junctions": [
+  {
+   "id": "M0",
+   "invert": 21.0,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M1",
+   "invert": 20.95,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M2",
+   "invert": 20.9,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M3",
+   "invert": 20.85,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M4",
+   "invert": 20.8,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M5",
+   "invert": 20.75,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M6",
+   "invert": 20.7,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M7",
+   "invert": 20.65,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M8",
+   "invert": 20.6,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M9",
+   "invert": 20.55,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M10",
+   "invert": 20.5,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M11",
+   "invert": 20.45,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M12",
+   "invert": 20.4,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M13",
+   "invert": 20.35,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M14",
+   "invert": 20.3,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M15",
+   "invert": 20.25,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M16",
+   "invert": 20.2,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M17",
+   "invert": 20.15,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M18",
+   "invert": 20.1,
+   "max_depth": 10.0
+  },
+  {
+   "id": "M19",
+   "invert": 20.05,
+   "max_depth": 10.0
+  }
+ ],
+ "outfalls": [
+  {
+   "id": "M20",
+   "invert": 20.0,
+   "type": "FIXED",
+   "stage": 21.0
+  }
+ ],
+ "conduits": [
+  {
+   "id": "MP1",
+   "from": "M0",
+   "to": "M1",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP2",
+   "from": "M1",
+   "to": "M2",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP3",
+   "from": "M2",
+   "to": "M3",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP4",
+   "from": "M3",
+   "to": "M4",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP5",
+   "from": "M4",
+   "to": "M5",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP6",
+   "from": "M5",
+   "to": "M6",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP7",
+   "from": "M6",
+   "to": "M7",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP8",
+   "from": "M7",
+   "to": "M8",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP9",
+   "from": "M8",
+   "to": "M9",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP10",
+   "from": "M9",
+   "to": "M10",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP11",
+   "from": "M10",
+   "to": "M11",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP12",
+   "from": "M11",
+   "to": "M12",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP13",
+   "from": "M12",
+   "to": "M13",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP14",
+   "from": "M13",
+   "to": "M14",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP15",
+   "from": "M14",
+   "to": "M15",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP16",
+   "from": "M15",
+   "to": "M16",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP17",
+   "from": "M16",
+   "to": "M17",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP18",
+   "from": "M17",
+   "to": "M18",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP19",
+   "from": "M18",
+   "to": "M19",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  },
+  {
+   "id": "MP20",
+   "from": "M19",
+   "to": "M20",
+   "length": 50.0,
+   "D": 1.2,
+   "n": 0.013
+  }
+ ],
+ "inflows": [
+  {
+   "node": "M0",
+   "Q": 0.6
+  }
+ ],
+ "duration_s": 21600,
+ "report_step_s": 300
+}

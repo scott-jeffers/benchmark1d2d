@@ -1,0 +1,430 @@
+{
+ "units": "SI (m, m3/s)",
+ "junctions": [
+  {
+   "id": "A0",
+   "invert": 10.0,
+   "max_depth": 10.0
+  },
+  {
+   "id": "A1",
+   "invert": 9.8,
+   "max_depth": 10.0
+  },
+  {
+   "id": "A2",
+   "invert": 9.6,
+   "max_depth": 10.0
+  },
+  {
+   "id": "A3",
+   "invert": 9.4,
+   "max_depth": 10.0
+  },
+  {
+   "id": "A4",
+   "invert": 9.2,
+   "max_depth": 10.0
+  },
+  {
+   "id": "A5",
+   "invert": 9.0,
+   "max_depth": 10.0
+  },
+  {
+   "id": "A6",
+   "invert": 8.8,
+   "max_depth": 10.0
+  },
+  {
+   "id": "A7",
+   "invert": 8.6,
+   "max_depth": 10.0
+  },
+  {
+   "id": "A8",
+   "invert": 8.4,
+   "max_depth": 10.0
+  },
+  {
+   "id": "A9",
+   "invert": 8.2,
+   "max_depth": 10.0
+  },
+  {
+   "id": "B0",
+   "invert": 10.0,
+   "max_depth": 10.0
+  },
+  {
+   "id": "B1",
+   "invert": 9.8,
+   "max_depth": 10.0
+  },
+  {
+   "id": "B2",
+   "invert": 9.6,
+   "max_depth": 10.0
+  },
+  {
+   "id": "B3",
+   "invert": 9.4,
+   "max_depth": 10.0
+  },
+  {
+   "id": "B4",
+   "invert": 9.2,
+   "max_depth": 10.0
+  },
+  {
+   "id": "B5",
+   "invert": 9.0,
+   "max_depth": 10.0
+  },
+  {
+   "id": "B6",
+   "invert": 8.8,
+   "max_depth": 10.0
+  },
+  {
+   "id": "B7",
+   "invert": 8.6,
+   "max_depth": 10.0
+  },
+  {
+   "id": "B8",
+   "invert": 8.4,
+   "max_depth": 10.0
+  },
+  {
+   "id": "B9",
+   "invert": 8.2,
+   "max_depth": 10.0
+  },
+  {
+   "id": "C0",
+   "invert": 10.0,
+   "max_depth": 10.0
+  },
+  {
+   "id": "C1",
+   "invert": 9.8,
+   "max_depth": 10.0
+  },
+  {
+   "id": "C2",
+   "invert": 9.6,
+   "max_depth": 10.0
+  },
+  {
+   "id": "C3",
+   "invert": 9.4,
+   "max_depth": 10.0
+  },
+  {
+   "id": "C4",
+   "invert": 9.2,
+   "max_depth": 10.0
+  },
+  {
+   "id": "C5",
+   "invert": 9.0,
+   "max_depth": 10.0
+  },
+  {
+   "id": "C6",
+   "invert": 8.8,
+   "max_depth": 10.0
+  },
+  {
+   "id": "C7",
+   "invert": 8.6,
+   "max_depth": 10.0
+  },
+  {
+   "id": "C8",
+   "invert": 8.4,
+   "max_depth": 10.0
+  },
+  {
+   "id": "C9",
+   "invert": 8.2,
+   "max_depth": 10.0
+  }
+ ],
+ "outfalls": [
+  {
+   "id": "A10",
+   "invert": 8.0,
+   "type": "NORMAL"
+  },
+  {
+   "id": "B10",
+   "invert": 8.0,
+   "type": "NORMAL"
+  },
+  {
+   "id": "C10",
+   "invert": 8.0,
+   "type": "NORMAL"
+  }
+ ],
+ "conduits": [
+  {
+   "id": "AP1",
+   "from": "A0",
+   "to": "A1",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "AP2",
+   "from": "A1",
+   "to": "A2",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "AP3",
+   "from": "A2",
+   "to": "A3",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "AP4",
+   "from": "A3",
+   "to": "A4",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "AP5",
+   "from": "A4",
+   "to": "A5",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "AP6",
+   "from": "A5",
+   "to": "A6",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "AP7",
+   "from": "A6",
+   "to": "A7",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "AP8",
+   "from": "A7",
+   "to": "A8",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "AP9",
+   "from": "A8",
+   "to": "A9",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "AP10",
+   "from": "A9",
+   "to": "A10",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "BP1",
+   "from": "B0",
+   "to": "B1",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "BP2",
+   "from": "B1",
+   "to": "B2",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "BP3",
+   "from": "B2",
+   "to": "B3",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "BP4",
+   "from": "B3",
+   "to": "B4",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "BP5",
+   "from": "B4",
+   "to": "B5",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "BP6",
+   "from": "B5",
+   "to": "B6",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "BP7",
+   "from": "B6",
+   "to": "B7",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "BP8",
+   "from": "B7",
+   "to": "B8",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "BP9",
+   "from": "B8",
+   "to": "B9",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "BP10",
+   "from": "B9",
+   "to": "B10",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "CP1",
+   "from": "C0",
+   "to": "C1",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "CP2",
+   "from": "C1",
+   "to": "C2",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "CP3",
+   "from": "C2",
+   "to": "C3",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "CP4",
+   "from": "C3",
+   "to": "C4",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "CP5",
+   "from": "C4",
+   "to": "C5",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "CP6",
+   "from": "C5",
+   "to": "C6",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "CP7",
+   "from": "C6",
+   "to": "C7",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "CP8",
+   "from": "C7",
+   "to": "C8",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "CP9",
+   "from": "C8",
+   "to": "C9",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  },
+  {
+   "id": "CP10",
+   "from": "C9",
+   "to": "C10",
+   "length": 100.0,
+   "D": 1.0,
+   "n": 0.013
+  }
+ ],
+ "inflows": [
+  {
+   "node": "A0",
+   "Q": 0.15
+  },
+  {
+   "node": "B0",
+   "Q": 0.5
+  },
+  {
+   "node": "C0",
+   "Q": 1.0
+  }
+ ],
+ "duration_s": 21600,
+ "report_step_s": 300
+}

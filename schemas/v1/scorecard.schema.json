@@ -25,7 +25,7 @@
     },
     "test_id": {
       "type": "string",
-      "pattern": "^(A1P|A1F|A2A|A2L|A2F|A12|B)-[A-Za-z0-9._-]+$"
+      "pattern": "^(A1P|A1F|A1D|A2A|A2C|A2L|A2F|A12|B)-[A-Za-z0-9._-]+$"
     },
     "track": {
       "type": "string",
