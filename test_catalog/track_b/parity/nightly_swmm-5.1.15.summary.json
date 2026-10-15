@@ -6,14 +6,15 @@
   "candidate_version": "5.1.15",
   "models": 500,
   "status": {
-    "scored": 475,
+    "scored": 470,
     "candidate_error": 21,
+    "candidate_timeout": 5,
     "nothing_reported": 4
   },
   "within_pct": {
-    "1": 434,
-    "2": 440,
-    "5": 452
+    "1": 431,
+    "2": 437,
+    "5": 448
   },
   "median_worst_pct": 0.0,
   "metrics": "peak_depth = worst node, relative peak depth; volume = worst link, relative integral of |Q|"
