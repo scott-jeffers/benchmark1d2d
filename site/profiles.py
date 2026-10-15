@@ -33,7 +33,12 @@ CHART = {
     "A2A-001": dict(var="wse", x="Across the bowl, x (m)", y="Water level (m)", cut=("y", 0.0)),
     "A2A-010": dict(var="wse", x="Distance along the channel (m)", y="Water level (m)", cut=("y", "mid")),
     "A2A-020": dict(var="h", x="Distance from the wall (m)", y="Depth (m)", cut=("x", 30.0)),
+    "A1F-040": dict(var="wse", x="Distance along the channel (m)", y="Water level (m)"),
+    "A1F-041": dict(var="wse", x="Distance along the channel (m)", y="Water level (m)"),
+    "A1F-042": dict(var="wse", x="Distance along the channel (m)", y="Water level (m)"),
+    "A1F-043": dict(var="wse", x="Distance along the channel (m)", y="Water level (m)"),
 }
+SWASHES = {"A1F-040": "subcritical", "A1F-041": "transcritical", "A1F-042": "shock", "A1F-043": None}
 REPLAY = {"A1F-010", "A1F-011", "A1P-020", "A1P-030", "A2A-001"}
 
 
@@ -67,6 +72,14 @@ def exact_curves(m: dict) -> dict | None:
         out["times"] = [round(float(t), 3) for t in np.linspace(0, t_end, 61)]
         out["frames"] = [_thin(x, fn(x, max(t, 1e-9), **prm)["h"])[1] for t in out["times"]]
         out["y"] = out["frames"][-1]
+    elif sid in SWASHES:
+        from references import swashes
+
+        x = np.linspace(0, 25, 1001)
+        zb = swashes.bed(x)
+        r = swashes.steady_bump(x, case=SWASHES[sid]) if SWASHES[sid] else swashes.lake_at_rest(x)
+        out["x"], out["y"] = _thin(x, np.where(r["h"] > 0, r["h"] + zb, np.nan))
+        out["floor"] = _thin(x, zb)[1]
     elif sid == "A1F-001":
         from references.macdonald import M1_PARAMS, bed_elevation, depth_profile
 
@@ -158,6 +171,10 @@ def model_curve(m: dict, parquet: Path) -> dict | None:
             from references.macdonald import bed_elevation
 
             z = bed_elevation(xs)
+        elif sid in SWASHES:
+            from references.swashes import bed
+
+            z = bed(xs)
         else:
             return None
         h = df["h"].to_numpy()

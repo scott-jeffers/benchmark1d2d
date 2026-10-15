@@ -1136,6 +1136,7 @@ def write_bundles(manifests: list[dict], cards: dict, index: pd.DataFrame | None
 def main() -> int:
     import checkdata
     import pages
+    import netcharts
     import profiles as prof
 
     pages.H = sys.modules[__name__]
@@ -1209,6 +1210,35 @@ def main() -> int:
         fixture = SITE / "fixtures" / "profiles" / f"{sid}.json"
         if fixture.is_file():
             curves.update({k: v for k, v in json.loads(fixture.read_text(encoding="utf-8")).items() if k in by})
+        # extracts collected from the solver workflows (scripts/export_curves.py), newest first
+        net_data = {}
+        for cf in sorted((SITE / "fixtures" / "curves" / sid).glob("*.json")):
+            try:
+                rec = json.loads(cf.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            k = rec.get("key", cf.stem)
+            if k not in by or rec.get("case_version") != m["case_version"]:
+                continue
+            if rec.get("profile"):
+                curves[k] = rec["profile"]
+            if rec.get("net"):
+                net_data[k] = rec["net"]
+        for k in ("demo2d",):
+            if k in by and sid in netcharts.SIDS:
+                for d in result_dirs:
+                    try:
+                        dd = netcharts.extract(m, d)
+                    except Exception:  # noqa: BLE001
+                        dd = None
+                    if dd:
+                        net_data[k] = dd
+                        break
+        try:
+            extra = netcharts.build(m, net_data) if sid in netcharts.SIDS else None
+        except Exception as exc:  # noqa: BLE001 - a chart must not break the build
+            print(f"WARN charts for {sid}: {exc}", file=sys.stderr)
+            extra = None
         for k in ("demo1d", "demo2d"):
             if k in by:
                 for d in result_dirs:
@@ -1223,7 +1253,7 @@ def main() -> int:
                             curves[k] = cv
                             break
         figs = legacy_figures(m, result_dirs, assets)
-        out_pages[page_name(m["test_id"])] = pages.case_page(m, by, exact, curves, figs, evidence.get(m["test_id"], []))
+        out_pages[page_name(m["test_id"])] = pages.case_page(m, by, exact, curves, figs, evidence.get(m["test_id"], []), extra)
     out_pages["downloads.html"] = downloads_page(files)
     out_pages["solvers.html"] = pages.solvers_index(manifests, runs)
     (DIST / "solvers").mkdir(exist_ok=True)

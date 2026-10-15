@@ -40,11 +40,17 @@ jobs:
           python scripts/fetch_inputs.py  # EA terrain and tables, verified by SHA-256
           # EA Tests 2 and 5 take hours with ANUGA; they run in slow-runs.yml.
           python scripts/run_anuga.py A1F-010 A1F-011 A2A-001 A2A-010 A2A-020 A2C-EA1 A2C-EA4
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: anuga-scorecards
-          path: out/anuga/*.scorecard.json
+          path: |
+            out/anuga/*.scorecard.json
+            out/curves/**/*.curve.json
 
   coupled:
     name: SWMM 5.2.4 + ANUGA 4.0.1 (coupled 1D/2D)
@@ -62,11 +68,17 @@ jobs:
         run: |
           python -m pip install -q -e ".[dev]" swmm-toolkit==0.17.0
           python scripts/run_coupled_cases.py
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coupled-scorecards
-          path: out/coupled/*/*.scorecard.json
+          path: |
+            out/coupled/*/*.scorecard.json
+            out/curves/**/*.curve.json
 
   geoclaw:
     name: GeoClaw 5.9.2
@@ -92,11 +104,17 @@ jobs:
         run: |
           python -m pip install -q -e ".[dev]"
           PYTHONPATH="$RUNNER_TEMP/clawpack" python scripts/run_geoclaw.py --claw "$RUNNER_TEMP/clawpack"
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: geoclaw-scorecards
-          path: out/geoclaw/*.scorecard.json
+          path: |
+            out/geoclaw/*.scorecard.json
+            out/curves/**/*.curve.json
 
   lisflood:
     name: LISFLOOD-FP 8.3 (FV1, DG2, ACC)
@@ -137,11 +155,17 @@ jobs:
           # DG2 costs several times more per step; EA Tests 2 and 5 run in slow-runs.yml.
           python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" \
             A1F-010 A1F-011 A2A-001 A2A-010 A2C-EA1 A2C-EA4 --solver dg2
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: lisflood-scorecards
-          path: out/lisflood/*/*.scorecard.json
+          path: |
+            out/lisflood/*/*.scorecard.json
+            out/curves/**/*.curve.json
 
   hydronet:
     name: HydroNet finite volume (Penn State)
@@ -169,9 +193,15 @@ jobs:
         run: |
           python scripts/run_hydronet.py --hydronet "$RUNNER_TEMP/HydroNet" --mode fvm \
             --version "$(git -C "$RUNNER_TEMP/HydroNet" rev-parse --short HEAD)"
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: hydronet-fvm-scorecards
-          path: out/hydronet/*/*.scorecard.json
+          path: |
+            out/hydronet/*/*.scorecard.json
+            out/curves/**/*.curve.json
 

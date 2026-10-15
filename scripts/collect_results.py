@@ -33,6 +33,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 
 FIXTURES = REPO / "site" / "fixtures"
+CURVES = FIXTURES / "curves"  # chart extracts (scripts/export_curves.py), one per test and model
 PARITY = REPO / "test_catalog" / "track_b" / "parity"
 
 # workflow file -> artifact names to collect (None = all of the run's artifacts)
@@ -185,7 +186,7 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    lines, flips, n_changed = ["# Collected results", ""], 0, 0
+    lines, flips, n_changed, n_curves = ["# Collected results", ""], 0, 0, 0
     for wf, wanted in WORKFLOWS.items():
         run = latest_run(args.repo, wf)
         if run is None:
@@ -211,6 +212,21 @@ def main() -> int:
                             lines.append(f"  - {shift}")
                             flips += 1
                     continue
+                if path.name.endswith(".curve.json"):
+                    try:
+                        rec = json.loads(path.read_text(encoding="utf-8"))
+                        sid, key = rec["test_id"].split("_")[0], rec["key"]
+                    except (ValueError, KeyError):
+                        continue
+                    if case_version(rec["test_id"]) not in (None, rec.get("case_version")):
+                        continue
+                    dest = CURVES / sid / f"{key}.json"
+                    if not dest.is_file() or dest.read_bytes() != path.read_bytes():
+                        n_curves += 1
+                        if not args.dry_run:
+                            dest.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copyfile(path, dest)
+                    continue
                 if not path.name.endswith(".scorecard.json"):
                     continue
                 card = json.loads(path.read_text(encoding="utf-8"))
@@ -235,7 +251,7 @@ def main() -> int:
                 if not args.dry_run:
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     dest.write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-    lines += ["", f"{n_changed} file(s) changed, {flips} pass/fail change(s)."]
+    lines += ["", f"{n_changed} file(s) changed, {flips} pass/fail change(s), {n_curves} chart curve(s) updated."]
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))

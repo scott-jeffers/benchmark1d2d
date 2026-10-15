@@ -35,7 +35,9 @@ Output lands in `site/dist/`:
 | `build.py` | Loading, bundles, server-drawn figures, reference pages, `main()` |
 | `pages.py` | Layout and the plain-language pages; solver list and notes |
 | `stories.py` | Plain-language text for every test |
-| `profiles.py` | Exact curves and model curves for the case charts; `python site/profiles.py` refreshes `fixtures/profiles/` from `out/` |
+| `profiles.py` | Exact curves and model curves along each case chart's line |
+| `netcharts.py` | Charts for the drainage, coupled and flood-gauge tests: what to extract from a model's results, and the charts built from it |
+| `tiles.py` | The picture tile drawn for every test |
 | `checkdata.py` | Report points, exact answers and templates for the in-browser check |
 | `static/chart.js` | Case-page chart and replay |
 | `static/check.js` | In-browser check; mirrors the scorer's norms, mass, front and observed order |
@@ -56,8 +58,14 @@ SWMM jobs, nightly corpus parity) are collected into `site/fixtures/` by the
 **Collect results** workflow (`scripts/collect_results.py`) after each of
 those runs: score cards are verified, filed by the solver named inside them,
 committed, and the site is rebuilt; an issue is opened when a pass/fail result
-changes. Chart curves (`fixtures/profiles/`) are refreshed with
-`python site/profiles.py` from a local `out/` and are not collected.
+changes. Chart curves travel the same way: every solver workflow runs
+`scripts/export_curves.py`, which cuts the few numbers each chart needs from
+the model's results (`out/curves/<model>/<test>.curve.json`, stamped with the
+case version), and the collector files them under
+`fixtures/curves/<test>/<model>.json`, so a chart always matches its score
+card. `fixtures/profiles/` holds older curves, used only where no collected
+curve exists; `python scripts/export_curves.py --local` refreshes the
+collected ones from a local `out/`.
 
 Solver versions are pinned; the weekly **Check solver versions** workflow
 (`scripts/check_versions.py`) keeps an issue open listing newer upstream

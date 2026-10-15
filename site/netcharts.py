@@ -1,8 +1,11 @@
 """Charts for the drainage-network (A1D) and coupled 1D/2D (A12) tests.
 
-Each test gets one or two charts, built from the exact answer and from every
-model's results under ``out/`` and saved as ``site/fixtures/profiles/<id>.charts.json``
-(the models are not re-run when the site is built):
+Each test gets one or two charts, built when the site is built from the exact
+answer and from each model's *extract* (``extract(m, folder)``: the few numbers
+the charts need, cut from the model's results). Extracts are written next to
+the score cards by ``scripts/export_curves.py`` in every solver workflow, filed
+by the result collector under ``site/fixtures/curves/<test>/<model>.json``,
+and so stay in step with the scores:
 
 * chains of pipes (A1D-001, 002, 005): the water along the line, exact
   against each model, and each manhole's and pipe's difference from the
@@ -13,7 +16,7 @@ model's results under ``out/`` and saved as ``site/fixtures/profiles/<id>.charts
   plus discharged water against what came in) and the exchange flow at the
   manhole or the water discharged.
 
-``python site/netcharts.py`` refreshes the fixtures.
+``python site/netcharts.py`` refreshes the extracts from local results under ``out/``.
 """
 
 from __future__ import annotations
@@ -26,7 +29,6 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "runner" / "python"), str(ROOT)]
-FIXTURES = Path(__file__).resolve().parent / "fixtures" / "profiles"
 
 SOURCES = [("swmm524", "out/swmm_track_a/swmm524"), ("openswmm-dw", "out/swmm_track_a/openswmm-dw"),
            ("openswmm-fv", "out/swmm_track_a/openswmm-fv"), ("hydra-uds", "out/swmm_track_a/hydra-uds"),
@@ -68,24 +70,64 @@ def _limit(m, var="h"):
     return None
 
 
-def _results(path):
+CHAIN = ("A1D-001", "A1D-002", "A1D-005")
+TIME = ("A1D-003", "A1D-004")
+COUPLED = ("A12-010", "A12-011", "A12-012")
+GAUGE = ("A2C-EA1", "A2C-EA2", "A2C-EA4", "A2C-EA5")
+SIDS = CHAIN + TIME + COUPLED + GAUGE
+MAX_POINTS = 360
+
+
+def extract(m, folder: Path) -> dict | None:
+    """The numbers a model's charts need, from its results in ``folder`` (None if it has none)."""
     import pandas as pd
 
-    df = pd.read_parquet(path)
-    df = df[np.isclose(df["t"], df["t"].max())]
-    return {(str(t), str(e)): (h, q) for t, e, h, q in zip(df["element_type"], df["element_id"], df["h"], df["Q"])}
+    sid = m["test_id"].split("_")[0]
+    tid = m["test_id"]
+    if sid in CHAIN:
+        p = folder / f"{tid}.parquet"
+        if not p.is_file():
+            return None
+        df = pd.read_parquet(p)
+        df = df[np.isclose(df["t"], df["t"].max())]
+        return {"final": [[str(t), str(e), _r(h)] for t, e, h in zip(df["element_type"], df["element_id"], df["h"])]}
+    if sid in TIME:
+        p = folder / f"{tid}.series.json"
+        if not p.is_file():
+            return None
+        d = json.loads(p.read_text())
+        node = _net(m)["storages"][0]["id"]
+        return {"t": d["t"], "h": [_r(v) for v in d["node_h"][node]]}
+    if sid in GAUGE:
+        p = folder / f"{tid}.parquet"
+        if not p.is_file():
+            return None
+        from benchmark1d2d.scoring.scorer import _series_at
+
+        df = pd.read_parquet(p)
+        out = {}
+        for pr in m["simulation"].get("probes") or []:
+            t, h = _series_at(df, pr["x"], pr.get("y", 0.0), "h")
+            if len(t) < 2:
+                continue
+            z = float(np.nanmean(_series_at(df, pr["x"], pr.get("y", 0.0), "z")[1])) if "z" in df.columns and df["z"].notna().any() else None
+            step = max(1, int(np.ceil(len(t) / MAX_POINTS)))
+            wl = [(_r(hh + z, 4) if (z is not None and hh > 1e-3) else None) for hh in h[::step]]
+            out[pr["id"]] = {"t": [round(float(v), 1) for v in t[::step]], "wl": wl, "h": [_r(v, 4) for v in h[::step]]}
+        return {"probes": out} if out else None
+    if sid in COUPLED:
+        p = folder / f"{tid}.parquet"
+        if not p.is_file():
+            return None
+        df = pd.read_parquet(p)
+        acc = df[df["element_type"] == "account"].pivot_table(index="t", columns="element_id", values="V").sort_index()
+        ex = df[df["element_type"] == "exchange"].sort_values("t")
+        return {"t": [float(v) for v in acc.index], **{k: [_r(v, 4) for v in acc[k]] for k in ("surface", "network", "inflow", "outflow")},
+                "xt": [float(v) for v in ex["t"]], "xq": [_r(v, 5) for v in ex["Q"]]}
+    return None
 
 
-def _models(test_id, suffix=".parquet"):
-    out = {}
-    for key, d in SOURCES:
-        p = ROOT / d / f"{test_id}{suffix}"
-        if p.is_file():
-            out[key] = p
-    return out
-
-
-def chain_charts(m):
+def chain_charts(m, data):
     from references import drainage
 
     fn = getattr(drainage, m["reference"]["generator"]["function"])
@@ -133,8 +175,8 @@ def chain_charts(m):
         floor.append(_r(inv[e]) if kind == "node" else None)
         prev = k
     series, diff = {}, {}
-    for key, p in _models(m["test_id"]).items():
-        res = _results(p)
+    for key, dat in data.items():
+        res = {(t, e): (h, None) for t, e, h in dat["final"]}
         sx, sy, dx, dy = [], [], [], []
         prev_k = None
         for k, d, kind, e in pts:
@@ -175,7 +217,7 @@ def chain_charts(m):
     return charts
 
 
-def time_charts(m):
+def time_charts(m, data):
     from references import drainage
 
     sid = m["test_id"].split("_")[0]
@@ -194,37 +236,32 @@ def time_charts(m):
         node, title = net["storages"][0]["id"], "Depth in the wet well as the pump settles"
         note = "The pump starts from 1 m and settles where it passes exactly the inflow (1.143 m)."
     series = {}
-    for key, p in _models(m["test_id"], ".series.json").items():
-        d = json.loads(p.read_text())
+    for key, d in data.items():
         ts = [0.0] + d["t"]
-        hs = [float(net["storages"][0]["init_depth"])] + d["node_h"][node]
+        hs = [float(net["storages"][0]["init_depth"])] + d["h"]
         series[key] = {"x": [round(v / 60, 4) for v in ts], "y": [_r(v) for v in hs]}
     return [dict(id="time", title=title, note=note, xlabel="Time (minutes)", ylabel="Depth (m)",
                  exact=dict(x=[round(v / 60, 4) for v in t], y=[_r(v) for v in ey], line_only=True), series=series)]
 
 
-def coupled_charts(m):
-    import pandas as pd
-
+def coupled_charts(m, data):
     sid = m["test_id"].split("_")[0]
     t_end = float(m["simulation"]["t_end"])
     spec = json.loads((Path(m["_case_dir"]) / "inputs" / "coupling.json").read_text(encoding="utf-8"))
     states = {s["id"]: s for s in m["reference"]["expected_states"]}
     bal, second = {}, {}
     scale = None
-    for key, p in _models(m["test_id"]).items():
-        df = pd.read_parquet(p)
-        acc = df[df["element_type"] == "account"].pivot_table(index="t", columns="element_id", values="V").sort_index()
-        stored = acc["surface"] + acc["network"]
-        imb = stored - stored.iloc[0] - (acc["inflow"] - acc["inflow"].iloc[0]) + (acc["outflow"] - acc["outflow"].iloc[0])
-        scale = max(float(acc["inflow"].iloc[-1]), float(stored.iloc[0]))
-        tm = [round(v / 60, 3) for v in acc.index]
+    for key, d in data.items():
+        a = {k: np.asarray([np.nan if v is None else v for v in d[k]], float) for k in ("surface", "network", "inflow", "outflow")}
+        stored = a["surface"] + a["network"]
+        imb = stored - stored[0] - (a["inflow"] - a["inflow"][0]) + (a["outflow"] - a["outflow"][0])
+        scale = max(float(a["inflow"][-1]), float(stored[0]))
+        tm = [round(v / 60, 3) for v in d["t"]]
         bal[key] = {"x": tm, "y": [_r(v, 4) for v in imb]}
         if sid == "A12-010":
-            ex = df[df["element_type"] == "exchange"].sort_values("t")
-            second[key] = {"x": [round(v / 60, 3) for v in ex["t"]], "y": [_r(v, 5) for v in ex["Q"]]}
+            second[key] = {"x": [round(v / 60, 3) for v in d["xt"]], "y": d["xq"]}
         else:
-            second[key] = {"x": tm, "y": [_r(v, 3) for v in acc["outflow"]]}
+            second[key] = {"x": tm, "y": [_r(v, 3) for v in a["outflow"]]}
     tmax = t_end / 60
     lim = 0.005 * scale if scale else None
     charts = [dict(id="balance", title="Water balance over time",
@@ -249,30 +286,52 @@ def coupled_charts(m):
     return charts
 
 
-def build(m):
+GAUGE_PICK = {"A2C-EA1": ["P1"], "A2C-EA2": ["P1", "P8"], "A2C-EA4": ["P1", "P6"], "A2C-EA5": ["P1", "P7"]}
+
+
+def gauge_charts(m, data):
     sid = m["test_id"].split("_")[0]
-    if sid in ("A1D-001", "A1D-002", "A1D-005"):
-        return chain_charts(m)
-    if sid in ("A1D-003", "A1D-004"):
-        return time_charts(m)
-    if sid in ("A12-010", "A12-011", "A12-012"):
-        return coupled_charts(m)
+    states = {s["id"]: s for s in m["reference"]["expected_states"]}
+    probes = {p["id"]: p for p in m["simulation"].get("probes") or []}
+    t_end_h = float(m["simulation"]["t_end"]) / 3600
+    charts = []
+    for pid in GAUGE_PICK.get(sid, []):
+        series = {}
+        for key, d in data.items():
+            g = (d.get("probes") or {}).get(pid)
+            if g:
+                series[key] = {"x": [round(v / 3600, 4) for v in g["t"]], "y": g["wl"]}
+        if not series:
+            continue
+        target = next((s for s in states.values() if s.get("variable") in ("h+z",) and pid in str(s.get("where", "")).split(",")
+                       and s.get("time") is not None), None)
+        exact = (dict(x=[0, t_end_h], y=[target["value"], target["value"]], line_only=True, target=True,
+                      label=f"Expected final level, {target['value']:g} m") if target else None)
+        pr = probes[pid]
+        charts.append(dict(id=f"gauge-{pid}", title=f"Water level at gauge {pid} ({pr['x']:g} m, {pr.get('y', 0):g} m)",
+                           note=("The pond must settle at the level of the sill once the boundary falls (dashed)." if target else
+                                 "There is no exact water level here; the test is scored on stored volume. Levels are shown so the "
+                                 "models can be compared with each other."),
+                           xlabel="Time (hours)", ylabel="Water level (m)", exact=exact, series=series, free=True, snap=False, unit="m"))
+    return charts
+
+
+def build(m, data: dict) -> list | None:
+    """Charts for test ``m`` from each model's extract (``{model key: extract}``)."""
+    sid = m["test_id"].split("_")[0]
+    data = {k: v for k, v in (data or {}).items() if v}
+    if sid in CHAIN:
+        return chain_charts(m, data)
+    if sid in TIME:
+        return time_charts(m, data)
+    if sid in COUPLED:
+        return coupled_charts(m, data)
+    if sid in GAUGE:
+        return gauge_charts(m, data)
     return None
 
 
-def refresh_fixtures() -> None:
-    sys.path.insert(0, str(ROOT / "site"))
-    from build import load_manifests  # type: ignore
-
-    FIXTURES.mkdir(parents=True, exist_ok=True)
-    for m in load_manifests():
-        charts = build(m)
-        if not charts:
-            continue
-        sid = m["test_id"].split("_")[0]
-        (FIXTURES / f"{sid}.charts.json").write_text(json.dumps(charts, separators=(",", ":")) + "\n", encoding="utf-8")
-        print(sid, [c["id"] for c in charts], sorted(charts[0]["series"]))
-
-
 if __name__ == "__main__":
-    refresh_fixtures()
+    import subprocess
+
+    raise SystemExit(subprocess.call([sys.executable, str(ROOT / "scripts" / "export_curves.py"), "--local"]))

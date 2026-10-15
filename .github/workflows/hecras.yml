@@ -59,6 +59,10 @@ jobs:
       - name: Run and score HEC-RAS
         timeout-minutes: 30
         run: python scripts/run_hecras.py --accept-hec-terms
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -71,6 +75,7 @@ jobs:
             out/hecras/work/**/*.LOG
             out/hecras/work/**/*.png
             out/hecras/work/**/*.hdf
+            out/curves/**/*.curve.json
 
   hecras-2d:
     name: HEC-RAS 6.6 2D dam breaks (finding, not a gate)
@@ -103,6 +108,10 @@ jobs:
       - name: Run and score HEC-RAS 2D
         timeout-minutes: 50
         run: python scripts/run_hecras_2d.py --accept-hec-terms
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -120,6 +129,7 @@ jobs:
             out/hecras2d/work/**/*.bco*
             out/hecras2d/work/**/*.x01
             out/hecras2d/work/**/*.rst
+            out/curves/**/*.curve.json
 
   hecras-2d-cases:
     name: HEC-RAS 6.6 2D with boundary lines, ${{ matrix.eq }} (finding, not a gate)
@@ -159,6 +169,10 @@ jobs:
         timeout-minutes: 270
         shell: bash
         run: python scripts/run_hecras_2d_cases.py ${{ inputs.cases }} --accept-hec-terms --equations ${{ matrix.eq }}
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -172,3 +186,4 @@ jobs:
             out/hecras2d/work/**/*.g01
             out/hecras2d/work/**/*.log
             out/hecras2d/work/**/*.bco*
+            out/curves/**/*.curve.json

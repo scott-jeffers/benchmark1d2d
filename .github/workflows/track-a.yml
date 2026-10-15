@@ -44,6 +44,10 @@ jobs:
         run: python scripts/run_network_cases.py
       - name: 2D cases (Thacker, MacDonald 2D, oblique jump, EA 1, 2, 4, 5)
         run: python scripts/run_demo_2d.py
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -52,6 +56,7 @@ jobs:
             out/vertical_slice/*.scorecard.json
             out/networks/*.scorecard.json
             out/demo_2d/*.scorecard.json
+            out/curves/**/*.curve.json
 
   telemac:
     name: openTELEMAC-2D (finding, not a gate)
@@ -75,11 +80,17 @@ jobs:
           python scripts/run_telemac.py --telemac-prefix "$MAMBA_ROOT_PREFIX/envs/telemac" \
             A1F-010 A1F-011 A1F-040 A1F-041 A1F-042 A1F-043 A2A-001 A2A-010 A2A-020 A2C-EA1 A2C-EA4 \
             || echo "::warning title=TELEMAC-2D::fails at least one criterion (see score cards); reported, not gating"
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: telemac-scorecards
-          path: out/telemac/*.scorecard.json
+          path: |
+            out/telemac/*.scorecard.json
+            out/curves/**/*.curve.json
 
 
   swmm:
@@ -104,8 +115,14 @@ jobs:
         run: |
           python scripts/run_drainage_cases.py --openswmm-python "$RUNNER_TEMP/openswmm/bin/python" \
             --hydra-exe "$(python scripts/fetch_hydra.py "$RUNNER_TEMP/hydra")"
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: swmm-track-a-scorecards
-          path: out/swmm_track_a/*/*.scorecard.json
+          path: |
+            out/swmm_track_a/*/*.scorecard.json
+            out/curves/**/*.curve.json

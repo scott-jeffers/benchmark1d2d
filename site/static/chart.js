@@ -40,7 +40,7 @@
     if (!ys.length) ys = [0, 1];
     x0 = Math.min.apply(null, xs); x1 = Math.max.apply(null, xs);
     y0 = Math.min.apply(null, ys); y1 = Math.max.apply(null, ys);
-    if (E && !D.symmetric && !D.band) {
+    if (E && E.x.length > 2 && !D.symmetric && !D.band) {
       // keep the exact answer readable: a model far off the scale is clipped at 60 % of the exact range beyond it
       var ey = [];
       (E.frames || [E.y]).forEach(function (f) { f.forEach(function (v) { if (finite(v)) ey.push(v); }); });
@@ -51,8 +51,8 @@
       }
     }
     if (D.symmetric) { var a = Math.max(Math.abs(y0), Math.abs(y1)) || 1; y0 = -a; y1 = a; }
-    else if (!E || (!E.floor && !E.line_only)) y0 = Math.min(0, y0);
-    var pad = (y1 - y0) * 0.08 || 0.1; y1 += pad; if (D.symmetric || (E && (E.floor || E.line_only))) y0 -= pad;
+    else if (!D.free && (!E || (!E.floor && !E.line_only))) y0 = Math.min(0, y0);
+    var pad = (y1 - y0) * 0.08 || 0.1; y1 += pad; if (D.free || D.symmetric || (E && (E.floor || E.line_only))) y0 -= pad;
     if (x1 === x0) x1 = x0 + 1;
     if (y1 === y0) { y1 += 0.5; y0 -= 0.5; }
     }
@@ -100,6 +100,14 @@
       return best < 0 || bd > (x1 - x0) * 0.02 ? null : { x: x[best], y: y[best] };
     }
 
+    function interp(x, y, at) {
+      for (var i = 1; i < x.length; i++) {
+        if (!finite(y[i]) || !finite(y[i - 1]) || !finite(x[i]) || !finite(x[i - 1])) continue;
+        var a = Math.min(x[i - 1], x[i]), b = Math.max(x[i - 1], x[i]);
+        if (at >= a && at <= b) { var f = b > a ? (at - x[i - 1]) / (x[i] - x[i - 1]) : 0; return { x: at, y: y[i - 1] + f * (y[i] - y[i - 1]) }; }
+      }
+      return null;
+    }
     function draw() {
       if (D.rescale) ranges();
       while (svg.firstChild) svg.removeChild(svg.firstChild);
@@ -117,7 +125,7 @@
       var xl = node("text", { x: (L + R) / 2, y: B + 46, "text-anchor": "middle", "class": "axl" }); xl.textContent = D.xlabel;
       var yl = node("text", { x: 14, y: (T + B) / 2, "text-anchor": "middle", "class": "axl", transform: "rotate(-90 14 " + (T + B) / 2 + ")" }); yl.textContent = D.ylabel;
       if (E && E.floor) node("path", { d: path(E.x, E.floor) + "L" + px(E.x[E.x.length - 1]) + "," + B + " L" + px(E.x[0]) + "," + B + " Z", "class": "bedfill" });
-      else if (!D.symmetric && !(E && E.line_only)) node("rect", { x: L, y: B, width: R - L, height: 8, fill: "var(--bed-soft)" });
+      else if (!D.symmetric && !D.free && !(E && E.line_only)) node("rect", { x: L, y: B, width: R - L, height: 8, fill: "var(--bed-soft)" });
       (D.labels || []).forEach(function (lb) {
         var t = node("text", { x: px(lb.x), y: T + 2, "text-anchor": "middle", "class": "axl", "font-weight": 600 }); t.textContent = lb.text;
       });
@@ -154,8 +162,8 @@
       if (!final) { readout.textContent = "Exact answer at t = " + fmt(E.times[frame]) + " s. Models are compared at the end, t = " + fmt(E.t_end) + " s."; return; }
       if (hoverX !== null) {
         var parts = [(D.xshort || D.xlabel.replace(/ \(.*$/, "")) + " " + fmt(hoverX) + ":"];
-        if (E && shown.exact) { var e = nearest(E.x, E.frames ? E.frames[frame] : E.y, hoverX); if (e) parts.push((E.label || "exact") + " " + fmt(e.y)); }
-        S.forEach(function (s) { if (!shown[s.key]) return; var n = nearest(s.x, s.y, hoverX); if (n) parts.push(s.label + " " + fmt(n.y)); });
+        if (E && shown.exact) { var ey2 = E.frames ? E.frames[frame] : E.y, e = interp(E.x, ey2, hoverX) || nearest(E.x, ey2, hoverX); if (e) parts.push((E.label || "exact") + " " + fmt(e.y)); }
+        S.forEach(function (s) { if (!shown[s.key]) return; var n = s.dots ? nearest(s.x, s.y, hoverX) : interp(s.x, s.y, hoverX); if (n) parts.push(s.label + " " + fmt(n.y)); });
         readout.textContent = parts.join("  ·  ") + (D.unit ? " " + D.unit : "");
         return;
       }

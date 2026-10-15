@@ -1,0 +1,1 @@
+{"test_id":"A1D-002_surcharged_pipe_grade_line","case_version":"1.0.0","key":"swmm524","net":{"final":[["node","S0",2.193202],["node","S1",2.054562],["node","S2",1.915921],["node","S3",1.777281],["node","S4",1.638641],["node","S5",1.5],["link","SP1",0.6],["link","SP2",0.6],["link","SP3",0.6],["link","SP4",0.6],["link","SP5",0.6]]}}

@@ -46,11 +46,17 @@ jobs:
           python -m pip install -q -e ".[dev]"
           python scripts/fetch_inputs.py
           python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" A2C-EA2 A2C-EA5 --solver dg2
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: lisflood-dg2-ea-scorecards
-          path: out/lisflood/*/*.scorecard.json
+          path: |
+            out/lisflood/*/*.scorecard.json
+            out/curves/**/*.curve.json
 
   anuga-ea:
     name: ANUGA 4.0.1 on EA Tests 2 and 5 and the SWASHES bump
@@ -70,11 +76,17 @@ jobs:
           python scripts/fetch_inputs.py
           python scripts/run_anuga.py A2C-EA2 A2C-EA5
           python scripts/run_anuga.py A1F-040 A1F-041 A1F-042 A1F-043  # SWASHES bump: ~10 min each on the finest grid
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: anuga-ea-scorecards
-          path: out/anuga/*.scorecard.json
+          path: |
+            out/anuga/*.scorecard.json
+            out/curves/**/*.curve.json
 
   telemac-ea:
     name: openTELEMAC-2D on EA Tests 2 and 5
@@ -96,11 +108,17 @@ jobs:
           init-shell: none
       - name: Run and score
         run: python scripts/run_telemac.py --telemac-prefix "$MAMBA_ROOT_PREFIX/envs/telemac" A2C-EA2 A2C-EA5 || true
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: telemac-ea-scorecards
-          path: out/telemac/*.scorecard.json
+          path: |
+            out/telemac/*.scorecard.json
+            out/curves/**/*.curve.json
 
   hydronet-pinn:
     name: HydroNet FVM-PINN on the dam breaks
@@ -128,9 +146,15 @@ jobs:
         run: |
           python scripts/run_hydronet.py --hydronet "$RUNNER_TEMP/HydroNet" --mode pinn \
             --version "$(git -C "$RUNNER_TEMP/HydroNet" rev-parse --short HEAD)" A1F-011 A1F-010
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: hydronet-pinn-scorecards
-          path: out/hydronet/*/*.scorecard.json
+          path: |
+            out/hydronet/*/*.scorecard.json
+            out/curves/**/*.curve.json
 

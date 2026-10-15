@@ -876,12 +876,11 @@ def compare_chart(m: dict, runs: dict, exact: dict | None, profiles: dict) -> tu
     if spec is None or (exact is None and not profiles):
         return "", ""
     series = []
-    for k in SOLVERS_ORDER(set(profiles)):
-        if k in profiles:
-            s = SOLVER[k]
-            label = s["name"] if not k.startswith("lisflood") else f'{s["name"]} {s["sub"].split("·")[-1].strip()}'
-            series.append(dict(key=k, label=label, color=s["color"], x=profiles[k]["x"], y=profiles[k]["y"],
-                               dots=s["kind"] == "suite", dx=profiles[k].get("dx")))
+    keys = [k for k in SOLVERS_ORDER(set(profiles)) if k in profiles]
+    for k in keys:
+        s = SOLVER[k]
+        series.append(dict(key=k, label=series_label(k, keys), color=s["color"], x=profiles[k]["x"], y=profiles[k]["y"],
+                           dots=s["kind"] == "suite", dx=profiles[k].get("dx"), hidden=far_off(m, runs.get(k))))
     fronts = {}
     for k, c in runs.items():
         for r in c.get("criteria_results", []):
@@ -893,13 +892,16 @@ def compare_chart(m: dict, runs: dict, exact: dict | None, profiles: dict) -> tu
 
         prm = m["reference"]["generator"]["parameters"]
         front_exact = volume_front_position(float(m["simulation"]["t_end"]), 0.05, h0=prm["h0"], x0=prm["x0"], g=prm["g"])
-    data = dict(sid=sid, xlabel=spec["x"], ylabel=spec["y"], exact=exact, series=series, fronts=fronts,
+    data = dict(sid=sid, xlabel=spec["x"], ylabel=spec["y"], exact=exact, series=series, fronts=fronts, rescale=True,
                 front=sid == "A1F-010" and bool(fronts), front_exact=front_exact, dam=(1000 if sid == "A1F-010" else 0 if sid == "A1F-011" else None))
     toggles = '<button type="button" class="pill" data-series="exact" aria-pressed="true"><span class="sw" style="background:var(--water)"></span>Exact answer</button>' if exact else ""
     for s in series:
         sw = f'<span class="sw dot" style="color:{s["color"]}"></span>' if s["dots"] else f'<span class="sw" style="background:{s["color"]}"></span>'
-        on = "false" if s["key"] == "lisflood-acc" and len(series) > 1 else "true"
+        on = "false" if (s["key"] == "lisflood-acc" and len(series) > 1) or s.get("hidden") else "true"
         toggles += f'<button type="button" class="pill" data-series="{s["key"]}" aria-pressed="{on}">{sw}{esc(s["label"])}</button>'
+    hid = [x["label"] for x in series if x.get("hidden")]
+    hidden_note = (f'<p class="small" style="margin:0 0 8px">Hidden at first because they are far off the exact answer: {esc(", ".join(hid))}. '
+                   'Click a name to show it.</p>' if hid else "")
     replay = bool(exact and exact.get("frames"))
     t_end = float(m["simulation"]["t_end"])
     controls = ""
@@ -913,6 +915,7 @@ def compare_chart(m: dict, runs: dict, exact: dict | None, profiles: dict) -> tu
         controls = '<div class="controls"><div class="readout"></div></div>'
     html_ = f"""<section class="replay" aria-label="Exact answer and model results">
   <div class="replay-top"><div class="toggles" role="group" aria-label="Show on the chart">{toggles}</div><div class="tlabel" aria-live="polite"></div></div>
+  {hidden_note}
   <svg class="chart" viewBox="0 0 1000 380" role="img" aria-label="{esc(spec['y'])} against {esc(spec['x'].lower())}: exact answer and model results"></svg>
   {controls}
   {_data_script(data)}
@@ -920,30 +923,48 @@ def compare_chart(m: dict, runs: dict, exact: dict | None, profiles: dict) -> tu
     return html_, ""
 
 
+def series_label(k: str, keys: list[str]) -> str:
+    """A model's name on a chart, with its variant when another series has the same name."""
+    s_ = SOLVER[k]
+    same = sum(1 for o in keys if SOLVER[o]["name"] == s_["name"])
+    if same < 2:
+        return s_["name"]
+    sub = s_["sub"].split("·")[-1].strip()
+    return f'{s_["name"]} {sub}'
+
+
+def far_off(m: dict, card: dict | None) -> bool:
+    """A run that fails its first gating check by more than ten times the limit starts hidden on the chart."""
+    if not card or card.get("passed"):
+        return False
+    for r in card.get("criteria_results", []):
+        if r.get("gating") and r.get("observed") is not None and r["threshold"]["op"] == "abs<=":
+            return abs(r["observed"]) > 10 * float(r["threshold"]["value"])
+    return False
+
+
 def _data_script(data: Any) -> str:
     text = json.dumps(data, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
     return f'<script type="application/json" class="chart-data">{text}</script>'
 
 
-def network_charts(m: dict, runs: dict) -> str:
-    """The drainage and coupled tests' charts (site/netcharts.py fixtures), one section each."""
-    sid = sid_of(m["test_id"])
-    f = Path(__file__).resolve().parent / "fixtures" / "profiles" / f"{sid}.charts.json"
-    if not f.is_file():
-        return ""
+def network_charts(m: dict, runs: dict, charts: list | None) -> str:
+    """Extra charts (drainage, coupled and flood-gauge tests, site/netcharts.py), one section each."""
     out = []
-    for ch in json.loads(f.read_text(encoding="utf-8")):
+    for ch in charts or []:
         series = []
-        for k in SOLVERS_ORDER(set(ch["series"]) & set(runs)):
+        keys = SOLVERS_ORDER(set(ch["series"]) & set(runs))
+        for k in keys:
             s_ = SOLVER[k]
             d = ch["series"][k]
-            series.append(dict(key=k, label=f'{s_["name"]} {s_["sub"]}' if s_["name"].startswith("OpenSWMM") else s_["name"], color=s_["color"],
+            series.append(dict(key=k, label=series_label(k, keys), color=s_["color"],
                                x=d["x"], y=d["y"], dots=bool(d.get("dots")), join=bool(d.get("dots"))))
         if not series:
             continue
         ex = ch.get("exact")
         data = dict(xlabel=ch["xlabel"], ylabel=ch["ylabel"], exact=ex, series=series, band=ch.get("band"), symmetric=ch.get("symmetric", False),
-                    rescale=ch.get("rescale", False), snap=ch.get("snap", False), unit=ch.get("unit", ""), labels=ch.get("labels"))
+                    rescale=ch.get("rescale", False), snap=ch.get("snap", False), unit=ch.get("unit", ""), labels=ch.get("labels"),
+                    free=ch.get("free", False))
         toggles = (f'<button type="button" class="pill" data-series="exact" aria-pressed="true"><span class="sw" style="background:var(--water)"></span>{esc(ex.get("label") or "Exact answer")}</button>'
                    if ex else "")
         for s_ in series:
@@ -1002,14 +1023,14 @@ def conv_chart(m: dict, runs: dict) -> str:
     return svg + f'<div class="keyrow">{"".join(legend)}</div>'
 
 
-def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_figs: str, evidence: list[dict]) -> str:
+def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_figs: str, evidence: list[dict], extra: list | None = None) -> str:
     from benchmark1d2d.catalog.promotion import checklist, next_stage
 
     sid = sid_of(m["test_id"])
     st = story(m)
     group = GROUPS.get(st["group"], "")
     chart_html, chart_data = compare_chart(m, runs, exact, profiles)
-    net_html = network_charts(m, runs)
+    net_html = network_charts(m, runs, extra)
     netsec = (f'<section class="section" style="padding-bottom:0"><h2>Exact answer and models</h2>{net_html}</section>' if net_html else "")
     if net_html:
         chart_html = net_html
