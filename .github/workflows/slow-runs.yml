@@ -2,8 +2,9 @@ name: Slow runs
 
 # Runs too long for the per-push workflows, refreshed weekly: LISFLOOD-FP's
 # second-order DG2 solver, ANUGA and TELEMAC-2D on the EA valley tests
-# (2 and 5). Score cards are uploaded as artifacts; copy them into
-# site/fixtures/ to publish. A scored fail is a finding, not a broken build.
+# (2 and 5), and HydroNet's FVM-PINN network trained on the dam breaks.
+# Score cards are uploaded as artifacts; copy them into site/fixtures/ to
+# publish. A scored fail is a finding, not a broken build.
 on:
   workflow_dispatch:
   schedule:
@@ -99,3 +100,32 @@ jobs:
         with:
           name: telemac-ea-scorecards
           path: out/telemac/*.scorecard.json
+
+  hydronet-pinn:
+    name: HydroNet FVM-PINN on the dam breaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: HydroNet and pyHMT2D (psu-efd, MIT), CPU PyTorch
+        run: |
+          git clone -q --depth 1 https://github.com/psu-efd/HydroNet "$RUNNER_TEMP/HydroNet"
+          git clone -q --depth 1 https://github.com/psu-efd/pyHMT2D "$RUNNER_TEMP/pyHMT2D"
+          python -m pip install -q --upgrade pip
+          python -m pip install -q torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -q -e "$RUNNER_TEMP/HydroNet"
+          python -m pip install -q -e "$RUNNER_TEMP/pyHMT2D" --no-deps
+          python -m pip install -q -e ".[dev]"
+      - name: Train and score
+        run: |
+          python scripts/run_hydronet.py --hydronet "$RUNNER_TEMP/HydroNet" --mode pinn \
+            --version "$(git -C "$RUNNER_TEMP/HydroNet" rev-parse --short HEAD)" A1F-011 A1F-010
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hydronet-pinn-scorecards
+          path: out/hydronet/*/*.scorecard.json
+

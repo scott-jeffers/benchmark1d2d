@@ -232,8 +232,15 @@ def main() -> int:
                                    else run_pinn(mesh, h0, u0, v0, wse, t_end, args.epochs, Path(td)))
                     finally:
                         os.chdir(cwd)
-                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", to_rows(kind, mesh, t_end, h, u, v)))
                 print(f"  {mode} {tid} dx={dx}: {mesh.n_cells} cells, {time.perf_counter() - t0:.1f}s", flush=True)
+                if not np.isfinite(h).all():
+                    print(f"::warning title=HydroNet {mode} {tid}::unstable on the {dx:g} grid "
+                          f"({int((~np.isfinite(h)).sum())} of {h.size} cells not finite); no score card", flush=True)
+                    paths = []
+                    break
+                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", to_rows(kind, mesh, t_end, h, u, v)))
+            if not paths:
+                continue
             card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)
             (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
             print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")

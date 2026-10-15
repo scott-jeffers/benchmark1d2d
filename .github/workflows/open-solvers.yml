@@ -14,6 +14,7 @@ on:
       - scripts/run_anuga.py
       - scripts/run_geoclaw.py
       - scripts/run_lisflood.py
+      - scripts/run_hydronet.py
       - .github/workflows/open-solvers.yml
       - references/**
       - runner/python/benchmark1d2d/scoring/**
@@ -114,3 +115,32 @@ jobs:
         with:
           name: lisflood-scorecards
           path: out/lisflood/*/*.scorecard.json
+
+  hydronet:
+    name: HydroNet finite volume (Penn State)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: HydroNet and pyHMT2D (psu-efd, MIT), CPU PyTorch
+        run: |
+          git clone -q --depth 1 https://github.com/psu-efd/HydroNet "$RUNNER_TEMP/HydroNet"
+          git clone -q --depth 1 https://github.com/psu-efd/pyHMT2D "$RUNNER_TEMP/pyHMT2D"
+          python -m pip install -q --upgrade pip
+          python -m pip install -q torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -q -e "$RUNNER_TEMP/HydroNet"
+          python -m pip install -q -e "$RUNNER_TEMP/pyHMT2D" --no-deps
+          python -m pip install -q -e ".[dev]"
+      - name: Run and score (the Thacker bowl is reported unstable, not scored)
+        run: |
+          python scripts/run_hydronet.py --hydronet "$RUNNER_TEMP/HydroNet" --mode fvm \
+            --version "$(git -C "$RUNNER_TEMP/HydroNet" rev-parse --short HEAD)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hydronet-fvm-scorecards
+          path: out/hydronet/*/*.scorecard.json
+
