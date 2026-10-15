@@ -112,8 +112,12 @@ jobs:
           python-version: "3.12"
       - name: HydroNet and pyHMT2D (psu-efd, MIT), CPU PyTorch
         run: |
-          git clone -q --depth 1 https://github.com/psu-efd/HydroNet "$RUNNER_TEMP/HydroNet"
-          git clone -q --depth 1 https://github.com/psu-efd/pyHMT2D "$RUNNER_TEMP/pyHMT2D"
+          # pinned commits (scripts/check_versions.py reports newer ones)
+          for r in "HydroNet 0d98ff5dbdd07e8bb56590a4df2b79aebf414a6a" "pyHMT2D 57645ff7af3321a54998f9acb29aa4281380f8e8"; do
+            set -- $r; git init -q "$RUNNER_TEMP/$1"
+            git -C "$RUNNER_TEMP/$1" fetch -q --depth 1 "https://github.com/psu-efd/$1" "$2"
+            git -C "$RUNNER_TEMP/$1" checkout -q FETCH_HEAD
+          done
           python -m pip install -q --upgrade pip
           python -m pip install -q torch --index-url https://download.pytorch.org/whl/cpu
           python -m pip install -q -e "$RUNNER_TEMP/HydroNet"

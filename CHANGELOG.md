@@ -7,6 +7,12 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ### Changed
 
+- **CI results reach the site automatically.** `collect-results.yml` runs
+  after each scheduled or Windows solver workflow, verifies and files the
+  score cards and parity tables, commits them, rebuilds the site and opens an
+  issue when a pass/fail result changes. HydroNet and pyHMT2D are pinned to
+  commits; `check-versions.yml` reports newer releases of every pinned solver
+  weekly.
 - **TELEMAC-2D runs were capped at a 0.001–0.01 s step.** TELEMAC's
   `TIME STEP` is its largest step, not its first; it is now the whole run (EA
   tests: 1 s), so the Courant condition sets the step. Results barely move

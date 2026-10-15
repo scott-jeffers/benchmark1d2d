@@ -1,0 +1,56 @@
+name: Collect results
+
+# After a solver workflow that only runs on a schedule or on Windows finishes,
+# collect its score cards (and the nightly parity tables) into the site's
+# fixtures, commit them, rebuild the site, and open an issue when a pass/fail
+# result changes. Cards are verified (content hash and signature) and filed by
+# the solver named inside them (scripts/collect_results.py).
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Open-source solvers", "Slow runs", "HEC-RAS", "Nightly", "Track A"]
+    types: [completed]
+    branches: [master]
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+concurrency:
+  group: collect-results
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -q -e ".[dev]"
+      - name: Collect the latest successful runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/collect_results.py --repo "${{ github.repository }}" --summary out/collect_results.md
+      - name: Commit, rebuild the site, report pass/fail changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat out/collect_results.md >> "$GITHUB_STEP_SUMMARY"
+          git add site/fixtures test_catalog/track_b/parity
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git -c user.name="benchmark1d2d-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Collect CI results (${{ github.event.workflow_run.name || 'manual' }})" -m "$(head -c 60000 out/collect_results.md)"
+          git push -q origin HEAD:master
+          gh workflow run pages.yml --ref master
+          if [ "$(cat out/collect_results.flips)" != "0" ]; then
+            gh issue create --title "Solver results changed pass/fail ($(date -u +%F))" \
+              --body-file out/collect_results.md --label "results-changed" \
+              || gh issue create --title "Solver results changed pass/fail ($(date -u +%F))" --body-file out/collect_results.md
+          fi

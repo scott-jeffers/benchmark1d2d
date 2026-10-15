@@ -46,3 +46,20 @@ Output lands in `site/dist/`:
 `fixtures/<solver>/` the production solvers' cards, `fixtures/profiles/` their
 final-state curves, and `fixtures/cross_build/` second builds of the reference
 engines. See `fixtures/README.md` for how to refresh them.
+
+## Where the results come from
+
+Results from the per-push workflows (Pages, Track A demo and EPANET runs) are
+produced at build time. Results from workflows that only run on a schedule or
+on Windows (open-source solvers, slow runs, HEC-RAS, the Track A TELEMAC and
+SWMM jobs, nightly corpus parity) are collected into `site/fixtures/` by the
+**Collect results** workflow (`scripts/collect_results.py`) after each of
+those runs: score cards are verified, filed by the solver named inside them,
+committed, and the site is rebuilt; an issue is opened when a pass/fail result
+changes. Chart curves (`fixtures/profiles/`) are refreshed with
+`python site/profiles.py` from a local `out/` and are not collected.
+
+Solver versions are pinned; the weekly **Check solver versions** workflow
+(`scripts/check_versions.py`) keeps an issue open listing newer upstream
+releases.
+

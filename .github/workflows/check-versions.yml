@@ -1,0 +1,41 @@
+name: Check solver versions
+
+# Weekly: compare every pinned solver with its latest upstream release and
+# keep one open issue listing the solvers with a newer release.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 * * 1"  # Monday 05:23 UTC
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -q packaging
+      - name: Compare pins with upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/check_versions.py --out out/versions.md
+          cat out/versions.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the "Solver updates available" issue current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Solver updates available"
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number -q '.[0].number')
+          if [ "$(cat out/versions.newer)" = "0" ]; then
+            [ -n "$num" ] && gh issue close "$num" --comment "All pinned solvers are at their latest release."
+            exit 0
+          fi
+          if [ -n "$num" ]; then gh issue edit "$num" --body-file out/versions.md
+          else gh issue create --title "$title" --body-file out/versions.md; fi
