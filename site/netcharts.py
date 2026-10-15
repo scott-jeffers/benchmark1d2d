@@ -32,7 +32,8 @@ sys.path[:0] = [str(ROOT / "runner" / "python"), str(ROOT)]
 
 SOURCES = [("swmm524", "out/swmm_track_a/swmm524"), ("openswmm-dw", "out/swmm_track_a/openswmm-dw"),
            ("openswmm-fv", "out/swmm_track_a/openswmm-fv"), ("hydra-uds", "out/swmm_track_a/hydra-uds"),
-           ("swmm-anuga", "out/coupled/swmm-anuga")]
+           ("swmm-anuga", "out/coupled/swmm-anuga"), ("openswmm-2d", "out/coupled/openswmm-2d"),
+           ("openswmm-2d-x", "out/coupled/openswmm-2d-x")]
 
 
 def _r(v, n=6):

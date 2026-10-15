@@ -5,6 +5,8 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ## [Unreleased]
 
+- **OpenSWMM 6 on the coupled 1D/2D tests.** OpenSWMM Engine v6's own sewer–surface coupling, run with its defaults on A12-010 to 012 on two triangulations of the case grid (`scripts/run_openswmm_coupled.py`, a new CI job). Two triangles per square pass A12-010 and A12-012; four per square put the A12-010 street 8 mm too deep. On A12-011 the yard drains 12–14 mm below the gully crest on both meshes.
+
 The website grows up: a picture and a chart for every test, a model-against-
 model comparison, a browser check for 20 tests, and pages that keep in step
 with the results by themselves.

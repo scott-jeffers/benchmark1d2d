@@ -64,6 +64,8 @@ ROUTES = [
     (r"^OpenSWMM Engine v6 finite volume", "swmm_track_a/openswmm-fv"),
     (r"^Hydra urban drainage \(", "swmm_track_a/hydra-uds"),
     (r"^SWMM–ANUGA coupled", "coupled/swmm-anuga"),
+    (r"^OpenSWMM Engine v6 1D/2D \(four", "coupled/openswmm-2d-x"),
+    (r"^OpenSWMM Engine v6 1D/2D", "coupled/openswmm-2d"),
 ]
 HISTORY = PARITY / "history.csv"
 HISTORY_COLS = ["date", "run", "tier", "candidate", "candidate_version", "upstream_commit", "models", "scored",

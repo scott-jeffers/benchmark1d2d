@@ -42,6 +42,7 @@ SOURCES = [
     ("hydronet-fvm", "out/hydronet/fvm"), ("hydronet-pinn", "out/hydronet/pinn"),
     ("hecras", "out/hecras"), ("hecras", "out/hecras2d/elm"), ("hecras-em", "out/hecras2d/em"),
     ("swmm-anuga", "out/coupled/swmm-anuga"),
+    ("openswmm-2d", "out/coupled/openswmm-2d"), ("openswmm-2d-x", "out/coupled/openswmm-2d-x"),
 ]
 
 

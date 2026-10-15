@@ -75,6 +75,10 @@ SOLVERS: list[dict] = [
          what="HydroNet's FVM-PINN neural network, trained per grid with the recipe of its own dam-break example (64×5 network, 5000 Adam epochs)"),
     dict(key="swmm-anuga", name="SWMM + ANUGA", sub="coupled 1D/2D", kind="suite", color="#6B4E9B",
          what="EPA SWMM 5.2.4 pipes coupled to an ANUGA 4.0.1 surface by the suite's own explicit coupler (1 s weir/orifice exchange at the manholes): a worked example of a 1D/2D model, not a product"),
+    dict(key="openswmm-2d", name="OpenSWMM 6", sub="coupled 1D/2D", kind="production", color="#0E7C66",
+         what="OpenSWMM Engine v6 (pre-release) with its own 1D/2D coupling: a local-inertial 2D surface with each manhole tied to a mesh vertex, run with its defaults; the surface is the case's grid with each square cut into two triangles"),
+    dict(key="openswmm-2d-x", name="OpenSWMM 6", sub="coupled 1D/2D · cross mesh", kind="production", color="#5FB3A1",
+         what="The same OpenSWMM 6 1D/2D model on a finer-cut mesh: each grid square cut into four triangles by both diagonals (the mesh the suite's ANUGA surface uses)"),
     dict(key="swmm515", name="SWMM 5.1.15", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-2)",
          what="EPA SWMM 5.1.15, the previous release, compared with SWMM 5.2.4"),
     dict(key="openswmm6", name="OpenSWMM 6", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-5)",
@@ -95,6 +99,8 @@ def solver_key(name: str) -> str | None:
         return "demo2d"
     if n.startswith("demo"):
         return "demo1d"
+    if n.startswith("openswmm engine v6 1d/2d"):
+        return "openswmm-2d-x" if "four triangles" in n else "openswmm-2d"
     if n.startswith("openswmm engine v6 dynamic wave"):
         return "openswmm-dw"
     if n.startswith("openswmm engine v6 finite volume"):
@@ -364,6 +370,12 @@ NOTES = {
     ("A12-010", "swmm-anuga"): "The street carries exactly what the manhole releases (0.5 m³/s, depth 0.1 mm from exact), but 5 m³ of the 885 m³ is missing at the end (0.56 %; 0.5 % allowed). The coupler moves water exactly; the loss is SWMM's own continuity error (0.50 % in its report), made as the dead-end pipe filled and surcharged.",
     ("A12-011", "swmm-anuga"): "Passes. While the pipe runs full, SWMM's reported pipe and manhole volumes exceed its own balance by up to 3.1 m³ (1.2 %), which disappears as the pipe empties: its end-of-run continuity error is 0.000 %.",
     ("A12-012", "swmm-anuga"): "Passes: 180.05 m³ out of 180 m³ in. As in A12-011, SWMM's reported storage is off by up to 2.4 m³ while surcharged, and back to balance once the pipes drain.",
+    ("A12-010", "openswmm-2d"): "Passes, with OpenSWMM's own coupling and defaults: the manhole passes 0.503 m³/s onto the street (0.5 exact), the street runs 0.6 mm from normal depth, and the water balances to 0.01 m³ of 900 m³.",
+    ("A12-010", "openswmm-2d-x"): "Same exchange and balance as on the two-triangle mesh, but with each square cut into four triangles the street runs 85.7 mm deep instead of 77.7 mm (3 mm allowed). The same model on the simpler two-triangle mesh is 0.6 mm off: the sheet flow depends on how the grid is triangulated.",
+    ("A12-011", "openswmm-2d"): "The yard drains 12 mm below the 5 cm gully crest, so 4 % too much leaves by the outfall. OpenSWMM's exchange is meant to close at the crest, and a still pond 1 cm below it does not drain, but here it kept draining at 0.035–0.045 m³/s for about ten minutes while both the surface and the manhole head were below the crest. The 1.5 m³ missing from the balance is the network's own continuity error (0.62 % in its report).",
+    ("A12-011", "openswmm-2d-x"): "As on the two-triangle mesh: the yard drains 14 mm below the crest and 5 % too much leaves by the outfall; the exchange keeps running below the crest while the yard drains. The balance passes (0.31 % short, the network's own continuity error).",
+    ("A12-012", "openswmm-2d"): "Passes: 110 m³ surges onto the surface and drains back; 179.6 of the 180 m³ leaves by the outfall and 0.4 m³ stays on the slope. The balance closes to 0.03 m³.",
+    ("A12-012", "openswmm-2d-x"): "Passes, as on the two-triangle mesh: 179.6 m³ out, 0.4 m³ left on the slope, balance within 0.03 m³.",
     ("A1F-010", "hydronet-pinn"): "The trained network spreads 0.3–0.4 m of water over the whole dry channel downstream, so its front is 713 m ahead of the exact one; it gains 3.3 % of the water, and the error grows on finer grids. Its own finite-volume engine, by contrast, never starts the flow.",
 }
 CASE_NOTES = {
@@ -452,7 +464,8 @@ def badge(card: dict | None) -> str:
 
 SOLVER_DOCS = {"hecras": "hecras.md", "hecras-em": "hecras.md", "openswmm-dw": "openswmm.md", "openswmm-fv": "openswmm.md",
                "openswmm6": "openswmm.md", "hydra-uds": "hydra.md", "hydra-wds": "hydra.md", "hydronet-fvm": "hydronet.md",
-               "hydronet-pinn": "hydronet.md", "swmm-anuga": "coupled.md"}
+               "hydronet-pinn": "hydronet.md", "swmm-anuga": "coupled.md",
+               "openswmm-2d": "coupled.md", "openswmm-2d-x": "coupled.md"}
 KIND_WORDS = {"production": "Production software, run by the suite as a black box with its own default settings.",
               "research": "Research code, run with the settings of its own examples.",
               "suite": "A worked example that ships with the suite.",
