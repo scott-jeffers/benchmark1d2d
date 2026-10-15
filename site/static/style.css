@@ -466,6 +466,16 @@ table.cmp td { vertical-align: top; min-width: 220px; }
 .cmp-checks { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; color: var(--ink-2); }
 .cmp-checks li.no { color: var(--fail-ink); }
 tr.cmp-diff th[scope=row] { box-shadow: inset 3px 0 0 var(--water); }
+@media (max-width: 640px) {
+  table.cmp, table.cmp tbody { display: block; width: 100%; }
+  table.cmp thead { display: none; }
+  table.cmp tr { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; padding: 12px 10px; border-bottom: 1px solid var(--rule); }
+  table.cmp th[scope=row] { grid-column: 1 / -1; border: 0; padding: 0 0 8px; }
+  table.cmp td { min-width: 0; border: 0; padding: 0; overflow-wrap: anywhere; }
+  table.cmp td::before { content: attr(data-m); display: block; font-size: 12px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; }
+  tr.cmp-diff { box-shadow: inset 3px 0 0 var(--water); }
+  tr.cmp-diff th[scope=row] { box-shadow: none; }
+}
 
 /* share a result */
 details.share { margin-top: 10px; font-size: 14px; }

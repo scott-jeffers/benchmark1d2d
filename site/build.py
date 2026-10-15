@@ -1004,7 +1004,7 @@ def downloads_page(files: list[tuple[str, str, Path]]) -> str:
 <p class="lede">Everything the site shows, as files. Hashes let you confirm a download matches what CI built; click Copy next to one and compare it with <code>sha256sum</code>.</p></header>
 <section><h2>Which file do I need?</h2>
 <div class="table-scroll"><table class="data guide"><tbody>
-<tr><td>Run one case with my solver</td><td>The case bundle from its page (<a href="catalog.html">catalog</a>), then <code>python scripts/fetch_inputs.py &lt;ID&gt;</code> for any large input fetched by hash.</td></tr>
+<tr><td>Run one case with my solver</td><td>The case bundle from its page (<a href="results.html">results</a>), then <code>python scripts/fetch_inputs.py &lt;ID&gt;</code> for any large input fetched by hash.</td></tr>
 <tr><td>Run every case</td><td><a href="data/benchmark1d2d-catalog.zip" download>Every case (.zip)</a>, or clone the repository.</td></tr>
 <tr><td>List or filter cases in a script</td><td><a href="data/catalog.csv" download>catalog.csv</a> (one row per case) or <a href="data/catalog.json" download>catalog.json</a> (full manifests).</td></tr>
 <tr><td>Write results the scorer accepts</td><td><a href="data/schemas/results.schema.json" download>results.schema.json</a>; score cards follow <a href="data/schemas/scorecard.schema.json" download>scorecard.schema.json</a>.</td></tr>

@@ -331,9 +331,9 @@ NOTES = {
     ("A1F-010", "hecras-em"): "SWE-EM, the option HEC recommends for dam breaks, gets 40 m closer than the default SWE-ELM (58 m behind) but does not converge.",
     ("A1F-011", "hecras"): "The bore is in about the right place (depth error 5 mm), but the error does not fall on finer grids.",
     ("A1F-011", "hecras-em"): "Error 8 mm, inside the limit, but it grows slightly on finer grids.",
-    ("A1F-010", "swmm524"): "SWMM's dynamic-wave routing is built for sewer networks, not dam breaks: the front is 41 m behind and the error does not shrink on finer grids.",
+    ("A1F-010", "swmm524"): "SWMM's dynamic-wave routing is built for sewer networks, not dam breaks: the front is 41 m behind and the error does not shrink on finer grids. One conduit near x = 1,126 m also spikes to a 9 m depth at the reporting time (the chart clips it); that is the engine's own output, not a plotting fault.",
     ("A1F-011", "swmm524"): "The bore smears and lags, and the stored water drifts 4 % above the exact volume: dynamic-wave routing is not built for moving shocks.",
-    ("A1F-010", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver.",
+    ("A1F-010", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver, including the 9 m one-conduit spike near x = 1,126 m.",
     ("A1F-011", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver.",
     ("A1F-001", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4.",
     ("A1F-011", "openswmm-fv"): "OpenSWMM 6's new finite-volume routing passes the test that SWMM's dynamic wave fails.",
@@ -532,14 +532,14 @@ var M={};D.models.forEach(function(m){M[m.key]=m;});
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 var q=new URLSearchParams(location.search);A.value=M[q.get('a')]?q.get('a'):(M['swmm524']?'swmm524':D.models[0].key);
 B.value=M[q.get('b')]?q.get('b'):(M['openswmm-fv']?'openswmm-fv':D.models[1].key);
-function cell(r){if(!r)return '<td class="muted">not run</td>';var h='<td><span class="badge '+(r.p?'pass">✓ Passes':'fail">✗ Fails')+'</span><ul class="cmp-checks">';
+function cell(r,m){var dm=' data-m="'+esc(m)+'"';if(!r)return '<td class="muted"'+dm+'>not run</td>';var h='<td'+dm+'><span class="badge '+(r.p?'pass">✓ Passes':'fail">✗ Fails')+'</span><ul class="cmp-checks">';
 r.c.forEach(function(c){h+='<li class="'+(c[2]?'ok':'no')+'">'+(c[2]?'✓ ':'✗ ')+esc(c[0])+': '+esc(c[1])+'</li>';});return h+'</ul></td>';}
 function draw(){var a=A.value,b=B.value,both=[],onlyA=0,onlyB=0,s={bp:0,ap:0,bpo:0,bf:0};
 history.replaceState(null,'','?a='+encodeURIComponent(a)+'&b='+encodeURIComponent(b));
 document.getElementById('cmp-ha').textContent=M[a].full;document.getElementById('cmp-hb').textContent=M[b].full;
 D.tests.forEach(function(t){var ra=t.r[a],rb=t.r[b];if(ra&&rb){both.push(t);if(ra.p&&rb.p)s.bp++;else if(ra.p)s.ap++;else if(rb.p)s.bpo++;else s.bf++;}else if(ra)onlyA++;else if(rb)onlyB++;});
 both.sort(function(x,y){var dx=x.r[a].p!==x.r[b].p?0:1,dy=y.r[a].p!==y.r[b].p?0:1;return dx-dy;});
-var rows='';both.forEach(function(t){var diff=t.r[a].p!==t.r[b].p;rows+='<tr'+(diff?' class="cmp-diff"':'')+'><th scope="row"><a href="tests/'+esc(t.sid)+'.html">'+esc(t.name)+'</a><small>'+esc(t.sid)+' · '+esc(t.group)+'</small></th>'+cell(t.r[a])+cell(t.r[b])+'</tr>';});
+var rows='';both.forEach(function(t){var diff=t.r[a].p!==t.r[b].p;rows+='<tr'+(diff?' class="cmp-diff"':'')+'><th scope="row"><a href="tests/'+esc(t.sid)+'.html">'+esc(t.name)+'</a><small>'+esc(t.sid)+' · '+esc(t.group)+'</small></th>'+cell(t.r[a],M[a].name)+cell(t.r[b],M[b].name)+'</tr>';});
 document.querySelector('#cmp-table tbody').innerHTML=rows||'<tr><td colspan="3">These two models have no test in common yet.</td></tr>';
 var n=both.length;document.getElementById('cmp-summary').innerHTML=n?('<div><b>'+n+'</b><span>tests both ran</span></div><div><b>'+s.bp+'</b><span>both pass</span></div><div class="hl"><b>'+s.ap+'</b><span>only '+esc(M[a].name)+' passes</span></div><div class="hl"><b>'+s.bpo+'</b><span>only '+esc(M[b].name)+' passes</span></div><div><b>'+s.bf+'</b><span>both fail</span></div>'):'';
 document.getElementById('cmp-only').textContent=(onlyA||onlyB)?('Not compared: '+onlyA+' test(s) only '+M[a].name+' ran, '+onlyB+' only '+M[b].name+' ran.'):'';}
@@ -1406,5 +1406,5 @@ def how_page(manifests: list[dict], runs: dict) -> str:
 
 
 def redirect(to: str) -> str:
-    return (f'<!doctype html><meta charset="utf-8"><title>Moved</title><meta http-equiv="refresh" content="0; url={esc(to)}">'
+    return (f'<!doctype html><html lang="en"><meta charset="utf-8"><title>Moved</title><meta http-equiv="refresh" content="0; url={esc(to)}">'
             f'<link rel="canonical" href="{esc(to)}"><p>This page moved to <a href="{esc(to)}">{esc(to)}</a>.</p>')
