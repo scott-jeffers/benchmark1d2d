@@ -157,7 +157,7 @@ def append_history(row: dict, dry_run: bool) -> str | None:
     if not dry_run:
         new = not HISTORY.is_file()
         with HISTORY.open("a", encoding="utf-8", newline="") as fh:
-            w = csv.DictWriter(fh, fieldnames=HISTORY_COLS)
+            w = csv.DictWriter(fh, fieldnames=HISTORY_COLS, lineterminator="\n")
             if new:
                 w.writeheader()
             w.writerow(row)
