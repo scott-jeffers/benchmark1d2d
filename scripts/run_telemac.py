@@ -9,11 +9,22 @@ box on each refinement level of A1F-010 (Ritter, dry bed) and A1F-011
   genuine 2D unstructured solver; slip walls all round (no wave reaches the
   ends before t_end)
 - numerics: TELEMAC's default finite-volume set-up (kinetic scheme, first
-  order), variable time step; no tuning to the case. HLLC and second-order
+  order), variable time step at Courant 0.45; no tuning to the case.
+  ``TIME STEP`` is the largest step TELEMAC may take (``caldt`` starts from
+  it and lowers it to the Courant limit), so it is set to the whole run and
+  the Courant condition alone sets the step; with a graphic printout period
+  of 1 the results are written at t = 0 and at the end. HLLC and second-order
   variants were tried and leave the wet-front lag on A1F-010 unchanged.
 - initial state: the dam-break step, written as a "previous computation" file
 
-A2A-001 (Thacker) and A2A-010 (MacDonald 2D) use a triangle mesh whose nodes
+A2A-020 (oblique jump): the upstream supercritical state is set on the west
+and north edges node by node in the boundary file (depth and both velocity
+components), free outflow east, slip wall south. TELEMAC's default kinetic
+scheme goes unstable with this inflow, so the HLLC scheme is used and named
+on the score card.
+
+The EA inter-comparison tests A2C-EA1, 2, 4 and 5 are run once each (see
+``run_ea``). A2A-001 (Thacker) and A2A-010 (MacDonald 2D) use a triangle mesh whose nodes
 are the case's cell centres (walls all round; for A2A-010 a prescribed
 discharge west, a prescribed level east, Manning friction).
 
@@ -77,7 +88,8 @@ def write_selafin(path: Path, x, y, ikle, ipobo, variables: dict[str, np.ndarray
             _rec(fh, struct.pack(f">{len(x)}f", *variables[n]))
 
 
-def read_selafin_last(path: Path) -> tuple[float, dict[str, np.ndarray]]:
+def iter_selafin(path: Path):
+    """(time, {variable: values}) for every record of a Selafin file."""
     data = path.read_bytes()
     pos = 0
 
@@ -97,16 +109,20 @@ def read_selafin_last(path: Path) -> tuple[float, dict[str, np.ndarray]]:
     nelem, npoin, ndp, _ = struct.unpack(">4i", rec())
     for _ in range(4):  # ikle, ipobo, x, y
         rec()
-    last = None
     while pos < len(data):
         t_body = rec()
         t = struct.unpack(">f", t_body)[0] if len(t_body) == 4 else struct.unpack(">d", t_body)[0]
         vals = {}
         for nm in names:
             body = rec()
-            fmt = "f" if len(body) == 4 * npoin else "d"
-            vals[nm] = np.array(struct.unpack(f">{npoin}{fmt}", body))
-        last = (t, vals)
+            vals[nm] = np.frombuffer(body, dtype=">f4" if len(body) == 4 * npoin else ">f8").astype(float)
+        yield t, vals
+
+
+def read_selafin_last(path: Path) -> tuple[float, dict[str, np.ndarray]]:
+    last = None
+    for last in iter_selafin(path):
+        pass
     if last is None:
         raise RuntimeError(f"{path} holds no time steps")
     return last
@@ -151,9 +167,9 @@ EQUATIONS = 'SAINT-VENANT FV'
 FINITE VOLUME SCHEME = 1
 VARIABLE TIME-STEP = YES
 DESIRED COURANT NUMBER = 0.45
-TIME STEP = 0.01
+TIME STEP = {t_end}
 DURATION = {t_end}
-GRAPHIC PRINTOUT PERIOD = 100000000
+GRAPHIC PRINTOUT PERIOD = 1
 LISTING PRINTOUT PERIOD = 100000000
 VARIABLES FOR GRAPHIC PRINTOUTS = 'U,V,H,B'
 TIDAL FLATS = YES
@@ -223,9 +239,9 @@ EQUATIONS = 'SAINT-VENANT FV'
 FINITE VOLUME SCHEME = 1
 VARIABLE TIME-STEP = YES
 DESIRED COURANT NUMBER = 0.45
-TIME STEP = 0.001
+TIME STEP = {t_end}
 DURATION = {t_end}
-GRAPHIC PRINTOUT PERIOD = 100000000
+GRAPHIC PRINTOUT PERIOD = 1
 LISTING PRINTOUT PERIOD = 100000000
 VARIABLES FOR GRAPHIC PRINTOUTS = 'U,V,H,B'
 TIDAL FLATS = YES
@@ -233,10 +249,28 @@ TIDAL FLATS = YES
 """
 
 
+def open_boundary_order(loop, codes: dict, ipobo: np.ndarray) -> tuple[list, list]:
+    """Start the boundary loop on a wall node and list the open boundaries' codes in loop order.
+
+    TELEMAC numbers the open boundaries in the order it meets them along the
+    boundary loop, so an open segment must not wrap round the loop's start,
+    and prescribed values (keywords or a liquid boundaries file) are listed in
+    that order. ``ipobo`` is renumbered in place.
+    """
+    k0 = next(k for k, nn in enumerate(loop) if nn not in codes)
+    loop = list(loop[k0:]) + list(loop[:k0])
+    for k, nn in enumerate(loop, 1):
+        ipobo[nn] = k
+    order = [codes[nn] for k, nn in enumerate(loop) if nn in codes and (k == 0 or loop[k - 1] not in codes)]
+    return loop, order
+
+
 def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
     prm = m["reference"]["generator"]["parameters"]
     t_end = float(m["simulation"]["t_end"])
     codes = None  # per boundary node: (LIHBOR, LIUBOR, LIVBOR) else wall 2 2 2
+    bvals = None  # per boundary node: (HBOR, UBOR, VBOR) values written to the boundary file
+    scheme = 1  # TELEMAC's default finite-volume scheme (kinetic)
     extra = "LAW OF BOTTOM FRICTION = 0"
     if tid == "A2A-001":
         from references.thacker import bed_elevation, depth_velocity
@@ -267,18 +301,34 @@ def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
                 codes[nn] = (4, 5, 5)   # inflow: prescribed discharge
             elif np.isclose(x[nn], xs[-1]):
                 codes[nn] = (5, 4, 4)   # outflow: prescribed elevation
-        # TELEMAC numbers the open boundaries in the order it meets them along
-        # the boundary loop, so start the loop on a wall node (an open segment
-        # must not wrap round the start) and list the values in that order.
-        k0 = next(k for k, nn in enumerate(loop) if nn not in codes)
-        loop = list(loop[k0:]) + list(loop[:k0])
-        for k, nn in enumerate(loop, 1):
-            ipobo[nn] = k
-        order = [codes[nn] for k, nn in enumerate(loop) if nn in codes and (k == 0 or loop[k - 1] not in codes)]
+        loop, order = open_boundary_order(loop, codes, ipobo)
         flows = ";".join(f"{q * wid:.9f}" if c == (4, 5, 5) else "0." for c in order)
         levels = ";".join(f"{z_out + h_out:.9f}" if c == (5, 4, 4) else "0." for c in order)
         extra = (f"LAW OF BOTTOM FRICTION = 4\nFRICTION COEFFICIENT = {n}\n"
                  f"PRESCRIBED FLOWRATES = {flows}\nPRESCRIBED ELEVATIONS = {levels}")
+    elif tid == "A2A-020":
+        from references.oblique_jump import states
+
+        dom = json.loads((Path(m["_case_dir"]) / "inputs/params.json").read_text())["domain"]
+        st = states(prm["Fr1"], prm["theta_deg"], prm["h1"], prm.get("g", 9.81))
+        h1, u1, v1 = st["h1"], st["u1"], st["v1"]
+        xs = np.arange(dom["xmin"] + dx / 2, dom["xmax"] - dx / 4, dx)
+        ys = np.arange(dom["ymin"] + dx / 2, dom["ymax"] - dx / 4, dx)
+        x, y, ikle, ipobo, loop = rect_mesh(xs, ys)
+        z = np.zeros_like(x)
+        h, u, v = np.full_like(x, h1), np.full_like(x, u1), np.full_like(x, v1)
+        codes, bvals = {}, {}
+        for nn in loop:
+            if np.isclose(x[nn], xs[0]) or np.isclose(y[nn], ys[-1]):
+                codes[nn] = (5, 6, 6)  # supercritical inflow: depth and both velocity components set
+                bvals[nn] = (h1, u1, v1)
+            elif np.isclose(x[nn], xs[-1]):
+                codes[nn] = (4, 4, 4)  # free (supercritical) outflow
+        loop, _order = open_boundary_order(loop, codes, ipobo)
+        # The default kinetic scheme goes unstable with this prescribed
+        # supercritical inflow (velocities of thousands of m/s within 50 s);
+        # HLLC (scheme 5) runs, so it is used here and named on the card.
+        scheme = 5
     else:
         raise KeyError(tid)
     with tempfile.TemporaryDirectory() as td:
@@ -290,9 +340,11 @@ def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
         rows = []
         for k, nn in enumerate(loop, 1):
             a, b, c = (codes or {}).get(nn, (2, 2, 2))
-            rows.append(f"{a} {b} {c} 0.0 0.0 0.0 0.0 {2 if a == 2 else 4} 0.0 0.0 0.0 {nn + 1} {k}\n")
+            hb, ub, vb = (bvals or {}).get(nn, (0.0, 0.0, 0.0))
+            rows.append(f"{a} {b} {c} {hb:.9f} {ub:.9f} {vb:.9f} 0.0 {2 if a == 2 else 4} 0.0 0.0 0.0 {nn + 1} {k}\n")
         (d / "geo.cli").write_text("".join(rows))
-        (d / "t2d.cas").write_text(STEERING_2D.format(title=tid, t_end=t_end, extra=extra))
+        (d / "t2d.cas").write_text(STEERING_2D.format(title=tid, t_end=t_end, extra=extra)
+                                   .replace("FINITE VOLUME SCHEME = 1", f"FINITE VOLUME SCHEME = {scheme}"))
         proc = subprocess.run([py, str(Path(env["HOMETEL"]) / "scripts/python3/telemac2d.py"), "t2d.cas"],
                               cwd=d, env=env, capture_output=True, text=True, timeout=7200)
         if proc.returncode != 0 or not (d / "res.slf").is_file():
@@ -306,7 +358,123 @@ def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
             "p": np.full(nnod, np.nan), "z": z}
 
 
-CASES_2D = {"A2A-001", "A2A-010"}
+CASES_2D = {"A2A-001", "A2A-010", "A2A-020"}
+
+
+# ── EA inter-comparison tests ───────────────────────────────────────────────
+
+EA_CASES = ("A2C-EA1", "A2C-EA2", "A2C-EA4", "A2C-EA5")
+EA_DX = {"A2C-EA4": 10.0}  # the specification's allowed alternative resolution (as the demo and ANUGA)
+
+
+def run_ea(tid: str, m: dict, env: dict, py: str) -> tuple[dict, float | None]:
+    """A2C-EA1/2/4/5: mesh nodes at the demo grid's cell centres.
+
+    The grid (DEM block means, active area, inflow cells, probes) is the demo
+    solver's. TELEMAC is vertex-centred, so a node on the mesh boundary owns
+    only part of a cell; the mesh is therefore ringed by one row of wall nodes
+    (50 m above the highest ground), and cells outside the active area are
+    walls too, so every active cell keeps its full area. EA1's west edge is an
+    open boundary following the boundary level table (liquid boundaries file);
+    there the ring is left out. Inflows are TELEMAC point sources on the
+    inflow cells, the hydrograph shared equally (sources file). Results are
+    written every probe interval (``TIME STEP``, the largest step allowed, set
+    to that interval); the scorer gets the whole field hourly and the probe
+    cells in between.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("run_demo_2d", REPO / "scripts" / "run_demo_2d.py")
+    demo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(demo)
+    dx_alt = next((v for k, v in EA_DX.items() if tid.startswith(k)), None)
+    case, _h, probe_dt = demo.build_ea(m, dx_alt)
+    gx, gy = np.asarray(case.grid.x, float), np.asarray(case.grid.y, float)
+    dx = float(gx[1] - gx[0])
+    act = np.asarray(case.grid.active, bool)
+    zc = np.asarray(case.grid.z, float)
+    wall = float(zc[act].max()) + 50.0
+    prm = json.loads((Path(m["_case_dir"]) / "inputs/case.json").read_text())
+    bc = prm["boundaries"]
+    west_open = "west" in bc
+    # extended grid: a ring of wall cells (none on an open west edge)
+    pad_w = 0 if west_open else 1
+    xs = np.concatenate([[gx[0] - dx] if pad_w else [], gx, [gx[-1] + dx]])
+    ys = np.concatenate([[gy[0] - dx], gy, [gy[-1] + dx]])
+    Z = np.full((ys.size, xs.size), wall)
+    Hd = np.zeros_like(Z)
+    A = np.zeros_like(Z, dtype=bool)
+    sl = (slice(1, 1 + gy.size), slice(pad_w, pad_w + gx.size))
+    Z[sl] = np.where(act, zc, wall)
+    Hd[sl] = np.where(act, np.asarray(case.h, float), 0.0)
+    A[sl] = act
+    x, y, ikle, ipobo, loop = rect_mesh(xs, ys)
+    z, h, a = Z.ravel(), Hd.ravel(), A.ravel()
+    codes = {}
+    if west_open:
+        for nn in loop:
+            if np.isclose(x[nn], xs[0]) and a[nn]:
+                codes[nn] = (5, 4, 4)
+    extra = [f"LAW OF BOTTOM FRICTION = 4", f"FRICTION COEFFICIENT = {float(prm['manning_n'])}"]
+    files = {}
+    if codes:
+        loop, order = open_boundary_order(loop, codes, ipobo)
+        tt, lv = demo.read_table(Path(m["_case_dir"]) / "inputs" / bc["west"]["table"])
+        files["liq.txt"] = "#\nT SL(1)\ns m\n" + "".join(f"{t:.6f} {v:.6f}\n" for t, v in zip(tt, lv))
+        extra.append("LIQUID BOUNDARIES FILE = 'liq.txt'")
+    if "inflow" in bc:
+        tt, qq = demo.read_table(Path(m["_case_dir"]) / "inputs" / bc["inflow"]["table"])
+        cells = np.argwhere(np.asarray(case.inflow_cells, bool))
+        n = len(cells)
+        sx = ";".join(f"{gx[i]:.6f}" for _, i in cells)
+        sy = ";".join(f"{gy[j]:.6f}" for j, _ in cells)
+        extra += [f"ABSCISSAE OF SOURCES = {sx}", f"ORDINATES OF SOURCES = {sy}",
+                  "WATER DISCHARGE OF SOURCES = " + ";".join(["0."] * n), "SOURCES FILE = 'src.txt'"]
+        head = "#\nT " + " ".join(f"Q({k + 1})" for k in range(n)) + "\ns " + " ".join(["m3/s"] * n) + "\n"
+        # TELEMAC asks for the value one step before t = 0, so the series starts a day early.
+        tt, qq = np.r_[-86400.0, tt], np.r_[qq[0], qq]
+        files["src.txt"] = head + "".join(f"{t:.6f} " + " ".join([f"{q / n:.9f}"] * n) + "\n" for t, q in zip(tt, qq))
+    t_end = float(prm["t_end_s"])
+    cas = (STEERING_2D.format(title=tid, t_end=t_end, extra="\n".join(extra))
+           .replace(f"TIME STEP = {t_end}", f"TIME STEP = {probe_dt}")
+           .replace("VARIABLES FOR GRAPHIC PRINTOUTS = 'U,V,H,B'", "VARIABLES FOR GRAPHIC PRINTOUTS = 'U,V,H'"))
+    # probe cells and the active field, as indices into the extended grid
+    probes = m["simulation"]["probes"]
+    pidx = []
+    for p in probes:
+        i = int(np.clip((p["x"] - (gx[0] - dx / 2)) // dx, 0, gx.size - 1))
+        j = int(np.clip((p.get("y", 0.0) - (gy[0] - dx / 2)) // dx, 0, gy.size - 1))
+        pidx.append((1 + j) * xs.size + pad_w + i)
+    pidx = np.array(pidx)
+    fidx = np.flatnonzero(a)
+    frames = []
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        write_selafin(d / "geo.slf", x, y, ikle, ipobo, {"BOTTOM          M               ": z})
+        write_selafin(d / "ini.slf", x, y, ikle, ipobo, {
+            "VELOCITY U      M/S             ": np.zeros_like(z), "VELOCITY V      M/S             ": np.zeros_like(z),
+            "WATER DEPTH     M               ": h, "BOTTOM          M               ": z})
+        rows = []
+        for k, nn in enumerate(loop, 1):
+            c1, c2, c3 = codes.get(nn, (2, 2, 2))
+            rows.append(f"{c1} {c2} {c3} 0.0 0.0 0.0 0.0 {2 if c1 == 2 else 4} 0.0 0.0 0.0 {nn + 1} {k}\n")
+        (d / "geo.cli").write_text("".join(rows))
+        for name, text in files.items():
+            (d / name).write_text(text)
+        (d / "t2d.cas").write_text(cas)
+        proc = subprocess.run([py, str(Path(env["HOMETEL"]) / "scripts/python3/telemac2d.py"), "t2d.cas"],
+                              cwd=d, env=env, capture_output=True, text=True, timeout=6 * 3600)
+        if proc.returncode != 0 or not (d / "res.slf").is_file():
+            raise RuntimeError(f"TELEMAC failed on {tid}:\n{proc.stdout[-3000:]}\n{proc.stderr[-2000:]}")
+        for t, vals in iter_selafin(d / "res.slf"):
+            hv = next(v for k, v in vals.items() if k.startswith("WATER DEPTH"))
+            uv = next(v for k, v in vals.items() if k.startswith("VELOCITY U"))
+            vv = next(v for k, v in vals.items() if k.startswith("VELOCITY V"))
+            idx = fidx if abs(t / 3600.0 - round(t / 3600.0)) < 1e-6 else pidx
+            n = idx.size
+            frames.append({"t": np.full(n, t), "x": x[idx], "y": y[idx], "h": np.maximum(hv[idx], 0.0), "u": uv[idx],
+                           "v": vv[idx], "p": np.full(n, np.nan), "z": z[idx]})
+    return {c: np.concatenate([f[c] for f in frames]) for c in frames[0]}, dx_alt
 
 
 def telemac_env(prefix: Path) -> tuple[dict, str]:
@@ -338,12 +506,26 @@ def main() -> int:
     ok = True
     for tid in args.cases:
         m = load_manifest(tid, repo=REPO)
+        if tid.startswith(EA_CASES):
+            cols, dx_alt = run_ea(tid, m, env, py)
+            p = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols)
+            sv = dict(solver, adapter="telemac2d (Selafin, nodes at the grid's cell centres)")
+            if dx_alt:
+                sv["name"] += f" at {dx_alt:g} m (spec alternative resolution)"
+            card = score_case(m, p, timestamp=TS, private_key=KEY, solver=sv)
+            (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({sv['name']})", flush=True)
+            for r in card["criteria_results"]:
+                print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}  {r.get('detail', '')}", flush=True)
+            ok &= card["passed"]
+            continue
         paths = []
         for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
             cols = (run_level_2d if tid in CASES_2D else run_level)(tid, m, float(dx), env, py)
             paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx}.parquet", cols))
             print(f"  {tid} dx={dx}: t={cols['t'][0]:.3f} s")
-        card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY, solver=solver)
+        sv = solver if tid != "A2A-020" else dict(solver, adapter=solver["adapter"] + "; HLLC scheme (the default kinetic scheme is unstable here)")
+        card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY, solver=sv)
         (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
         print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")
         for r in card["criteria_results"]:

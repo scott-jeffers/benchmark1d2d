@@ -173,7 +173,7 @@ def write_unsteady(path: Path, title: str, ic_level: float | None, restart: str 
 
 
 def write_plan(path: Path, title: str, short: str, flow: str, t0: str, t1: str, dt: str, out_dt: str,
-               write_restart: bool, eq_code: int = 1) -> None:
+               write_restart: bool, eq_code: int = 1, end_date: str = START, map_dt: str | None = None) -> None:
     eq = f"UNET D2 Equation= {eq_code} "  # 1 = SWE-ELM, 2 = SWE-EM (full shallow-water equations)
     area_block = ["UNET D2 Coriolis=0", "UNET D2 Theta= 1 ", "UNET D2 Theta Warmup= 1 ", "UNET D2 Z Tol= 0.01 ",
                   "UNET D2 Volume Tol= 0.01 ", "UNET D2 Max Iterations= 20 ", eq, "UNET D2 TotalICTime=",
@@ -182,7 +182,7 @@ def write_plan(path: Path, title: str, short: str, flow: str, t0: str, t1: str, 
                   "UNET D2 BCVolumeCheck=0", "UNET D2 Latitude=", "UNET D2 Cores=0",
                   "UNET D2 SolverType=Pardiso (Direct)"]
     lines = [f"Plan Title={title}", "Program Version=6.60", f"Short Identifier={short:<12}",
-             f"Simulation Date={START},{t0},{START},{t1}", "Geom File=g01", f"Flow File=u{flow}",
+             f"Simulation Date={START},{t0},{end_date},{t1}", "Geom File=g01", f"Flow File=u{flow}",
              "Subcritical Flow", "K Sum by GR= 0 ", "Std Step Tol= 0.01 ", "Critical Tol= 0.01 ",
              "Num of Std Step Trials= 20 ", "Max Error Tol= 0.3 ", "Flow Tol Ratio= 0.001 ",
              "Split Flow NTrial= 30 ", "Split Flow Tol= 0.02 ", "Split Flow Ratio= 0.02 ", "Log Output Level= 0 ",
@@ -190,7 +190,7 @@ def write_plan(path: Path, title: str, short: str, flow: str, t0: str, t1: str, 
              "Unsteady Bridges Friction Slope Method= 1 ", "Parabolic Critical Depth", "Global Vel Dist= 0 , 0 , 0 ",
              "Global Log Level= 0 ", "CheckData=True", "Encroach Param=-1 ,0,0, 0 ",
              f"Computation Interval={dt}", f"Output Interval={out_dt}", "Instantaneous Interval=1HOUR",
-             f"Mapping Interval={out_dt}",
+             f"Mapping Interval={map_dt or out_dt}",
              "Computation Time Step Use Courant=        -1", "Computation Time Step Use Time Series=    0",
              "Computation Time Step Max Courant=1", "Computation Time Step Min Courant=0.45",
              "Computation Time Step Count To Double=4", "Computation Time Step Max Doubling=3",

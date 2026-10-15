@@ -9,7 +9,8 @@ the case's regular grid, the same points every other solver reports on.
 
 Cases: A1F-010 (Ritter), A1F-011 (Stoker) on a 2D strip; A2A-001 (Thacker
 bowl); A2A-010 (MacDonald 2D channel, inflow by ``Inlet_operator``, stage set
-downstream); A2A-020 (oblique jump, upstream state set west and north).
+downstream); A2A-020 (oblique jump, upstream state set west and north); the
+EA inter-comparison tests A2C-EA1, 2, 4 and 5 (see ``ea``).
 
 Score cards go to ``out/anuga/``. Usage::
 
@@ -163,11 +164,106 @@ def _frame2d(pts, s, t):
 CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A2A-001": thacker, "A2A-010": macdonald_2d, "A2A-020": oblique_jump}
 
 
+# ── EA inter-comparison tests ───────────────────────────────────────────────
+
+# Grid spacing used where the specification allows an alternative resolution
+# (the same choice as the demo solver; ANUGA at 5 m on Test 4 takes hours).
+EA_DX = {"A2C-EA4": 10.0}
+EA_CASES = ("A2C-EA1", "A2C-EA2", "A2C-EA4", "A2C-EA5")
+
+
+def ea(m: dict, tid: str) -> tuple[dict, float | None]:
+    """A2C-EA1/2/4/5 on the demo solver's grid (same DEM block means, active
+    area, inflow line and probes), as a ``rectangular_cross`` mesh of that
+    grid. Cells outside the active area are raised 50 m above the highest
+    ground, a wall. EA1's west edge follows the boundary level table
+    (``Transmissive_n_momentum_zero_t_momentum_set_stage_boundary``); inflows
+    enter through an ``Inlet_operator`` on the specification's inflow line
+    (moved a quarter cell inside when it lies on the domain edge). Probes are
+    sampled every probe interval, the whole field every hour.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("run_demo_2d", REPO / "scripts" / "run_demo_2d.py")
+    demo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(demo)
+    dx_alt = next((v for k, v in EA_DX.items() if tid.startswith(k)), None)
+    case, _hours, probe_dt = demo.build_ea(m, dx_alt)
+    gx, gy = np.asarray(case.grid.x), np.asarray(case.grid.y)
+    dx = float(gx[1] - gx[0])
+    x0, y0 = gx[0] - dx / 2, gy[0] - dx / 2
+    act = np.asarray(case.grid.active, dtype=bool)
+    z = np.asarray(case.grid.z, dtype=float).copy()
+    z[~act] = float(z[act].max()) + 50.0
+    h0 = np.asarray(case.h, dtype=float)
+
+    def cell(x, y):
+        i = np.clip(((np.asarray(x) - x0) // dx).astype(int), 0, gx.size - 1)
+        j = np.clip(((np.asarray(y) - y0) // dx).astype(int), 0, gy.size - 1)
+        return j, i
+
+    d = _domain(gx.size * dx, gy.size * dx, dx, origin=(x0, y0))
+    d.set_quantity("elevation", lambda x, y: z[cell(x, y)], location="centroids")
+    d.set_quantity("friction", float(case.manning_n))
+    d.set_quantity("stage", lambda x, y: z[cell(x, y)] + h0[cell(x, y)], location="centroids")
+    prm = json.loads((Path(m["_case_dir"]) / "inputs/case.json").read_text())
+    bc = prm["boundaries"]
+    br = anuga.Reflective_boundary(d)
+    bnd = {"left": br, "right": br, "top": br, "bottom": br}
+    if "west" in bc:
+        tt, lv = demo.read_table(Path(m["_case_dir"]) / "inputs" / bc["west"]["table"])
+        bnd["left"] = anuga.Transmissive_n_momentum_zero_t_momentum_set_stage_boundary(d, lambda t: float(np.interp(t, tt, lv)))
+    d.set_boundary(bnd)
+    if "inflow" in bc:
+        tt, qq = demo.read_table(Path(m["_case_dir"]) / "inputs" / bc["inflow"]["table"])
+        (ax, ay), (bx, by) = bc["inflow"]["line"]
+        lo_x, hi_x, lo_y, hi_y = x0, x0 + gx.size * dx, y0, y0 + gy.size * dx
+        pull = lambda v, lo, hi: min(max(v, lo + 0.25 * dx), hi - 0.25 * dx)  # noqa: E731
+        line = [[pull(ax, lo_x, hi_x), pull(ay, lo_y, hi_y)], [pull(bx, lo_x, hi_x), pull(by, lo_y, hi_y)]]
+        anuga.Inlet_operator(d, line, Q=lambda t: float(np.interp(t, tt, qq)))
+    X, Y = np.meshgrid(gx, gy)
+    field_pts = np.column_stack([X[act], Y[act]])
+    probes = m["simulation"]["probes"]
+    pj, pi = cell(np.array([p["x"] for p in probes]), np.array([p.get("y", 0.0) for p in probes]))
+    probe_pts = np.column_stack([gx[pi], gy[pj]])
+    t_end = float(prm["t_end_s"])
+    frames, save = [], 3600.0
+    frames.append(_frame2d(field_pts, _sample(d, field_pts), 0.0))
+    for t in d.evolve(yieldstep=probe_dt, finaltime=t_end):
+        t = float(d.get_time())
+        if abs(t / save - round(t / save)) < 1e-9:
+            frames.append(_frame2d(field_pts, _sample(d, field_pts), t))
+        else:
+            frames.append(_frame2d(probe_pts, _sample(d, probe_pts), t))
+    return {c: np.concatenate([f[c] for f in frames]) for c in frames[0]}, dx_alt
+
+
 def main(argv: list[str]) -> int:
     solver = {"name": f"ANUGA {anuga.__version__}", "version": anuga.__version__, "adapter": "anuga (rectangular_cross mesh, defaults, sampled at cell centres)"}
     OUT.mkdir(parents=True, exist_ok=True)
-    for tid in argv or list(CASES):
+    for tid in argv or list(CASES) + list(EA_CASES):
         m = load_manifest(tid, repo=REPO)
+        if tid.startswith(EA_CASES):
+            t0 = time.perf_counter()
+            with tempfile.TemporaryDirectory() as td:
+                import os
+
+                cwd = os.getcwd()
+                os.chdir(td)
+                try:
+                    cols, dx_alt = ea(m, tid)
+                finally:
+                    os.chdir(cwd)
+            p = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols)
+            sv = dict(solver)
+            if dx_alt:
+                sv["name"] += f" at {dx_alt:g} m (spec alternative resolution)"
+            card = score_case(m, p, timestamp=TS, private_key=KEY, solver=sv)
+            (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({sv['name']}) in {time.perf_counter() - t0:.0f}s", flush=True)
+            for r in card["criteria_results"]:
+                print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}  {r.get('detail', '')}", flush=True)
+            continue
         paths = []
         for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
             t0 = time.perf_counter()
