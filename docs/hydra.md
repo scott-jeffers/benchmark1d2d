@@ -64,7 +64,32 @@ channels reversed, negative offsets zeroed, a maximum depth raised,
 storage node whose parameters are all zero. The difference is a declared
 modelling divergence, not an obvious defect on either side.
 
-Corpus parity on the HydroCouple collection: see the corpus page and
-`test_catalog/track_b/parity/nightly_hydra.*`. Hydra refuses some models with
-an explicit validation message (for example "ground surface below the
-initial water table") rather than running them.
+### Urban drainage across the HydroCouple collection
+
+Nightly tier, 500 models, worst node (relative peak depth) and worst link
+(relative volume of |Q|) against SWMM 5.2.4
+(`test_catalog/track_b/parity/nightly_hydra.*`):
+
+| | Hydra 17 | OpenSWMM v6 | SWMM 5.1.15 |
+|---|---|---|---|
+| Identical | 33 | 207 | 356 |
+| Within 1 % | 32 | 172 | 76 |
+| 1–5 % | 60 | 46 | 18 |
+| Over 5 % | 351 | 71 | 23 |
+| Refused or timed out (600 s) | 21 | 1 | 23 |
+
+* **Hydrology agrees, routing differs.** 16 of 17 LID models are within
+  5 %; the classic EXTRAN examples differ by a median 7.5 %, and 115 models
+  that OpenSWMM v6 reproduces exactly differ by more than 5 %. That is
+  consistent with Hydra's own Preissmann-slot dynamic wave being a different
+  scheme from SWMM's, as Hydra says it is.
+* **Not a units artifact**: on the 362 US-unit models the signed median
+  differences are −0.8 % (depth) and +0.7 % (volume); SI models differ more
+  (median volume +18 %).
+* **Refusals are explicit**: incomplete subcatchment data (5), ground below
+  the initial water table (3), rule and geometry validation, missing
+  rainfall or interface files. Three models exceeded 600 s.
+
+Which engine is right is a Track A question; on the channel cases above
+Hydra conserves water better than SWMM 5.2.4 but places the dry-bed front
+further behind.

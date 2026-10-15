@@ -50,7 +50,9 @@ Suite releases are independent of schema semver (`schemas/v1`).
   drainage: passes the backwater curve; fails both dam breaks (as SWMM 5.2.4
   does) but conserves water on Stoker (−0.015 % vs SWMM's +4.1 %); differs
   from SWMM 5.2.4 on both Track B cases, with a declared list of input
-  changes. Corpus parity runs nightly (`--candidate-engine hydra`).
+  changes. Across the HydroCouple nightly tier 125 of 476 scored models are
+  within 5 % of SWMM 5.2.4: hydrology agrees, routing differs, as Hydra says
+  it does. Corpus parity runs nightly (`--candidate-engine hydra`).
 - `.github/workflows/slow-runs.yml`: weekly LISFLOOD-FP DG2, ANUGA and
   TELEMAC on EA Tests 2 and 5.
 - **A1F-010 v2.0.0: the gating front check is now integral.** The front is

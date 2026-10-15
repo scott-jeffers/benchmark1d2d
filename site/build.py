@@ -713,6 +713,7 @@ CANDIDATE_NAMES = {"swmm-5.1.15": "EPA SWMM 5.1.15", "openswmm-6": "OpenSWMM Eng
 ERR_WHY = {
     "swmm-5.1.15": "Most use input syntax added after 5.1 (inlets, newer options), which an older engine rejects with ERROR 200.",
     "openswmm-6": "The v6 pre-release stops at initialisation with an unexplained parse error; see docs/openswmm.md.",
+    "hydra": "Hydra refuses these with an explicit validation message (for example incomplete subcatchment data or ground below the initial water table), or took longer than 600 s; see docs/hydra.md.",
 }
 
 
@@ -727,6 +728,11 @@ def load_parity() -> list[tuple[dict, pd.DataFrame]]:
 
 
 PARITY_FINDINGS: dict[str, str] = {
+    "hydra": ('<div class="finding"><b>Hydra is a different drainage engine, by design.</b> '
+              "Hydra states that it follows conservation laws, not SWMM's numbers. On the nightly tier 125 of 476 scored models are within 5 % of SWMM 5.2.4 "
+              "(median worst element 29 %). Hydrology-only models agree (16 of 17 LID models); routed flows differ, even on the classic EXTRAN examples "
+              "(median 7.5 %), so the difference is its Preissmann-slot routing rather than units or input reading. "
+              'Details: <a href="https://github.com/scott-jeffers/benchmark1d2d/blob/master/docs/hydra.md">docs/hydra.md</a>.</div>'),
     "openswmm-6": ('<div class="finding"><b>OpenSWMM v6 runs almost everything, and changes more.</b> '
                    "It runs 499 of 500 nightly models (SWMM 5.1.15: 477), and 425 of the 496 it scores are within 5 % of 5.2.4. "
                    "In 20 of the 71 over 5 % the worst node is an outfall, where v6 reports a depth and 5.2.4 almost none. "
@@ -766,9 +772,9 @@ def parity_section(parity: list[tuple[dict, pd.DataFrame]]) -> str:
 <div class="table-scroll"><table class="data"><thead><tr><th>Model</th><th class=num>Worst</th><th>Peak depth (worst node)</th><th>Volume (worst link)</th></tr></thead><tbody>{trs or '<tr><td colspan=4>No differences.</td></tr>'}</tbody></table></div>{err_txt}""")
     bars = hbars("Each candidate against EPA SWMM 5.2.4: worst element per model", rows, unit=" models")
     cands = sorted({summ["candidate"] for summ, _ in parity})
-    v6 = PARITY_FINDINGS.get("openswmm-6", "") if "openswmm-6" in cands else ""
+    v6 = "".join(PARITY_FINDINGS.get(c, "") for c in ("openswmm-6", "hydra") if c in cands)
     return f"""<section id="parity"><h2>Does another engine match SWMM 5.2.4?</h2>
-<p>Any SWMM-compatible engine can be scored against the reference across a whole tier with <code>scripts/corpus_parity.py</code>: both engines run every model, and each model gets the worst node (relative peak depth) and worst link (relative volume of |Q|) — the same metrics as the catalog's Track B cases. Two candidates are scored here: the previous release, <b>EPA SWMM 5.1.15</b> (OWA build in <code>swmm-toolkit</code> 0.10.0), and HydroCouple's rewritten <b>OpenSWMM Engine v6</b> (pre-release <code>openswmm</code> 6.0.0a4 on PyPI, run with its new engine).</p>
+<p>Any SWMM-compatible engine can be scored against the reference across a whole tier with <code>scripts/corpus_parity.py</code>: both engines run every model, and each model gets the worst node (relative peak depth) and worst link (relative volume of |Q|) — the same metrics as the catalog's Track B cases. Two candidates are scored here: the previous release, <b>EPA SWMM 5.1.15</b> (OWA build in <code>swmm-toolkit</code> 0.10.0), HydroCouple's rewritten <b>OpenSWMM Engine v6</b> (pre-release <code>openswmm</code> 6.0.0a4 on PyPI, run with its new engine), and NEER AI's <b>Hydra 17</b> urban-drainage engine (CLI 4.1.1).</p>
 {bars}
 {legend([("Identical", "st-frozen"), ("Within 1 %", "st-candidate"), ("1–5 %", "st-release"), ("Over 5 %", "st-fail"), ("Candidate could not run it", "st-draft")])}
 <div class="findings" style="margin-top:18px">
