@@ -905,18 +905,58 @@ def compare_chart(m: dict, runs: dict, exact: dict | None, profiles: dict) -> tu
     controls = ""
     if replay:
         controls = f"""<div class="controls">
-  <button type="button" class="play" id="play" aria-label="Play"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2 L16 9 L4 16 Z"/></svg></button>
-  <label>Time since the start<input type="range" id="scrub" min="0" max="{len(exact['times']) - 1}" step="1" value="{len(exact['times']) - 1}"></label>
-  <div class="readout" id="readout">Press play, or drag the slider, to watch the exact answer unfold. Models are compared at the end, t = {nice(t_end, 3)} s.</div>
+  <button type="button" class="play" aria-label="Play"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2 L16 9 L4 16 Z"/></svg></button>
+  <label>Time since the start<input type="range" class="scrub" min="0" max="{len(exact['times']) - 1}" step="1" value="{len(exact['times']) - 1}"></label>
+  <div class="readout">Press play, or drag the slider, to watch the exact answer unfold. Models are compared at the end, t = {nice(t_end, 3)} s.</div>
 </div>"""
     elif series:
-        controls = '<div class="controls"><div class="readout" id="readout"></div></div>'
+        controls = '<div class="controls"><div class="readout"></div></div>'
     html_ = f"""<section class="replay" aria-label="Exact answer and model results">
-  <div class="replay-top"><div class="toggles" role="group" aria-label="Show on the chart">{toggles}</div><div class="tlabel" id="tlabel" aria-live="polite"></div></div>
-  <svg viewBox="0 0 1000 380" role="img" aria-label="{esc(spec['y'])} against {esc(spec['x'].lower())}: exact answer and model results" id="chart"></svg>
+  <div class="replay-top"><div class="toggles" role="group" aria-label="Show on the chart">{toggles}</div><div class="tlabel" aria-live="polite"></div></div>
+  <svg class="chart" viewBox="0 0 1000 380" role="img" aria-label="{esc(spec['y'])} against {esc(spec['x'].lower())}: exact answer and model results"></svg>
   {controls}
+  {_data_script(data)}
 </section>"""
-    return html_, json_script("chart-data", data)
+    return html_, ""
+
+
+def _data_script(data: Any) -> str:
+    text = json.dumps(data, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+    return f'<script type="application/json" class="chart-data">{text}</script>'
+
+
+def network_charts(m: dict, runs: dict) -> str:
+    """The drainage and coupled tests' charts (site/netcharts.py fixtures), one section each."""
+    sid = sid_of(m["test_id"])
+    f = Path(__file__).resolve().parent / "fixtures" / "profiles" / f"{sid}.charts.json"
+    if not f.is_file():
+        return ""
+    out = []
+    for ch in json.loads(f.read_text(encoding="utf-8")):
+        series = []
+        for k in SOLVERS_ORDER(set(ch["series"]) & set(runs)):
+            s_ = SOLVER[k]
+            d = ch["series"][k]
+            series.append(dict(key=k, label=f'{s_["name"]} {s_["sub"]}' if s_["name"].startswith("OpenSWMM") else s_["name"], color=s_["color"],
+                               x=d["x"], y=d["y"], dots=bool(d.get("dots")), join=bool(d.get("dots"))))
+        if not series:
+            continue
+        ex = ch.get("exact")
+        data = dict(xlabel=ch["xlabel"], ylabel=ch["ylabel"], exact=ex, series=series, band=ch.get("band"), symmetric=ch.get("symmetric", False),
+                    rescale=ch.get("rescale", False), snap=ch.get("snap", False), unit=ch.get("unit", ""), labels=ch.get("labels"))
+        toggles = (f'<button type="button" class="pill" data-series="exact" aria-pressed="true"><span class="sw" style="background:var(--water)"></span>{esc(ex.get("label") or "Exact answer")}</button>'
+                   if ex else "")
+        for s_ in series:
+            toggles += f'<button type="button" class="pill" data-series="{s_["key"]}" aria-pressed="true"><span class="sw" style="background:{s_["color"]}"></span>{esc(s_["label"])}</button>'
+        out.append(f"""<section class="replay" aria-label="{esc(ch['title'])}">
+  <h3>{esc(ch['title'])}</h3>
+  {f'<p class="chart-note">{esc(ch["note"])}</p>' if ch.get("note") else ''}
+  <div class="replay-top"><div class="toggles" role="group" aria-label="Show on the chart">{toggles}</div></div>
+  <svg class="chart" viewBox="0 0 1000 380" role="img" aria-label="{esc(ch['title'])}: {esc(ch['ylabel'])} against {esc(ch['xlabel'].lower())}"></svg>
+  <div class="controls"><div class="readout">Point at the chart to read every model's value; click a name to hide or show it.</div></div>
+  {_data_script(data)}
+</section>""")
+    return "".join(out)
 
 
 def conv_chart(m: dict, runs: dict) -> str:
@@ -969,7 +1009,12 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     st = story(m)
     group = GROUPS.get(st["group"], "")
     chart_html, chart_data = compare_chart(m, runs, exact, profiles)
-    figure = chart_html or (f'<section class="card">{legacy_figs}</section>' if legacy_figs.strip() else "")
+    net_html = network_charts(m, runs)
+    netsec = (f'<section class="section" style="padding-bottom:0"><h2>Exact answer and models</h2>{net_html}</section>' if net_html else "")
+    if net_html:
+        chart_html = net_html
+
+    figure = ("" if net_html else chart_html) or (f'<section class="card">{legacy_figs}</section>' if legacy_figs.strip() else "")
     must = "".join(f"<li>{esc(x)}</li>" for x in st["must"])
     story_cards = f"""<section class="story grid">
   <div class="card"><h2>What happens</h2><p>{esc(st['what'])}</p></div>
@@ -1110,12 +1155,13 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     n_run = len(runs)
     n_ok = sum(1 for c in runs.values() if c.get("passed"))
     result_line = (f"<b>{n_ok} of {n_run}</b> model{'s' if n_run != 1 else ''} pass" if n_run else "No model run yet")
+    hero_chart = bool(chart_html) and not net_html
     art = (f'<figure class="case-art">{tile_svg(sid, "Sketch of the test: " + st["name"], fit="meet")}'
            f'<figcaption><dl class="glance"><dt>Right answer</dt><dd>{esc(truth)}{(" · " + esc(_source_short(m))) if _source_short(m) else ""}</dd>'
            f'<dt>Results</dt><dd>{result_line} · <a href="#models">see them ↓</a></dd>'
            f'<dt>Must</dt><dd>{esc(st["must"][0])}</dd></dl>'
-           f'<span class="small">Sketch, not to scale.</span></figcaption></figure>') if not chart_html else ""
-    body = f'<div class="wrap">{head}{art}{figure}{story_cards}{models}{split}{tech}</div>{chart_data}'
+           f'<span class="small">Sketch, not to scale.</span></figcaption></figure>') if not hero_chart else ""
+    body = f'<div class="wrap">{head}{art}{figure}{story_cards}{netsec}{models}{split}{tech}</div>{chart_data}'
     scripts = '<script src="../static/chart.js" defer></script>' if chart_html else ""
     return layout(st["name"], body, "results.html", depth=1, description=st["question"], scripts=scripts, math=True)
 

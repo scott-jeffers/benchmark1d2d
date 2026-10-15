@@ -281,3 +281,31 @@ def backwater(x=None, t: float = 0.0, network_path=None, network=None) -> dict:
                 depth[c["from"]] = float(sol.y[0, -1]) + c.get("in_offset", 0.0)
     ids = [c["id"] for c in conduits]
     return _result(list(nodes), [depth[k] for k in nodes], ids, [mid[i] for i in ids], [q[i] for i in ids])
+
+
+def pump_flow(curve, head_rise: float) -> float:
+    """Flow of a head–flow pump curve [[head, flow], …] at a given head rise (linear between points, clipped)."""
+    hd = np.array([p[0] for p in curve], float)
+    qq = np.array([p[1] for p in curve], float)
+    order = np.argsort(hd)
+    return float(np.interp(head_rise, hd[order], qq[order]))
+
+
+def pump_wet_well_depth(t, network_path=None, network=None):
+    """Wet-well depth over time as the pump settles on its operating point.
+
+    ``A dh/dt = Q_in − Q_pump(H_out − z − h)`` with the piecewise-linear curve,
+    integrated with an adaptive 8th-order Runge–Kutta method to 1e-11 from
+    the initial depth. The steady limit is ``pump_curve``'s depth.
+    """
+    from scipy.integrate import solve_ivp
+
+    net = _load(network_path, network)
+    (s,) = net["storages"]
+    (p,) = net["pumps"]
+    out = _nodes(net)[p["to"]]
+    q_in = sum(i["Q"] for i in net.get("inflows", []) if i["node"] == s["id"])
+    rhs = lambda _t, h: [(q_in - pump_flow(p["curve"], out["stage"] - s["invert"] - h[0])) / s["area"]]  # noqa: E731
+    t = np.atleast_1d(np.asarray(t, float))
+    sol = solve_ivp(rhs, (0.0, float(t.max())), [float(s["init_depth"])], method="DOP853", rtol=1e-11, atol=1e-13, dense_output=True)
+    return sol.sol(t)[0]

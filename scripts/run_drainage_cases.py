@@ -120,6 +120,27 @@ def read_final(out: Path) -> tuple[float, dict]:
     return float(n_per * step), {"nodes": nodes, "node_h": nd, "links": links, "link_h": ld, "link_q": lq}
 
 
+def read_series(out: Path, max_elements: int = 12) -> dict | None:
+    """Every reporting period of node depths and link flows, for small networks (the site's time charts)."""
+    from swmm.toolkit import output, shared_enum as se
+
+    h = output.init()
+    output.open(h, str(out))
+    try:
+        _, n_node, n_link, *_ = output.get_proj_size(h)
+        if n_node + n_link > max_elements:
+            return None
+        n_per = output.get_times(h, se.Time.NUM_PERIODS)
+        step = output.get_times(h, se.Time.REPORT_STEP)
+        nodes = [output.get_elem_name(h, se.ElementType.NODE, i) for i in range(n_node)]
+        links = [output.get_elem_name(h, se.ElementType.LINK, i) for i in range(n_link)]
+        nd = {n: [float(v) for v in output.get_node_series(h, i, se.NodeAttribute.INVERT_DEPTH, 0, n_per - 1)] for i, n in enumerate(nodes)}
+        lq = {n: [float(v) for v in output.get_link_series(h, i, se.LinkAttribute.FLOW_RATE, 0, n_per - 1)] for i, n in enumerate(links)}
+    finally:
+        output.close(h)
+    return {"t": [float((k + 1) * step) for k in range(n_per)], "node_h": nd, "link_q": lq}
+
+
 def to_columns(t: float, r: dict) -> dict:
     nn, nl = len(r["nodes"]), len(r["links"])
     nan = np.full(nn + nl, np.nan)
@@ -162,10 +183,13 @@ def main() -> int:
                 try:
                     o, version = run_engine(engine, td / "m.inp", td, args.openswmm_python)
                     t, r = read_final(o)
+                    series = read_series(o)
                 except Exception as exc:  # noqa: BLE001 - an engine that cannot run a case is a finding
                     print(f"  {engine} {tid}: did not run: {str(exc)[-600:]}")
                     continue
             res = write_results_parquet(out / f"{m['test_id']}.parquet", to_columns(t, r))
+            if series:  # time series of small networks, for the site's charts
+                (out / f"{m['test_id']}.series.json").write_text(json.dumps(series, separators=(",", ":")) + "\n", encoding="utf-8")
             ver = version.replace("openswmm", "").strip()
             solver = {"name": f"{ENGINES[engine]['label']}" + (f" ({ver})" if engine != "swmm524" else ""), "version": ver,
                       "adapter": f"swmm ({ENGINES[engine]['routing']} routing, network.json as a SWMM input file)"}
