@@ -7,6 +7,29 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ### Changed
 
+- **TELEMAC-2D runs were capped at a 0.001–0.01 s step.** TELEMAC's
+  `TIME STEP` is its largest step, not its first; it is now the whole run (EA
+  tests: 1 s), so the Courant condition sets the step. Results barely move
+  (Ritter's volume front 5.754 → 5.750 m behind; every pass/fail unchanged)
+  and runs are up to 1000× faster.
+- **EA tests: the largest step is 1 s for every code.** With the step left to
+  the output interval, a dry start takes long first steps that undersample the
+  inflow hydrograph (TELEMAC lost 6 % of EA 2's water that way).
+
+### Added
+
+- **More production codes on the 2D cases:**
+  - TELEMAC-2D passes the EA tests (1, 2, 4, 5) and MacDonald 2D; on the
+    oblique jump (HLLC, since its default kinetic scheme goes unstable with
+    a supercritical inflow) the depth is right (1 cm, order 0.94) but the
+    stored water is 0.15 % high (0.1 % allowed).
+  - ANUGA passes the EA tests 1 and 4 (2 and 5 run weekly).
+  - HEC-RAS 2D with boundary lines (`scripts/run_hecras_2d_cases.py`): passes
+    EA 1, 4 and 5; fails EA 2's mass check (its own accounting: +1.4 %);
+    MacDonald 2D accurate to 0.1 mm but its error levels off near HEC-RAS's
+    iteration tolerance, so it does not converge.
+- `.github/workflows/slow-runs.yml`: weekly LISFLOOD-FP DG2, ANUGA and
+  TELEMAC on EA Tests 2 and 5.
 - **A1F-010 v2.0.0: the gating front check is now integral.** The front is
   the abscissa beyond which lies the last 5 % of the water downstream of the
   dam (exact 1237.4 m at 60 s), within 2.5 m (`volume_front_error`). The 1 mm

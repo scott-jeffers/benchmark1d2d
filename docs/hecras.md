@@ -28,7 +28,10 @@ own workflow, `.github/workflows/hecras.yml`, on `windows-latest`:
 | A1F-001 MacDonald backwater | running | steady standard step; 100 km stand-in width so hydraulic radius = depth; step tolerance 0.01 mm |
 | A1F-010 / 011 dam breaks | running (2D) | headless 2D strip, SWE-ELM and SWE-EM (`scripts/run_hecras_2d.py`) |
 | A1F-020 stationary jump | not applicable | a steady solver places a jump by momentum balance, which is neutral on a frictionless flat bed; the case tests a time-marching solver holding the jump |
-| other 2D cases (A2A, A2C) | next | need boundary lines; the headless pipeline below applies |
+| A2A-010 MacDonald 2D | running (2D) | flow hydrograph in, stage out on boundary lines; uniform start depth by restart file (`scripts/run_hecras_2d_cases.py`). 0.06–0.09 mm, but errors level off near 0.1 mm (order 0.39 / 0.67) |
+| A2C-EA1, 2, 4, 5 | running (2D) | the EA's own DEMs as sub-grid terrain; EA 1, 4 and 5 pass; EA 2 fails mass (HEC-RAS's own accounting: +1.4 %) |
+| A2A-001 Thacker | not yet | needs a 1 s run with sub-second output; HEC-RAS plan times are whole minutes |
+| A2A-020 oblique jump | not yet | needs depth and both velocity components fixed at an inflow, which HEC-RAS boundary types do not take |
 
 ## 2D, fully headless
 
@@ -70,3 +73,15 @@ geometry and the matching unsteady-flow boundaries); the same pipeline applies.
   grids (observed order 0.07 and 0.01). Into shallow water (A1F-011) the depth
   error is 5–8 mm, inside the 5 cm limit, but again does not fall with the grid
   (order 0.20 and −0.14). Water is conserved to 0.01 % in every run.
+
+## Boundary lines and EA tests
+
+`scripts/run_hecras_2d_cases.py` extends the headless pipeline with boundary
+lines (`BC Line ...` in the geometry text, a hair outside the area's edge as
+RAS Mapper draws them; EA Test 5's inflow line is internal) and their flow or
+stage hydrographs in the unsteady-flow text. HEC-RAS writes its results HDF at
+the *mapping* interval, so that is set to the probe interval. Depths written
+to the results are each cell's water volume over its plan area, integrated
+from the same terrain pixels, with the cell's mean ground level as the bed;
+HEC-RAS's own volume accounting is logged next to it.
+
