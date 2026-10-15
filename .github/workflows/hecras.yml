@@ -158,7 +158,7 @@ jobs:
       - name: Run and score HEC-RAS 2D (MacDonald 2D, EA tests)
         timeout-minutes: 270
         shell: bash
-        run: python scripts/run_hecras_2d_cases.py --accept-hec-terms --equations ${{ matrix.eq }} ${{ inputs.cases }}
+        run: python scripts/run_hecras_2d_cases.py ${{ inputs.cases }} --accept-hec-terms --equations ${{ matrix.eq }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

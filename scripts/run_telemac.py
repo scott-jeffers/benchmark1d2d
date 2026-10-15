@@ -426,10 +426,11 @@ def run_ea(tid: str, m: dict, env: dict, py: str) -> tuple[dict, float | None]:
         tt, qq = demo.read_table(Path(m["_case_dir"]) / "inputs" / bc["inflow"]["table"])
         cells = np.argwhere(np.asarray(case.inflow_cells, bool))
         n = len(cells)
-        sx = ";".join(f"{gx[i]:.6f}" for _, i in cells)
-        sy = ";".join(f"{gy[j]:.6f}" for j, _ in cells)
-        extra += [f"ABSCISSAE OF SOURCES = {sx}", f"ORDINATES OF SOURCES = {sy}",
-                  "WATER DISCHARGE OF SOURCES = " + ";".join(["0."] * n), "SOURCES FILE = 'src.txt'"]
+        # one value per line: TELEMAC truncates long steering-file lines
+        sx = ";\n".join(f"{gx[i]:.3f}" for _, i in cells)
+        sy = ";\n".join(f"{gy[j]:.3f}" for j, _ in cells)
+        extra += [f"ABSCISSAE OF SOURCES =\n{sx}", f"ORDINATES OF SOURCES =\n{sy}",
+                  "WATER DISCHARGE OF SOURCES =\n" + ";\n".join(["0."] * n), "SOURCES FILE = 'src.txt'"]
         head = "#\nT " + " ".join(f"Q({k + 1})" for k in range(n)) + "\ns " + " ".join(["m3/s"] * n) + "\n"
         # TELEMAC asks for the value one step before t = 0, so the series starts a day early.
         tt, qq = np.r_[-86400.0, tt], np.r_[qq[0], qq]

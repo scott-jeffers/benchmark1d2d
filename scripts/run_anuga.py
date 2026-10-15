@@ -62,6 +62,29 @@ def _sample(domain, pts: np.ndarray) -> dict[str, np.ndarray]:
     return {"h": h, "u": u, "v": v, "z": el}
 
 
+class CellSampler:
+    """Cell means on a ``rectangular_cross`` mesh: each grid cell is the four
+    triangles meeting at its centre, so averaging their centroid values gives
+    the cell's mean (its exact water volume over its area)."""
+
+    def __init__(self, domain, pts: np.ndarray):
+        from scipy.spatial import cKDTree
+
+        cen = domain.centroid_coordinates + np.array([domain.geo_reference.xllcorner, domain.geo_reference.yllcorner])
+        self.idx = cKDTree(cen).query(np.asarray(pts), k=4)[1]
+        self.d = domain
+
+    def __call__(self) -> dict[str, np.ndarray]:
+        q = self.d.quantities
+        st, el = q["stage"].centroid_values[self.idx], q["elevation"].centroid_values[self.idx]
+        xm, ym = q["xmomentum"].centroid_values[self.idx], q["ymomentum"].centroid_values[self.idx]
+        h = np.maximum(st - el, 0.0).mean(1)
+        wet = h > 1e-6
+        u = np.where(wet, xm.mean(1) / np.where(wet, h, 1.0), 0.0)
+        v = np.where(wet, ym.mean(1) / np.where(wet, h, 1.0), 0.0)
+        return {"h": h, "u": u, "v": v, "z": el.mean(1)}
+
+
 def _grid(x0, x1, y0, y1, dx):
     xs = np.arange(x0 + dx / 2, x1, dx)
     ys = np.arange(y0 + dx / 2, y1, dx)
@@ -180,7 +203,8 @@ def ea(m: dict, tid: str) -> tuple[dict, float | None]:
     (``Transmissive_n_momentum_zero_t_momentum_set_stage_boundary``); inflows
     enter through an ``Inlet_operator`` on the specification's inflow line
     (moved a quarter cell inside when it lies on the domain edge). Probes are
-    sampled every probe interval, the whole field every hour.
+    sampled every probe interval, the whole field every hour, as cell means
+    (``CellSampler``).
     """
     import importlib.util
 
@@ -228,13 +252,14 @@ def ea(m: dict, tid: str) -> tuple[dict, float | None]:
     probe_pts = np.column_stack([gx[pi], gy[pj]])
     t_end = float(prm["t_end_s"])
     frames, save = [], 3600.0
-    frames.append(_frame2d(field_pts, _sample(d, field_pts), 0.0))
+    field, probe = CellSampler(d, field_pts), CellSampler(d, probe_pts)
+    frames.append(_frame2d(field_pts, field(), 0.0))
     for t in d.evolve(yieldstep=probe_dt, finaltime=t_end):
         t = float(d.get_time())
         if abs(t / save - round(t / save)) < 1e-9:
-            frames.append(_frame2d(field_pts, _sample(d, field_pts), t))
+            frames.append(_frame2d(field_pts, field(), t))
         else:
-            frames.append(_frame2d(probe_pts, _sample(d, probe_pts), t))
+            frames.append(_frame2d(probe_pts, probe(), t))
     return {c: np.concatenate([f[c] for f in frames]) for c in frames[0]}, dx_alt
 
 
