@@ -140,6 +140,45 @@ def front_position_error(x, h, h_threshold: float, exact_front: float) -> float:
     return float(abs(detected - float(exact_front)))
 
 
+def volume_front_position(x, h, fraction: float, x_from: float) -> float:
+    """Abscissa beyond which lies ``fraction`` of the water downstream of ``x_from``.
+
+    Rows sharing an abscissa are averaged. Each value is taken as uniform over its cell, cells bounded halfway to
+    their neighbours (first and last cells mirrored); the position is
+    interpolated linearly within the cell where the cumulative volume,
+    summed from the far end, reaches the target.
+    """
+    x = np.asarray(x, dtype=float).ravel()
+    h = np.asarray(h, dtype=float).ravel()
+    if x.size != h.size:
+        raise ValueError("x and h must have the same length")
+    h = np.nan_to_num(np.maximum(h, 0.0))
+    x, inv = np.unique(x, return_inverse=True)  # several rows at one x (a 2D strip): their mean
+    h = np.bincount(inv, weights=h) / np.bincount(inv)
+    mid = 0.5 * (x[1:] + x[:-1])
+    lo = np.concatenate([[x[0] - (mid[0] - x[0])], mid])
+    hi = np.concatenate([mid, [x[-1] + (x[-1] - mid[-1])]])
+    lo, hi = np.maximum(lo, x_from), hi
+    w = np.clip(hi - lo, 0.0, None)
+    vol = h * w
+    tail = np.cumsum(vol[::-1])[::-1]  # volume from each cell's left edge to the end
+    total = float(tail[0])
+    if total <= 0.0:
+        raise ValueError("no water downstream of x_from")
+    target = fraction * total
+    i = int(np.searchsorted(-tail, -target, side="left"))  # first cell whose tail <= target
+    if i == 0:
+        return float(lo[0])
+    a, b = tail[i - 1], (tail[i] if i < tail.size else 0.0)
+    k = i - 1
+    return float(lo[k] + w[k] * (a - target) / max(a - b, 1e-300))
+
+
+def volume_front_error(x, h, fraction: float, x_from: float, exact_front: float) -> float:
+    """Signed error (simulated − exact) of the volume-defined front."""
+    return volume_front_position(x, h, fraction, x_from) - float(exact_front)
+
+
 def csi(sim_wet, obs_wet) -> float:
     """Critical Success Index (threat score) for binary wet/dry maps.
 

@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-SUPPORTED = {"L1", "L2", "Linf", "global_mass_error", "front_position_error"}
+SUPPORTED = {"L1", "L2", "Linf", "global_mass_error", "front_position_error", "volume_front_error"}
 
 
 def _levels_for(m: dict, result_dirs: list[Path]) -> dict[float, Path]:
@@ -90,10 +90,18 @@ def build(manifests: list[dict], result_dirs: list[Path], out: Path, names: dict
 
             h0 = float(params.get("h0", 1.0))
             front = {"thresh": 1e-3 * h0, "exact": float(depth_contour_position(t_end, 1e-3 * h0, h0=h0, x0=float(params.get("x0", 1000.0)), g=float(params.get("g", 9.81))))}
+        vfront = None
+        if any(c["metric"] == "volume_front_error" for c in crit):
+            from references.ritter import volume_front_position
+
+            frac = scorer.VOLUME_FRONT_FRACTION
+            x0 = float(params.get("x0", 1000.0))
+            vfront = {"fraction": frac, "x0": x0, "exact": volume_front_position(
+                t_end, frac, h0=float(params.get("h0", 1.0)), x0=x0, g=float(params.get("g", 9.81)))}
         meta = {"sid": sid, "name": names.get(sid, m.get("title", sid)), "t_end": t_end, "is2d": is2d, "levels": meta_levels,
                 "criteria": [{"id": c["id"], "label": check_label(c), "metric": c["metric"], "variable": c.get("variable", "h"), "threshold": c["threshold"],
                               "gating": bool(c.get("gating", True)), "supported": c["metric"] in SUPPORTED} for c in crit],
-                "conv": conv, "front": front}
+                "conv": conv, "front": front, "vfront": vfront}
         (out / f"{sid}.json").write_text(json.dumps(meta, separators=(",", ":")), encoding="utf-8")
         checkable.append({"sid": sid, "name": meta["name"], "level_names": [lv["name"] for lv in meta_levels]})
     return checkable

@@ -58,7 +58,6 @@
     }
     return d;
   }
-  function frontOf(x, y) { var f = null; for (var i = 0; i < x.length; i++) if (finite(y[i]) && y[i] >= 0.001) f = Math.max(f === null ? -Infinity : f, x[i]); return f; }
 
   function draw() {
     while (svg.firstChild) svg.removeChild(svg.firstChild);
@@ -104,9 +103,12 @@
     if (ro) {
       if (!final) ro.textContent = "Exact answer at t = " + fmt(E.times[frame]) + " s. Models are compared at the end, t = " + fmt(E.t_end) + " s.";
       else if (D.front && E) {
-        var ef = frontOf(E.x, E.frames ? E.frames[frame] : E.y), parts = [];
-        S.forEach(function (s) { if (shown[s.key] && D.fronts && D.fronts[s.key] !== undefined) parts.push(s.label + " " + fmt(D.fronts[s.key]) + " m"); });
-        ro.textContent = "Exact front (1 mm depth) at " + Math.round(ef).toLocaleString() + " m. Distance from it: " + (parts.length ? parts.join(", ") + " (allowed 2.5 m)." : "none shown.");
+        var parts = [];
+        S.forEach(function (s) {
+          var f = D.fronts && D.fronts[s.key];
+          if (shown[s.key] && f !== undefined) parts.push(s.label + " " + fmt(Math.abs(f)) + " m " + (f < 0 ? "behind" : "ahead"));
+        });
+        ro.textContent = "Exact front (where the last 5 % of the released water begins) at " + Math.round(D.front_exact).toLocaleString() + " m. Models: " + (parts.length ? parts.join(", ") + " (allowed 2.5 m)." : "none shown.");
       } else if (S.length) ro.textContent = "Lines are each model's result on its finest grid at the end of the run" + (E ? "; the blue line is the exact answer." : ".");
     }
   }

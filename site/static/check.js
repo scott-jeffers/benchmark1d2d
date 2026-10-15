@@ -114,12 +114,42 @@
           for (var m = 0; m < hx.length; m++) if (hx[m] >= meta.front.thresh) det = Math.max(det, xx[m]);
           if (!isFinite(det)) throw new Error("no wet cells");
           r.value = Math.abs(det - meta.front.exact);
+        } else if (c.metric === "volume_front_error") {
+          r.value = volumeFront(order.map(function (p) { return lvData.x[p[0]]; }), get("h"), meta.vfront.fraction, meta.vfront.x0) - meta.vfront.exact;
         }
         r.ok = pass(r.value, c.threshold);
       } catch (err) { r.error = err.message; r.ok = false; }
       out.push(r);
     });
     return out;
+  }
+
+  // Mirrors benchmark1d2d.metrics.volume_front_position: the abscissa beyond
+  // which lies `frac` of the water downstream of x0 (rows at one x averaged).
+  function volumeFront(xs, hs, frac, x0) {
+    var acc = {};
+    for (var i = 0; i < xs.length; i++) {
+      if (!isFinite(xs[i])) continue;
+      var hv = isFinite(hs[i]) ? Math.max(hs[i], 0) : 0, a = acc[xs[i]] || (acc[xs[i]] = [0, 0]);
+      a[0] += hv; a[1] += 1;
+    }
+    var x = Object.keys(acc).map(Number).sort(function (a, b) { return a - b; });
+    var h = x.map(function (v) { return acc[v][0] / acc[v][1]; }), n = x.length;
+    if (n < 2) throw new Error("need at least two report points");
+    var lo = [], w = [], vol = [];
+    for (var k = 0; k < n; k++) {
+      var l = k === 0 ? x[0] - (0.5 * (x[1] + x[0]) - x[0]) : 0.5 * (x[k] + x[k - 1]);
+      var r = k === n - 1 ? x[n - 1] + (x[n - 1] - 0.5 * (x[n - 1] + x[n - 2])) : 0.5 * (x[k] + x[k + 1]);
+      l = Math.max(l, x0); lo.push(l); w.push(Math.max(r - l, 0)); vol.push(h[k] * w[k]);
+    }
+    var tail = new Array(n), sum = 0;
+    for (var j = n - 1; j >= 0; j--) { sum += vol[j]; tail[j] = sum; }
+    if (!(tail[0] > 0)) throw new Error("no water downstream of the dam");
+    var target = frac * tail[0], q = 0;
+    while (q < n && tail[q] > target) q++;
+    if (q === 0) return lo[0];
+    var hiT = tail[q - 1], loT = q < n ? tail[q] : 0;
+    return lo[q - 1] + w[q - 1] * (hiT - target) / Math.max(hiT - loT, 1e-300);
   }
 
   function convError(meta, lvData, cols, order) {

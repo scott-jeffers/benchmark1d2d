@@ -107,3 +107,29 @@ def test_parity_metrics():
     assert_allclose(relative_volume(sim, ref), (6.3 - 6.0) / 6.0)
     assert_allclose(timing_error(5.0, 4.0), 1.0)
     assert_allclose(continuity_error(-0.25), 0.25)
+
+
+def test_volume_front_matches_ritter_exact():
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from references.ritter import depth_velocity, volume_front_position as exact
+
+    from benchmark1d2d.metrics import volume_front_error
+
+    x = np.arange(0.625, 2000.0, 1.25)
+    h = depth_velocity(x, 60.0, h0=1.0, x0=1000.0, g=9.81)["h"]
+    assert abs(volume_front_error(x, h, 0.05, 1000.0, exact(60.0, 0.05))) < 1e-3
+    # a strip with two rows per x gives the same answer
+    assert abs(volume_front_error(np.r_[x, x], np.r_[h, h], 0.05, 1000.0, exact(60.0, 0.05))) < 1e-3
+
+
+def test_volume_front_ignores_a_thin_film():
+    from benchmark1d2d.metrics import volume_front_position
+
+    x = np.arange(0.5, 100.0, 1.0)
+    h = np.where(x < 50, 1.0, 0.0)
+    base = volume_front_position(x, h, 0.1, 0.0)
+    film = volume_front_position(x, np.where(x < 50, 1.0, 1e-6), 0.1, 0.0)
+    assert abs(base - 45.0) < 1e-9 and abs(film - base) < 0.01

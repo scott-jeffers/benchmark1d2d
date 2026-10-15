@@ -124,3 +124,25 @@ def depth_velocity(
     u[rare] = (2.0 / 3.0) * (xi + c0)
 
     return {"h": h, "u": u}
+
+
+def volume_front_position(
+    t: float,
+    fraction: float,
+    h0: float = 1.0,
+    x0: float = 1000.0,
+    g: float = 9.81,
+) -> float:
+    """Exact abscissa beyond which lies ``fraction`` of the water downstream of the dam.
+
+    Downstream of ``x0`` the Ritter depth is h = (2c0 - ξ)²/(9g), ξ = (x - x0)/t,
+    so the volume beyond x is t (2c0 - ξ)³/(27g) and the whole downstream volume
+    is t (2c0)³/(27g). Hence ξ = 2c0 (1 - fraction^(1/3)).
+
+    An integral front is well conditioned: unlike a depth contour on the thin
+    tip, it does not move metres for a millimetre of depth.
+    """
+    if not 0.0 < fraction < 1.0:
+        raise ValueError("fraction must be in (0, 1)")
+    c0 = np.sqrt(g * h0)
+    return float(x0 + 2.0 * c0 * (1.0 - fraction ** (1.0 / 3.0)) * float(t))

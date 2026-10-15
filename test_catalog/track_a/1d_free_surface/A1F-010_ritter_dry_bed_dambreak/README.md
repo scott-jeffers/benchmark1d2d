@@ -16,6 +16,16 @@ Report identifier: ZdVDI 36(33).
 
 Analytic generator: `references.ritter.depth_velocity`.
 
+## Front check (v2.0.0)
+
+The gating front is **integral**: the abscissa beyond which lies the last 5 %
+of the water downstream of the dam, exactly \(x_0 + 2c_0 t\,(1-0.05^{1/3})\)
+= 1237.4 m at 60 s, within 2.5 m. Version 1 used the 1 mm depth contour
+(~1358 m). On the thin tip that contour moves about 10 m per millimetre of
+depth error, and production codes treat depths under ~1 mm as dry, so every
+production code failed it by 12–211 m while their wave bodies were close. It
+is still reported, but no longer gates.
+
 ## Pitfalls
 
 - Wet/dry treatment and positivity-preserving fluxes dominate front error;

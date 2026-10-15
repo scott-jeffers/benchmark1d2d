@@ -17,6 +17,7 @@ from benchmark1d2d.metrics import (
     Linf,
     continuity_error,
     front_position_error,
+    volume_front_error,
     global_mass_error,
     peak_error,
     relative_peak,
@@ -195,6 +196,17 @@ def _eval_criterion(
             g=float(params.get("g", 9.81)),
         )
         observed = front_position_error(x, h_sim, h_thresh, exact)
+    elif metric == "volume_front_error":
+        from references.ritter import volume_front_position as exact_volume_front
+
+        params = ((manifest.get("reference") or {}).get("generator") or {}).get("parameters") or {}
+        t_end = float(manifest["simulation"]["t_end"])
+        x0 = float(params.get("x0", 1000.0))
+        exact = exact_volume_front(t_end, VOLUME_FRONT_FRACTION, h0=float(params.get("h0", 1.0)), x0=x0,
+                                   g=float(params.get("g", 9.81)))
+        observed = volume_front_error(x, h_sim, VOLUME_FRONT_FRACTION, x0, exact)
+        detail = (f"front holding the last {VOLUME_FRONT_FRACTION:.0%} of the water downstream of the dam: "
+                  f"{exact + observed:.2f} m vs exact {exact:.2f} m")
     elif metric == "global_mass_error":
         # Cell-centred integrals: h (water volume) by default, or the named
         # conserved quantity (e.g. tracer concentration c) when given.
@@ -440,6 +452,10 @@ def _element_series(df: pd.DataFrame, variable: str) -> dict[str, tuple[np.ndarr
         grp = grp.sort_values("t")
         out[str(eid)] = (grp["t"].to_numpy(dtype=float), grp[col].to_numpy(dtype=float))
     return out
+
+
+# Fraction of the downstream water that defines the volume front (A1F-010).
+VOLUME_FRONT_FRACTION = 0.05
 
 
 def _parity_metric(metric: str, variable: str, sim: pd.DataFrame, ref: pd.DataFrame) -> tuple[float, str]:

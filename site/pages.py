@@ -227,6 +227,8 @@ def check_value(c: dict, observed: float | None) -> str:
     metric = c["metric"]
     if metric == "front_position_error":
         return f"{with_units(abs(observed), units)} from exact"
+    if metric == "volume_front_error":
+        return f"{with_units(abs(observed), units)} {'behind' if observed < 0 else 'ahead of'} exact"
     if metric in ("global_mass_error", "storage_balance_error"):
         return f"{with_units(abs(observed), units)} error"
     if metric in ("L1", "L2", "Linf"):
@@ -270,19 +272,19 @@ def summary_line(m: dict, card: dict) -> str:
 
 # Findings worth a sentence on a model card: (short id, solver key) -> text
 NOTES = {
-    ("A1F-010", "telemac"): "The thin leading edge stays dry too long, so the front falls further behind as it travels. HLLC and second-order settings were also tried; the front still stopped about 50 m short. The body of the wave matches the exact answer closely.",
+    ("A1F-010", "telemac"): "The front is 5.8 m behind the exact one (2.5 m allowed) and closes in on finer grids at order 0.71, just under the 0.8 required. The thin leading edge, 1 mm deep, lags further (39 m): it stays dry too long. HLLC and second-order settings did not change that.",
     ("A1F-001", "hecras"): "HEC-RAS stores input elevations to the nearest 0.001 ft (0.3 mm), even in a metric project. The depth error therefore stops at about 0.1 mm on every grid: far inside the limit, but it cannot shrink with the grid, so convergence cannot be shown.",
-    ("A1F-010", "hecras"): "The flood advances as a steep bore that stops about 200 m short of the exact front, and the error does not fall on finer grids. HEC-RAS 2D was built and run with no GUI step; the dam-break step was carried in by a restart file.",
-    ("A1F-010", "hecras-em"): "SWE-EM, the option HEC recommends for dam breaks, gets 50 m closer than the default SWE-ELM but still stops well short, and does not converge.",
+    ("A1F-010", "hecras"): "The flood advances as a steep bore and its front is 97 m behind the exact one; the error does not fall on finer grids. HEC-RAS 2D was built and run with no GUI step; the dam-break step was carried in by a restart file.",
+    ("A1F-010", "hecras-em"): "SWE-EM, the option HEC recommends for dam breaks, gets 40 m closer than the default SWE-ELM (58 m behind) but does not converge.",
     ("A1F-011", "hecras"): "The bore is in about the right place (depth error 5 mm), but the error does not fall on finer grids.",
     ("A1F-011", "hecras-em"): "Error 8 mm, inside the limit, but it grows slightly on finer grids.",
-    ("A1F-010", "swmm524"): "SWMM's dynamic-wave routing is built for sewer networks, not dam breaks: the flood stalls about 150 m short and the error does not shrink on finer grids.",
+    ("A1F-010", "swmm524"): "SWMM's dynamic-wave routing is built for sewer networks, not dam breaks: the front is 41 m behind and the error does not shrink on finer grids.",
     ("A1F-011", "swmm524"): "The bore smears and lags, and the stored water drifts 4 % above the exact volume: dynamic-wave routing is not built for moving shocks.",
     ("A1F-010", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver.",
     ("A1F-011", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver.",
     ("A1F-001", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4.",
     ("A1F-011", "openswmm-fv"): "OpenSWMM 6's new finite-volume routing passes the test that SWMM's dynamic wave fails.",
-    ("A1F-010", "openswmm-fv"): "Much closer than dynamic wave (45 m short instead of 152 m) and conserves water, but the thin front still lags.",
+    ("A1F-010", "openswmm-fv"): "Much closer than dynamic wave (3.3 m behind instead of 41 m) and conserves water; it misses the 2.5 m limit and converges at 0.73.",
     ("A1F-001", "openswmm-fv"): "Accurate (0.4 mm) but converges at 0.76, just under the 0.8 required, where dynamic wave reaches 1.7.",
     ("B-RTC-001", "openswmm6"): "Pumps switch the same 74 times, but one node peaks 50 % higher than in SWMM 5.2.4, at a different time; worth a look by the OpenSWMM developers.",
     ("A1F-010", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it is not expected to get a dam break right; it is shown because it is what most LISFLOOD-FP users run.",
@@ -291,7 +293,7 @@ NOTES = {
     ("A2C-EA4", "lisflood-fv1"): "Run at the specification's 5 m grid (the demo solver uses the allowed 10 m alternative). The inflow enters as LISFLOOD-FP point sources on the cells the inflow line crosses.",
 }
 CASE_NOTES = {
-    "A1F-010": "Every production code so far misses the front check. The check looks for the 1 mm depth contour, and at the thin tip of the wave a 1 mm depth error moves that contour about 10 m; production codes also treat water shallower than about 1 mm as dry. The maintainers are reviewing whether a 2.5 m limit on the 1 mm contour is the right test.",
+    "A1F-010": "Since version 2 the front is measured by volume: the point beyond which the last 5 % of the released water lies. Version 1 used the 1 mm depth contour, which every production code failed by 12 to 211 m: on the thin tip a millimetre of depth moves that contour about 10 m, and production codes treat water shallower than about 1 mm as dry. The 1 mm edge is still reported, but no longer decides the result.",
 }
 
 
@@ -386,20 +388,23 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
     prod_names = sorted({p.split(" ")[0] for p in prod}, key=lambda s: [x["name"].split(" ")[0] for x in SOLVERS].index(s))
     n_models = len(census) if census is not None else 0
     # findings
-    fronts = []
+    fronts = {}
     for k, c in (runs.get("A1F-010_ritter_dry_bed_dambreak") or {}).items():
         if SOLVER.get(k, {}).get("kind") != "production":
             continue
         for r in c.get("criteria_results", []):
-            if r["id"] == "front_position" and r.get("observed") is not None:
-                fronts.append(abs(r["observed"]))
+            if r["id"] == "volume_front" and r.get("observed") is not None:
+                fronts[k] = abs(r["observed"])
     cards = []
     if fronts:
-        lo, hi = min(fronts), max(fronts)
+        ok = [k for k, v in fronts.items() if v <= 2.5]
+        near = sorted(v for v in fronts.values() if 2.5 < v <= 10)
+        far = sorted(v for v in fronts.values() if v > 10)
+        who = ", ".join(SOLVER[k]["name"].split(" ")[0] for k in ok) or "none"
         cards.append(f"""<a class="finding" href="tests/A1F-010.html">
-  <div class="num">{nice(lo, 2)}–{nice(hi, 3)} m</div>
-  <b>Production models leave the flood front behind</b>
-  <p>In the classic dam-break test, all {len(fronts)} production runs put the leading edge {nice(lo, 2)} to {nice(hi, 3)} m short of the exact answer after one minute (2.5 m allowed). The body of the flood is close; the thin tip is where they differ.</p>
+  <div class="num">{len(ok)} of {len(fronts)}</div>
+  <b>Few production models place the flood front</b>
+  <p>In the classic dam break, {len(ok)} of {len(fronts)} production runs put the front within 2.5 m after one minute ({esc(who)}). {len(near)} more are {nice(near[0], 2) if near else '–'}–{nice(near[-1], 2) if near else '–'} m behind; {len(far)} are {nice(far[0], 2) if far else '–'}–{nice(far[-1], 3) if far else '–'} m behind.</p>
 </a>""")
     if "hecras" in (runs.get("A1F-001_macdonald_m1_backwater") or {}):
         cards.append("""<a class="finding" href="tests/A1F-001.html">
@@ -685,10 +690,16 @@ def compare_chart(m: dict, runs: dict, exact: dict | None, profiles: dict) -> tu
     fronts = {}
     for k, c in runs.items():
         for r in c.get("criteria_results", []):
-            if r.get("metric") == "front_position_error" and r.get("observed") is not None:
-                fronts[k] = round(abs(r["observed"]), 1)
+            if r.get("metric") == "volume_front_error" and r.get("observed") is not None:
+                fronts[k] = round(r["observed"], 1)
+    front_exact = None
+    if sid == "A1F-010":
+        from references.ritter import volume_front_position
+
+        prm = m["reference"]["generator"]["parameters"]
+        front_exact = volume_front_position(float(m["simulation"]["t_end"]), 0.05, h0=prm["h0"], x0=prm["x0"], g=prm["g"])
     data = dict(sid=sid, xlabel=spec["x"], ylabel=spec["y"], exact=exact, series=series, fronts=fronts,
-                front=sid == "A1F-010", dam=(1000 if sid == "A1F-010" else 0 if sid == "A1F-011" else None))
+                front=sid == "A1F-010" and bool(fronts), front_exact=front_exact, dam=(1000 if sid == "A1F-010" else 0 if sid == "A1F-011" else None))
     toggles = '<button type="button" class="pill" data-series="exact" aria-pressed="true"><span class="sw" style="background:var(--water)"></span>Exact answer</button>' if exact else ""
     for s in series:
         sw = f'<span class="sw dot" style="color:{s["color"]}"></span>' if s["dots"] else f'<span class="sw" style="background:{s["color"]}"></span>'

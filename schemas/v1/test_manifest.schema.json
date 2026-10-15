@@ -959,6 +959,7 @@
             "peak_error",
             "arrival_time_error",
             "front_position_error",
+            "volume_front_error",
             "CSI",
             "relative_peak",
             "relative_volume",

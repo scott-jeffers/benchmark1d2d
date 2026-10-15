@@ -219,7 +219,8 @@ STORIES: dict[str, dict] = {
 
 # Criteria in plain words: metric -> (label, how to phrase the observed value)
 CHECK_NAMES = {
-    "front_position_error": "Flood front",
+    "volume_front_error": "Flood front",
+    "front_position_error": "Leading edge (1 mm deep)",
     "global_mass_error": "Water conserved",
     "L1": "Average error",
     "L2": "Typical error",

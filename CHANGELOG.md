@@ -7,6 +7,16 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ### Changed
 
+- **A1F-010 v2.0.0: the gating front check is now integral.** The front is
+  the abscissa beyond which lies the last 5 % of the water downstream of the
+  dam (exact 1237.4 m at 60 s), within 2.5 m (`volume_front_error`). The 1 mm
+  depth contour used in v1 is still reported but no longer gates: on the thin
+  tip a 1 mm depth error moves it ~10 m, and production codes treat depths
+  under ~1 mm as dry, so every production code failed it by 12–211 m. With the
+  new check ANUGA passes the case; TELEMAC, GeoClaw, LISFLOOD-FP FV1/DG2 and
+  OpenSWMM finite volume are 3.3–5.8 m behind; HEC-RAS 2D, LISFLOOD-FP ACC and
+  SWMM dynamic wave are 41–105 m behind. All cards rescored from their saved
+  results (`scripts/rescore_cards.py`); the browser check mirrors the metric.
 - **The website is rebuilt as OpenHydro Bench**, in plain language: a home
   page that asks one question, a *Tests & results* matrix of every test
   against every model with a detail panel, a story page per test (what
