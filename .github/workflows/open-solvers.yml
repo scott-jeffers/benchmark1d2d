@@ -44,7 +44,7 @@ jobs:
           python -m pip install -q -e ".[dev]"
           python scripts/fetch_inputs.py  # EA terrain and tables, verified by SHA-256
           # EA Tests 2 and 5 take hours with ANUGA; they run in slow-runs.yml.
-          python scripts/run_anuga.py A1F-010 A1F-011 A2A-001 A2A-010 A2A-020 A2C-EA1 A2C-EA4
+          python scripts/run_anuga.py A1F-001 A1F-010 A1F-011 A1F-020 A2A-001 A2A-010 A2A-020 A2C-EA1 A2C-EA4
       - name: Export the chart curves (site/fixtures/curves via the result collector)
         if: always()
         shell: bash -l {0}
@@ -204,7 +204,7 @@ jobs:
           python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" --solver fv1 acc
           # DG2 costs several times more per step; EA Tests 2 and 5 run in slow-runs.yml.
           python scripts/run_lisflood.py --exe "$RUNNER_TEMP/lf/build/lisflood" \
-            A1F-010 A1F-011 A2A-001 A2A-010 A2C-EA1 A2C-EA4 --solver dg2
+            A1F-001 A1F-010 A1F-011 A1F-040 A1F-041 A1F-042 A1F-043 A2A-001 A2A-010 A2C-EA1 A2C-EA4 --solver dg2
       - name: Export the chart curves (site/fixtures/curves via the result collector)
         if: always()
         shell: bash -l {0}

@@ -209,12 +209,68 @@ def swashes_bump(m: dict, dx: float, tid: str) -> dict:
     return {"t": np.full(n, t), "x": xs, "y": nan.copy(), "h": s["h"], "u": s["u"], "v": nan.copy(), "p": nan.copy(), "Q": s["h"] * s["u"]}
 
 
+def _strip_frame(d, dx: float, L: float, width: float, t: float, x0: float = 0.0) -> dict:
+    xs = np.arange(x0 + dx / 2, x0 + L, dx)
+    s = CellSampler(d, np.column_stack([xs, np.full_like(xs, width / 2)]))()
+    n = len(xs)
+    nan = np.full(n, np.nan)
+    return {"t": np.full(n, t), "x": xs, "y": nan.copy(), "h": s["h"], "u": s["u"], "v": nan.copy(), "p": nan.copy(), "Q": s["h"] * s["u"]}
+
+
+def hydraulic_jump(m: dict, dx: float, tid: str) -> dict:
+    """A1F-020 (standing jump): a strip two cells wide; the supercritical state (depth and discharge) set at
+    the left edge, the sequent depth held at the right, and the two states either side of x = 50 m to start."""
+    from references.belanger import sequent_depths
+
+    prm = json.loads((Path(m["_case_dir"]) / "inputs/params.json").read_text())
+    L, width = prm["domain"]["xmax"], 2 * dx
+    up = prm["boundaries"]["upstream"]
+    ref = sequent_depths(np.array([0.0]), Fr1=up["Fr"], h1=up["h_m"], L=L)
+    h1, h2, q = ref["h1"], ref["h2"], ref["q"]
+    d = _domain(L, width, dx)
+    d.set_quantity("elevation", 0.0)
+    d.set_quantity("friction", 0.0)
+    d.set_quantity("stage", lambda x, y: np.where(x < L / 2, h1, h2), location="centroids")
+    d.set_quantity("xmomentum", q)
+    br = anuga.Reflective_boundary(d)
+    inflow = anuga.Dirichlet_boundary([h1, q, 0.0])
+    out = anuga.Transmissive_n_momentum_zero_t_momentum_set_stage_boundary(d, lambda t: h2)
+    d.set_boundary({"left": inflow, "right": out, "top": br, "bottom": br})
+    t = _evolve(d, float(m["simulation"]["t_end"]))
+    return _strip_frame(d, dx, L, width, t)
+
+
+def macdonald_1d(m: dict, dx: float, tid: str) -> dict:
+    """A1F-001 (MacDonald backwater): a strip two cells wide over the exact bed, Manning n on the bed only
+    (the case's wide-channel assumption), the unit discharge entering by an Inlet_operator, the exact depth
+    held downstream, from a uniform depth."""
+    from references.macdonald import M1_PARAMS, bed_elevation, depth_profile
+
+    L, B, Q, n = (float(M1_PARAMS[k]) for k in ("L", "B", "Q", "n_manning"))
+    q, width = Q / B, 2 * dx
+    fine = np.linspace(0.0, L, 200001)
+    zfine = bed_elevation(fine)
+    zf = lambda x, y: np.interp(x, fine, zfine)  # noqa: E731
+    h_out = float(depth_profile(np.array([L]))[0])
+    d = _domain(L, width, dx)
+    d.set_quantity("elevation", zf, location="centroids")
+    d.set_quantity("friction", n)
+    d.set_quantity("stage", lambda x, y: zf(x, y) + h_out, location="centroids")
+    anuga.Inlet_operator(d, [[0.25 * dx, 0.0], [0.25 * dx, width]], Q=q * width)
+    br = anuga.Reflective_boundary(d)
+    out = anuga.Transmissive_n_momentum_zero_t_momentum_set_stage_boundary(d, lambda t: float(zfine[-1]) + h_out)
+    d.set_boundary({"left": br, "right": out, "top": br, "bottom": br})
+    t = _evolve(d, float(m["simulation"]["t_end"]))
+    return _strip_frame(d, dx, L, width, t)
+
+
 def _frame2d(pts, s, t):
     n = len(pts)
     return {"t": np.full(n, t), "x": pts[:, 0], "y": pts[:, 1], "h": s["h"], "u": s["u"], "v": s["v"], "p": np.full(n, np.nan), "z": s["z"]}
 
 
-CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A2A-001": thacker, "A2A-010": macdonald_2d, "A2A-020": oblique_jump,
+CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A1F-001": macdonald_1d, "A1F-020": hydraulic_jump,
+         "A2A-001": thacker, "A2A-010": macdonald_2d, "A2A-020": oblique_jump,
          "A1F-040": swashes_bump, "A1F-041": swashes_bump, "A1F-042": swashes_bump, "A1F-043": swashes_bump}
 
 

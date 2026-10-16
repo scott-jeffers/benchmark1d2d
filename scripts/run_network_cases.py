@@ -228,7 +228,7 @@ def main() -> int:
         m = load_manifest("A1P-030", repo=REPO)
         paths = []
         for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
-            paths.append(write_results_parquet(out_dir / f"{m['test_id']}_dx{dx:g}.epanet22.parquet", tracer(Path(m["_case_dir"]), float(dx))))
+            paths.append(write_results_parquet(out_dir / f"{m['test_id']}_dx{dx:g}.parquet", tracer(Path(m["_case_dir"]), float(dx))))
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY,
                           solver={**SOLVER, "adapter": SOLVER["adapter"] + "; water quality, Lagrangian advection (no dispersion)"})
         (out_dir / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")

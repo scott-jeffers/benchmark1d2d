@@ -25,7 +25,8 @@ x and y slope coefficients of the bed and the initial depth (``<file>1x``,
 from the four corner values of each cell, but from the exact function rather
 than a raster.
 
-Cases: A1F-010 (Ritter) and A1F-011 (Stoker) on a two-cell-wide strip;
+Cases: A1F-010 (Ritter), A1F-011 (Stoker), A1F-001 (MacDonald backwater)
+and the SWASHES bump channel A1F-040 to 043 on a two-cell-wide strip;
 A2A-001 (Thacker bowl); A2A-010 (MacDonald 2D, ``QFIX`` inflow west and
 ``HFIX`` water level east). A2A-020 (oblique jump) needs a supercritical inflow
 with both depth and velocity fixed, which LISFLOOD-FP's boundary types cannot
@@ -216,7 +217,57 @@ def macdonald_2d(exe, solver, m, dx, tid):
     return _frame2d(run(exe, solver, g, zf, hf, t, fric=n, bci=bci), t)
 
 
-CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A2A-001": thacker, "A2A-010": macdonald_2d}
+def _strip(s, t):
+    """A strip two cells wide, as a 1D result: the mean of the two rows."""
+    xs = s["X"][0]
+    n = xs.size
+    nan = np.full(n, np.nan)
+    h, u = s["h"].mean(axis=0), s["u"].mean(axis=0)
+    return {"t": np.full(n, t), "x": xs, "y": nan.copy(), "h": h, "u": u, "v": nan.copy(), "p": nan.copy(), "Q": h * u}
+
+
+def macdonald_1d(exe, solver, m, dx, tid):
+    """A1F-001: the MacDonald backwater on a strip two cells wide, the unit discharge entering by QFIX and
+    the exact level held by HFIX, Manning n on the bed only (the case's wide-channel assumption)."""
+    from references.macdonald import M1_PARAMS, bed_elevation, depth_profile
+
+    L, B, Q, n = (float(M1_PARAMS[k]) for k in ("L", "B", "Q", "n_manning"))
+    fine = np.linspace(0.0, L, 200001)
+    zfine = bed_elevation(fine)
+    zf = lambda x, y: np.interp(x, fine, zfine)  # noqa: E731
+    h_out = float(depth_profile(np.array([L]))[0])
+    g = Grid(0.0, 0.0, dx, _n(0, L, dx), 2)
+    W = 2 * dx
+    bci = [f"W 0 {W:.12g} QFIX {Q / B:.12g}", f"E 0 {W:.12g} HFIX {float(zfine[-1]) + h_out:.12g}"]
+    t = float(m["simulation"]["t_end"])
+    return _strip(run(exe, solver, g, zf, lambda x, y: np.full_like(x, h_out), t, fric=n, bci=bci), t)
+
+
+def swashes_bump(exe, solver, m, dx, tid):
+    """A1F-040 to 043 (SWASHES bump): a strip two cells wide over the bump, the unit discharge entering by
+    QFIX and the downstream depth held by HFIX (walls on the lake at rest)."""
+    from references.swashes import bed
+
+    prm = json.loads((Path(m["_case_dir"]) / "inputs/params.json").read_text())
+    L = prm["domain"]["xmax"]
+    g = Grid(0.0, 0.0, dx, _n(0, L, dx), 2)
+    W = 2 * dx
+    zf = lambda x, y: bed(np.asarray(x, float)) + 0.0 * y  # noqa: E731
+    level = prm["initial"]["level_m"]
+    hf = lambda x, y: np.maximum(level - zf(x, y), 0.0)  # noqa: E731
+    bci = []
+    up, down = prm["upstream"], prm["downstream"]
+    if "discharge_m2s" in up:
+        bci.append(f"W 0 {W:.12g} QFIX {up['discharge_m2s']:.12g}")
+    if "depth_m" in down:
+        bci.append(f"E 0 {W:.12g} HFIX {down['depth_m']:.12g}")
+    t = float(m["simulation"]["t_end"])
+    return _strip(run(exe, solver, g, zf, hf, t, bci=bci or None), t)
+
+
+CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A1F-001": macdonald_1d,
+         "A1F-040": swashes_bump, "A1F-041": swashes_bump, "A1F-042": swashes_bump, "A1F-043": swashes_bump,
+         "A2A-001": thacker, "A2A-010": macdonald_2d}
 
 
 # ── EA inter-comparison tests (one grid, the specification's resolution) ────

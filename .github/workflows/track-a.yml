@@ -98,7 +98,7 @@ jobs:
         run: |
           python scripts/fetch_inputs.py
           python scripts/run_telemac.py --telemac-prefix "$MAMBA_ROOT_PREFIX/envs/telemac" \
-            A1F-010 A1F-011 A1F-040 A1F-041 A1F-042 A1F-043 A2A-001 A2A-010 A2A-020 A2C-EA1 A2C-EA4 \
+            A1F-001 A1F-010 A1F-011 A1F-020 A1F-040 A1F-041 A1F-042 A1F-043 A2A-001 A2A-010 A2A-020 A2C-EA1 A2C-EA4 \
             || echo "::warning title=TELEMAC-2D::fails at least one criterion (see score cards); reported, not gating"
       - name: Export the chart curves (site/fixtures/curves via the result collector)
         if: always()

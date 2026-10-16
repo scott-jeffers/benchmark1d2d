@@ -226,7 +226,22 @@ def thacker(exe, claw, m, dx, tid):
     return {"t": np.full(n, f["t"]), "x": X.ravel(), "y": Y.ravel(), "h": f["h"].ravel(), "u": f["u"].ravel(), "v": f["v"].ravel(), "p": np.full(n, np.nan), "z": f["z"].ravel()}
 
 
-CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A2A-001": thacker}
+def lake_at_rest(exe, claw, m, dx, tid):
+    """A1F-043 (SWASHES lake at rest with an emerged bump): walls all round, still water at 0.1 m."""
+    from references.swashes import bed
+
+    prm = json.loads((Path(m["_case_dir"]) / "inputs/params.json").read_text())
+    L, level = prm["domain"]["xmax"], prm["initial"]["level_m"]
+    w = 4 * dx
+    f = run_case(exe, claw, OUT / "work" / f"{tid}_dx{dx:g}", 0.0, L, 0.0, w, dx,
+                 lambda X, Y: bed(np.asarray(X, float)), lambda X, Y: np.full_like(X, level), float(m["simulation"]["t_end"]))
+    j = 0
+    n = len(f["x"])
+    nan = np.full(n, np.nan)
+    return {"t": np.full(n, f["t"]), "x": f["x"], "y": nan.copy(), "h": f["h"][j], "u": f["u"][j], "v": nan.copy(), "p": nan.copy(), "Q": f["h"][j] * f["u"][j]}
+
+
+CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A1F-043": lake_at_rest, "A2A-001": thacker}
 
 
 def main() -> int:

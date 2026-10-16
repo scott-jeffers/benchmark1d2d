@@ -358,6 +358,57 @@ def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
             flows = ";".join(f"{up['discharge_m2s'] * wid:.9f}" if c == (4, 5, 5) else "0." for c in order)
             levels = ";".join(f"{down['depth_m']:.9f}" if c == (5, 4, 4) else "0." for c in order)
             extra += f"\nPRESCRIBED FLOWRATES = {flows}\nPRESCRIBED ELEVATIONS = {levels}"
+    elif tid == "A1F-001":  # MacDonald backwater on a strip three nodes wide, Manning on the bed
+        from references.macdonald import M1_PARAMS, bed_elevation, depth_profile
+
+        L, B, Q, n = (float(M1_PARAMS[k]) for k in ("L", "B", "Q", "n_manning"))
+        fine = np.linspace(0.0, L, 200001)
+        zfine = bed_elevation(fine)
+        xs = np.arange(dx / 2, L - dx / 4, dx)
+        ys = np.arange(dx / 2, 3 * dx, dx)
+        x, y, ikle, ipobo, loop = rect_mesh(xs, ys)
+        z = np.interp(x, fine, zfine)
+        h_out = float(depth_profile(np.array([xs[-1]]))[0])
+        z_out = float(np.interp(xs[-1], fine, zfine))
+        h = np.full_like(x, h_out)
+        u = v = np.zeros_like(x)
+        codes = {}
+        for nn in loop:
+            if np.isclose(x[nn], xs[0]):
+                codes[nn] = (4, 5, 5)
+            elif np.isclose(x[nn], xs[-1]):
+                codes[nn] = (5, 4, 4)
+        loop, order = open_boundary_order(loop, codes, ipobo)
+        wid = ys[-1] - ys[0]
+        flows = ";".join(f"{Q / B * wid:.9f}" if c == (4, 5, 5) else "0." for c in order)
+        levels = ";".join(f"{z_out + h_out:.9f}" if c == (5, 4, 4) else "0." for c in order)
+        extra = (f"LAW OF BOTTOM FRICTION = 4\nFRICTION COEFFICIENT = {n}\n"
+                 f"PRESCRIBED FLOWRATES = {flows}\nPRESCRIBED ELEVATIONS = {levels}")
+    elif tid == "A1F-020":  # standing jump on a strip: supercritical inflow (depth and velocity set), sequent depth held
+        from references.belanger import sequent_depths
+
+        sp = json.loads((Path(m["_case_dir"]) / "inputs/params.json").read_text())
+        L = sp["domain"]["xmax"]
+        upb = sp["boundaries"]["upstream"]
+        ref = sequent_depths(np.array([0.0]), Fr1=upb["Fr"], h1=upb["h_m"], L=L)
+        h1, h2, q = ref["h1"], ref["h2"], ref["q"]
+        xs = np.arange(dx / 2, L - dx / 4, dx)
+        ys = np.arange(dx / 2, 3 * dx, dx)
+        x, y, ikle, ipobo, loop = rect_mesh(xs, ys)
+        z = np.zeros_like(x)
+        h = np.where(x < L / 2, h1, h2)
+        u, v = q / h, np.zeros_like(x)
+        codes, bvals = {}, {}
+        for nn in loop:
+            if np.isclose(x[nn], xs[0]):
+                codes[nn] = (5, 6, 6)
+                bvals[nn] = (h1, q / h1, 0.0)
+            elif np.isclose(x[nn], xs[-1]):
+                codes[nn] = (5, 4, 4)
+        loop, order = open_boundary_order(loop, codes, ipobo)
+        levels = ";".join(f"{h1:.9f}" if c == (5, 6, 6) else f"{h2:.9f}" for c in order)
+        extra += f"\nPRESCRIBED ELEVATIONS = {levels}"
+        scheme = 5  # HLLC: the default kinetic scheme is unstable with a prescribed supercritical inflow (as on A2A-020)
     else:
         raise KeyError(tid)
     with tempfile.TemporaryDirectory() as td:
@@ -385,7 +436,7 @@ def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
     hv = next(v for k, v in vals.items() if k.startswith("WATER DEPTH"))
     uv = next(v for k, v in vals.items() if k.startswith("VELOCITY U"))
     vv = next(v for k, v in vals.items() if k.startswith("VELOCITY V"))
-    if tid in SWASHES:  # a 1D case: the strip's middle row of nodes
+    if tid in STRIPS:  # a 1D case: the strip's middle row of nodes
         mid = np.isclose(y, ys[1])
         n1 = int(mid.sum())
         nan = np.full(n1, np.nan)
@@ -397,7 +448,8 @@ def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
 
 
 SWASHES = {"A1F-040", "A1F-041", "A1F-042", "A1F-043"}
-CASES_2D = {"A2A-001", "A2A-010", "A2A-020"} | SWASHES
+STRIPS = SWASHES | {"A1F-001", "A1F-020"}
+CASES_2D = {"A2A-001", "A2A-010", "A2A-020"} | STRIPS
 
 
 # ── EA inter-comparison tests ───────────────────────────────────────────────
@@ -569,7 +621,7 @@ def main() -> int:
             cols = (run_level_2d if tid in CASES_2D else run_level)(tid, m, float(dx), env, py)
             paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx}.parquet", cols))
             print(f"  {tid} dx={dx}: t={cols['t'][0]:.3f} s")
-        sv = solver if tid != "A2A-020" else dict(solver, adapter=solver["adapter"] + "; HLLC scheme (the default kinetic scheme is unstable here)")
+        sv = solver if tid not in ("A2A-020", "A1F-020") else dict(solver, adapter=solver["adapter"] + "; HLLC scheme (the default kinetic scheme is unstable here)")
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY, solver=sv)
         (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
         print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']})")
