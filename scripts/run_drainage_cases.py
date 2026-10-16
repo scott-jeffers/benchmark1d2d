@@ -180,6 +180,9 @@ def main() -> int:
             with tempfile.TemporaryDirectory() as tdn:
                 td = Path(tdn)
                 write_inp(net, td / "m.inp", ENGINES[engine]["routing"])
+                from benchmark1d2d import keep
+
+                keep.inputs(engine, tid, td, files=["m.inp"])
                 try:
                     o, version = run_engine(engine, td / "m.inp", td, args.openswmm_python)
                     t, r = read_final(o)

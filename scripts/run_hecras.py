@@ -301,6 +301,9 @@ def main() -> int:
         for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
             folder = OUT / "work" / f"{tid}_dx{dx:g}"
             built = CASES[tid](folder, float(dx))
+            from benchmark1d2d import keep
+
+            keep.inputs("hecras", tid, folder, dx)
             print(f"  {tid} dx={dx}: wrote {len(built['x'])} cross sections to {folder.relative_to(REPO)}")
             if args.write_only:
                 continue

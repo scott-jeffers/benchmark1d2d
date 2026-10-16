@@ -194,6 +194,9 @@ def run_level(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
             "WATER DEPTH     M               ": h, "BOTTOM          M               ": zero})
         (d / "geo.cli").write_text("".join(f"2 2 2 0.0 0.0 0.0 0.0 2 0.0 0.0 0.0 {n + 1} {k}\n" for k, n in enumerate(loop, 1)))
         (d / "t2d.cas").write_text(STEERING.format(title=tid, t_end=t_end))
+        from benchmark1d2d import keep
+
+        keep.inputs("telemac", tid, d, dx)
         proc = subprocess.run([py, str(Path(env["HOMETEL"]) / "scripts/python3/telemac2d.py"), "t2d.cas"],
                               cwd=d, env=env, capture_output=True, text=True, timeout=3600)
         if proc.returncode != 0 or not (d / "res.slf").is_file():
@@ -371,6 +374,9 @@ def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
         (d / "geo.cli").write_text("".join(rows))
         (d / "t2d.cas").write_text(STEERING_2D.format(title=tid, t_end=t_end, extra=extra)
                                    .replace("FINITE VOLUME SCHEME = 1", f"FINITE VOLUME SCHEME = {scheme}"))
+        from benchmark1d2d import keep
+
+        keep.inputs("telemac", tid, d, dx)
         proc = subprocess.run([py, str(Path(env["HOMETEL"]) / "scripts/python3/telemac2d.py"), "t2d.cas"],
                               cwd=d, env=env, capture_output=True, text=True, timeout=7200)
         if proc.returncode != 0 or not (d / "res.slf").is_file():
@@ -498,6 +504,9 @@ def run_ea(tid: str, m: dict, env: dict, py: str) -> tuple[dict, float | None]:
         for name, text in files.items():
             (d / name).write_text(text)
         (d / "t2d.cas").write_text(cas)
+        from benchmark1d2d import keep
+
+        keep.inputs("telemac", tid, d, dx)
         proc = subprocess.run([py, str(Path(env["HOMETEL"]) / "scripts/python3/telemac2d.py"), "t2d.cas"],
                               cwd=d, env=env, capture_output=True, text=True, timeout=6 * 3600)
         if proc.returncode != 0 or not (d / "res.slf").is_file():

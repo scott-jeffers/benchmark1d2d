@@ -282,6 +282,9 @@ def main() -> int:
                     td = Path(tdn)
                     inp = td / "m.inp"
                     links, centres, keep = CASES[tid](m, float(dx), ENGINES[engine]["routing"], inp)
+                    from benchmark1d2d import keep as kept
+
+                    kept.inputs(engine, tid, td, dx, files=["m.inp"])
                     try:
                         o, version = run_engine(engine, inp, td, args.openswmm_python)
                         h, u, t_last = read_links(o, links, t_end)

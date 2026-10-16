@@ -276,6 +276,11 @@ def messages(folder: Path) -> str:
 def compute(folder: Path, ras_exe: Path, plan: str, timeout: float) -> Path | None:
     from ras_commander import RasCmdr, init_ras_project
 
+    from benchmark1d2d import keep
+
+    tid, _, lvl = folder.name.partition("_dx")
+    keep.inputs("hecras-em" if folder.parent.name == "em" else "hecras", tid, folder, float(lvl) if lvl else None)
+
     ras = init_ras_project(folder, str(ras_exe))
     try:
         r = RasCmdr.compute_plan(plan, ras_object=ras, max_runtime=timeout)

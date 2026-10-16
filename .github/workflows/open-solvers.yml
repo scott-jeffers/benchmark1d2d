@@ -23,6 +23,9 @@ on:
       - runner/python/benchmark1d2d/scoring/**
       - test_catalog/track_a/**
 
+env:
+  BENCH_KEEP_INPUTS: out/inputs  # runners keep a copy of the model files they write (Run it yourself)
+
 jobs:
   anuga:
     name: ANUGA 4.0.1
@@ -46,6 +49,10 @@ jobs:
         if: always()
         shell: bash -l {0}
         run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
+      - name: Zip the kept model files (site/fixtures/inputs via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -53,6 +60,7 @@ jobs:
           path: |
             out/anuga/*.scorecard.json
             out/curves/**/*.curve.json
+            out/inputs_zip/*.inputs.zip
 
   coupled:
     name: SWMM 5.2.4 + ANUGA 4.0.1 (coupled 1D/2D)
@@ -74,6 +82,10 @@ jobs:
         if: always()
         shell: bash -l {0}
         run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
+      - name: Zip the kept model files (site/fixtures/inputs via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -81,6 +93,7 @@ jobs:
           path: |
             out/coupled/*/*.scorecard.json
             out/curves/**/*.curve.json
+            out/inputs_zip/*.inputs.zip
 
   openswmm-coupled:
     name: OpenSWMM 6 (its own coupled 1D/2D)
@@ -100,6 +113,9 @@ jobs:
       - name: Export the chart curves (site/fixtures/curves via the result collector)
         if: always()
         run: python scripts/export_curves.py --only openswmm-2d openswmm-2d-x || echo "::warning title=Chart curves::not exported"
+      - name: Zip the kept model files (site/fixtures/inputs via the result collector)
+        if: always()
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -107,6 +123,7 @@ jobs:
           path: |
             out/coupled/*/*.scorecard.json
             out/curves/**/*.curve.json
+            out/inputs_zip/*.inputs.zip
 
   geoclaw:
     name: GeoClaw 5.9.2
@@ -136,6 +153,10 @@ jobs:
         if: always()
         shell: bash -l {0}
         run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
+      - name: Zip the kept model files (site/fixtures/inputs via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -143,6 +164,7 @@ jobs:
           path: |
             out/geoclaw/*.scorecard.json
             out/curves/**/*.curve.json
+            out/inputs_zip/*.inputs.zip
 
   lisflood:
     name: LISFLOOD-FP 8.3 (FV1, DG2, ACC)
@@ -187,6 +209,10 @@ jobs:
         if: always()
         shell: bash -l {0}
         run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
+      - name: Zip the kept model files (site/fixtures/inputs via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -194,6 +220,7 @@ jobs:
           path: |
             out/lisflood/*/*.scorecard.json
             out/curves/**/*.curve.json
+            out/inputs_zip/*.inputs.zip
 
   hydronet:
     name: HydroNet finite volume (Penn State)
@@ -225,6 +252,10 @@ jobs:
         if: always()
         shell: bash -l {0}
         run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
+      - name: Zip the kept model files (site/fixtures/inputs via the result collector)
+        if: always()
+        shell: bash -l {0}
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -232,4 +263,5 @@ jobs:
           path: |
             out/hydronet/*/*.scorecard.json
             out/curves/**/*.curve.json
+            out/inputs_zip/*.inputs.zip
 

@@ -23,6 +23,7 @@ on:
       - runner/python/benchmark1d2d/scoring/**
 
 env:
+  BENCH_KEEP_INPUTS: out/inputs  # runners keep a copy of the model files they write (Run it yourself)
   HECRAS_URL: https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.33/HEC-RAS_66_Setup.exe
   HECRAS_SHA256: 42A370B17A43892B17BD941DD0DB5415B97CBAE6C9CDA38EB11544ECE74715EB
 
@@ -63,6 +64,10 @@ jobs:
         if: always()
         shell: bash
         run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
+      - name: Zip the kept model files (site/fixtures/inputs via the result collector)
+        if: always()
+        shell: bash
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -76,6 +81,7 @@ jobs:
             out/hecras/work/**/*.png
             out/hecras/work/**/*.hdf
             out/curves/**/*.curve.json
+            out/inputs_zip/*.inputs.zip
 
   hecras-2d:
     name: HEC-RAS 6.6 2D dam breaks (finding, not a gate)
@@ -112,6 +118,10 @@ jobs:
         if: always()
         shell: bash
         run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
+      - name: Zip the kept model files (site/fixtures/inputs via the result collector)
+        if: always()
+        shell: bash
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -130,6 +140,7 @@ jobs:
             out/hecras2d/work/**/*.x01
             out/hecras2d/work/**/*.rst
             out/curves/**/*.curve.json
+            out/inputs_zip/*.inputs.zip
 
   hecras-2d-cases:
     name: HEC-RAS 6.6 2D with boundary lines, ${{ matrix.eq }} (finding, not a gate)
@@ -173,6 +184,10 @@ jobs:
         if: always()
         shell: bash
         run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
+      - name: Zip the kept model files (site/fixtures/inputs via the result collector)
+        if: always()
+        shell: bash
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -187,3 +202,4 @@ jobs:
             out/hecras2d/work/**/*.log
             out/hecras2d/work/**/*.bco*
             out/curves/**/*.curve.json
+            out/inputs_zip/*.inputs.zip

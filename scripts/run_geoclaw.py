@@ -142,6 +142,9 @@ def run_case(exe: Path, claw: Path, rdir: Path, xlo, xhi, ylo, yhi, dx, bed, eta
     rd.qinit_data.qinit_type = 4
     rd.qinit_data.qinitfiles = [[str(rdir / "qinit.xyz")]]
     rd.write(out_dir=str(rdir))
+    from benchmark1d2d import keep
+
+    keep.inputs("geoclaw", rdir.name.rsplit("_dx", 1)[0], rdir, dx)
     proc = subprocess.run([str(exe)], cwd=rdir, capture_output=True, text=True)
     if proc.returncode != 0 or not (rdir / "fort.q0001").is_file():
         raise RuntimeError(f"xgeoclaw failed in {rdir}:\n{proc.stdout[-3000:]}\n{proc.stderr[-2000:]}")

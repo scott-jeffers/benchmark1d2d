@@ -34,6 +34,7 @@ sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 
 FIXTURES = REPO / "site" / "fixtures"
 CURVES = FIXTURES / "curves"
+INPUTS = FIXTURES / "inputs"  # model files per test and model (scripts/export_inputs.py)
 NEWS = FIXTURES / "news.jsonl"  # one line per collection that changed something: the site's "What's new" page  # chart extracts (scripts/export_curves.py), one per test and model
 PARITY = REPO / "test_catalog" / "track_b" / "parity"
 
@@ -213,7 +214,7 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    lines, flips, n_changed, n_curves = ["# Collected results", ""], 0, 0, 0
+    lines, flips, n_changed, n_curves, n_inputs = ["# Collected results", ""], 0, 0, 0, 0
     for wf, wanted in WORKFLOWS.items():
         run = latest_run(args.repo, wf)
         if run is None:
@@ -238,6 +239,15 @@ def main() -> int:
                         if shift:
                             lines.append(f"  - {shift}")
                             flips += 1
+                    continue
+                if path.name.endswith(".inputs.zip"):  # the model files a runner wrote (Run it yourself)
+                    sid, _, key = path.name[: -len(".inputs.zip")].partition(".")
+                    dest = INPUTS / sid / f"{key}.zip"
+                    if key and (not dest.is_file() or dest.read_bytes() != path.read_bytes()):
+                        n_inputs += 1
+                        if not args.dry_run:
+                            dest.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copyfile(path, dest)
                     continue
                 if path.name.endswith(".curve.json"):
                     try:
@@ -278,7 +288,7 @@ def main() -> int:
                 if not args.dry_run:
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     dest.write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-    lines += ["", f"{n_changed} file(s) changed, {flips} pass/fail change(s), {n_curves} chart curve(s) updated."]
+    lines += ["", f"{n_changed} file(s) changed, {flips} pass/fail change(s), {n_curves} chart curve(s) updated, {n_inputs} model-file zip(s) updated."]
     if n_changed and not args.dry_run:
         record_news(lines)
     args.summary.parent.mkdir(parents=True, exist_ok=True)

@@ -95,6 +95,9 @@ def main() -> int:
                 print(r.stdout[-2000:], r.stderr[-4000:], file=sys.stderr)
                 raise SystemExit(f"OpenSWMM run failed: {tid} ({mesh})")
             rec = json.loads(series.read_text(encoding="utf-8"))
+            from benchmark1d2d import keep
+
+            keep.inputs(model_key, tid, work, files=["model.inp"])
             ver = rec["version"]
             sol = {"name": f"OpenSWMM Engine v6 1D/2D ({what}) {ver}", "version": ver,
                    "adapter": f"OpenSWMM's own 1D/2D coupling, defaults; vertex-coupled manholes; {what}"}

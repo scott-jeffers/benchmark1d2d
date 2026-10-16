@@ -275,6 +275,9 @@ def run_case(m: dict) -> tuple[dict, dict]:
 
     with tempfile.TemporaryDirectory() as tdn:
         net = Network(spec["network"], Path(tdn), [mh.mh["id"] for mh in manholes])
+        from benchmark1d2d import keep
+
+        keep.inputs("swmm-anuga", m["test_id"], Path(tdn), files=["net.inp"])
         record(0.0, net)
         next_out = t_out
         for t in dom.evolve(yieldstep=1.0, finaltime=t_end):

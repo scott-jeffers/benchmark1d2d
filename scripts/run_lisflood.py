@@ -59,6 +59,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 
 OUT = REPO / "out" / "lisflood"
+KEEP = {"test": ""}  # the test being run, for keep.inputs
 TS = "2024-01-01T00:00:00Z"
 G = 9.81
 KEYWORD = {"fv1": "fv1", "dg2": "dg2", "acc": "acceleration"}
@@ -146,6 +147,9 @@ def run(exe: Path, solver: str, g: Grid, zf: Field, hf: Field, t_end: float, fri
             (w / "c.bci").write_text("\n".join(bci) + "\n", encoding="ascii")
             par.append("bcifile c.bci")
         (w / "c.par").write_text("\n".join(par) + "\n", encoding="ascii")
+        from benchmark1d2d import keep
+
+        keep.inputs(f"lisflood-{solver}", KEEP["test"], w, g.dx)
         p = subprocess.run([str(exe), "c.par"], cwd=w, capture_output=True, text=True, timeout=3600)
         r = w / "res"
         if p.returncode != 0 or not (r / "c-0001.wd").exists():
@@ -284,6 +288,9 @@ def ea(exe, solver, m, tid):
             "output_precision 8",
         ]
         (w / "c.par").write_text("\n".join(par) + "\n", encoding="ascii")
+        from benchmark1d2d import keep
+
+        keep.inputs(f"lisflood-{solver}", tid, w)
         p = subprocess.run([str(exe), "c.par"], cwd=w, capture_output=True, text=True, timeout=6 * 3600)
         r = w / "res"
         n_frames = int(round(t_end / save))
@@ -341,6 +348,7 @@ def main() -> int:
                   "adapter": f"lisflood ({KEYWORD[sv]} solver, defaults; CPU, double precision)"}
         for tid in args.cases:
             m = load_manifest(tid, repo=REPO)
+            KEEP["test"] = tid
             if tid.startswith(EA_CASES):
                 t0 = time.perf_counter()
                 p = write_results_parquet(out / f"{m['test_id']}.parquet", ea(exe, sv, m, tid))
