@@ -59,6 +59,9 @@ jobs:
             hydra-uds) ARGS="--hydra-exe $(python scripts/fetch_hydra.py "$RUNNER_TEMP/hydra")" ;;
           esac
           python scripts/run_bellinge.py --model-dir out/bellinge/model/7_SWMM --engines ${{ matrix.engine }} $ARGS --timeout 7200
+      - name: Export the chart curves (site/fixtures/curves via the result collector)
+        if: always()
+        run: python scripts/export_curves.py --only ${{ matrix.engine }} || echo "::warning title=Curves::not exported"
       - name: Zip the model files (Run it yourself)
         if: always()
         run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
@@ -67,9 +70,10 @@ jobs:
         with:
           name: bellinge-field-${{ matrix.engine }}
           path: |
-            out/bellinge_track_a/**/*.scorecard.json
-            out/bellinge_track_a/**/*.parquet
-            out/bellinge_track_a/**/runs.json
+            out/swmm_track_a/**/A1F-100_*.scorecard.json
+            out/swmm_track_a/**/A1F-100_*.parquet
+            out/swmm_track_a/**/A1F-100.runs.json
+            out/curves/**/A1F-100.curve.json
             out/inputs_zip/*.inputs.zip
 
 

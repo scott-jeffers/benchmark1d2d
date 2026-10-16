@@ -44,7 +44,7 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO / "scripts")]
 
-OUT = REPO / "out" / "bellinge_track_a"
+OUT = REPO / "out" / "swmm_track_a"  # with the other SWMM Track A results, so the chart export finds them
 TS = "2026-01-01T00:00:00Z"
 TEST = "A1F-100"
 ENGINES = {
@@ -200,7 +200,7 @@ def main() -> int:
                   "adapter": "swmm (the published Bellinge model, run dates set per event)"}
         card = score_case(m, path, timestamp=TS, private_key=key, solver=solver)
         (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-        (out / "runs.json").write_text(json.dumps(runs, indent=1) + "\n", encoding="utf-8")
+        (out / f"{m['test_id'].split('_')[0]}.runs.json").write_text(json.dumps(runs, indent=1) + "\n", encoding="utf-8")
         print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']})")
         for r in card["criteria_results"]:
             print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}  {r.get('detail', '')}")

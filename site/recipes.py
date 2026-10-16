@@ -57,6 +57,17 @@ def recipe(key: str, sid: str) -> dict | None:
     if key in ("hecras", "hecras-em"):
         script, cmd = _hecras(sid, "em" if key == "hecras-em" else "elm")
         return dict(install=HECRAS, run=[cmd], script=script, workflow="hecras.yml", platform="Windows")
+    if key in ("swmm524", "openswmm-dw", "openswmm-fv", "hydra-uds") and sid == "A1F-100":
+        extra = {"swmm524": [], "openswmm-dw": OPENSWMM, "openswmm-fv": OPENSWMM, "hydra-uds": HYDRA}[key]
+        flags = {"swmm524": "", "openswmm-dw": " --openswmm-python .venv-openswmm/bin/python",
+                 "openswmm-fv": " --openswmm-python .venv-openswmm/bin/python", "hydra-uds": ' --hydra-exe "$HYDRA"'}[key]
+        return dict(install=['python -m pip install -e ".[dev,engines]"', *extra],
+                    run=["python scripts/bellinge.py fetch --out out/bellinge",
+                         f"python scripts/run_bellinge.py --model-dir out/bellinge/model/7_SWMM --engines {key}{flags}"],
+                    script="scripts/run_bellinge.py", workflow="bellinge.yml", platform="Linux",
+                    note=("The model files below are the published model with each storm's dates set. The rain-gauge file they "
+                          "read (rg_bellinge_Jun2010_Aug2021.dat, 28 MB) is too large to include; the fetch step downloads it with "
+                          "the model from DTU Data."))
     if key in ("swmm524", "openswmm-dw", "openswmm-fv", "hydra-uds"):
         drainage = sid.startswith("A1D")
         script = "scripts/run_drainage_cases.py" if drainage else "scripts/run_swmm_track_a.py"

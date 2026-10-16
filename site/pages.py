@@ -1261,7 +1261,8 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     group = GROUPS.get(st["group"], "")
     chart_html, chart_data = compare_chart(m, runs, exact, profiles)
     net_html = network_charts(m, runs, extra)
-    netsec = (f'<section class="section" style="padding-bottom:0"><h2>Exact answer and models</h2>{net_html}</section>' if net_html else "")
+    net_head = "Measurements and models" if (m.get("reference") or {}).get("kind") == "measured" else "Exact answer and models"
+    netsec = (f'<section class="section" style="padding-bottom:0"><h2>{net_head}</h2>{net_html}</section>' if net_html else "")
     if net_html:
         chart_html = net_html
 

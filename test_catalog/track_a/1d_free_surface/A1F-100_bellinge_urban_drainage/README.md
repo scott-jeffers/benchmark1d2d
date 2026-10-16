@@ -42,6 +42,24 @@ Both criteria were set before any run, from published standards rather than from
 
 The published model is uncalibrated (ESSD paper §4), so this case judges the model and the engine together. A failure here can come from the model's set-up as much as from the engine; the parity comparison on the same model (the Bellinge tier on the parity page) isolates the engine.
 
+## First results (October 2026)
+
+EPA SWMM 5.2.4, OpenSWMM 6 (dynamic wave) and Hydra 17 all fail, by almost the same amounts. The median NSE is −0.49, −0.49 and −0.53, and the median peak error is 0.30, 0.30 and 0.33 m. The three engines agree with each other far better than any of them agrees with the meters, so the misses come from the published model, not from the engines.
+
+Median over the eight storms, EPA SWMM 5.2.4:
+
+| Meter | NSE | Peak error |
+|---|---|---|
+| G71F68Y_LevelPS (pump sump) | 0.81 | −0.04 m |
+| G73F010 (one storm) | 0.45 | −0.02 m |
+| G71F06R_LevelInlet | −0.52 | +0.05 m |
+| G71F05R_LevelInlet | −0.83 | −0.26 m |
+| G71F04R_Level2 (basin) | −0.54 | −1.21 m |
+| G71F05R_LevelBasin (basin) | −0.41 | −2.56 m |
+| G80F13P_LevelPS (pump sump) | −1.79 | +0.09 m |
+
+The two basins fill 1.2–2.6 m less than measured in every storm. The published model is the `nopervious` variant, which leaves out runoff from pervious surfaces, and that is the likeliest cause. Calibrating the model is outside this case, which runs the model as published.
+
 ## History
 
 - 1.0.0: first scored version. The rainfall is the model's own gauge file rather than the radar. Peak levels are judged in metres, not per cent.

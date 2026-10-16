@@ -75,7 +75,12 @@ CHAIN = ("A1D-001", "A1D-002", "A1D-005")
 TIME = ("A1D-003", "A1D-004")
 COUPLED = ("A12-010", "A12-011", "A12-012")
 GAUGE = ("A2C-EA1", "A2C-EA2", "A2C-EA4", "A2C-EA5")
-SIDS = CHAIN + TIME + COUPLED + GAUGE
+FIELD = ("A1F-100",)
+SIDS = CHAIN + TIME + COUPLED + GAUGE + FIELD
+# the field case's charts: its model's own storm at three meters (a pump sump the model follows, a basin it
+# under-fills, a second pump sump)
+FIELD_EVENT = {"A1F-100": "2012-06-29"}
+FIELD_PICK = {"A1F-100": ["G71F68Y_LevelPS", "G71F05R_LevelBasin", "G80F13P_LevelPS"]}
 MAX_POINTS = 360
 
 
@@ -116,6 +121,24 @@ def extract(m, folder: Path) -> dict | None:
             wl = [(_r(hh + z, 4) if (z is not None and hh > 1e-3) else None) for hh in h[::step]]
             out[pr["id"]] = {"t": [round(float(v), 1) for v in t[::step]], "wl": wl, "h": [_r(v, 4) for v in h[::step]]}
         return {"probes": out} if out else None
+    if sid in FIELD:
+        p = folder / f"{tid}.parquet"
+        if not p.is_file():
+            return None
+        ev = next(e for e in m["simulation"]["events"] if e["id"] == FIELD_EVENT[sid])
+        t0 = _event_t0(m, ev)
+        df = pd.read_parquet(p, columns=["t", "h", "z", "element_id"])
+        df = df[(df["t"] > t0) & (df["t"] <= t0 + 2 * 86400)]
+        nodes = {pr["id"]: pr["element"] for pr in m["simulation"]["probes"]}
+        out = {}
+        for g in FIELD_PICK[sid]:
+            sub = df[df["element_id"] == nodes[g]].sort_values("t")
+            if sub.empty:
+                continue
+            step = max(1, int(np.ceil(len(sub) / MAX_POINTS)))
+            sub = sub.iloc[::step]
+            out[g] = {"t": [round((v - t0) / 3600, 3) for v in sub["t"]], "wl": [_r(a + b, 4) for a, b in zip(sub["h"], sub["z"])]}
+        return {"field": out} if out else None
     if sid in COUPLED:
         p = folder / f"{tid}.parquet"
         if not p.is_file():
@@ -317,6 +340,40 @@ def gauge_charts(m, data):
     return charts
 
 
+def _event_t0(m, ev) -> float:
+    from datetime import datetime
+
+    return (datetime.fromisoformat(ev.get("score_from", ev["start"])) - datetime.fromisoformat(m["simulation"]["epoch"])).total_seconds()
+
+
+def field_charts(m, data):
+    import pandas as pd
+
+    sid = m["test_id"].split("_")[0]
+    ev = next(e for e in m["simulation"]["events"] if e["id"] == FIELD_EVENT[sid])
+    t0 = _event_t0(m, ev)
+    meas = pd.read_parquet(Path(m["_case_dir"]) / m["reference"]["data_path"])
+    meas = meas[meas["event"] == ev["id"]]
+    nodes = {pr["id"]: pr["element"] for pr in m["simulation"]["probes"]}
+    charts = []
+    for g in FIELD_PICK[sid]:
+        series = {k: {"x": d["field"][g]["t"], "y": d["field"][g]["wl"]} for k, d in data.items() if g in (d.get("field") or {})}
+        mg = meas[meas["gauge"] == g].sort_values("t")
+        if not series or mg.empty:
+            continue
+        step = max(1, int(np.ceil(len(mg) / MAX_POINTS)))
+        mg = mg.iloc[::step]
+        floor = float(mg["floor"].iloc[0]) if "floor" in mg.columns else None
+        charts.append(dict(
+            id=f"field-{g}", title=f"Water level at meter {g} (node {nodes[g]}), storm of {ev['id']}",
+            note=("Measured level (blue) and each engine running the published model. The meter reads no lower than "
+                  + (f"{floor:.2f} m" if floor is not None else "its floor") + "; the scorer reads the model the same way."),
+            xlabel=f"Hours from {ev['id']} 00:00", ylabel="Water level (m above DVR90)",
+            exact=dict(x=[round((v - t0) / 3600, 3) for v in mg["t"]], y=[_r(v, 4) for v in mg["wse"]], line_only=True, label="Measured"),
+            series=series, free=True, snap=False, unit="m"))
+    return charts
+
+
 def build(m, data: dict) -> list | None:
     """Charts for test ``m`` from each model's extract (``{model key: extract}``)."""
     sid = m["test_id"].split("_")[0]
@@ -329,6 +386,8 @@ def build(m, data: dict) -> list | None:
         return coupled_charts(m, data)
     if sid in GAUGE:
         return gauge_charts(m, data)
+    if sid in FIELD:
+        return field_charts(m, data)
     return None
 
 
