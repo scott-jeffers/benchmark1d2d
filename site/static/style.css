@@ -493,3 +493,37 @@ details.share input { font: 13px var(--mono); padding: 6px 8px; border: 1px soli
 .news-change { border-left: 3px solid var(--rule); padding: 4px 0 4px 16px; margin: 0 0 18px; }
 .news-change ul { margin: 6px 0 0; padding-left: 18px; font-size: 15px; }
 .news-change .kicker { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
+
+/* scoring review */
+.badge.sm { font-size: 12.5px; padding: 3px 10px; }
+.badge.unsure { background: var(--rule-2); color: var(--ink-2); }
+.tmx-wrap { margin: 4px 0 12px; max-width: 640px; }
+table.tmx { width: 100%; }
+table.tmx td { text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+table.tmx td.hl { background: var(--water-wash); }
+.review-rules h3 { margin-top: 0; }
+.ord-chart { display: grid; gap: 18px; }
+.ord-group { border: 1px solid var(--rule); border-radius: var(--radius); background: var(--sheet); padding: 12px 14px; }
+.ord-head { margin-bottom: 4px; }
+.ord-head a { color: var(--ink); text-decoration: none; }
+.ord-row { display: grid; grid-template-columns: minmax(120px, 230px) minmax(0, 1fr) minmax(220px, 260px); gap: 10px; align-items: center; padding: 2px 0; }
+.ord-row .lab { font-size: 13.5px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ord-row .val { font-size: 13px; font-variant-numeric: tabular-nums; display: flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: nowrap; white-space: nowrap; }
+.ord-svg { width: 100%; height: 16px; display: block; overflow: visible; }
+.ord-svg.axis { height: 20px; }
+.ord-svg text { font-size: 10px; fill: var(--ink-2); font-family: var(--sans); }
+.ord-svg .tk { stroke: var(--rule); }
+.ord-svg .need { stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 3 2; }
+.ord-svg .ok-zone { fill: var(--pass-soft); opacity: .55; }
+.ord-svg .ci { stroke-width: 2.5; stroke-linecap: round; }
+.ord-svg .ci.pass { stroke: var(--pass); } .ord-svg .ci.fail { stroke: var(--fail); } .ord-svg .ci.unsure { stroke: var(--ink-3); }
+.ord-svg .pt.pass { fill: var(--pass); } .ord-svg .pt.fail { fill: var(--fail); } .ord-svg .pt.unsure { fill: var(--ink-2); }
+.check .lim .mg { color: var(--ink-2); }
+.check.bad .lim .mg { color: var(--fail-ink); font-weight: 600; }
+@media (max-width: 640px) {
+  .ord-row { grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 6px 0; border-top: 1px solid var(--rule-2); }
+  .ord-row.axis-row { border-top: 0; }
+  .ord-row.axis-row .lab, .ord-row.axis-row .val { display: none; }
+  .ord-row .val { justify-content: flex-start; }
+  table.tmx th, table.tmx td { padding: 8px 6px; font-size: 13px; }
+}

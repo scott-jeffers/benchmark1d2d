@@ -17,6 +17,8 @@ from typing import Any
 
 import numpy as np
 
+import review
+from benchmark1d2d.scoring import method_v2
 from stories import CHECK_NAMES, GROUP_BLURBS, GROUPS, STORIES, VAR_WORDS
 from tiles import tile_svg
 
@@ -304,6 +306,11 @@ def check_limit(c: dict) -> str:
     return {"abs<=": f"allowed: {v}", "<=": f"allowed: {v}", ">=": f"needed: at least {v}"}.get(op, f"{op} {v}")
 
 
+def _margin_span(ck: dict) -> str:
+    t = review.margin_text(ck.get("margin"))
+    return f' · <span class="mg">{esc(t)}</span>' if t else ""
+
+
 def checks_for(m: dict, card: dict) -> list[dict]:
     """Every check of one run in plain words: label, value, limit, ok."""
     defs = {c["id"]: c for c in m["scoring"]["criteria"]}
@@ -311,8 +318,9 @@ def checks_for(m: dict, card: dict) -> list[dict]:
     for r in card.get("criteria_results", []):
         d = defs.get(r["id"], r)
         d = {**d, "threshold": r.get("threshold", d.get("threshold", {}))}
+        mg = method_v2.margin(r.get("observed"), d.get("threshold") or {})
         out.append(dict(label=check_label(d), value=check_value(d, r.get("observed")), limit=check_limit(d),
-                        ok=bool(r.get("passed")), gating=bool(r.get("gating", True))))
+                        ok=bool(r.get("passed")), gating=bool(r.get("gating", True)), margin=mg))
     conv = card.get("convergence_result") or {}
     if conv.get("errors"):
         p = conv.get("observed_order")
@@ -1157,7 +1165,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         c = runs[k]
         s = SOLVER[k]
         checks = "".join(f'<div class="check{"" if ck["ok"] else " bad"}"><div class="k">{esc(ck["label"])}</div>'
-                         f'<div class="v">{"✓" if ck["ok"] else "✗"} {esc(ck["value"])}</div><div class="lim">{esc(ck["limit"])}</div></div>'
+                         f'<div class="v">{"✓" if ck["ok"] else "✗"} {esc(ck["value"])}</div><div class="lim">{esc(ck["limit"])}{_margin_span(ck)}</div></div>'
                          for ck in checks_for(m, c))
         note = NOTES.get((sid, k), "")
         name = s["name"] if not k.startswith("lisflood") else f'{s["name"]} {s["sub"].split("·")[-1].strip()}'

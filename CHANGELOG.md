@@ -5,6 +5,8 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ## [Unreleased]
 
+- **Scoring method v2, proposed.** A revision of how results are judged, for reviewers (`docs/methodology/scoring_v2.md`): two verdicts (accurate, converges), each check's share of its limit, the convergence rate fitted through every grid with a 90 % interval and a third outcome, inconclusive, plus declared precision floors. It runs alongside the current method (`benchmark1d2d.scoring.method_v2`) without changing any verdict; the new scoring review page shows every result both ways, and every check on a test page now shows how much of its limit it used.
+
 - **OpenSWMM 6 on the coupled 1D/2D tests.** OpenSWMM Engine v6's own sewer–surface coupling, run with its defaults on A12-010 to 012 on two triangulations of the case grid (`scripts/run_openswmm_coupled.py`, a new CI job). Two triangles per square pass A12-010 and A12-012; four per square put the A12-010 street 8 mm too deep. On A12-011 the yard drains 12–14 mm below the gully crest on both meshes.
 
 The website grows up: a picture and a chart for every test, a model-against-

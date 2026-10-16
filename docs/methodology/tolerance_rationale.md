@@ -1,5 +1,11 @@
 # How tolerances are set
 
+> **Under review:** a proposed revision of how results are judged (two verdicts,
+> margins, the convergence rate with its uncertainty) is set out in
+> [scoring method v2](scoring_v2.md); every result is shown under both methods on the
+> [scoring review page](https://scott-jeffers.github.io/benchmark1d2d/scoring-review.html).
+> Until reviewers adopt it, the rules below decide every verdict.
+
 Every scoring criterion carries a `rationale` string. That string appears on
 the public test page. A threshold is never a bare number.
 

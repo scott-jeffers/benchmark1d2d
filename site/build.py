@@ -1283,6 +1283,7 @@ def main() -> int:
     news.atom_feed(ROOT / "CHANGELOG.md", SITE / "fixtures" / "news.jsonl", DIST / "feed.xml")
     out_pages["solvers.html"] = pages.solvers_index(manifests, runs)
     out_pages["compare.html"] = pages.compare_page(manifests, runs)
+    out_pages["scoring-review.html"] = pages.review.review_page(pages.layout, manifests, runs, pages.SOLVER, pages.SOLVERS_ORDER)
     (DIST / "solvers").mkdir(exist_ok=True)
     for k in {k for v in runs.values() for k in v}:
         out_pages[f"solvers/{k}.html"] = pages.solver_page(k, manifests, runs)
