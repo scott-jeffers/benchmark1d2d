@@ -1,0 +1,18 @@
+{
+  "tier": "bellinge",
+  "upstream_commit": null,
+  "reference": "EPA SWMM 5.2.4 (swmm-toolkit 0.17.0)",
+  "candidate": "hydra",
+  "candidate_version": "17.0.0/4.1.1",
+  "models": 1,
+  "status": {
+    "scored": 1
+  },
+  "within_pct": {
+    "1": 0,
+    "2": 0,
+    "5": 0
+  },
+  "median_worst_pct": 145.61953075532935,
+  "metrics": "peak_depth = worst node, relative peak depth; volume = worst link, relative integral of |Q|"
+}
