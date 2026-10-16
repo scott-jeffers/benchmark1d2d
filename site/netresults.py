@@ -350,6 +350,6 @@ def page(layout, index: list[dict]) -> str:
   </div>
 </section>
 </div>
-<script type="application/json" id="nv-index">{json.dumps(dict(tests=index, first=first))}</script>"""
+<script type="application/json" id="nv-index">{json.dumps(dict(tests=[{k: v for k, v in t.items() if k != "thumb"} for t in index], first=first))}</script>"""
     return layout("Network viewer", body, "network.html", scripts='<script src="static/netview.js" defer></script>',
                   description="SWMM and EPANET benchmark networks drawn from their .inp files, with every engine's results on the map.")
