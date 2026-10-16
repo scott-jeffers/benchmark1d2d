@@ -12,3 +12,4 @@
 {"date": "2026-10-15T20:38Z", "items": [{"workflow": "open-solvers.yml", "text": "A12-010_manhole_surcharge_onto_street · OpenSWMM Engine v6 1D/2D (four triangles per grid square) 6.0.0a4.dev1: updated (street_depth)"}]}
 {"date": "2026-10-16T10:01Z", "items": [{"workflow": "open-solvers.yml", "text": "A2A-010_macdonald_2d · ANUGA 4.0.1: updated (depth_L1, mass)"}]}
 {"date": "2026-10-16T10:03Z", "items": [{"workflow": "hecras.yml", "text": "A2C-EA2_floodplain_depressions · HEC-RAS 6.6 2D SWE-ELM: updated (mass_conservation)"}, {"workflow": "hecras.yml", "text": "A2C-EA2_floodplain_depressions · HEC-RAS 6.6 2D SWE-EM: updated (mass_conservation)"}]}
+{"date": "2026-10-16T10:28Z", "items": [{"workflow": "open-solvers.yml", "text": "A12-010_manhole_surcharge_onto_street · OpenSWMM Engine v6 1D/2D (four triangles per grid square) 6.0.0a4.dev1: updated (street_depth)"}]}
