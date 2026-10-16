@@ -13,6 +13,10 @@ Usage::
     python scripts/fetch_inputs.py                # every case
     python scripts/fetch_inputs.py A2C-EA5        # cases whose id starts with A2C-EA5
     python scripts/fetch_inputs.py --check        # report what is missing; no downloads
+
+Raw observation archives (inputs with role ``observations``, such as the 390 MB
+Bellinge sensor data) are skipped unless ``--with-observations`` is given: no
+run reads them, since each test's reference is already extracted and committed.
 """
 
 from __future__ import annotations
@@ -57,7 +61,7 @@ def extract(data: bytes, members: list[str]) -> bytes:
     return data
 
 
-def iter_remote_inputs(selector: str | None):
+def iter_remote_inputs(selector: str | None, observations: bool = False):
     for mpath in sorted((REPO / "test_catalog").rglob("manifest.json")):
         manifest = json.loads(mpath.read_text(encoding="utf-8"))
         tid = str(manifest.get("test_id", ""))
@@ -67,6 +71,9 @@ def iter_remote_inputs(selector: str | None):
             if entry.get("pending"):
                 print(f"pending  {tid}: {entry['path']} ({entry['pending'].get('reason', '')[:70]})")
                 continue
+            if entry.get("role") == "observations" and not observations:
+                print(f"skipped  {tid}: {entry['path']} (raw observations; the reference is committed)")
+                continue
             if entry.get("committed", True) is False and "source" in entry:
                 yield tid, mpath.parent, entry
 
@@ -75,11 +82,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("selector", nargs="?", help="test id prefix")
     ap.add_argument("--check", action="store_true", help="only report status")
+    ap.add_argument("--with-observations", action="store_true", help="also fetch raw observation archives")
     args = ap.parse_args()
 
     missing = 0
     sources: dict[str, bytes] = {}
-    for tid, case_dir, entry in iter_remote_inputs(args.selector):
+    for tid, case_dir, entry in iter_remote_inputs(args.selector, args.with_observations):
         target = case_dir / entry["path"]
         if target.is_file() and sha256(target.read_bytes()) == entry["sha256"].lower():
             print(f"ok       {tid}: {entry['path']}")
