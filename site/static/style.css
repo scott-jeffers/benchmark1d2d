@@ -544,3 +544,21 @@ table.tmx td.hl { background: var(--water-wash); }
 pre.code { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; margin: 8px 0; white-space: pre; }
 pre.code code { font-family: var(--mono); }
 details.run-it summary { font-weight: 600; }
+
+/* results viewer */
+.vw-pick { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; margin-bottom: 8px; }
+.vw-pick label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); flex: 1 1 320px; min-width: 0; }
+.vw-pick select { font: inherit; font-size: 16px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); width: 100%; }
+.vw-maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+.vw-map { margin: 0; background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); padding: 10px; }
+.vw-map figcaption { font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.vw-map canvas { width: 100%; height: auto; display: block; background: repeating-conic-gradient(var(--rule-2) 0 25%, transparent 0 50%) 0 0 / 12px 12px; border-radius: 6px; }
+.vw-map.vw-stale canvas { opacity: .35; }
+.vw-legend { max-width: 520px; margin: 4px 0 14px; }
+.vw-bar { height: 12px; border-radius: 6px; border: 1px solid var(--rule); }
+.vw-ticks { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+.vw-time { display: flex; align-items: center; gap: 12px; margin: 8px 0 12px; }
+.vw-time input[type=range] { flex: 1; max-width: 520px; }
+#vw-conv .grid { stroke: var(--rule-2); }
+#vw-conv .need { stroke: var(--ink-2); stroke-dasharray: 5 4; stroke-width: 1.5; }
+.vw-time[hidden], .vw-pick [hidden], [data-mode][hidden] { display: none !important; }

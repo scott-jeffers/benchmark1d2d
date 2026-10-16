@@ -46,12 +46,24 @@ SOURCES = [
 ]
 
 
-def extracts_for(m: dict, folder: Path) -> dict | None:
+def extracts_for(m: dict, folder: Path, fields_only: bool = False) -> dict | None:
+    import fields
     import netcharts
     import profiles
 
-    sid = m["test_id"].split("_")[0]
     rec: dict = {}
+    if fields.is_2d(m):  # the depth map for the results viewer
+        try:
+            f = fields.extract_field(m, folder)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  {m['test_id']} {folder}: field skipped ({exc})", file=sys.stderr)
+            f = None
+        if f:
+            rec["field"] = f
+    if fields_only:
+        return rec or None
+
+    sid = m["test_id"].split("_")[0]
     if sid in profiles.CHART:
         p = profiles.finest(folder, m["test_id"])
         if p is not None:
@@ -77,6 +89,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--only", nargs="*", help="model keys to export (default: every folder that exists)")
     ap.add_argument("--local", action="store_true", help="also file the extracts in site/fixtures/curves/")
+    ap.add_argument("--fields-only", action="store_true",
+                    help="with --local: add only the depth maps to existing fixture extracts of the same test version")
     args = ap.parse_args()
 
     from build import load_manifests  # type: ignore
@@ -90,10 +104,23 @@ def main() -> int:
         if not folder.is_dir():
             continue
         for m in manifests:
-            rec = extracts_for(m, folder)
+            rec = extracts_for(m, folder, args.fields_only)
             if not rec:
                 continue
             sid = m["test_id"].split("_")[0]
+            if args.fields_only:
+                card = folder / f"{m['test_id']}.scorecard.json"
+                if not card.is_file() or json.loads(card.read_text())["case_version"] != m["case_version"]:
+                    continue  # never put a map from an older version of the test on the site
+                fx = FIXTURES / sid / f"{key}.json"
+                old = json.loads(fx.read_text()) if fx.is_file() else {"test_id": m["test_id"], "case_version": m["case_version"], "key": key}
+                if old.get("case_version") != m["case_version"]:
+                    continue
+                old["field"] = rec["field"]
+                fx.parent.mkdir(parents=True, exist_ok=True)
+                fx.write_text(json.dumps(old, separators=(",", ":")) + "\n", encoding="utf-8")
+                n += 1
+                continue
             doc = {"test_id": m["test_id"], "case_version": m["case_version"], "key": key, **rec}
             text = json.dumps(doc, separators=(",", ":")) + "\n"
             dest = OUT / key / f"{sid}.curve.json"

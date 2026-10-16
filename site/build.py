@@ -1172,6 +1172,7 @@ def main() -> int:
 
     manifests = load_manifests()
     known = {m["test_id"] for m in manifests}
+    fields_by: dict[str, dict] = {}  # sid -> model key -> depth map (results viewer)
     cards = {k: v for k, v in load_scorecards(score_dirs).items() if k in known}  # one card per test (bundles, reports)
     runs = {k: v for k, v in pages.load_runs(all_dirs).items() if k in known}      # every solver's card per test
     idx_path = ROOT / "test_catalog/track_b/corpus_index.parquet"
@@ -1244,6 +1245,8 @@ def main() -> int:
                 curves[k] = rec["profile"]
             if rec.get("net"):
                 net_data[k] = rec["net"]
+            if rec.get("field"):
+                fields_by.setdefault(sid, {})[k] = rec["field"]
         for k in ("demo2d",):
             if k in by and sid in netcharts.SIDS:
                 for d in result_dirs:
@@ -1304,6 +1307,22 @@ def main() -> int:
     news.atom_feed(ROOT / "CHANGELOG.md", SITE / "fixtures" / "news.jsonl", DIST / "feed.xml")
     out_pages["solvers.html"] = pages.solvers_index(manifests, runs)
     out_pages["compare.html"] = pages.compare_page(manifests, runs)
+    import fields as fields_mod
+    import viewer
+
+    for m in manifests:  # the demo solver's maps come from its local results (it runs in every build's CI)
+        sid_ = pages.sid_of(m["test_id"])
+        if "demo2d" in (runs.get(m["test_id"]) or {}) and fields_mod.is_2d(m):
+            for d in result_dirs:
+                try:
+                    f = fields_mod.extract_field(m, d)
+                except Exception:  # noqa: BLE001
+                    f = None
+                if f:
+                    fields_by.setdefault(sid_, {})["demo2d"] = f
+                    break
+    vindex = viewer.write_data(DIST, manifests, runs, fields_by, pages.SOLVER, pages.SOLVERS_ORDER, pages.verdict, pages.story)
+    out_pages["viewer.html"] = viewer.viewer_page(pages.layout, vindex)
     out_pages["scoring-review.html"] = pages.review.review_page(pages.layout, manifests, runs, pages.SOLVER, pages.SOLVERS_ORDER)
     (DIST / "solvers").mkdir(exist_ok=True)
     for k in {k for v in runs.values() for k in v}:
