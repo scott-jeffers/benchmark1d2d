@@ -745,9 +745,15 @@ _CLASS_CLAIM = {
 }
 
 
-def certification_claims(manifest: dict[str, Any], passed: bool) -> list[str]:
-    """Claims a passing card may carry, derived from the case's class and tolerance."""
+def certification_claims(manifest: dict[str, Any], passed: bool, verified: bool = True) -> list[str]:
+    """Claims a passing card may carry, derived from the case's class and tolerance.
+
+    A Track A claim (A-V and the like) needs the result to converge as well
+    as pass (scoring method 2.1: ``verified``).
+    """
     if not passed:
+        return []
+    if manifest.get("track") == "A" and not verified:
         return []
     if manifest.get("track") == "A":
         claim = _CLASS_CLAIM.get(str(manifest.get("test_class")))
@@ -806,7 +812,7 @@ def score_case(
         row["margin"] = chk["margin"]
     verdict = judged["overall"]
     passed = verdict == "pass"
-    claims = certification_claims(manifest, passed)
+    claims = certification_claims(manifest, passed, judged["verified"])
 
     return build_scorecard(
         test_id=manifest["test_id"],

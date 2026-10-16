@@ -26,6 +26,17 @@ depth error, and production codes treat depths under ~1 mm as dry, so every
 production code failed it by 12–211 m while their wave bodies were close. It
 is still reported, but no longer gates.
 
+## Front limit (v3.0.0)
+
+The volume front must lie within **9.8 m** of the exact one: 5 × the error
+of the suite's first-order reference scheme on the finest grid (1.95 m), the
+rule R7 of [scoring method 2](../../../../docs/methodology/scoring_v2.md).
+Version 2 allowed two finest cells (2.5 m), a resolution-based limit that
+failed production codes whose depths are within 1–2 mm of the exact answer
+everywhere and whose front lags 3–6 m (1–1.5 % of the 376 m it travels).
+Whether the error shrinks at the expected rate is judged separately
+(*Converges*), and is needed for the *Verified* label.
+
 ## Pitfalls
 
 - Wet/dry treatment and positivity-preserving fluxes dominate front error;

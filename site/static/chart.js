@@ -55,6 +55,8 @@
     var pad = (y1 - y0) * 0.08 || 0.1; y1 += pad; if (D.free || D.symmetric || (E && (E.floor || E.line_only))) y0 -= pad;
     if (x1 === x0) x1 = x0 + 1;
     if (y1 === y0) { y1 += 0.5; y0 -= 0.5; }
+    if (D.xlim) { x0 = D.xlim[0]; x1 = D.xlim[1]; }  // a close-up: fixed window
+    if (D.ylim) { y0 = D.ylim[0]; y1 = D.ylim[1]; }
     }
     ranges();
     var snapX = [];
@@ -133,11 +135,24 @@
         node("line", { x1: px(D.dam), x2: px(D.dam), y1: T + 10, y2: B, "class": "dam" });
         var dl = node("text", { x: px(D.dam) + 6, y: T + 14, "class": "axl", "font-size": 12 }); dl.textContent = "dam";
       }
+      if (D.front_marks && D.front_exact !== null && D.front_exact !== undefined) {
+        // the exact volume front, the allowed band around it, and each shown model's front
+        var fl = D.front_limit || 0;
+        node("rect", { x: px(D.front_exact - fl), y: T, width: Math.max(0, px(D.front_exact + fl) - px(D.front_exact - fl)), height: B - T, "class": "band" });
+        node("line", { x1: px(D.front_exact), x2: px(D.front_exact), y1: T + 10, y2: B, "class": "dam" });
+        var fx = node("text", { x: px(D.front_exact) + 6, y: T + 14, "class": "axl", "font-size": 12 }); fx.textContent = "exact front ±" + fmt(fl) + " m";
+        S.forEach(function (s) {
+          var f = D.fronts && D.fronts[s.key];
+          if (!shown[s.key] || f === undefined || D.front_exact + f < x0 || D.front_exact + f > x1) return;
+          var X = px(D.front_exact + f);
+          node("path", { d: "M" + X + "," + (B - 1) + " l-6,10 l12,0 Z", fill: s.color, stroke: "none" });
+        });
+      }
       var final = !E || !E.frames || frame === E.frames.length - 1;
       if (E && shown.exact) {
         var ey = E.frames ? E.frames[frame] : E.y;
-        if (!E.step && !E.floor && !E.line_only) node("path", { d: path(E.x, ey) + "L" + px(E.x[E.x.length - 1]) + "," + B + " L" + px(E.x[0]) + "," + B + " Z", "class": "exact-area" });
-        node("path", { d: E.step ? stepPath(E.x, ey) : path(E.x, ey), "class": "exact" + (E.target ? " target" : "") });
+        if (!E.step && !E.floor && !E.line_only) node("path", { d: path(E.x, ey) + "L" + px(E.x[E.x.length - 1]) + "," + B + " L" + px(E.x[0]) + "," + B + " Z", "class": "exact-area", "clip-path": "url(#" + cid + ")" });
+        node("path", { d: E.step ? stepPath(E.x, ey) : path(E.x, ey), "class": "exact" + (E.target ? " target" : ""), "clip-path": "url(#" + cid + ")" });
       }
       if (final) {
         S.forEach(function (s) {
@@ -173,7 +188,7 @@
           var f = D.fronts && D.fronts[s.key];
           if (shown[s.key] && f !== undefined) fp.push(s.label + " " + fmt(Math.abs(f)) + " m " + (f < 0 ? "behind" : "ahead"));
         });
-        readout.textContent = "Exact front (where the last 5 % of the released water begins) at " + Math.round(D.front_exact).toLocaleString() + " m. Models: " + (fp.length ? fp.join(", ") + " (allowed 2.5 m)." : "none shown.");
+        readout.textContent = "Exact front (where the last 5 % of the released water begins) at " + Math.round(D.front_exact).toLocaleString() + " m. Models: " + (fp.length ? fp.join(", ") + " (allowed " + fmt(D.front_limit || 0) + " m)." : "none shown.");
       } else readout.textContent = baseText || (S.length ? "Lines are each model's result on its finest grid at the end of the run" + (E ? "; the blue line is the exact answer." : ".") : "");
     }
 

@@ -134,7 +134,7 @@
         "fail",
         "inconclusive"
       ],
-      "description": "Overall verdict (method 2): fail if a gating check fails or the convergence rate is below its minimum over its whole 90 % range; inconclusive if the checks pass and the range straddles the minimum; else pass. `passed` is true only for pass."
+      "description": "Overall verdict. Method 2.1: pass when every gating check is within its limit (accurate); the convergence verdict is reported separately in `judgement.converges`, and `judgement.verified` is true only when the result also converges. Method 2.0 cards may carry `inconclusive`. `passed` is true only for pass."
     },
     "judgement": {
       "type": "object",
@@ -156,6 +156,10 @@
             "null"
           ],
           "description": "Largest |observed| / limit over the gating checks."
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Passes and converges (or has no grid study, or is at its declared precision)."
         }
       },
       "required": [

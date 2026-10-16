@@ -22,8 +22,12 @@ whole site uses one method. The rules:
    precision, the order is reported but does not gate (``at_floor``).
    Errors at round-off on every grid still fail, as now.
 
-Overall: *fail* if Accurate fails or Converges fails; *inconclusive* if
-Accurate passes and Converges is inconclusive; otherwise *pass*.
+Overall (method 2.1, 16 October 2026): the result *passes* when it is
+*Accurate*. *Converges* is its own verdict, shown with every result, and a
+result carries the *Verified* label only when it passes **and** converges
+(or has no grid study, or is at its declared precision). Method 2.0 (the
+morning of 16 October) also failed results whose rate was below the minimum
+and called those whose range straddled it inconclusive.
 """
 
 from __future__ import annotations
@@ -32,7 +36,7 @@ import math
 import re
 from typing import Any
 
-METHOD = "2"
+METHOD = "2.1"
 CONFIDENCE = 0.90
 FLOOR_FACTOR = 3.0
 
@@ -93,7 +97,8 @@ def converges(card: dict) -> dict[str, Any]:
     pmin = float(conv.get("min_observed_order", 0.0))
     out: dict[str, Any] = {"min": pmin, "current_order": conv.get("observed_order")}
     if all(abs(e) < 1e-12 for e in errors):
-        return {**out, "verdict": "fail", "why": "errors at round-off on every grid: the results are the reference itself"}
+        return {**out, "verdict": "fail", "roundoff": True,
+                "why": "errors at round-off on every grid: the results are the reference itself"}
     fit = fit_order(errors, spacings)
     out.update(fit)
     fine = abs(errors[0]) if spacings[0] <= spacings[-1] else abs(errors[-1])
@@ -125,14 +130,11 @@ def assess(card: dict) -> dict[str, Any]:
     accurate = "pass" if all(c["passed"] for c in gating) else "fail"
     ms = [c["margin"] for c in gating if c["margin"] is not None]
     conv = converges(card)
-    if accurate == "fail" or conv["verdict"] == "fail":
-        overall = "fail"
-    elif conv["verdict"] == "inconclusive":
-        overall = "inconclusive"
-    else:
-        overall = "pass"
+    # Results at round-off on every grid are the reference itself, not a solution: they fail outright.
+    overall = "fail" if conv.get("roundoff") else accurate
+    verified = accurate == "pass" and conv["verdict"] in ("pass", "n/a", "at_floor")
     return {"method": METHOD, "checks": checks, "accurate": accurate, "worst_margin": max(ms) if ms else None,
-            "converges": conv, "overall": overall, "method1": _method1(card, accurate)}
+            "converges": conv, "overall": overall, "verified": verified, "method1": _method1(card, accurate)}
 
 
 def _method1(card: dict, accurate: str) -> str:
@@ -147,7 +149,7 @@ def _method1(card: dict, accurate: str) -> str:
 def judgement(a: dict) -> dict[str, Any]:
     """The part of ``assess`` that goes into a score card."""
     conv = {k: v for k, v in a["converges"].items() if k != "current_order"}
-    return {"accurate": a["accurate"], "converges": conv, "worst_margin": a["worst_margin"]}
+    return {"accurate": a["accurate"], "converges": conv, "verified": a["verified"], "worst_margin": a["worst_margin"]}
 
 
 def apply(card: dict) -> dict:

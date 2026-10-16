@@ -45,7 +45,7 @@ STORIES: dict[str, dict] = {
         question="How far, and how fast, does the flood travel?",
         what="A 1-metre wall of water is released onto a dry, flat channel. It collapses into a wave whose front races over the dry ground at up to 6 m/s, thinning to a film at the tip, while a dip travels back into the reservoir.",
         why="Flood maps, evacuation times and dam-failure studies all depend on when water reaches dry land. A model that gets the front wrong gets the warning time wrong.",
-        must=["put the flood front within 2.5 m of the exact one after 60 s", "neither lose nor create water", "get steadily more accurate on finer grids"],
+        must=["put the flood front within 9.8 m of the exact one after 60 s (2.6 % of the distance it travels)", "neither lose nor create water", "get steadily more accurate on finer grids"],
     ),
     "A1F-011": dict(
         name="Dam break into shallow water", group="rivers",

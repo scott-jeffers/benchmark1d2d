@@ -1,17 +1,22 @@
 # Scoring method 2
 
-**Status:** adopted on 16 October 2026 for rules R1–R3, R5 and R6. Every
-verdict on the site and in every new score card follows them. R4 (five grids)
-and R7 (limits set by a stated rule) are the next step. They change the
-tests' inputs, so they will come with new major versions of the tests and a
+**Status:** method 2.1, adopted on 16 October 2026. A result **passes** when
+it is accurate: every gating check within its limit. Its convergence rate is
+judged separately (R3), and a result that passes and converges carries the
+*Verified* label and the Track A certification claim. The morning's method
+2.0 also failed a result whose rate was below the minimum, and called one
+whose range straddled it inconclusive; 2.1 replaced that the same day (R6).
+R7 sets the A1F-010 front limit (test version 3). R4 (five grids) and R7
+for the other tests are the next step. They change the tests' inputs or
+tighten limits, so they will come with new major versions of the tests and a
 re-run of every solver.
 
 * Code: `runner/python/benchmark1d2d/scoring/method_v2.py`, tested in
   `runner/python/tests/test_method_v2.py`.
-* The scorer writes `scoring_method: "2"`, `verdict`
-  (`pass`, `fail`, `inconclusive`), `judgement` (the two verdicts and the
-  worst margin) and a `margin` on every criterion into each new score card.
-  `passed` is true only for `pass`.
+* The scorer writes `scoring_method: "2.1"`, `verdict` (`pass` or `fail`),
+  `judgement` (accurate, converges, verified and the worst margin) and a
+  `margin` on every criterion into each new score card. `passed` is true
+  only for `pass`.
 * A card scored under method 1 is re-judged when the site reads it. Its
   inputs are in the card (criterion values, errors per grid), so nothing is
   re-run, and the signed file itself is not altered.
@@ -98,10 +103,19 @@ from tests run on three grids (the SWASHES set).
 * The only declaration today is HEC-RAS 1D, at 0.3 mm on levels. HEC-RAS 2D
   is left out because there is no evidence for it yet.
 
-**R6. Overall verdict.**
-* **Fails** if *Accurate* fails or *Converges* fails.
-* **Inconclusive** if *Accurate* passes and *Converges* is inconclusive.
-* **Passes** otherwise.
+**R6. Overall verdict (method 2.1).**
+* **Passes** if *Accurate* passes; **fails** otherwise.
+* **Verified** if it passes and *Converges* passes (or the test has no grid
+  study, or the result is at its declared precision). Only verified results
+  carry a Track A certification claim (A-V and the like).
+* Results at round-off on every grid fail outright: they are a copy of the
+  exact answer, not a solution.
+* Method 2.0 (16 October, morning) failed a result whose rate was below the
+  minimum and called one whose range straddled it *inconclusive*. On A1F-010
+  that failed TELEMAC, LISFLOOD-FP, GeoClaw and OpenSWMM finite volume:
+  depths within 0.7–1.8 mm, front within 6 m on 376 m. A verdict that fails
+  such results answers the code-verification question, not the user's, so
+  2.1 keeps the two apart.
 
 **R7 (separate decision). Accuracy limits by a stated rule.**
 * The current error limits are round numbers, 10–400× looser than the error
@@ -139,6 +153,19 @@ Method 2 against method 1:
   (0.77–0.80), and OpenSWMM 6 finite volume on A1F-001 (0.73–0.85).
 * The full list, with the reason for each, is on the scoring page.
 
+## A1F-010 front limit (R7, test version 3.0.0)
+
+The volume-front limit was two finest cells (2.5 m). It is now 9.8 m: 5 ×
+the error of the suite's first-order reference scheme on the finest grid
+(1.95 m). That is 2.6 % of the 376 m the front travels in 60 s, about 1.6 s
+of arrival time. TELEMAC (5.8 m), LISFLOOD-FP FV1 (5.0 m) and DG2 (5.4 m),
+GeoClaw (3.5 m) and OpenSWMM finite volume (3.3 m) now pass. HEC-RAS 2D
+(58–97 m), SWMM dynamic wave (41 m), Hydra (102 m), LISFLOOD-FP ACC (105 m)
+and HydroNet still fail. Applied here because the two-cell limit was the
+only limit set by resolution rather than by an engineering or analytical
+scale. R7 for the other tests, where it would tighten several limits, waits
+for the versioned next step.
+
 ## Decisions taken (16 October 2026)
 
 1. R1–R3, R5 and R6 adopted as one change. The tests' inputs, exact answers
@@ -146,8 +173,9 @@ Method 2 against method 1:
    recorded on each score card instead (`scoring_method`), and method-1 cards
    are re-judged when read.
 2. Confidence: 90 % two-sided.
-3. *Inconclusive* is a third, grey state on badges, in counts and in the
-   results table. It is not counted with passes.
+3. Pass means accurate (method 2.1). Convergence is its own verdict (pass,
+   does not, not settled, at its precision), shown grey when the grids cannot
+   settle it, and needed for *Verified*.
 4. Precision floors (R5) may be declared with a published statement by the
    developer or a reproducible test in this repository. The only one today is
    HEC-RAS 1D, at 0.3 mm on levels.

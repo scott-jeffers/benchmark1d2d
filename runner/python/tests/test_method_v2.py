@@ -23,18 +23,20 @@ def test_fit_recovers_exact_order_with_zero_width_interval():
     assert math.isclose(f["ci"][0], 1.0, rel_tol=1e-9) and math.isclose(f["ci"][1], 1.0, rel_tol=1e-9)
 
 
-def test_steady_order_just_below_minimum_fails_and_erratic_one_is_inconclusive():
+def test_steady_rate_below_minimum_and_erratic_rate_are_not_verified():
     steady = assess(card([0.00098, 0.00166, 0.00291, 0.0050]))  # LISFLOOD-FP FV1, A1F-011: ~0.78
     erratic = assess(card([0.00039, 0.00042, 0.00138, 0.00138]))  # ANUGA, A1F-011: 1.72 then 0.11
     assert steady["converges"]["verdict"] in ("fail", "inconclusive")
     assert erratic["converges"]["verdict"] == "inconclusive"
-    assert erratic["overall"] == "inconclusive"
+    assert erratic["overall"] == "pass" and not erratic["verified"]  # method 2.1: pass = accurate
 
 
-def test_clean_first_order_passes_and_flat_error_fails():
-    assert assess(card([1e-3 * 2**i for i in range(4)]))["overall"] == "pass"
+def test_clean_first_order_is_verified_and_flat_error_is_not():
+    clean = assess(card([1e-3 * 2**i for i in range(4)]))
+    assert clean["overall"] == "pass" and clean["verified"]
     flat = assess(card([0.0137, 0.0140, 0.0146, 0.0160]))
-    assert flat["converges"]["verdict"] == "fail" and flat["overall"] == "fail"
+    assert flat["converges"]["verdict"] == "fail"
+    assert flat["overall"] == "pass" and not flat["verified"]  # accurate, but not verified
 
 
 def test_three_grids_give_a_wide_interval():
@@ -46,12 +48,12 @@ def test_three_grids_give_a_wide_interval():
 def test_precision_floor_applies_only_to_the_declared_solver():
     errs = [0.0001, 0.0001, 0.00009, 0.00005]
     assert assess(card(errs, name="HEC-RAS 6.6"))["converges"]["verdict"] == "at_floor"
-    assert assess(card(errs, name="HEC-RAS 6.6"))["overall"] == "pass"
+    assert assess(card(errs, name="HEC-RAS 6.6"))["verified"]
     assert assess(card(errs, name="Other"))["converges"]["verdict"] == "fail"
 
 
 def test_round_off_on_every_grid_still_fails():
-    assert assess(card([1e-15, 1e-15, 1e-15]))["overall"] == "fail"
+    assert assess(card([1e-15, 1e-15, 1e-15]))["overall"] == "fail"  # a copy of the reference fails outright
 
 
 def test_margins_and_accuracy_verdict():

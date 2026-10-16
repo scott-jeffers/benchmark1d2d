@@ -12,9 +12,9 @@ Per ASME V&V 20 and Roache GCI:
 5. Judge with [scoring method 2](scoring_v2.md): *accurate* if every gating
    criterion passes; *converges* if the order fitted through every grid has its
    whole 90 % range at or above `min_observed_order`, fails if the whole range
-   is below it, and is *inconclusive* otherwise. The result **passes** only if
-   both pass, **fails** if either fails, and is **inconclusive** if it is
-   accurate and the grids cannot settle the rate.
+   is below it, and is *inconclusive* otherwise. The result **passes** when it is
+   accurate; it is **verified** (and may carry a certification claim) when it
+   also converges.
 
 A solver that hits 1 % L1 on a fine grid but converges at order 0.4 **fails**.
 Errors at round-off on every mesh are **rejected**: a discretisation always

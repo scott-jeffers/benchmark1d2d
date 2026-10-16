@@ -537,3 +537,7 @@ table.tmx td.hl { background: var(--water-wash); }
 .tc-bar i.u { background: var(--ink-3); }
 .two-verdicts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 4px 0 10px; color: var(--ink-2); }
 .two-verdicts .ok, .two-verdicts .no, .two-verdicts .unsure { font-weight: 700; }
+.check.info { background: var(--rule-2); }
+.check.info .v { color: var(--ink-2); }
+.check.info .lim .mg { color: var(--ink-2); font-weight: 400; }
+.info { color: var(--ink-2); }

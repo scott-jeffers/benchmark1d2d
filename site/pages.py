@@ -309,6 +309,8 @@ def check_limit(c: dict) -> str:
 
 def _margin_span(ck: dict) -> str:
     t = review.margin_text(ck.get("margin"))
+    if ck.get("state") == "info":
+        t = t.replace("the limit", "the guide")
     return f' · <span class="mg">{esc(t)}</span>' if t else ""
 
 
@@ -321,8 +323,10 @@ def checks_for(m: dict, card: dict) -> list[dict]:
         d = {**d, "threshold": r.get("threshold", d.get("threshold", {}))}
         mg = method_v2.margin(r.get("observed"), d.get("threshold") or {})
         ok = bool(r.get("passed"))
-        out.append(dict(label=check_label(d), value=check_value(d, r.get("observed")), limit=check_limit(d),
-                        ok=ok, state="ok" if ok else "no", gating=bool(r.get("gating", True)), margin=mg))
+        gating = bool(r.get("gating", True))
+        out.append(dict(label=check_label(d), value=check_value(d, r.get("observed")),
+                        limit=check_limit(d) if gating else f"reported, not judged · {check_limit(d).replace('allowed', 'guide')}",
+                        ok=ok, state="ok" if ok else ("no" if gating else "info"), gating=gating, margin=mg))
     conv = card.get("convergence_result") or {}
     if conv.get("errors"):
         cv = (card.get("_judged") or method_v2.assess(card))["converges"]
@@ -346,8 +350,8 @@ def summary_line(m: dict, card: dict) -> str:
 
 # Findings worth a sentence on a model card: (short id, solver key) -> text
 NOTES = {
-    ("A1F-010", "telemac"): "The front is 5.8 m behind the exact one (2.5 m allowed) and closes in on finer grids at a rate of 0.69 (90 % range 0.64 to 0.73), all of it under the 0.8 required. The thin leading edge, 1 mm deep, lags further (39 m): it stays dry too long. HLLC and second-order settings did not change that.",
-    ("A1F-001", "hecras"): "HEC-RAS stores input elevations to the nearest 0.001 ft (0.3 mm), even in a metric project. The depth error therefore stops at about 0.1 mm on every grid, a hundredth of the limit, and cannot shrink with the grid. The convergence rate is reported but, at the solver's own precision, does not decide the verdict: it passes.",
+    ("A1F-010", "telemac"): "Passes: the front is 5.8 m behind the exact one (9.8 m allowed) and depths are within 1.4 mm on average. It is not verified: the error shrinks on finer grids at a rate of 0.69 (90 % range 0.64 to 0.73), all of it under the 0.8 required. The thin leading edge, 1 mm deep, lags further (39 m): it stays dry too long. HLLC and second-order settings did not change that.",
+    ("A1F-001", "hecras"): "HEC-RAS stores input elevations to the nearest 0.001 ft (0.3 mm), even in a metric project. The depth error therefore stops at about 0.1 mm on every grid, a hundredth of the limit, and cannot shrink with the grid. It passes; the convergence rate is reported but, at the solver's own precision, not judged, so it is verified.",
     ("A1F-010", "hecras"): "The flood advances as a steep bore and its front is 97 m behind the exact one; the error does not fall on finer grids. HEC-RAS 2D was built and run with no GUI step; the dam-break step was carried in by a restart file.",
     ("A1F-010", "hecras-em"): "SWE-EM, the option HEC recommends for dam breaks, gets 40 m closer than the default SWE-ELM (58 m behind) but does not converge.",
     ("A1F-011", "hecras"): "The bore is in about the right place (depth error 5 mm), but the error does not fall on finer grids.",
@@ -357,9 +361,9 @@ NOTES = {
     ("A1F-010", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver, including the 9 m one-conduit spike near x = 1,126 m.",
     ("A1F-011", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver.",
     ("A1F-001", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4.",
-    ("A1F-011", "openswmm-fv"): "OpenSWMM 6's new finite-volume routing is 1 mm from the exact answer where SWMM's dynamic wave is 37 mm off. Its convergence rate is 0.87, but its 90 % range (0.79 to 0.95) dips just below the 0.8 required, so on these four grids the verdict is inconclusive.",
-    ("A1F-010", "openswmm-fv"): "Much closer than dynamic wave (3.3 m behind instead of 41 m) and conserves water; it misses the 2.5 m limit and converges at 0.66 (90 % range 0.54 to 0.77).",
-    ("A1F-001", "openswmm-fv"): "Accurate (0.4 mm). Its convergence rate fitted through the four grids is 0.79, with a 90 % range of 0.73 to 0.85 that includes the 0.8 required, so these grids cannot settle whether it converges: inconclusive. Dynamic wave reaches 1.8.",
+    ("A1F-011", "openswmm-fv"): "OpenSWMM 6's new finite-volume routing is 1 mm from the exact answer where SWMM's dynamic wave is 37 mm off. It passes. Its convergence rate is 0.87, but its 90 % range (0.79 to 0.95) dips just below the 0.8 required, so on these four grids it is not yet verified.",
+    ("A1F-010", "openswmm-fv"): "Passes, where dynamic wave fails: 3.3 m behind instead of 41 m, and it conserves water. It is not verified: the error shrinks at a rate of 0.66 (90 % range 0.54 to 0.77), under the 0.8 required.",
+    ("A1F-001", "openswmm-fv"): "Passes: 0.4 mm. Not verified: its convergence rate fitted through the four grids is 0.79, with a 90 % range of 0.73 to 0.85 that includes the 0.8 required, so these grids cannot settle whether it converges. Dynamic wave reaches 1.8.",
     ("B-RTC-001", "openswmm6"): "Pumps switch the same 74 times, but one node peaks 50 % higher than in SWMM 5.2.4, at a different time; worth a look by the OpenSWMM developers.",
     ("A1F-010", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it is not expected to get a dam break right; it is shown because it is what most LISFLOOD-FP users run.",
     ("A1F-011", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it cannot form the right bore; it is shown because it is what most LISFLOOD-FP users run.",
@@ -368,8 +372,8 @@ NOTES = {
     ("A2A-020", "telemac"): "Run with TELEMAC's HLLC scheme: its default kinetic scheme goes unstable with this supercritical inflow. The depth is right (1 cm) and converges, but the stored water is 0.15 % above exact (0.1 % allowed), as with ANUGA (0.13 % below).",
     ("A2A-010", "telemac"): "Passes: 0.13 mm from the exact water level, converging at first order. The inflow discharge and outlet level are listed in the order TELEMAC numbers its open boundaries.",
     ("A2C-EA2", "telemac"): "Run with a 1 s largest step, as for the other codes: with TELEMAC's step left to the 5-minute output interval, the dry start took long first steps that undersampled the inflow and lost 6 % of the water.",
-    ("A2A-010", "hecras"): "Very accurate (0.09 mm), but the error stops falling below about 0.1 mm on finer grids (0.54, 0.16, 0.12, 0.09 mm), so its convergence rate's range is wide (0.11 to 1.50) and the verdict is inconclusive. HEC-RAS stops iterating at its default water-surface tolerance (0.01), which is the likely floor.",
-    ("A2A-010", "hecras-em"): "As SWE-ELM: 0.06 mm, but the error levels off near 0.1 mm on finer grids (rate 1.02, 90 % range 0.43 to 1.60): inconclusive.",
+    ("A2A-010", "hecras"): "Very accurate (0.09 mm), but the error stops falling below about 0.1 mm on finer grids (0.54, 0.16, 0.12, 0.09 mm), so it passes but its convergence rate's range is wide (0.11 to 1.50): not verified. HEC-RAS stops iterating at its default water-surface tolerance (0.01), which is the likely floor.",
+    ("A2A-010", "hecras-em"): "As SWE-ELM: 0.06 mm, but the error levels off near 0.1 mm on finer grids (rate 1.02, 90 % range 0.43 to 1.60): passes, not verified.",
     ("A2C-EA1", "hecras"): "Run on the EA's own 2 m DEM, which HEC-RAS uses as sub-grid terrain. The pond settles 1.3 cm above the sill (2 cm allowed).",
     ("A2C-EA2", "hecras"): "HEC-RAS's own volume accounting reports 1.4 % more water stored than flowed in (98,576 m³ from 97,194 m³). Integrating its water levels over the 2 m DEM gives +0.76 %, also over the limit. Run on the EA's own 2 m DEM as sub-grid terrain.",
     ("A2C-EA2", "hecras-em"): "As SWE-ELM: HEC-RAS's own accounting shows a 1.4 % volume error.",
@@ -380,7 +384,7 @@ NOTES = {
     ("A1D-002", "openswmm-fv"): "The pipes are surcharged and the finite-volume routing overestimates the friction loss: the hydraulic grade line falls 1.42 m over the five pipes instead of 1.19 m (19 % more), so the upstream manholes stand up to 28 cm too high. Dynamic wave in the same engine is 0.4 mm from exact.",
     ("A1D-001", "hydra-uds"): "Exact to rounding (0.0005 mm): Hydra computes the circular section exactly, where the SWMM engines interpolate a 51-entry table (0.27 mm off).",
     ("A1D-005", "openswmm-fv"): "Passes (3.7 mm). With one cell per pipe (FV_MIN_CELLS 1, as on the channel tests) it is 2.2 cm off and fails; the default subdivides each pipe.",
-    ("A1F-041", "anuga"): "Within 0.7 mm with the SWASHES downstream condition (0.66 m held while the outflow is subcritical); inconclusive only because three grids leave its convergence rate's range wide (0.69 to 1.14). With a free (transmissive) outflow instead, ANUGA settled on a fully subcritical state 1.06 m deep, 0.39 m off.",
+    ("A1F-041", "anuga"): "Passes, within 0.7 mm with the SWASHES downstream condition (0.66 m held while the outflow is subcritical); not verified only because three grids leave its convergence rate's range wide (0.69 to 1.14). With a free (transmissive) outflow instead, ANUGA settled on a fully subcritical state 1.06 m deep, 0.39 m off.",
     ("A1F-043", "anuga"): "Nothing moves (velocities 1e-14 m/s). The worst depth difference, 1.7 mm, is in the cells cut by the shoreline, where a cell-mean depth on the sloping bump differs from the exact depth at the cell centre; that check is informational.",
     ("A12-010", "swmm-anuga"): "The street carries exactly what the manhole releases (0.5 m³/s, depth 0.1 mm from exact), but 5 m³ of the 885 m³ is missing at the end (0.56 %; 0.5 % allowed). The coupler moves water exactly; the loss is SWMM's own continuity error (0.50 % in its report), made as the dead-end pipe filled and surcharged.",
     ("A12-011", "swmm-anuga"): "Passes. While the pipe runs full, SWMM's reported pipe and manhole volumes exceed its own balance by up to 3.1 m³ (1.2 %), which disappears as the pipe empties: its end-of-run continuity error is 0.000 %.",
@@ -474,7 +478,7 @@ def layout(title: str, body: str, active: str, depth: int = 0, description: str 
 VERDICT_BADGE = {"pass": '<span class="badge pass">✓ Passes</span>', "fail": '<span class="badge fail">✗ Fails</span>',
                  "inconclusive": '<span class="badge unsure">? Inconclusive</span>'}
 VERDICT_WORD = {"pass": "passes", "fail": "fails", "inconclusive": "inconclusive"}
-SYM = {"ok": "✓", "no": "✗", "unsure": "?"}
+SYM = {"ok": "✓", "no": "✗", "unsure": "?", "info": "·"}
 
 
 def two_verdicts(card: dict) -> str:
@@ -487,7 +491,8 @@ def two_verdicts(card: dict) -> str:
     con = {"pass": '<span class="ok">✓ yes</span>', "fail": '<span class="no">✗ no</span>',
            "inconclusive": '<span class="unsure">? not settled by these grids</span>',
            "at_floor": '<span class="ok">at its own precision</span>'}[cv]
-    return f'<p class="two-verdicts small"><span>Accurate: {acc}</span><span>Converges: {con}</span></p>'
+    ver = ('<span class="ok">✓ verified</span>' if a.get("verified") else '<span class="muted">not verified</span>') if a["accurate"] == "pass" else ""
+    return f'<p class="two-verdicts small"><span>Accurate: {acc}</span><span>Converges: {con}</span>{f"<span>{ver}</span>" if ver else ""}</p>'
 
 
 def verdict(card: dict | None) -> str:
@@ -658,14 +663,17 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
                 fronts[k] = abs(r["observed"])
     cards = []
     if fronts:
-        ok = [k for k, v in fronts.items() if v <= 2.5]
-        near = sorted(v for v in fronts.values() if 2.5 < v <= 10)
-        far = sorted(v for v in fronts.values() if v > 10)
-        who = ", ".join(SOLVER[k]["name"].split(" ")[0] for k in ok) or "none"
+        lim = 9.8
+        for mm in manifests:
+            if mm["test_id"].startswith("A1F-010"):
+                lim = next((float(c["threshold"]["value"]) for c in mm["scoring"]["criteria"] if c["id"] == "volume_front"), lim)
+        ok = sorted((k for k, v in fronts.items() if v <= lim), key=lambda k: fronts[k])
+        far = sorted(v for v in fronts.values() if v > lim)
+        who = ", ".join(dict.fromkeys(SOLVER[k]["name"].split(" ")[0] for k in ok)) or "none"
         cards.append(f"""<a class="finding" href="tests/A1F-010.html">
   <div class="num">{len(ok)} of {len(fronts)}</div>
-  <b>Few production models place the flood front</b>
-  <p>In the classic dam break, {len(ok)} of {len(fronts)} production runs put the front within 2.5 m after one minute ({esc(who)}). {len(near)} more are {nice(near[0], 2) if near else '–'}–{nice(near[-1], 2) if near else '–'} m behind; {len(far)} are {nice(far[0], 2) if far else '–'}–{nice(far[-1], 3) if far else '–'} m behind.</p>
+  <b>The dam-break front splits the field</b>
+  <p>In the classic dam break, {len(ok)} of {len(fronts)} production runs put the flood front within {nice(lim, 2)} m of the exact one after a minute ({esc(who)}: {nice(min(fronts[k] for k in ok), 2) if ok else '–'}–{nice(max(fronts[k] for k in ok), 2) if ok else '–'} m). The other {len(far)} are {nice(far[0], 2) if far else '–'}–{nice(far[-1], 3) if far else '–'} m behind.</p>
 </a>""")
     if "hecras" in (runs.get("A1F-001_macdonald_m1_backwater") or {}):
         cards.append("""<a class="finding" href="tests/A1F-001.html">
@@ -937,9 +945,9 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function render(id){var c=data[id];if(!c)return;var h='<div class="kicker">Selected result</div><div class="title">'+esc(c.test)+'</div><div class="solver">'+esc(c.solver)+'</div>'+
 ({pass:'<span class="badge pass">✓ Passes</span>',fail:'<span class="badge fail">✗ Fails</span>',inconclusive:'<span class="badge unsure">? Inconclusive</span>'})[c.verdict]+'<ul class="checks">';
-c.checks.forEach(function(k){var sy={ok:'✓',no:'✗',unsure:'?'}[k.state],al={ok:'met',no:'not met',unsure:'not settled'}[k.state];h+='<li><span class="'+k.state+'" aria-label="'+al+'">'+sy+'</span><span><b>'+esc(k.label)+':</b> '+esc(k.value)+' <span class="muted">('+esc(k.limit)+')</span></span></li>';});
+c.checks.forEach(function(k){var sy={ok:'✓',no:'✗',unsure:'?',info:'·'}[k.state],al={ok:'met',no:'not met',unsure:'not settled',info:'reported only'}[k.state];h+='<li><span class="'+k.state+'" aria-label="'+al+'">'+sy+'</span><span><b>'+esc(k.label)+':</b> '+esc(k.value)+' <span class="muted">('+esc(k.limit)+')</span></span></li>';});
 h+='</ul>'+(c.note?'<p class="small">'+esc(c.note)+'</p>':'')+'<a href="tests/'+esc(c.sid)+'.html#m-'+esc(id.split('|')[1])+'" style="font-weight:600">Open the test →</a>'+
-'<div class="legend-mini"><span><b class="ok">✓</b> passes every check</span><span><b class="no">✗</b> fails at least one check</span><span><b class="unsure">?</b> inconclusive: the grids cannot settle the rate</span><span><b style="color:#A7B4BC">—</b> not run yet</span></div>';
+'<div class="legend-mini"><span><b class="ok">✓</b> passes every check</span><span><b class="no">✗</b> fails at least one check</span><span><b class="unsure">?</b> rate not settled by these grids</span><span><b style="color:#A7B4BC">—</b> not run yet</span></div>';
 panel.innerHTML=h;var rc=panel.getBoundingClientRect();if(rc.top<60||rc.top>innerHeight-80)panel.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.cellbtn').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.cell===id?'true':'false');});}
 document.querySelectorAll('.cellbtn').forEach(function(b){b.addEventListener('click',function(){render(b.dataset.cell);try{history.replaceState(null,'','#cell='+encodeURIComponent(b.dataset.cell));}catch(e){}});});
 var first=document.querySelector('.cellbtn[data-cell="'+(%FIRST%)+'"]');if(first)first.setAttribute('aria-pressed','true');
@@ -962,14 +970,14 @@ document.querySelectorAll('[data-view]').forEach(function(b){b.addEventListener(
 def _panel_html(c: dict | None) -> str:
     if not c:
         return ""
-    checks = "".join(f'<li><span class="{k["state"]}" aria-label="{ {"ok": "met", "no": "not met", "unsure": "not settled"}[k["state"]] }">{SYM[k["state"]]}</span>'
+    checks = "".join(f'<li><span class="{k["state"]}" aria-label="{ {"ok": "met", "no": "not met", "unsure": "not settled", "info": "reported only"}[k["state"]] }">{SYM[k["state"]]}</span>'
                      f'<span><b>{esc(k["label"])}:</b> {esc(k["value"])} <span class="muted">({esc(k["limit"])})</span></span></li>' for k in c["checks"])
     return (f'<div class="kicker">Selected result</div><div class="title">{esc(c["test"])}</div><div class="solver">{esc(c["solver"])}</div>'
             f'{VERDICT_BADGE[c["verdict"]]}'
             f'<ul class="checks">{checks}</ul>' + (f'<p class="small">{esc(c["note"])}</p>' if c["note"] else "")
             + f'<a href="tests/{esc(c["sid"])}.html" style="font-weight:600">Open the test →</a>'
             '<div class="legend-mini"><span><b class="ok">✓</b> passes every check</span><span><b class="no">✗</b> fails at least one check</span>'
-            '<span><b class="unsure">?</b> inconclusive: the grids cannot settle the rate</span>'
+            '<span><b class="unsure">?</b> rate not settled by these grids</span>'
             '<span><b style="color:#A7B4BC">—</b> not run yet</span></div>')
 
 
@@ -1034,6 +1042,8 @@ def compare_chart(m: dict, runs: dict, exact: dict | None, profiles: dict) -> tu
         front_exact = volume_front_position(float(m["simulation"]["t_end"]), 0.05, h0=prm["h0"], x0=prm["x0"], g=prm["g"])
     data = dict(sid=sid, xlabel=spec["x"], ylabel=spec["y"], exact=exact, series=series, fronts=fronts, rescale=True,
                 front=sid == "A1F-010" and bool(fronts), front_exact=front_exact, dam=(1000 if sid == "A1F-010" else 0 if sid == "A1F-011" else None))
+    front_limit = next((float(c["threshold"]["value"]) for c in m["scoring"]["criteria"] if c.get("metric") == "volume_front_error"), None)
+    data["front_limit"] = front_limit
     toggles = '<button type="button" class="pill" data-series="exact" aria-pressed="true"><span class="sw" style="background:var(--water)"></span>Exact answer</button>' if exact else ""
     for s in series:
         sw = f'<span class="sw dot" style="color:{s["color"]}"></span>' if s["dots"] else f'<span class="sw" style="background:{s["color"]}"></span>'
@@ -1059,6 +1069,22 @@ def compare_chart(m: dict, runs: dict, exact: dict | None, profiles: dict) -> tu
   <svg class="chart" viewBox="0 0 1000 380" role="img" aria-label="{esc(spec['y'])} against {esc(spec['x'].lower())}: exact answer and model results"></svg>
   {controls}
   {_data_script(data)}
+</section>"""
+    if front_exact is not None and fronts:
+        # a close-up of the front: lags of a few metres are invisible on the whole channel
+        ex_final = ({k: v for k, v in exact.items() if k not in ("frames", "times")} if exact else None)
+        if ex_final and exact.get("frames"):
+            ex_final["y"] = exact["frames"][-1]
+        lo = front_exact - 4 * (front_limit or 10)
+        close = dict(data, exact=ex_final, rescale=False, dam=None, front=True, front_marks=True,
+                     xlim=[lo, front_exact + 3 * (front_limit or 10) + 40], ylim=[0, 0.16])
+        html_ += f"""<section class="replay" aria-label="Close-up of the flood front">
+  <h3 class="h3">Close-up of the front</h3>
+  <p class="small muted" style="margin:0 0 8px">The last stretch of the flood, 15 times taller. The dashed line is the exact front (where the last 5 % of the released water begins), the shaded band the {nice(front_limit or 0, 2)} m allowed, and each triangle a model's front.</p>
+  <div class="replay-top"><div class="toggles" role="group" aria-label="Show on the close-up">{toggles}</div></div>
+  <svg class="chart" viewBox="0 0 1000 380" role="img" aria-label="Close-up of the flood front: exact answer and model results"></svg>
+  <div class="controls"><div class="readout"></div></div>
+  {_data_script(close)}
 </section>"""
     return html_, ""
 
@@ -1089,12 +1115,12 @@ def series_label(k: str, keys: list[str]) -> str:
 
 
 def far_off(m: dict, card: dict | None) -> bool:
-    """A run that fails its first gating check by more than ten times the limit starts hidden on the chart."""
+    """A run that fails its first gating check by more than three times the limit starts hidden on the chart."""
     if not card or card.get("passed"):
         return False
     for r in card.get("criteria_results", []):
         if r.get("gating") and r.get("observed") is not None and r["threshold"]["op"] == "abs<=":
-            return abs(r["observed"]) > 10 * float(r["threshold"]["value"])
+            return abs(r["observed"]) > 3 * float(r["threshold"]["value"])
     return False
 
 
@@ -1202,7 +1228,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     for k in SOLVERS_ORDER(set(runs)):
         c = runs[k]
         s = SOLVER[k]
-        checks = "".join(f'<div class="check{ {"ok": "", "no": " bad", "unsure": " unsure"}[ck["state"]] }"><div class="k">{esc(ck["label"])}</div>'
+        checks = "".join(f'<div class="check{ {"ok": "", "no": " bad", "unsure": " unsure", "info": " info"}[ck["state"]] }"><div class="k">{esc(ck["label"])}</div>'
                          f'<div class="v">{SYM[ck["state"]]} {esc(ck["value"])}</div><div class="lim">{esc(ck["limit"])}{_margin_span(ck)}</div></div>'
                          for ck in checks_for(m, c))
         note = NOTES.get((sid, k), "")

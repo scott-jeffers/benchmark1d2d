@@ -17,8 +17,7 @@ def test_example_submission_scores(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(ss, "OUT", tmp_path)
     lines, problems = ss.score_folder(REPO / "submissions" / "_example", ss._key())
     assert problems == []
-    # the example is the demo solver: its rate range straddles 0.8, so method 2 calls it inconclusive
-    assert any("**A1F-011**: INCONCLUSIVE" in ln for ln in lines)
+    assert any("**A1F-011**: PASS" in ln for ln in lines)
     card = next(tmp_path.rglob("*.scorecard.json")).read_text(encoding="utf-8")
     assert '"submitted_by":"benchmark1d2d maintainers"' in card
 

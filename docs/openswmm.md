@@ -30,15 +30,16 @@ depth and velocity read at the cell centres (details in the script's header).
 
 | Case | EPA SWMM 5.2.4 | v6 dynamic wave | v6 finite volume (`FLOW_ROUTING FV`) |
 |---|---|---|---|
-| A1F-010 Ritter (dry bed) | fails: front 152 m short, no convergence | identical to 5.2.4 | fails: front 45 m short, order 0.73; mass 0.003 % |
-| A1F-011 Stoker (wet bed) | fails: depth error 3.7 cm, mass +4.1 % | identical to 5.2.4 | **inconclusive**: depth error 1 mm; rate 0.87, 90 % range 0.79–0.95 |
-| A1F-001 MacDonald backwater | passes: 0.02 mm, order 1.74 | identical to 5.2.4 | **inconclusive**: 0.44 mm; rate 0.79, 90 % range 0.73–0.85 (minimum 0.8) |
+| A1F-010 Ritter (dry bed) | fails: front 152 m short, no convergence | identical to 5.2.4 | **passes** (test v3): front 3.3 m behind, 9.8 m allowed; rate 0.66, not verified; mass 0.003 % |
+| A1F-011 Stoker (wet bed) | fails: depth error 3.7 cm, mass +4.1 % | identical to 5.2.4 | **passes**: depth error 1 mm (rate 0.87, 90 % range 0.79–0.95: not settled) |
+| A1F-001 MacDonald backwater | passes: 0.02 mm, order 1.74 | identical to 5.2.4 | **passes**: 0.44 mm (rate 0.79, 90 % range 0.73–0.85: not settled) |
 
 v6 dynamic wave reproduces SWMM 5.2.4 bit for bit on all three. The new
-finite-volume routing is the first SWMM engine within the dam-break limits:
-1 mm on Stoker, where dynamic wave is 37 mm off. Its convergence rate there
-is not settled by four grids (verdicts follow
-[scoring method 2](methodology/scoring_v2.md)).
+finite-volume routing is the first SWMM engine to pass the dam breaks: 1 mm on
+Stoker, where dynamic wave is 37 mm off, and its Ritter front 3.3 m behind
+where dynamic wave is 41 m. Its convergence rates are below or not settled at
+the 0.8 minimum, so it is not yet *verified* (verdicts follow
+[scoring method 2.1](methodology/scoring_v2.md)).
 
 ### Track A — SWASHES bump channel (frictionless, exact)
 
@@ -46,7 +47,7 @@ is not settled by four grids (verdicts follow
 |---|---|---|---|
 | A1F-040 subcritical over a bump | fails: unsettled, 1.45 m | fails: 1.86 m | **passes**: 0.6 mm, order 0.99 |
 | A1F-041 transcritical | fails: 0.56 m | fails: 0.53 m | **passes**: 0.8 mm, order 1.04 |
-| A1F-042 transcritical with a jump | fails: 0.29 m | fails: 0.24 m | **inconclusive**: 0.6 mm; rate 0.89, 90 % range 0.52–1.25 on three grids |
+| A1F-042 transcritical with a jump | fails: 0.29 m | fails: 0.24 m | **passes**: 0.6 mm (rate 0.89, 90 % range 0.52–1.25 on three grids: not settled) |
 | A1F-043 lake at rest, emerged bump | passes: 0.5 mm/s | passes: 0.5 mm/s | passes: 0.008 mm/s |
 
 On the 10 and 5 cm conduits these grids need, dynamic wave never settles on
