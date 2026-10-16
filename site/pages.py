@@ -809,6 +809,32 @@ def _short_need(text: str) -> str:
     return t if len(t) <= 70 else t[:68].rsplit(" ", 1)[0] + "…"
 
 
+def _holder(m: dict) -> str:
+    """Who holds the missing data, from the first pending input or the reference."""
+    for e in m["inputs"]:
+        if e.get("pending"):
+            return e["pending"].get("obtain_from", "")
+    return (m.get("reference") or {}).get("obtain_from", "")
+
+
+def in_preparation(drafts: list[dict]) -> str:
+    """The tests defined but waiting on data: what is missing and who holds it."""
+    if not drafts:
+        return ""
+    items = []
+    for m in drafts:
+        sid = sid_of(m["test_id"])
+        holder = _holder(m)
+        items.append(f'<li class="prep-item"><a href="tests/{sid}.html"><b>{esc(story(m)["name"])}</b></a> <span class="muted small">{esc(sid)}</span>'
+                     f'<div class="small">Missing: {esc(_need(m))}.</div>'
+                     + (f'<div class="small muted">Held by: {esc(holder)}</div>' if holder else "") + "</li>")
+    return f"""<section class="tile-group prep" data-group="prep" id="in-preparation">
+  <h3>In preparation: {len(drafts)} tests waiting on data</h3>
+  <p class="muted">Defined, with their physics, inputs and scoring written, but each needs measurements or geometry that its owners have to release. If you hold one of these datasets, or know who does, <a href="{REPO_URL}/issues/new?title=Data%20for%20a%20test%20in%20preparation">tell us</a>.</p>
+  <ul class="prep-list">{''.join(items)}</ul>
+</section>"""
+
+
 def test_gallery(manifests: list[dict], runs: dict, drafts_need=None) -> str:
     """Every test as a tile, grouped by topic."""
     out = []
@@ -891,13 +917,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
   <div class="keyrow">{key}</div>
   <p style="margin:16px 0 0">Biggest differences are in pump models, green roofs and groundwater: real changes between engines, not noise. <a href="corpus.html#parity">See the corpus →</a></p>
 </div>"""
-    waits = "".join(f'<li><a href="tests/{sid_of(m["test_id"])}.html"><b>{esc(story(m)["name"])}</b></a><br><span>{esc(_need(m))}</span></li>' for m in drafts[:6])
-    more = f'<li class="muted">…and {len(drafts) - 6} more</li>' if len(drafts) > 6 else ""
-    wait = f"""<div class="card" style="flex:1 1 340px;min-width:0">
-  <h2 style="font-size:22px">Waiting on data</h2>
-  <p class="muted">{len(drafts)} more tests are defined but need data their owners have to release. Can you help?</p>
-  <ul class="waitlist">{waits}{more}</ul>
-</div>""" if drafts else ""
+    wait = ""  # the tests waiting on data have their own section under the gallery (in_preparation)
     prod_list = ", ".join(SOLVER[k]["name"] + (" " + SOLVER[k]["sub"].split("·")[-1].strip() if k.startswith("lisflood") else "") for k in cols if SOLVER[k]["kind"] == "production")
     subs = [k for k in cols if SOLVER[k]["kind"] == "submitted"]
     if subs:
@@ -926,7 +946,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
 <div class="filters" role="group" aria-label="Filter tests">{filters}
   <div class="view-toggle" role="group" aria-label="View"><button type="button" data-view="cards" aria-pressed="true">Cards</button><button type="button" data-view="table" aria-pressed="false">Table</button></div>
 </div>
-<div id="view-cards">{test_gallery(manifests, runs, _need)}</div>
+<div id="view-cards">{test_gallery(shown, runs, _need)}{in_preparation(drafts)}</div>
 <div id="view-table">
 <aside class="card panel" aria-live="polite" id="panel">{panel}</aside>
 <div class="matrix-wrap">

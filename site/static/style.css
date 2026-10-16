@@ -562,3 +562,6 @@ details.run-it summary { font-weight: 600; }
 #vw-conv .grid { stroke: var(--rule-2); }
 #vw-conv .need { stroke: var(--ink-2); stroke-dasharray: 5 4; stroke-width: 1.5; }
 .vw-time[hidden], .vw-pick [hidden], [data-mode][hidden] { display: none !important; }
+.prep-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+.prep-item { background: var(--sheet); border: 1px dashed var(--rule); border-radius: var(--radius); padding: 12px 14px; }
+.prep-item b { color: var(--ink); }
