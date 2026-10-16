@@ -65,17 +65,56 @@ def write_results_parquet(path: str | Path, columns: Mapping[str, Any]) -> Path:
     return path
 
 
+# Column names people write in their own tools, mapped to the results contract (lower case, units stripped).
+ALIASES = {
+    "time": "t", "time_s": "t", "depth": "h", "water_depth": "h", "velocity": "u", "u_velocity": "u", "x_velocity": "u",
+    "v_velocity": "v", "y_velocity": "v", "pressure": "p", "flow": "Q", "discharge": "Q", "q": "Q",
+    "concentration": "c", "bed": "z", "bed_level": "z", "bed_elevation": "z", "invert": "z", "volume": "V",
+    "id": "element_id", "element": "element_id", "name": "element_id", "node": "element_id", "type": "element_type",
+}
+
+
+def normalise_results_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Accept a results sheet as people fill it in: names in any case, with units in brackets
+    ("Depth (m)"), common aliases ("depth", "velocity", "flow"), the contract's optional columns left out,
+    and extra columns (notes, other variables) ignored."""
+    import re as _re
+
+    rename = {}
+    for col in df.columns:
+        raw = str(col).strip()
+        if raw in ALL_COLUMNS:
+            continue
+        key = _re.sub(r"\s*[\(\[].*?[\)\]]\s*", "", raw).strip().lower().replace(" ", "_")
+        target = key if key in ALL_COLUMNS else ("Q" if key == "q" else ("V" if key == "v_m3" else ALIASES.get(key)))
+        if target and target not in df.columns and target not in rename.values():
+            rename[col] = target
+    out = df.rename(columns=rename)
+    out = out[[c for c in out.columns if c in ALL_COLUMNS]].copy()
+    for c in REQUIRED_COLUMNS:
+        if c not in out.columns:
+            out[c] = np.nan
+    return out
+
+
 def read_results_parquet(path: str | Path) -> pd.DataFrame:
     """Read and validate a results file: Parquet, or CSV with the same columns.
 
     CSV is accepted so a results template filled in by hand or by any tool can
-    be scored directly; empty cells are read as missing values.
+    be scored directly; empty cells are read as missing values. Column names are
+    matched loosely (``normalise_results_columns``).
     """
     path = Path(path)
     if path.suffix.lower() == ".csv":
-        df = pd.read_csv(path)
+        df = pd.read_csv(path, sep=None, engine="python")
+        for col in df.columns:  # decimal commas ("0,5") in a semicolon-separated sheet
+            if not pd.api.types.is_numeric_dtype(df[col]) and df[col].astype(str).str.fullmatch(r"\s*-?\d+,\d+([eE][-+]?\d+)?\s*|\s*").all():
+                df[col] = df[col].astype(str).str.replace(",", ".", regex=False)
         if "element_id" in df.columns:
             df["element_id"] = df["element_id"].astype(str)
     else:
         df = pd.read_parquet(path, engine="pyarrow")
+    df = normalise_results_columns(df)
+    if "element_id" in df.columns:
+        df["element_id"] = df["element_id"].astype(str)
     return validate_results_columns(df)

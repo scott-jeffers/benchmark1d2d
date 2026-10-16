@@ -8,12 +8,33 @@
       drop = document.getElementById("drop"), report = document.getElementById("report");
   if (!sel || !input) return;
   var cache = {};
+  var IDX = JSON.parse((document.getElementById("sc-index") || { textContent: '{"tests":[]}' }).textContent);
+  var BY = {}; IDX.tests.forEach(function (t) { BY[t.sid] = t; });
+  var last = null;  // the files last checked: [{name, text, level}] and the test
+  function kb(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
+  function showTest() {
+    var t = BY[sel.value]; if (!t) return;
+    var dl = document.getElementById("sc-dl"), pg = document.getElementById("sc-page"), q = document.getElementById("sc-q"), st = document.getElementById("sc-setup");
+    if (dl) { dl.href = t.zip; dl.innerHTML = "Download the test <span class=\"nv-kb\">.zip · " + kb(t.bytes) + "</span>"; }
+    if (pg) pg.href = "tests/" + t.sid + ".html";
+    if (q) q.textContent = t.question + (t.check ? "" : " (Scored by the bot when you publish: the in-browser check does not cover this test yet.)");
+    if (st) st.innerHTML = t.setup || "<p>See START_HERE.md in the download.</p>";
+    report.innerHTML = ""; last = null;
+    var pub = document.getElementById("sc-publish"); if (pub) pub.hidden = true;
+    try { history.replaceState(null, "", "#" + t.sid); } catch (e) { /* ignore */ }
+  }
+  sel.addEventListener("change", showTest);
+  window.addEventListener("hashchange", function () {
+    var h = location.hash.replace("#", "");
+    if (h && h !== sel.value && sel.querySelector('option[value="' + h + '"]')) { sel.value = h; showTest(); }
+  });
   function getJSON(url) {
     if (!cache[url]) cache[url] = fetch(url).then(function (r) { if (!r.ok) throw new Error(url + ": " + r.status); return r.json(); });
     return cache[url];
   }
   var hash = location.hash.replace("#", "");
   if (hash && sel.querySelector('option[value="' + hash + '"]')) sel.value = hash;
+  showTest();
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function nice(v, sig) {
@@ -28,20 +49,36 @@
     return nice(v, 3) + (u && u !== "1" ? " " + u : "");
   }
 
+  // Column names as people write them, mapped to the results contract (mirrors io/results.py ALIASES).
+  var ALIAS = { time: "t", time_s: "t", depth: "h", water_depth: "h", velocity: "u", u_velocity: "u", x_velocity: "u", v_velocity: "v",
+    y_velocity: "v", pressure: "p", flow: "Q", discharge: "Q", q: "Q", concentration: "c", bed: "z", bed_level: "z", bed_elevation: "z",
+    invert: "z", volume: "V", id: "element_id", element: "element_id", name: "element_id", node: "element_id", type: "element_type" };
+  var KNOWN = { t: 1, x: 1, y: 1, h: 1, u: 1, v: 1, p: 1, Q: 1, c: 1, z: 1, V: 1, element_id: 1, element_type: 1 };
+  function colName(h) {
+    h = h.trim().replace(/^"|"$/g, "");
+    if (KNOWN[h]) return h;
+    var k = h.replace(/\s*[\(\[].*?[\)\]]\s*/g, "").trim().toLowerCase().replace(/\s+/g, "_");
+    if (KNOWN[k]) return k;
+    return ALIAS[k] || null;
+  }
   function parseCSV(text) {
     var lines = text.replace(/\r/g, "").split("\n").filter(function (l) { return l.trim().length; });
     if (!lines.length) throw new Error("the file is empty");
-    var sep = lines[0].indexOf(";") >= 0 && lines[0].indexOf(",") < 0 ? ";" : ",";
-    var head = lines[0].split(sep).map(function (h) { return h.trim().replace(/^"|"$/g, ""); });
-    var cols = {}, STR = { element_id: 1, element_type: 1 }; head.forEach(function (h, i) { cols[h] = []; });
+    var first = lines[0], sep = first.indexOf("\t") >= 0 ? "\t" : (first.indexOf(";") >= 0 && first.indexOf(",") < 0 ? ";" : ",");
+    var raw = first.split(sep), head = raw.map(colName);
+    var cols = {}, STR = { element_id: 1, element_type: 1 }, used = {};
+    head.forEach(function (h, i) { if (h && !used[h]) { used[h] = 1; cols[h] = []; } else head[i] = null; });
     for (var r = 1; r < lines.length; r++) {
       var f = lines[r].split(sep);
       head.forEach(function (h, i) {
+        if (!h) return;
         var v = f[i] === undefined ? "" : f[i].trim().replace(/^"|"$/g, "");
+        if (!STR[h] && sep === ";" && /^-?\d+,\d+$/.test(v)) v = v.replace(",", ".");  // decimal commas
         cols[h].push(STR[h] ? v : (v === "" ? NaN : parseFloat(v)));
       });
     }
-    if (!cols.x) throw new Error("no x column");
+    if (!cols.x && !cols.element_id) throw new Error("no x column (or element ids): keep the positions from the results sheet");
+    cols._ignored = raw.filter(function (h, i) { return !head[i]; }).map(function (h) { return h.trim(); }).filter(Boolean);
     return cols;
   }
 
@@ -200,11 +237,12 @@
     var finest = results[results.length - 1];
     var all = finest.checks.filter(function (c) { return c.supported && c.gating; });
     var acc = all.every(function (c) { return c.ok; });
-    var v = !acc || (conv && conv.v === "fail") ? "fail" : (conv && conv.v === "inconclusive" ? "inconclusive" : "pass");
+    // scoring method 2.1: the result passes when every check is within its limit; how it converges is a separate verdict
+    var v = acc ? "pass" : "fail";
     var sub = meta.mode === "grid" || !meta.mode ? "Finest file: grid " + esc(finest.level) + " · " + esc(finest.file) : "File: " + esc(finest.file);
     h += '<div class="card"><div class="head-row" style="margin-bottom:12px"><div><h2 style="margin:0">' + esc(meta.name) + '</h2><div class="muted">' + sub + "</div></div>" +
       ({ pass: '<span class="badge pass">✓ Passes these checks</span>', fail: '<span class="badge fail">✗ Fails at least one check</span>',
-         inconclusive: '<span class="badge unsure">? Inconclusive: accurate, but these grids cannot settle the rate</span>' })[v] + "</div>";
+         inconclusive: '<span class="badge unsure">? Inconclusive</span>' })[v] + "</div>";
     h += '<div class="checks-grid">';
     finest.checks.forEach(function (c) {
       if (!c.supported) { h += '<div class="check"><div class="k">' + esc(c.label) + '</div><div class="v muted" style="font-size:15px">Checked by the command-line scorer</div></div>'; return; }
@@ -228,7 +266,7 @@
     } else if (meta.conv) {
       h += '<p class="small" style="margin-top:14px">Drop one file for each of the ' + meta.levels.length + " grid sizes (" + meta.levels.map(function (l) { return l.name; }).join(", ") + ") to measure how fast your error shrinks.</p>";
     }
-    h += '<p class="small" style="margin:14px 0 0">A browser check, not a score card. For a signed result use the command-line scorer below.</p></div>';
+    h += '<p class="small" style="margin:14px 0 0">A check in your browser with the same formulas as the scorer. Publish it below to get the official, signed score on the site.</p></div>';
     report.innerHTML = h;
   }
 
@@ -335,6 +373,16 @@
   function run(files) {
     var sid = sel.value;
     report.innerHTML = '<div class="card">Checking…</div>';
+    files = Array.prototype.slice.call(files);
+    Promise.all(files.map(function (f) { return f.text().then(function (t) { return { name: f.name, text: t }; }); })).then(function (read) {
+      last = { sid: sid, files: read, levels: {} };
+      var pub = document.getElementById("sc-publish"); if (pub) pub.hidden = false;
+      var sent = document.getElementById("sc-sent"); if (sent) sent.hidden = true;
+      var mem = read.map(function (r) { return { name: r.name, text: function () { return Promise.resolve(r.text); } }; });
+      if (!BY[sid] || !BY[sid].check) uncheckedSummary(sid, mem); else score(sid, mem);
+    });
+  }
+  function score(sid, files) {
     getJSON("data/check/" + sid + ".json").then(function (meta) {
       if (meta.mode === "elements" || meta.mode === "states") {
         var f = files[0];
@@ -344,12 +392,13 @@
           render(meta, res, null);
         });
       }
-      return Promise.all(Array.prototype.map.call(files, function (f) { return f.text().then(function (t) { return { name: f.name, cols: finalSlice(parseCSV(t)) }; }); }))
+      return Promise.all(files.map(function (f) { return f.text().then(function (t) { return { name: f.name, cols: finalSlice(parseCSV(t)) }; }); }))
         .then(function (parsed) {
           return Promise.all(parsed.map(function (p) {
             var lv = pickLevel(meta, p.cols);
             if (!lv) throw new Error(p.name + ": " + p.cols.x.length + " rows does not match any grid size of this test (" + meta.levels.map(function (l) { return l.name + ": " + l.n + " points"; }).join(", ") + ")");
             if (Math.abs(p.cols._t - meta.t_end) > 1e-6 * Math.max(1, meta.t_end)) throw new Error(p.name + ": results are at t = " + p.cols._t + " s; this test is compared at t = " + meta.t_end + " s");
+            if (last) last.levels[p.name] = lv.name;
             return getJSON("data/check/" + sid + "_dx" + lv.name + ".json").then(function (d) {
               d._dx = lv.dx; var order = align(meta, d, p.cols);
               var res = { level: lv.name, dx: lv.dx, file: p.name, checks: evaluate(meta, d, p.cols, order) };
@@ -376,6 +425,46 @@
       report.innerHTML = '<div class="callout warn"><b>Could not check this file.</b> ' + esc(err.message) + "</div>";
     });
   }
+  // Tests the browser cannot check yet: read the files, say what was found, and let them be published.
+  function uncheckedSummary(sid, files) {
+    Promise.all(files.map(function (f) { return f.text().then(function (t) { var c = parseCSV(t); return { name: f.name, rows: (c.x || c.element_id).length, cols: Object.keys(c).filter(function (k) { return k[0] !== "_"; }) }; }); }))
+      .then(function (got) {
+        var h = '<div class="card"><h2 style="margin:0 0 6px">' + esc(BY[sid].name) + '</h2><p>Your files read cleanly. This test is scored by the full scorer, which runs when you publish: you get the scores as a reply within minutes, before anything goes on the site.</p><ul class="small">';
+        got.forEach(function (g) { h += "<li><b>" + esc(g.name) + "</b>: " + g.rows + " rows; columns " + esc(g.cols.join(", ")) + "</li>"; });
+        report.innerHTML = h + "</ul></div>";
+      }).catch(function (err) { report.innerHTML = '<div class="callout warn"><b>Could not read this file.</b> ' + esc(err.message) + "</div>"; });
+  }
+
+  // ── publishing: one zip and a pre-filled GitHub form ─────────────────────
+  var form = document.getElementById("sc-form");
+  if (form) form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!last || !window.JSZip) return;
+    var t = BY[last.sid], f = new FormData(form), get = function (k) { return String(f.get(k) || "").trim(); };
+    var z = new JSZip(), names = [];
+    var ordered = last.files.slice().sort(function (a, b) { return (parseFloat(last.levels[b.name]) || 0) - (parseFloat(last.levels[a.name]) || 0); });
+    ordered.forEach(function (file) {
+      var lv = last.levels[file.name], ext = (file.name.match(/\.[A-Za-z]+$/) || [".csv"])[0].toLowerCase();
+      var name = lv ? t.sid + "_dx" + lv + ext : (ordered.length === 1 ? t.sid + ext : file.name.replace(/[^\w.\-]/g, "_"));
+      names.push(name); z.file(name, file.text);
+    });
+    var sub = { schema_version: "1.0.0", solver: { name: get("software"), version: get("version"), options: get("settings") }, submitted_by: get("org"),
+      date: new Date().toISOString().slice(0, 10), results_licence: get("licence"), cases: [{ test_id: t.sid, case_version: t.version, results: names }] };
+    z.file("submission.json", JSON.stringify(sub, null, 2));
+    var slug = (get("software") + "-" + t.sid).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    z.generateAsync({ type: "blob" }).then(function (blob) {
+      var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = slug + ".zip"; document.body.appendChild(a); a.click(); a.remove();
+      var q = new URLSearchParams({ template: "submit-results.yml", title: "Results: " + get("software") + " " + get("version") + " on " + t.sid,
+        software: get("software"), version: get("version"), organisation: get("org"), tests: t.sid, settings: get("settings"),
+        licence: get("licence") === "CC0-1.0" ? "CC0 (no conditions)" : "CC BY 4.0 (credit to you)" });
+      var url = IDX.repo + "/issues/new?" + q.toString();
+      var sent = document.getElementById("sc-sent");
+      sent.innerHTML = "<b>Almost done.</b> <b>" + esc(slug) + ".zip</b> has downloaded. <a href=\"" + esc(url) + "\" target=\"_blank\" rel=\"noopener\">Open the GitHub form</a> (it opens filled in), drag the zip into its <b>Files</b> box and press <b>Submit</b>. A free GitHub account is needed; the bot replies with your scores within minutes.";
+      sent.hidden = false;
+      window.open(url, "_blank", "noopener");
+    });
+  });
+
   input.addEventListener("change", function () { if (input.files.length) run(input.files); });
   if (drop) {
     ["dragenter", "dragover"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); }); });

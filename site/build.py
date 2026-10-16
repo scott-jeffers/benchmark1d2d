@@ -1043,7 +1043,7 @@ def committed_files(m: dict) -> list[Path]:
     skip = {e["path"] for e in m["inputs"] if e.get("committed", True) is False}
     out = []
     for p in sorted(d.rglob("*")):
-        if p.is_file() and p.name != ".gitkeep" and p.relative_to(d).as_posix() not in skip and "__pycache__" not in p.parts:
+        if p.is_file() and p.name not in (".gitkeep", "SETUP.md") and p.relative_to(d).as_posix() not in skip and "__pycache__" not in p.parts:
             out.append(p)
     return out
 
@@ -1063,14 +1063,17 @@ def write_bundles(manifests: list[dict], cards: dict, index: pd.DataFrame | None
                 from benchmark1d2d.catalog.kit import kit_files
 
                 if m["status"] != "draft":
-                    for name, text in kit_files(m).items():
-                        (cdir / name).write_text(text, encoding="utf-8")
-                        z.writestr(f"{m['test_id']}/{name}", text)
+                    import kitpack
+
+                    for name, blob in kitpack.files(m, DIST / "data" / "check").items():
+                        (cdir / name).parent.mkdir(parents=True, exist_ok=True)
+                        (cdir / name).write_bytes(blob)
+                        z.writestr(f"{sid}/{name}", blob)
                 for p in committed_files(m):
                     rel = p.relative_to(m["_case_dir"])
                     (cdir / rel).parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(p, cdir / rel)
-                    z.write(p, f"{m['test_id']}/{rel.as_posix()}")
+                    z.write(p, f"{sid}/{rel.as_posix()}")
                     zall.write(p, f"test_catalog/{m['_rel'].split('test_catalog/')[1]}/{rel.as_posix()}")
     files.append(("Catalog", "Every case: manifests, READMEs, committed inputs (.zip)", all_zip))
     flat = []
@@ -1188,6 +1191,8 @@ def main() -> int:
         c["_path"] = p
         evidence[c["test_id"]] = [c]  # later (fresh CI output) wins
     parity = load_parity()
+    names = {pages.sid_of(m["test_id"]): pages.story(m)["name"] for m in manifests}
+    checkable = checkdata.build(manifests, result_dirs, DIST / "data" / "check", names)  # before the downloads: they carry its sheets
     files = write_bundles(manifests, cards, index)
     # how each result was run: the build's commit and the model files the runners kept
     import os
@@ -1208,8 +1213,6 @@ def main() -> int:
             d = DIST / "data" / "scorecards" / k
             d.mkdir(parents=True, exist_ok=True)
             shutil.copy2(c["_path"], d / c["_path"].name)
-    names = {pages.sid_of(m["test_id"]): pages.story(m)["name"] for m in manifests}
-    checkable = checkdata.build(manifests, result_dirs, DIST / "data" / "check", names)
 
     out_pages = {
         "index.html": pages.home_page(manifests, runs, census, parity, evidence),

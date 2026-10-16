@@ -1,65 +1,52 @@
 # Submitting results
 
-The suite runs every solver it can obtain and run itself. Commercial codes
-(TUFLOW, MIKE, InfoWorks ICM, Flood Modeller, XPSWMM, PCSWMM, and others)
-need a licence, and often a GUI, so their developers or users run the tests
-and **submit the results**. The suite scores submitted results with the same
-scorer and the same limits as everything else, and the site shows them in
-their own column, marked *submitted by* the organisation that ran them.
+Anyone can run a test in their own software and put the result on the site.
+Commercial codes (TUFLOW, MIKE, InfoWorks ICM, Flood Modeller, XPSWMM, PCSWMM
+and others) need a licence, and often a GUI, so their developers or users run
+the tests and send the results. The suite scores them with the same scorer and
+the same limits as every other model, and shows them marked *submitted by* the
+person or organisation that ran them.
 
-A submission never carries its own pass/fail: it carries results files, and
-the score cards are made from them in the open.
+## The short way (no git, no terminal, no JSON)
 
-## 1. Pick the cases
+Everything happens on the **Score your model** page:
+https://scott-jeffers.github.io/benchmark1d2d/score.html
 
-Every case page on the site has a **Download inputs** link. The zip holds:
+1. **Pick a test and download it.** The zip has `START_HERE.md` (what to build,
+   in plain words), ready-made model files where there is a standard format
+   (EPA SWMM or EPANET `.inp`, beds and starting depths as ASCII grids), and
+   results sheets in `results/` with every position or element already filled
+   in.
+2. **Run it** in your software with the settings you would recommend to a
+   user, and fill in the sheets.
+3. **Drop the sheets on the page.** The score appears at once; nothing is
+   uploaded. Column names are read loosely ("Depth (m)" works as well as `h`),
+   and file names do not matter: grid sizes are recognised from the positions.
+4. **Press Publish**, answer five questions (software, version, who ran it,
+   settings, licence) and send the zip it makes through the GitHub form it
+   opens (a free GitHub account is needed). A bot scores the zip with the
+   suite's own scorer and replies on the issue within minutes. A maintainer
+   checks the settings and adds the `publish` label; the bot then adds the
+   results to `submissions/` and the next site build shows them.
 
-| File | What it is |
-|---|---|
-| `manifest.json` | the case: what to run, the checks and their limits |
-| `README.md` | the physics and where the exact answer comes from |
-| `inputs/` | the geometry, terrain, boundary data or network |
-| `RESULTS_TEMPLATE.csv` | the columns and the rows the scorer expects |
-| `HOW_TO_SUBMIT.md` | the run settings, file names, a local scoring command and a `submission.json` to start from |
+To fix something, attach a corrected sheet in a comment on the same issue: the
+bot scores it again.
 
-From a clone of the repository, `benchmark1d2d kit A1F-010 --out kits/`
-writes the same folder.
+## What happens next
 
-Good first cases by kind of code:
+* Results are published under the licence you choose (CC BY 4.0 or CC0).
+* When a test's version changes (a corrected reference or a new limit), a
+  result for the old version is shown as *not scored* until it is rerun.
+* You can send a new version of your results at any time; the site shows the
+  latest.
+* A submitted result counts towards a test's promotion to *frozen* ("two
+  independent codes pass") like any other run.
 
-* **2D flood codes**: A2A-001 (moving shoreline), A2A-010 (steady friction
-  balance), A2A-020 (oblique jump), the SWASHES bump channel A1F-040 to 043
-  (as a narrow strip), the Environment Agency tests A2C-EA1, 2, 4, 5, and the
-  dam breaks A1F-010 and 011.
-* **1D river codes**: A1F-001, 010, 011, 020 and A1F-040 to 043.
-* **Drainage network codes**: A1D-001 to 005 (exact answers), B-EXTRAN-001
-  and B-RTC-001 (parity with EPA SWMM 5.2.4).
-* **Coupled 1D/2D codes**: A12-010, 011 and 012.
-* **Water distribution codes**: A1P-001, A1P-010 and B-EPANET-001.
+## For developers: the long way
 
-## 2. Run them
+The same thing can be done from a clone of the repository.
 
-Use the settings you would recommend to a user for that kind of problem, and
-record them in `submission.json`; do not tune them to the answer. Where a
-case has several grids, run all of them: the finest is scored, and all are
-used to measure the order of convergence, which counts on verification
-cases.
-
-## 3. Write the results
-
-One file per run, in the results contract (`schemas/v1/results.schema.json`):
-CSV or Parquet, SI units, columns `t, x, y, h, u, v, p` plus `Q`, `z`, `V`,
-`element_id`, `element_type` where the case uses them. `RESULTS_TEMPLATE.csv`
-shows exactly which rows each case needs:
-
-* **channels and 2D fields**: one row per cell centre at the end of the run;
-* **probes** (inter-comparison and laboratory cases): a time series at each
-  probe, with the bed level `z` of the cell holding it;
-* **networks**: one row per node and link, named as in the input;
-* **coupled cases**: probe rows, the exchange flow at each manhole and four
-  volume accounts (`surface`, `network`, `inflow`, `outflow`).
-
-## 4. Check the scores yourself
+Check a score locally:
 
 ```bash
 git clone https://github.com/scott-jeffers/benchmark1d2d && cd benchmark1d2d
@@ -69,13 +56,10 @@ benchmark1d2d score A1F-010 --results A1F-010_dx1.25.csv \
   --solver-name "Your solver" --solver-version X
 ```
 
-The scorer prints every check with its value and limit.
-
-## 5. Submit
-
-Add a folder `submissions/<your-solver>/` with your results files and a
-`submission.json` (schema: `schemas/v1/submission.schema.json`;
-`submissions/_example/` is a worked example):
+Submit as a pull request: add a folder `submissions/<your-solver>/` with the
+results files and a `submission.json` (schema
+`schemas/v1/submission.schema.json`; `submissions/_example/` is a worked
+example):
 
 ```json
 {
@@ -91,21 +75,11 @@ Add a folder `submissions/<your-solver>/` with your results files and a
 }
 ```
 
-Open a pull request. The **Submissions** check validates the folder, scores
-every case and posts the scores on the pull request; a malformed submission
-fails the check with the reason. Once merged, the next site build scores it
-again and shows it.
+List grid files coarsest first: the last one is scored and all of them are used
+for the convergence rate. The **Submissions** check scores the folder and posts
+the scores on the pull request.
 
-If you would rather not use GitHub, email the folder as a zip to the
-maintainers (see the repository's contact details) and we will open the pull
-request for you.
-
-## What happens next
-
-* Results are published under the licence you choose (CC-BY-4.0 or CC0).
-* When a case's version changes (a corrected reference or a new limit), a
-  submission for the old version is shown as *not scored* until it is rerun.
-* You can update a submission at any time with a new pull request; the site
-  shows the latest.
-* A submission counts towards a case's promotion to *frozen* ("two
-  independent codes pass") like any other run.
+Results files follow the results contract (`schemas/v1/results.schema.json`):
+CSV or Parquet, SI units, columns `t, x, y, h, u, v, p` plus `Q`, `z`, `V`,
+`element_id`, `element_type` where the test uses them. Columns a test does not
+use can be left out.

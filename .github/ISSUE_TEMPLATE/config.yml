@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Score your model (start here to submit results)
+    url: https://scott-jeffers.github.io/benchmark1d2d/score.html
+    about: Download a test, run it, check your score in the browser and publish it in a few clicks.
   - name: Contributing guide
     url: https://github.com/scott-jeffers/benchmark1d2d/blob/master/CONTRIBUTING.md
     about: How to add a test case, adapter, or metric.

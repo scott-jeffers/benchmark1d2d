@@ -1332,14 +1332,14 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     if (sid.startswith("A1D") or sid.startswith("A12")) and m["status"] != "draft":
         nyl = NOT_YET_DRAINAGE if sid.startswith("A1D") else NOT_YET_COUPLED
         not_yet = (f'<div class="notyet"><div><b>Not run yet:</b> {esc(", ".join(nyl))}</div>'
-                   f'<a href="../score.html" style="font-weight:600">Run it and add yours →</a></div>')
+                   f'<a href="../score.html#{sid}" style="font-weight:600">Run it and add yours →</a></div>')
     elif m["track"] == "A" and m["physics"]["dimensionality"] in ("1D", "2D") and m["status"] != "draft":
         missing = [SOLVER[k]["name"] for k in PRODUCTION_2D if k not in runs and not k.startswith("lisflood-")]
         if not any(k.startswith("lisflood") for k in runs):
             missing.append("LISFLOOD-FP")
         missing = list(dict.fromkeys(missing)) + NOT_YET
         not_yet = (f'<div class="notyet"><div><b>Not run yet:</b> {esc(", ".join(missing))}</div>'
-                   f'<a href="../score.html" style="font-weight:600">Run it and add yours →</a></div>')
+                   f'<a href="../score.html#{sid}" style="font-weight:600">Run it and add yours →</a></div>')
     if mcards:
         models = f"""<section class="section" style="padding-bottom:0" id="models">
   <h2>How models did</h2>
@@ -1458,61 +1458,101 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
 
 
 def score_page(manifests: list[dict], checkable: list[dict]) -> str:
-    checkable = sorted(checkable, key=lambda c: c["sid"])
-    opts = "".join(f'<option value="{esc(c["sid"])}">{esc(c["sid"])} — {esc(c["name"])}</option>' for c in checkable)
-    rows = "".join(
-        f'<tr id="{esc(c["sid"])}"><td><a href="tests/{esc(c["sid"])}.html"><b>{esc(c["name"])}</b></a><div class="muted small">{esc(c["sid"])}</div></td>'
-        f'<td><a href="data/cases/{esc(c["sid"])}.zip" download>Inputs (.zip)</a></td>'
-        f'<td>{" · ".join(f"<a href=\"data/check/{esc(f)}\" download>{esc(lab)}</a>" for lab, f in c["templates"])}</td></tr>'
-        for c in checkable)
-    others = [m for m in manifests if sid_of(m["test_id"]) not in {c["sid"] for c in checkable} and m["status"] != "draft"]
-    other_rows = "".join(f'<li><a href="tests/{sid_of(m["test_id"])}.html">{esc(story(m)["name"])}</a> <span class="muted">({esc(sid_of(m["test_id"]))})</span></li>' for m in others)
+    """Pick a test, download it, run it, drop the results, see the score, publish: one page, no tools."""
+    import json as _json
+
+    from stories import GROUPS as _G
+
+    checks = {c["sid"] for c in checkable}
+    tests = []
+    for m in sorted((m for m in manifests if m["status"] != "draft"), key=lambda m: m["test_id"]):
+        sid = sid_of(m["test_id"])
+        st = story(m)
+        setup = m["_case_dir"] / "SETUP.md"
+        zp = H.DIST / "data" / "cases" / f"{sid}.zip"
+        levels = sorted((m["simulation"].get("mesh_refinement") or {}).get("levels") or [], reverse=True)
+        tests.append(dict(sid=sid, name=st["name"], question=st["question"], group=st["group"], version=m["case_version"],
+                          check=sid in checks, levels=levels, zip=f"data/cases/{sid}.zip", bytes=zp.stat().st_size if zp.is_file() else 0,
+                          setup=H.md(setup.read_text(encoding="utf-8")) if setup.is_file() else ""))
+    opts = ""
+    for g, gname in _G.items():
+        ts = [t for t in tests if t["group"] == g]
+        if ts:
+            opts += f'<optgroup label="{esc(gname)}">' + "".join(f'<option value="{esc(t["sid"])}">{esc(t["name"])} ({esc(t["sid"])})</option>' for t in ts) + "</optgroup>"
+    rest = [t for t in tests if t["group"] not in _G]
+    opts += "".join(f'<option value="{esc(t["sid"])}">{esc(t["name"])} ({esc(t["sid"])})</option>' for t in rest)
     body = f"""
 <div class="wrap">
-<section class="page-head">
+<section class="page-head sc-head">
   <h1>Score your model</h1>
-  <p class="lede">Download a test's inputs, run them in your own software, and check your results here. Nothing is uploaded: the check runs in your browser.</p>
+  <p class="lede">Run one of our tests in your own software and see how it scores, then put it on the site. No account, terminal or code needed until you publish.</p>
 </section>
-<section class="section tight">
-  <div class="card" style="display:flex;flex-wrap:wrap;gap:40px;align-items:center;padding:36px">
-    <div style="flex:1 1 380px;min-width:0">
-      <h2>Three steps</h2>
-      <ol class="steps">
-        <li><span class="n">1</span><span><b>Pick a test</b> and download its inputs, plus a results template for each grid size.</span></li>
-        <li><span class="n">2</span><span><b>Run it</b> in your own model — any software, any language — and fill in the template.</span></li>
-        <li><span class="n">3</span><span><b>Drop your results here</b> to see how they score. Drop all the grid sizes at once to see the convergence rate too.</span></li>
-      </ol>
-    </div>
+
+<section class="sc-steps">
+  <article class="card sc-step" id="sc-step1">
+    <div class="sc-n">1</div>
+    <h2>Pick a test and download it</h2>
+    <label class="nv-field">Test <select id="case">{opts}</select></label>
+    <p class="muted small" id="sc-q"></p>
+    <div class="btns"><a class="btn primary" id="sc-dl" href="#" download>Download the test</a><a class="btn ghost" id="sc-page" href="#">About this test</a></div>
+    <p class="small muted" style="margin-top:10px">The download has a page to start from (<code>START_HERE.md</code>), what to build in plain words, ready-made model files where there is a standard format, and results sheets with the positions already filled in.</p>
+    <details class="sc-setup" id="sc-setup-box" open><summary>What you will build</summary><div class="prose small" id="sc-setup"></div></details>
+  </article>
+  <article class="card sc-step">
+    <div class="sc-n">2</div>
+    <h2>Run it in your software</h2>
+    <p>Build the model as described, with the settings you would recommend to a user for this kind of problem. Then fill in the sheets in <code>results/</code>: they already list every position or element, so you only add your numbers.</p>
+    <p class="small muted">Column names are read loosely ("Depth (m)" works as well as <code>h</code>), commas, semicolons or tabs all work, and your files can have any names.</p>
+  </article>
+  <article class="card sc-step">
+    <div class="sc-n">3</div>
+    <h2>Drop your results here</h2>
     <div class="drop" id="drop">
       <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="var(--water)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
-      <b>Drop results files</b>
-      <label class="small" for="case">Test</label>
-      <select id="case">{opts}</select>
-      <label class="small" for="files">CSV files, one per grid size</label>
-      <input type="file" id="files" accept=".csv,text/csv" multiple>
-      <span class="small">Checked in your browser, never uploaded</span>
+      <b>Drop your filled sheets</b>
+      <label class="small" for="files">or choose them (all grid sizes at once)</label>
+      <input type="file" id="files" accept=".csv,.txt,text/csv" multiple>
+      <span class="small">Checked in your browser; nothing is uploaded</span>
     </div>
+  </article>
+</section>
+
+<section class="section tight"><div class="report" id="report" aria-live="polite"></div></section>
+
+<section class="section tight" id="sc-publish" hidden>
+  <div class="card sc-pub">
+    <div class="sc-n">4</div>
+    <h2>Publish it</h2>
+    <p>Five questions, then one file to send. A bot scores it with the suite's own scorer and replies within minutes; a maintainer checks the settings and puts it on the site, marked <i>submitted by</i> you.</p>
+    <form id="sc-form" class="sc-form">
+      <label class="nv-field">Software <input name="software" required placeholder="e.g. TUFLOW HPC"></label>
+      <label class="nv-field">Version <input name="version" required placeholder="the exact release or build"></label>
+      <label class="nv-field">Organisation or your name <input name="org" required placeholder="shown as submitted by"></label>
+      <label class="nv-field">Licence for the results
+        <select name="licence"><option value="CC-BY-4.0">CC BY 4.0 (credit to you)</option><option value="CC0-1.0">CC0 (no conditions)</option></select></label>
+      <label class="nv-field sc-wide">Settings you used <textarea name="settings" rows="3" required placeholder="scheme, time step, wet/dry depth… what a user would need to repeat the run"></textarea></label>
+      <label class="sc-check sc-wide"><input type="checkbox" name="consent" required> I ran this test myself (or for the organisation above) and the results may be published.</label>
+      <div class="btns sc-wide"><button class="btn primary" type="submit">Make the file and open the form</button></div>
+    </form>
+    <div id="sc-sent" class="callout" hidden></div>
   </div>
-  <div class="report" id="report" aria-live="polite"></div>
 </section>
+
 <section class="section tight">
-  <h2>Tests you can check here</h2>
-  <p class="muted">These tests have exact answers, so your results can be compared point by point, node by node, or state by state. Templates list what to report: one file per grid size for the channel and flood tests, one file for the drainage and coupled tests.</p>
-  <div class="table-scroll"><table class="data"><thead><tr><th>Test</th><th>Inputs</th><th>Results templates (grid size)</th></tr></thead><tbody>{rows}</tbody></table></div>
-</section>
-<section class="section tight">
-  <h2>Getting an official score card</h2>
-  <p>The browser check uses the same formulas as the scorer, but an official result is a signed score card made by the command-line tool, which also reads Parquet, network results and the other tests:</p>
+  <details class="tech"><summary>For developers <span>Command line, pull requests, Parquet</span></summary><div class="tech-body">
+    <p>Every check can also be run from a clone of the repository, and results can be sent as a pull request:</p>
 <pre><code>pip install -e ".[dev]"
 benchmark1d2d score A1F-010 --results mine_dx1.25.csv \\
   --refinement mine_dx10.csv mine_dx5.csv mine_dx2.5.csv mine_dx1.25.csv \\
   --solver-name my-solver --solver-version 1.0</code></pre>
-  <p>To publish results, <a href="{REPO_URL}/blob/master/docs/submitting.md">submit your results files</a>: the suite scores them itself and lists them on the site as submitted by you. The <a href="get-started.html">command-line guide</a> covers network and compatibility tests.</p>
-  {f'<h3>Tests scored with the command line only</h3><ul class="small">{other_rows}</ul>' if other_rows else ''}
+    <p>The <a href="{REPO_URL}/blob/master/docs/submitting.md">submission guide</a> covers the folder format, Parquet and automation. The in-browser check covers {len(checks)} of the {len(tests)} tests; the others are scored by the bot when you publish.</p>
+  </div></details>
 </section>
-</div>"""
-    return layout("Score your model", body, "score.html", scripts='<script src="static/check.js" defer></script>',
-                  description="Check your model's results against the exact answers, in your browser.")
+</div>
+<script type="application/json" id="sc-index">{_json.dumps(dict(tests=tests, repo=REPO_URL))}</script>"""
+    return layout("Score your model", body, "score.html",
+                  scripts='<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script><script src="static/check.js" defer></script>',
+                  description="Run a test in your own software, check the score in your browser and publish it in a few clicks.")
 
 
 # ── how it works ────────────────────────────────────────────────────────────

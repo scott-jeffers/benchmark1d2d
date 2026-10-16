@@ -7,7 +7,7 @@
   "g": 9.81,
   "boundaries": {
     "west": "unit discharge q = 0.2 m²/s",
-    "east": "exact depth h(L) = 0.742 m",
+    "east": "exact depth h(L) = 0.748 m",
     "north_south": "slip walls"
   },
   "initial_condition": "uniform depth h(L), velocity q/h",

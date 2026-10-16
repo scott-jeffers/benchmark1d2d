@@ -36,3 +36,13 @@ def test_csv_and_parquet_score_the_same(tmp_path):
     assert [r["observed"] for r in a["criteria_results"]] == pytest.approx([r["observed"] for r in b["criteria_results"]], rel=1e-9)
     assert a["convergence_result"]["errors"] == pytest.approx(b["convergence_result"]["errors"], rel=1e-9)
     assert a["passed"] == b["passed"]
+
+
+def test_results_sheet_with_loose_column_names(tmp_path):
+    from benchmark1d2d.io.results import read_results_parquet
+
+    p = tmp_path / "mine.csv"
+    p.write_text("Time (s);x;Depth (m);Velocity (m/s);notes\n60;5;0,5;1,2;ok\n", encoding="utf-8")
+    df = read_results_parquet(p)
+    assert {"t", "x", "h", "u", "y", "v", "p"} <= set(df.columns) and "notes" not in df.columns
+    assert df["h"].iloc[0] == 0.5 and df["u"].iloc[0] == 1.2

@@ -1,0 +1,69 @@
+name: Submit results
+description: Send the results of a test you ran in your own software. A bot scores them and replies; a maintainer then publishes them.
+title: "Results: "
+labels: [submission]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The **Publish** button on https://scott-jeffers.github.io/benchmark1d2d/score.html fills this in and makes the zip for you.
+        Drag the zip (or your filled-in results sheets) into the **Files** box below, then submit.
+  - type: input
+    id: software
+    attributes:
+      label: Software
+      description: The product and engine, e.g. "TUFLOW HPC" or "MIKE 21 FM".
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The exact release or build.
+    validations:
+      required: true
+  - type: input
+    id: organisation
+    attributes:
+      label: Organisation or your name
+      description: Shown on the site as "submitted by".
+    validations:
+      required: true
+  - type: input
+    id: tests
+    attributes:
+      label: Tests
+      description: The test ids, e.g. "A1F-010, A2A-001".
+    validations:
+      required: true
+  - type: textarea
+    id: settings
+    attributes:
+      label: Settings you used
+      description: The options a user would need to repeat the run (scheme, time step, wet/dry depth…). Use what you would recommend to a user, not settings tuned to the answer.
+    validations:
+      required: true
+  - type: dropdown
+    id: licence
+    attributes:
+      label: Licence
+      description: Under which the results and scores are published.
+      options:
+        - CC BY 4.0 (credit to you)
+        - CC0 (no conditions)
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files
+      description: Drag the zip or your results sheets (.csv) here.
+    validations:
+      required: true
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Permission
+      options:
+        - label: I ran these tests myself (or on behalf of the organisation above) and the results may be published.
+          required: true

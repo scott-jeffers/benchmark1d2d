@@ -12,7 +12,10 @@ Each submission is a folder `submissions/<slug>/` holding:
 * the results files it lists, in the results contract
   (`schemas/v1/results.schema.json`): Parquet, or CSV with the same columns.
 
-Open a pull request adding the folder. The `Submissions` check validates it
+The easy way is the **Publish** button on the site's Score page
+(https://scott-jeffers.github.io/benchmark1d2d/score.html): it makes the folder
+for you and sends it through an issue, and a bot adds it here. Or open a pull
+request adding the folder. The `Submissions` check validates it
 and posts the scores; once merged, the site picks it up at its next build.
 `_example/` is a worked example (the suite's demo solver on A1F-011), skipped
 by the site.

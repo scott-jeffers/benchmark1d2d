@@ -164,7 +164,8 @@ The checks and their limits:
 
 ## 4. Submit
 
-Add a folder `submissions/<your-solver>/` holding the results files and a
+The easiest way: drop the files on https://scott-jeffers.github.io/benchmark1d2d/score.html#{sid}
+and press **Publish**; it makes the submission for you. Or add a folder `submissions/<your-solver>/` holding the results files and a
 `submission.json` such as
 
 ```json

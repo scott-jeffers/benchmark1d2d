@@ -23,6 +23,9 @@ finite-volume solver converges at order 1.02.
 - **2.0.0** — the 1.x reference held the free surface flat while water flowed
   without friction, which is not a solution of the shallow-water equations;
   it is replaced by the construction above.
+- **2.0.0, October 2026** — a typo in `inputs/params.json` (the text gave the
+  downstream depth as 0.742 m) corrected to 0.748 m, the depth the reference
+  and every run use. No result changes.
 
 ## Citation
 
