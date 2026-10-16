@@ -162,6 +162,8 @@ def main() -> int:
                          "hydra: NEER AI Hydra's urban-drainage engine (--candidate-python is then the hydra CLI)")
     ap.add_argument("--candidate-routing", help="run the candidate with this FLOW_ROUTING (e.g. FV for OpenSWMM's finite-volume solver); "
                     "the reference keeps each model's own routing")
+    ap.add_argument("--models", nargs="+", help="score these model folders of --corpus instead of a tier's selection")
+    ap.add_argument("--stem", help="output file stem (default <tier>_<label>)")
     ap.add_argument("--label", default="self", help="short name for the candidate, used in file names")
     ap.add_argument("--out", type=Path, default=REPO / "out" / "corpus_parity")
     ap.add_argument("--timeout", type=float, default=120.0)
@@ -170,7 +172,10 @@ def main() -> int:
     ap.add_argument("--expect-identical", action="store_true", help="fail unless every scored model differs by exactly 0 (harness self-check)")
     args = ap.parse_args()
 
-    sel = json.loads((TIER_DIR / f"tier_{args.tier}" / "selection.json").read_text(encoding="utf-8"))
+    if args.models:
+        sel = {"model_ids": args.models, "engine": "EPA SWMM", "engine_version": "5.2.4", "upstream_commit": None}
+    else:
+        sel = json.loads((TIER_DIR / f"tier_{args.tier}" / "selection.json").read_text(encoding="utf-8"))
     models = sel["model_ids"][: args.limit] if args.limit else sel["model_ids"]
     print(f"{args.tier} tier: {len(models)} models; reference {sel['engine']} {sel['engine_version']}; candidate {args.label}")
     rows = []
@@ -185,11 +190,11 @@ def main() -> int:
                 print(f"  [{i}/{len(models)}] {r['model_id']}: {r['status']} {r.get('detail', '')}")
     df = pd.DataFrame(rows).sort_values("model_id").reset_index(drop=True)
     args.out.mkdir(parents=True, exist_ok=True)
-    stem = f"{args.tier}_{args.label}"
+    stem = args.stem or f"{args.tier}_{args.label}"
     df.to_parquet(args.out / f"{stem}.parquet", index=False)
     scored = df[df["status"] == "scored"]
     summary = {
-        "tier": args.tier, "upstream_commit": sel["upstream_commit"],
+        "tier": args.stem.split("_")[0] if args.stem else args.tier, "upstream_commit": sel["upstream_commit"],
         "reference": f"{sel['engine']} {sel['engine_version']} (swmm-toolkit 0.17.0)",
         "candidate": args.label, "candidate_version": str(scored["cand_version"].iloc[0]) if len(scored) else None,
         "models": len(df), "status": df["status"].value_counts().to_dict(),

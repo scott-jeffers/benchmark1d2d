@@ -731,7 +731,7 @@ ERR_WHY = {
 
 def load_parity() -> list[tuple[dict, pd.DataFrame]]:
     out = []
-    for tier in ("pr", "nightly", "release"):
+    for tier in ("pr", "nightly", "release", "bellinge"):
         for summ in sorted(PARITY_DIR.glob(f"{tier}_*.summary.json")):
             df_path = summ.with_name(summ.name.replace(".summary.json", ".parquet"))
             if df_path.is_file():
@@ -756,7 +756,7 @@ PARITY_FINDINGS: dict[str, str] = {
 def parity_section(parity: list[tuple[dict, pd.DataFrame]]) -> str:
     if not parity:
         return ""
-    names = {"pr": "PR tier", "nightly": "Nightly tier", "release": "Release tier"}
+    names = {"pr": "PR tier", "nightly": "Nightly tier", "release": "Release tier", "bellinge": "Bellinge network (1 real system)"}
     rows, tables = [], []
     for summ, df in parity:
         sc = df[df["status"] == "scored"]
@@ -786,7 +786,7 @@ def parity_section(parity: list[tuple[dict, pd.DataFrame]]) -> str:
     cands = sorted({summ["candidate"] for summ, _ in parity})
     v6 = "".join(PARITY_FINDINGS.get(c, "") for c in ("openswmm-6", "hydra") if c in cands)
     return f"""<section id="parity"><h2>Does another engine match SWMM 5.2.4?</h2>
-<p>Any SWMM-compatible engine can be scored against the reference across a whole tier with <code>scripts/corpus_parity.py</code>: both engines run every model, and each model gets the worst node (relative peak depth) and worst link (relative volume of |Q|) — the same metrics as the catalog's Track B cases. Two candidates are scored here: the previous release, <b>EPA SWMM 5.1.15</b> (OWA build in <code>swmm-toolkit</code> 0.10.0), HydroCouple's rewritten <b>OpenSWMM Engine v6</b> (pre-release <code>openswmm</code> 6.0.0a4 on PyPI, run with its new engine), and NEER AI's <b>Hydra 17</b> urban-drainage engine (CLI 4.1.1).</p>
+<p>Any SWMM-compatible engine can be scored against the reference across a whole tier with <code>scripts/corpus_parity.py</code>: both engines run every model, and each model gets the worst node (relative peak depth) and worst link (relative volume of |Q|) — the same metrics as the catalog's Track B cases. Two candidates are scored here: the previous release, <b>EPA SWMM 5.1.15</b> (OWA build in <code>swmm-toolkit</code> 0.10.0), HydroCouple's rewritten <b>OpenSWMM Engine v6</b> (pre-release <code>openswmm</code> 6.0.0a4 on PyPI, run with its new engine, both with each model's own routing and with its new finite-volume routing, <code>FLOW_ROUTING FV</code>, which changes the numerical method and so is expected to differ), and NEER AI's <b>Hydra 17</b> urban-drainage engine (CLI 4.1.1). Each week the same comparison runs on <b>Bellinge</b> (Odense, Denmark; Pedersen et al. 2021, CC BY 4.0), a real combined sewer system of about 1,000 nodes and 1,000 links with pumps, weirs and control rules, on a two-day storm.</p>
 {bars}
 {legend([("Identical", "st-frozen"), ("Within 1 %", "st-candidate"), ("1–5 %", "st-release"), ("Over 5 %", "st-fail"), ("Candidate could not run it", "st-draft")])}
 <div class="findings" style="margin-top:18px">

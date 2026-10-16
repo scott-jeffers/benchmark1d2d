@@ -45,6 +45,7 @@ WORKFLOWS = {
     "hecras.yml": None,
     "track-a.yml": ["telemac-scorecards", "swmm-track-a-scorecards"],
     "nightly.yml": ["nightly-census"],
+    "bellinge.yml": None,
 }
 
 # solver name (from the card) -> fixture directory, first match wins
@@ -74,7 +75,7 @@ HISTORY_COLS = ["date", "run", "tier", "candidate", "candidate_version", "upstre
 # a nightly parity change worth an issue: this many models moving in or out of "within 1 %",
 # or any change in the number the candidate cannot run
 SHIFT_MODELS = 5
-PARITY_FILES = re.compile(r"^(nightly|pr|release)_(?!census)[\w.-]+\.(parquet|summary\.json)$|^epanet_[\w.-]+\.(parquet|summary\.json)$")
+PARITY_FILES = re.compile(r"^(nightly|pr|release|bellinge)_(?!census)[\w.-]+\.(parquet|summary\.json)$|^epanet_[\w.-]+\.(parquet|summary\.json)$")
 
 
 def gh(*args: str, check: bool = True) -> str:
