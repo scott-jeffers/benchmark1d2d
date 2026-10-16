@@ -65,10 +65,7 @@
         "md5": "fea9026c5d98b29645eb7fad69c4675d",
         "doi": "10.11583/DTU.12513428.v2"
       },
-      "pending": {
-        "reason": "Record the SHA-256 on first fetch (DTU's file store is on port 9000, unreachable from the build sandbox).",
-        "obtain_from": "DTU Data, item 12513428, file 30592830"
-      }
+      "sha256": "fe07d487925cef647d1657def9c6316f952c9ae75304d28f2e1798d5dd8a646b"
     },
     {
       "path": "inputs/3b_DMI_C-band_v2.zip",
