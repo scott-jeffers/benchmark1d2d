@@ -868,7 +868,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
     corpus = ""
     bars_html = []
     n_models = 0
-    labels = {"swmm-5.1.15": "SWMM 5.1.15", "openswmm-6": "OpenSWMM Engine v6", "hydra": "Hydra 17"}
+    labels = {"swmm-5.1.15": "SWMM 5.1.15", "openswmm-6": "OpenSWMM Engine v6", "openswmm-6-fv": "OpenSWMM v6 finite volume", "hydra": "Hydra 17"}
     for summ, df in sorted(parity or [], key=lambda p: p[0].get("candidate") != "swmm-5.1.15"):
         if summ.get("tier") != "nightly":
             continue

@@ -66,6 +66,8 @@ jobs:
           python -m venv "$RUNNER_TEMP/openswmm"
           "$RUNNER_TEMP/openswmm/bin/python" -m pip install -q "openswmm==6.0.0a4.dev1" numpy
           python scripts/corpus_parity.py --corpus hc/corpus --tier nightly --candidate-python "$RUNNER_TEMP/openswmm/bin/python" --candidate-engine openswmm --label openswmm-6 --workers 4 --timeout 600 || true
+      - name: Parity of OpenSWMM v6 finite-volume routing (FLOW_ROUTING FV) against 5.2.4 (a finding, not a gate)
+        run: python scripts/corpus_parity.py --corpus hc/corpus --tier nightly --candidate-python "$RUNNER_TEMP/openswmm/bin/python" --candidate-engine openswmm --candidate-routing FV --label openswmm-6-fv --workers 4 --timeout 600 || true
       - name: Parity of Hydra (NEER AI) against SWMM 5.2.4 and EPANET 2.2 (a finding, not a gate)
         run: |
           HYDRA=$(python scripts/fetch_hydra.py "$RUNNER_TEMP/hydra")

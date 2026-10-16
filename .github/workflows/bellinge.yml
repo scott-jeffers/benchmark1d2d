@@ -1,0 +1,41 @@
+name: Bellinge fetch
+
+# The Bellinge data set (Pedersen et al. 2021, CC BY 4.0; DTU Data,
+# doi:10.11583/DTU.c.5029124) is served from a file store the build sandbox
+# cannot reach. This job downloads the published EPA SWMM model on a GitHub
+# runner, checks it against the published MD5, records its SHA-256, lists its
+# contents and runs it once in EPA SWMM 5.2.4 (swmm-toolkit 0.17.0), so the
+# model can join the SWMM parity corpus and test A1F-100.
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/bellinge.yml
+      - scripts/bellinge.py
+
+jobs:
+  fetch:
+    name: Fetch and check the Bellinge SWMM model
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download, verify and inventory
+        run: |
+          python -m pip install -q -e ".[dev]" swmm-toolkit==0.17.0
+          python scripts/bellinge.py fetch --out out/bellinge
+      - name: Run the model once in EPA SWMM 5.2.4
+        run: python scripts/bellinge.py run --out out/bellinge --timeout 3000 || echo "::warning title=Bellinge::the model did not run to the end in SWMM 5.2.4; see the log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bellinge-swmm
+          path: |
+            out/bellinge/*.json
+            out/bellinge/*.txt
+            out/bellinge/*.rpt
+            out/bellinge/model/**

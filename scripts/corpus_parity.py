@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -93,17 +94,40 @@ def _series(data: dict, kind: str) -> dict[str, tuple[np.ndarray, np.ndarray]]:
     return out
 
 
-def score_model(model_id: str, corpus: Path, cand_python: str, timeout: float, engine: str = "toolkit") -> dict:
+def with_routing(inp: Path, routing: str, td: Path) -> tuple[Path, str]:
+    """A copy of the model's folder in ``td`` (relative file paths keep working; the corpus is never written)
+    with FLOW_ROUTING set; returns the copied model and its original routing."""
+    import shutil
+
+    folder = td / "cand_model"
+    shutil.copytree(inp.parent, folder)
+    inp = folder / inp.name
+    text = inp.read_text(encoding="latin-1")
+    m = re.search(r"(?im)^\s*FLOW_ROUTING\s+(\S+)", text)
+    original = m.group(1).upper() if m else "KINWAVE"
+    if m:
+        text = text[:m.start(1)] + routing + text[m.end(1):]
+    else:
+        text = re.sub(r"(?im)^\[OPTIONS\]\s*$", f"[OPTIONS]\nFLOW_ROUTING {routing}", text, count=1)
+    inp.write_text(text, encoding="latin-1")
+    return inp, original
+
+
+def score_model(model_id: str, corpus: Path, cand_python: str, timeout: float, engine: str = "toolkit",
+                routing: str | None = None) -> dict:
     inp = (corpus / model_id / "model.inp").resolve()
     row: dict = {"model_id": model_id, "status": "scored"}
     with tempfile.TemporaryDirectory() as tdn:
         td = Path(tdn)
+        cand_inp = inp
+        if routing:
+            cand_inp, row["original_routing"] = with_routing(inp, routing, td)
         try:
             ref_out, row["ref_runtime_s"], _ = _run(sys.executable, inp, td, "ref", timeout)
         except Exception as exc:  # noqa: BLE001 — record and continue
             return {**row, "status": "reference_error", "detail": str(exc)[:200]}
         try:
-            cand_out, row["cand_runtime_s"], row["cand_version"] = _run(cand_python, inp, td, "cand", timeout, engine)
+            cand_out, row["cand_runtime_s"], row["cand_version"] = _run(cand_python, cand_inp, td, "cand", timeout, engine)
         except subprocess.TimeoutExpired:
             return {**row, "status": "candidate_timeout"}
         except Exception as exc:  # noqa: BLE001
@@ -136,6 +160,8 @@ def main() -> int:
     ap.add_argument("--candidate-engine", default="toolkit", choices=["toolkit", "openswmm", "hydra"],
                     help="toolkit: a swmm.toolkit build; openswmm: the OpenSWMM Engine v6 in the openswmm wheel; "
                          "hydra: NEER AI Hydra's urban-drainage engine (--candidate-python is then the hydra CLI)")
+    ap.add_argument("--candidate-routing", help="run the candidate with this FLOW_ROUTING (e.g. FV for OpenSWMM's finite-volume solver); "
+                    "the reference keeps each model's own routing")
     ap.add_argument("--label", default="self", help="short name for the candidate, used in file names")
     ap.add_argument("--out", type=Path, default=REPO / "out" / "corpus_parity")
     ap.add_argument("--timeout", type=float, default=120.0)
@@ -149,7 +175,7 @@ def main() -> int:
     print(f"{args.tier} tier: {len(models)} models; reference {sel['engine']} {sel['engine_version']}; candidate {args.label}")
     rows = []
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futs = {pool.submit(score_model, m, args.corpus, args.candidate_python, args.timeout, args.candidate_engine): m for m in models}
+        futs = {pool.submit(score_model, m, args.corpus, args.candidate_python, args.timeout, args.candidate_engine, args.candidate_routing): m for m in models}
         for i, fut in enumerate(as_completed(futs), 1):
             r = fut.result()
             rows.append(r)
@@ -170,6 +196,7 @@ def main() -> int:
         "within_pct": {f"{t:g}": int((scored["worst_pct"] <= t).sum()) for t in TOLERANCES_PCT},
         "median_worst_pct": float(scored["worst_pct"].median()) if len(scored) else None,
         "metrics": "peak_depth = worst node, relative peak depth; volume = worst link, relative integral of |Q|",
+        **({"candidate_routing": args.candidate_routing} if args.candidate_routing else {}),
     }
     (args.out / f"{stem}.summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(summary, indent=1))

@@ -720,7 +720,8 @@ def legacy_figures(m: dict, result_dirs: list[Path], assets: Path) -> str:
 PARITY_DIR = ROOT / "test_catalog" / "track_b" / "parity"
 
 
-CANDIDATE_NAMES = {"swmm-5.1.15": "EPA SWMM 5.1.15", "openswmm-6": "OpenSWMM Engine v6", "hydra": "Hydra 17 (urban drainage)"}
+CANDIDATE_NAMES = {"swmm-5.1.15": "EPA SWMM 5.1.15", "openswmm-6": "OpenSWMM Engine v6", "openswmm-6-fv": "OpenSWMM Engine v6, finite-volume routing",
+                   "hydra": "Hydra 17 (urban drainage)"}
 ERR_WHY = {
     "swmm-5.1.15": "Most use input syntax added after 5.1 (inlets, newer options), which an older engine rejects with ERROR 200.",
     "openswmm-6": "The v6 pre-release stops at initialisation with an unexplained parse error; see docs/openswmm.md.",
