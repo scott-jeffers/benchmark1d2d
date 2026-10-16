@@ -139,9 +139,64 @@ def inventory(out: Path, role: str) -> None:
     print("\n".join(lines[:80]))
 
 
+# Storms picked from the model's own rain-gauge series (rg5425): the most intense 10-minute
+# rainfall and the largest daily totals after the level meters start (August 2010). The first is
+# the event the published model is set up for.
+EVENTS = ["2012-06-29", "2011-06-30", "2011-08-26", "2013-08-12", "2014-06-24", "2014-08-17", "2015-07-25", "2019-10-11"]
+
+
+def extract(out: Path) -> None:
+    """Measured levels at every level meter for two days from the start of each storm (CC BY 4.0, DTU Data item 2)."""
+    import pandas as pd
+
+    from benchmark1d2d.catalog import load_manifest
+
+    m = load_manifest("A1F-100", repo=REPO)
+    entry = next(e for e in m["inputs"] if e["role"] == "observations")
+    out.mkdir(parents=True, exist_ok=True)
+    zpath = out / Path(entry["path"]).name
+    if not zpath.is_file():
+        req = urllib.request.Request(entry["source"]["url"], headers={"User-Agent": "benchmark1d2d (github.com/scott-jeffers/benchmark1d2d)"})
+        with urllib.request.urlopen(req, timeout=1800) as r, zpath.open("wb") as fh:
+            while chunk := r.read(1 << 20):
+                fh.write(chunk)
+    windows = [(pd.Timestamp(d), pd.Timestamp(d) + pd.Timedelta("2D")) for d in EVENTS]
+    frames = []
+    with zipfile.ZipFile(zpath) as z:
+        for zi in z.infolist():
+            name = Path(zi.filename).name
+            if not name.endswith("_proc_v6.csv"):
+                continue
+            stem = name[: -len("_proc_v6.csv")]
+            node = stem.split("_")[0].replace("p1", "")
+            sensor = stem.rsplit("_", 1)[0]  # e.g. G71F04R_Level1
+            source = stem.rsplit("_", 1)[1]  # iFixp1, System2000p1, Danovap1 ...
+            with z.open(zi) as fh:
+                for ch in pd.read_csv(fh, usecols=lambda c: c in ("time", "level", "depth_s"), chunksize=1_000_000):
+                    t = pd.to_datetime(ch["time"])
+                    keep = False
+                    for a, b in windows:
+                        keep = keep | ((t >= a) & (t < b))
+                    if keep.any():
+                        sel = ch[keep].copy()
+                        sel["time"] = t[keep]
+                        sel["node"], sel["sensor"], sel["source"] = node, sensor, source
+                        frames.append(sel)
+            print(f"  {name}: {sum(len(f) for f in frames if f['sensor'].iloc[0] == sensor and f['source'].iloc[0] == source)} rows in the event windows", flush=True)
+    df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=["time", "level", "depth_s", "node", "sensor", "source"])
+    df = df.dropna(subset=["level"]).sort_values(["sensor", "source", "time"])
+    df["event"] = df["time"].dt.normalize()
+    for d in EVENTS:  # label each row with its event
+        df.loc[(df["time"] >= pd.Timestamp(d)) & (df["time"] < pd.Timestamp(d) + pd.Timedelta("2D")), "event"] = pd.Timestamp(d)
+    df.to_csv(out / "levels_events.csv.gz", index=False, compression="gzip")
+    cov = df.groupby(["event", "sensor", "source"]).size().unstack(["sensor", "source"]).fillna(0).astype(int)
+    (out / "coverage.txt").write_text(cov.to_string() + "\n", encoding="utf-8")
+    print(cov.to_string())
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("action", choices=["fetch", "run", "inventory"])
+    ap.add_argument("action", choices=["fetch", "run", "inventory", "extract"])
     ap.add_argument("--role", default="observations", help="inventory: which A1F-100 input (observations, rainfall)")
     ap.add_argument("--out", type=Path, default=REPO / "out" / "bellinge")
     ap.add_argument("--timeout", type=float, default=3000)
@@ -150,6 +205,8 @@ def main() -> int:
         fetch(a.out)
     elif a.action == "run":
         run(a.out, a.timeout)
+    elif a.action == "extract":
+        extract(a.out)
     else:
         inventory(a.out, a.role)
     return 0

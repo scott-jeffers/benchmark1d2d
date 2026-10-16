@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "inventory or extract"
-        default: inventory
+        description: "extract"
+        default: extract
   push:
     branches: [master]
     paths:
@@ -22,13 +22,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Inventory the sensor data and the radar rainfall
+      - name: Extract the measured levels for the selected storms
         run: |
           python -m pip install -q -e ".[dev]"
-          python scripts/bellinge.py inventory --role observations --out out/bellinge_data
-          python scripts/bellinge.py inventory --role rainfall --out out/bellinge_data || true
+          python scripts/bellinge.py extract --out out/bellinge_data
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: bellinge-data
-          path: out/bellinge_data/*.txt
+          path: |
+            out/bellinge_data/*.txt
+            out/bellinge_data/*.csv.gz
