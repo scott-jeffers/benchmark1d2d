@@ -81,8 +81,12 @@ SOLVERS: list[dict] = [
          what="OpenSWMM Engine v6 (pre-release) with its own 1D/2D coupling: a local-inertial 2D surface with each manhole tied to a mesh vertex, run with its defaults; the surface is the case's grid with each square cut into two triangles"),
     dict(key="openswmm-2d-x", name="OpenSWMM 6", sub="coupled 1D/2D · cross mesh", kind="production", color="#5FB3A1",
          what="The same OpenSWMM 6 1D/2D model on a finer-cut mesh: each grid square cut into four triangles by both diagonals (the mesh the suite's ANUGA surface uses)"),
-    dict(key="swmm515", name="SWMM 5.1.15", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-2)",
-         what="EPA SWMM 5.1.15, the previous release, compared with SWMM 5.2.4"),
+    dict(key="swmm515", name="SWMM 5.1.15", sub="previous release", kind="compat", color="var(--cat-2)",
+         what="EPA SWMM 5.1.15, the release before 5.2: on the parity tests compared with SWMM 5.2.4, on the exact tests scored like any other engine"),
+    dict(key="wntr", name="WNTR", sub="own hydraulic solver", kind="research", color="#6A8D2F",
+         what="WNTR 1.5 (US EPA and Sandia), its own Python solver of the network equations (WNTRSimulator), independent of EPANET's code; Hazen-Williams friction only"),
+    dict(key="tsnet", name="TSNet", sub="water hammer · MOC", kind="research", color="#9C4F96",
+         what="TSNet 0.3.1 (Xing and Sela 2020), an open-source water-hammer solver: the method of characteristics on an EPANET network"),
     dict(key="openswmm6", name="OpenSWMM 6", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-5)",
          what="OpenSWMM Engine v6 (HydroCouple's SWMM 6, pre-release), compared with SWMM 5.2.4"),
     dict(key="epanet20", name="EPANET 2.0", sub="vs EPANET 2.2", kind="compat", color="var(--cat-2)",
@@ -97,6 +101,10 @@ NOT_YET_DRAINAGE = ["InfoWorks ICM", "MIKE+ (MOUSE)", "PCSWMM", "XPSWMM", "Flood
 
 def solver_key(name: str) -> str | None:
     n = (name or "").lower()
+    if n.startswith("tsnet"):
+        return "tsnet"
+    if n.startswith("wntr"):
+        return "wntr"
     if n.startswith("demo-swe2d"):
         return "demo2d"
     if n.startswith("demo"):

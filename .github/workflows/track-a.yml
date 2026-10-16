@@ -45,6 +45,12 @@ jobs:
         run: python scripts/run_vertical_slice.py
       - name: Pipe networks on EPA EPANET 2.2
         run: python scripts/run_network_cases.py
+      - name: Pipe networks on WNTR's own solver; water hammer on TSNet (findings, not gates)
+        run: |
+          python scripts/run_network_cases.py --wntr || echo "::warning title=WNTR::fails at least one criterion"
+          python3 -m venv "$RUNNER_TEMP/tsnet"
+          "$RUNNER_TEMP/tsnet/bin/python" -m pip install -q "numpy<2" "tsnet==0.3.1"
+          python scripts/run_tsnet.py --tsnet-python "$RUNNER_TEMP/tsnet/bin/python" || echo "::warning title=TSNet::did not run"
       - name: 2D cases (Thacker, MacDonald 2D, oblique jump, EA 1, 2, 4, 5)
         run: python scripts/run_demo_2d.py
       - name: Export the chart curves (site/fixtures/curves via the result collector)
@@ -65,6 +71,8 @@ jobs:
           path: |
             out/vertical_slice/*.scorecard.json
             out/networks/*.scorecard.json
+            out/wntr/*.scorecard.json
+            out/tsnet/*.scorecard.json
             out/demo_2d/*.scorecard.json
             out/curves/**/*.curve.json
             out/netres/**/*.netres.json
@@ -111,10 +119,16 @@ jobs:
 
 
   swmm:
-    name: SWMM 5.2.4, OpenSWMM Engine v6 and Hydra on the 1D channel cases (finding, not a gate)
+    name: SWMM 5.2.4, SWMM 5.1.15, OpenSWMM Engine v6 and Hydra on the 1D channel cases (finding, not a gate)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # SWMM 5.1.15 (swmm-toolkit 0.10.0) needs Python 3.10; set it up first so 3.12 stays the default
+      - uses: actions/setup-python@v5
+        id: py310
+        with:
+          python-version: "3.10"
+      - run: ${{ steps.py310.outputs.python-path }} -m pip install -q "swmm-toolkit==0.10.0"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -127,10 +141,12 @@ jobs:
         run: |
           HYDRA=$(python scripts/fetch_hydra.py "$RUNNER_TEMP/hydra")
           python scripts/run_swmm_track_a.py --openswmm-python "$RUNNER_TEMP/openswmm/bin/python" --hydra-exe "$HYDRA" \
+            --swmm51-python "${{ steps.py310.outputs.python-path }}" \
             || echo "::warning title=SWMM Track A::fails at least one criterion (see score cards); reported, not gating"
       - name: Score the exact drainage-network cases (A1D)
         run: |
           python scripts/run_drainage_cases.py --openswmm-python "$RUNNER_TEMP/openswmm/bin/python" \
+            --swmm51-python "${{ steps.py310.outputs.python-path }}" \
             --hydra-exe "$(python scripts/fetch_hydra.py "$RUNNER_TEMP/hydra")"
       - name: Export the chart curves (site/fixtures/curves via the result collector)
         if: always()

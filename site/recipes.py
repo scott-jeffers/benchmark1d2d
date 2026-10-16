@@ -27,6 +27,8 @@ HYDRONET = ['# HydroNet 0d98ff5 and pyHMT2D 57645ff (github.com/psu-efd), CPU Py
             'python -m pip install torch --index-url https://download.pytorch.org/whl/cpu',
             'python -m pip install -e <HydroNet> && python -m pip install -e <pyHMT2D> --no-deps']
 HYDRA = ['HYDRA=$(python scripts/fetch_hydra.py .hydra)  # the pinned Hydra 17 CLI']
+SWMM51 = ['python3.10 -m venv .venv-swmm51 && .venv-swmm51/bin/python -m pip install "swmm-toolkit==0.10.0"  # EPA SWMM 5.1.15']
+TSNET = ['python3 -m venv .venv-tsnet && .venv-tsnet/bin/python -m pip install "numpy<2" "tsnet==0.3.1"']
 
 HECRAS_2D_CASES = ("A2A-010", "A2C-")
 
@@ -57,10 +59,19 @@ def recipe(key: str, sid: str) -> dict | None:
     if key in ("hecras", "hecras-em"):
         script, cmd = _hecras(sid, "em" if key == "hecras-em" else "elm")
         return dict(install=HECRAS, run=[cmd], script=script, workflow="hecras.yml", platform="Windows")
+    if key in ("epanet22", "hydra-wds", "wntr") and sid.startswith("A1P"):
+        flag = {"epanet22": "", "hydra-wds": ' --hydra-exe "$HYDRA"', "wntr": " --wntr"}[key]
+        return dict(install=['python -m pip install -e ".[dev,engines]"', *(HYDRA if key == "hydra-wds" else [])],
+                    run=[f"python scripts/run_network_cases.py{flag}"], script="scripts/run_network_cases.py", workflow="track-a.yml", platform="Linux",
+                    note="The script writes the EPANET input file from the test's inputs; the model files below are that file.")
+    if key == "tsnet":
+        return dict(install=[SUITE, *TSNET], run=["python scripts/run_tsnet.py --tsnet-python .venv-tsnet/bin/python"],
+                    script="scripts/run_tsnet.py", workflow="track-a.yml", platform="Linux")
     if key in ("swmm524", "openswmm-dw", "openswmm-fv", "hydra-uds") and sid == "A1F-100":
-        extra = {"swmm524": [], "openswmm-dw": OPENSWMM, "openswmm-fv": OPENSWMM, "hydra-uds": HYDRA}[key]
+        extra = {"swmm524": [], "openswmm-dw": OPENSWMM, "openswmm-fv": OPENSWMM, "hydra-uds": HYDRA, "swmm515": SWMM51}[key]
         flags = {"swmm524": "", "openswmm-dw": " --openswmm-python .venv-openswmm/bin/python",
-                 "openswmm-fv": " --openswmm-python .venv-openswmm/bin/python", "hydra-uds": ' --hydra-exe "$HYDRA"'}[key]
+                 "openswmm-fv": " --openswmm-python .venv-openswmm/bin/python", "hydra-uds": ' --hydra-exe "$HYDRA"',
+                 "swmm515": " --swmm51-python .venv-swmm51/bin/python"}[key]
         return dict(install=['python -m pip install -e ".[dev,engines]"', *extra],
                     run=["python scripts/bellinge.py fetch --out out/bellinge",
                          f"python scripts/run_bellinge.py --model-dir out/bellinge/model/7_SWMM --engines {key}{flags}"],
@@ -68,12 +79,13 @@ def recipe(key: str, sid: str) -> dict | None:
                     note=("The model files below are the published model with each storm's dates set. The rain-gauge file they "
                           "read (rg_bellinge_Jun2010_Aug2021.dat, 28 MB) is too large to include; the fetch step downloads it with "
                           "the model from DTU Data."))
-    if key in ("swmm524", "openswmm-dw", "openswmm-fv", "hydra-uds"):
+    if key in ("swmm524", "openswmm-dw", "openswmm-fv", "hydra-uds", "swmm515") and not sid.startswith("B-"):
         drainage = sid.startswith("A1D")
         script = "scripts/run_drainage_cases.py" if drainage else "scripts/run_swmm_track_a.py"
-        extra = {"swmm524": [], "openswmm-dw": OPENSWMM, "openswmm-fv": OPENSWMM, "hydra-uds": HYDRA}[key]
+        extra = {"swmm524": [], "openswmm-dw": OPENSWMM, "openswmm-fv": OPENSWMM, "hydra-uds": HYDRA, "swmm515": SWMM51}[key]
         flags = {"swmm524": "", "openswmm-dw": " --openswmm-python .venv-openswmm/bin/python",
-                 "openswmm-fv": " --openswmm-python .venv-openswmm/bin/python", "hydra-uds": ' --hydra-exe "$HYDRA"'}[key]
+                 "openswmm-fv": " --openswmm-python .venv-openswmm/bin/python", "hydra-uds": ' --hydra-exe "$HYDRA"',
+                 "swmm515": " --swmm51-python .venv-swmm51/bin/python"}[key]
         return dict(install=['python -m pip install -e ".[dev,engines]"', *extra],
                     run=[f"python {script} {sid} --engines {key}{flags}"], script=script, workflow="track-a.yml", platform="Linux")
     if key in ("hydronet-fvm", "hydronet-pinn"):

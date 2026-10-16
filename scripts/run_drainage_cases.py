@@ -166,6 +166,7 @@ def main() -> int:
     ap.add_argument("--engines", nargs="+", choices=list(ENGINES), default=list(ENGINES))
     ap.add_argument("--openswmm-python", help="Python with the openswmm wheel")
     ap.add_argument("--hydra-exe", help="the hydra CLI (NEER AI Hydra)")
+    ap.add_argument("--swmm51-python", help="Python with swmm-toolkit==0.10.0 (EPA SWMM 5.1.15)")
     args = ap.parse_args()
 
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -176,8 +177,10 @@ def main() -> int:
 
     key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
     run_swmm_track_a.HYDRA_EXE = args.hydra_exe
+    run_swmm_track_a.SWMM51_PYTHON = args.swmm51_python
     engines = [e for e in args.engines
-               if e == "swmm524" or (e == "hydra-uds" and args.hydra_exe) or (e.startswith("openswmm") and args.openswmm_python)]
+               if e == "swmm524" or (e == "hydra-uds" and args.hydra_exe) or (e.startswith("openswmm") and args.openswmm_python)
+               or (e == "swmm515" and args.swmm51_python)]
     for engine in engines:
         out = OUT / engine
         out.mkdir(parents=True, exist_ok=True)
@@ -201,7 +204,7 @@ def main() -> int:
             if series:  # time series of small networks, for the site's charts
                 (out / f"{m['test_id']}.series.json").write_text(json.dumps(series, separators=(",", ":")) + "\n", encoding="utf-8")
             ver = version.replace("openswmm", "").strip()
-            solver = {"name": f"{ENGINES[engine]['label']}" + (f" ({ver})" if engine != "swmm524" else ""), "version": ver,
+            solver = {"name": f"{ENGINES[engine]['label']}" + (f" ({ver})" if engine not in ("swmm524", "swmm515") else ""), "version": ver,
                       "adapter": f"swmm ({ENGINES[engine]['routing']} routing, network.json as a SWMM input file)"}
             card = score_case(m, res, timestamp=TS, private_key=key, solver=solver)
             (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")

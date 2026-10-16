@@ -46,6 +46,7 @@ SOLVER = {"name": "EPA EPANET 2.2", "version": "2.2", "adapter": "epanet (WNTR 1
 
 
 HYDRA_EXE: str | None = None  # set by --hydra-exe: run NEER AI Hydra's wds engine instead of EPANET 2.2
+WNTR_SIM = False  # set by --wntr: WNTR's own Python hydraulic solver (WNTRSimulator) instead of EPANET 2.2
 
 
 def _with_coordinates(text: str) -> str:
@@ -75,14 +76,18 @@ def _run_inp(text: str, test: str = ""):
         if test:
             from benchmark1d2d import keep as kept
 
-            kept.inputs("hydra-wds" if HYDRA_EXE else "epanet22", test, Path(td), "model", files=["model.inp"])
+            kept.inputs("hydra-wds" if HYDRA_EXE else "wntr" if WNTR_SIM else "epanet22", test, Path(td), "model", files=["model.inp"])
         if HYDRA_EXE:
             from benchmark1d2d.adapters import hydra
 
             hydra.run(HYDRA_EXE, inp, Path(td) / "m.rpt", Path(td) / "m.out", "wds")
             return hydra.epanet_results(Path(td) / "m.out")
         wn = wntr.network.WaterNetworkModel(str(inp))
-        res = wntr.sim.EpanetSimulator(wn).run_sim(file_prefix=str(Path(td) / "run"), version=2.2)
+        if WNTR_SIM:
+            wn.options.hydraulic.accuracy = 1e-6
+            res = wntr.sim.WNTRSimulator(wn).run_sim(convergence_error=True)
+        else:
+            res = wntr.sim.EpanetSimulator(wn).run_sim(file_prefix=str(Path(td) / "run"), version=2.2)
     return res
 
 
@@ -139,14 +144,57 @@ def two_loop(case_dir: Path) -> dict:
     return _frame(rows)
 
 
+def tracer(case_dir: Path, dx: float) -> dict:
+    """A1P-030: a tracer carried down a 1 km pipe at 0.1 m/s by EPANET's water-quality model.
+
+    Junctions at the cell centres of the grid (the first reach from the reservoir is half a cell), a 1 m
+    pipe drawing 78.54 L/s (0.1 m/s), the reservoir at concentration 1 from t = 0, a 1 s quality step.
+    EPANET moves water quality by Lagrangian advection and has no longitudinal dispersion, so this
+    measures how much the missing dispersion matters here.
+    """
+    import wntr
+
+    prm = json.loads((case_dir / "inputs" / "params.json").read_text(encoding="utf-8"))
+    L, u = prm["domain"]["xmax"] - prm["domain"]["xmin"], prm["flow"]["u_ms"]
+    D = 1.0
+    q_lps = u * math.pi * D * D / 4 * 1000.0
+    xs = np.arange(dx / 2, L, dx)
+    nodes = [f"N{i}" for i in range(len(xs))]
+    lines = ["[TITLE]", "A1P-030 tracer", "[JUNCTIONS]"] + [f"{n} 0 0" for n in nodes[:-1]] + [f"{nodes[-1]} 0 {q_lps:.9f}"]
+    lines += ["[RESERVOIRS]", "R 100", "[PIPES]"]
+    prev, px = "R", 0.0
+    for n, x in zip(nodes, xs):
+        lines.append(f"P{n} {prev} {n} {x - px:.9f} {D * 1000:.3f} 140 0 Open")
+        prev, px = n, x
+    lines += ["[QUALITY]", "R 1", "[OPTIONS]", "Units LPS", "Headloss H-W", "Quality Chemical mg/L", "Accuracy 0.000001",
+              "[TIMES]", "Duration 1:00", "Hydraulic Timestep 1:00", "Quality Timestep 0:00:01", "Report Timestep 0:01", "[END]"]
+    text = _with_coordinates("\n".join(lines) + "\n")
+    with tempfile.TemporaryDirectory() as td:
+        inp = Path(td) / "model.inp"
+        inp.write_text(text, encoding="utf-8")
+        from benchmark1d2d import keep as kept
+
+        kept.inputs("epanet22", "A1P-030", Path(td), f"dx{dx:g}", files=["model.inp"])
+        res = wntr.sim.EpanetSimulator(wntr.network.WaterNetworkModel(str(inp))).run_sim(file_prefix=str(Path(td) / "run"), version=2.2)
+    q = res.node["quality"]
+    t_end = float(q.index.max())
+    c = q.loc[t_end, nodes].to_numpy(float) * 1000.0  # WNTR reports mg/L as kg/m³; the source is 1 mg/L
+    n = len(xs)
+    nan = np.full(n, np.nan)
+    return {"t": np.full(n, t_end), "x": xs, "y": nan, "h": nan, "u": np.full(n, u), "v": nan, "p": nan, "c": c}
+
+
 def main() -> int:
     import argparse
 
     global HYDRA_EXE
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--hydra-exe", help="score NEER AI Hydra's water-distribution engine (the hydra CLI) instead of EPANET 2.2")
+    ap.add_argument("--wntr", action="store_true", help="score WNTR's own hydraulic solver (WNTRSimulator) instead of EPANET 2.2")
     args = ap.parse_args()
     HYDRA_EXE = args.hydra_exe
+    global WNTR_SIM
+    WNTR_SIM = args.wntr
     out_dir, solver, tag = OUT, SOLVER, "epanet22"
     if HYDRA_EXE:
         from benchmark1d2d.adapters import hydra
@@ -155,9 +203,18 @@ def main() -> int:
         out_dir, tag = REPO / "out" / "hydra_networks", "hydra"
         solver = {"name": f"Hydra {ver.split('/')[0]} water distribution", "version": ver,
                   "adapter": f"hydra CLI {ver.split('/')[-1]} (wds engine, EPANET-format binary output)"}
+    if WNTR_SIM:
+        import wntr
+
+        out_dir, tag = REPO / "out" / "wntr", "wntr"
+        solver = {"name": f"WNTR {wntr.__version__} WNTRSimulator", "version": wntr.__version__,
+                  "adapter": "wntr.sim.WNTRSimulator (WNTR's own Newton solver of the network equations, in Python)"}
     out_dir.mkdir(parents=True, exist_ok=True)
     ok = True
     for tid, build in (("A1P-001", single_pipe), ("A1P-010", two_loop)):
+        if WNTR_SIM and tid == "A1P-001":
+            print("skip A1P-001: WNTRSimulator has no Darcy-Weisbach friction (Hazen-Williams only)")
+            continue
         m = load_manifest(tid, repo=REPO)
         res = out_dir / f"{m['test_id']}.{tag}.parquet"
         write_results_parquet(res, build(Path(m["_case_dir"])))
@@ -167,6 +224,17 @@ def main() -> int:
         for r in card["criteria_results"]:
             print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']:.4g} {r['threshold']['units']} — {r.get('detail', '')}")
         ok &= card["passed"]
+    if not HYDRA_EXE and not WNTR_SIM:  # EPANET's water-quality model on the tracer test
+        m = load_manifest("A1P-030", repo=REPO)
+        paths = []
+        for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
+            paths.append(write_results_parquet(out_dir / f"{m['test_id']}_dx{dx:g}.epanet22.parquet", tracer(Path(m["_case_dir"]), float(dx))))
+        card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY,
+                          solver={**SOLVER, "adapter": SOLVER["adapter"] + "; water quality, Lagrangian advection (no dispersion)"})
+        (out_dir / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+        print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({SOLVER['name']})")
+        for r in card["criteria_results"]:
+            print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']:.4g} {r['threshold']['units']} — {r.get('detail', '')}")
     return 0 if ok else 1
 
 

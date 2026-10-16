@@ -51,6 +51,7 @@ jobs:
         run: |
           python scripts/run_vertical_slice.py || true
           python scripts/run_network_cases.py || true
+          python scripts/run_network_cases.py --wntr || true
           python scripts/run_demo_2d.py || true
 
       # Track B demonstration: older engine releases scored against the pinned references.
@@ -68,13 +69,13 @@ jobs:
         run: python scripts/score_submissions.py --summary out/submissions.md || echo "::warning title=Submissions::a submission could not be scored (see the step log)"
 
       - name: Network viewer results from this build's Track B and EPANET runs
-        run: python scripts/export_netresults.py --local --folders out/track_b out/openswmm out/hydra out/hydra_networks out/networks || echo "::warning title=Network results::not exported"
+        run: python scripts/export_netresults.py --local --folders out/track_b out/openswmm out/openswmm_fv out/hydra out/hydra_networks out/networks out/wntr || echo "::warning title=Network results::not exported"
 
       - name: Build site
         run: |
           python site/build.py \
             --scorecards site/fixtures/scorecards \
-            --scorecards out/track_b --scorecards out/openswmm --scorecards out/hydra --scorecards out/hydra_networks --scorecards out/vertical_slice --scorecards out/networks --scorecards out/demo_2d
+            --scorecards out/track_b --scorecards out/openswmm --scorecards out/hydra --scorecards out/hydra_networks --scorecards out/wntr --scorecards out/openswmm_fv --scorecards out/vertical_slice --scorecards out/networks --scorecards out/demo_2d
           for f in index catalog corpus reports downloads method get-started; do test -f "site/dist/$f.html"; done
           test -f site/dist/data/benchmark1d2d-catalog.zip
 

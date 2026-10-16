@@ -86,6 +86,7 @@ ENGINES = {
     "openswmm-dw": dict(label="OpenSWMM Engine v6 dynamic wave", routing="DYNWAVE"),
     "openswmm-fv": dict(label="OpenSWMM Engine v6 finite volume", routing="FV"),
     "hydra-uds": dict(label="Hydra urban drainage", routing="DYNWAVE"),
+    "swmm515": dict(label="EPA SWMM 5.1.15", routing="DYNWAVE"),
 }
 
 
@@ -144,12 +145,14 @@ _RUN524 = (
 
 
 HYDRA_EXE: str | None = None  # --hydra-exe
+SWMM51_PYTHON: str | None = None  # --swmm51-python: a Python with swmm-toolkit 0.10.0 (EPA SWMM 5.1.15)
 
 
 def run_engine(engine: str, inp: Path, td: Path, openswmm_python: str | None) -> tuple[Path, str]:
     rpt, out = td / "m.rpt", td / "m.out"
-    if engine == "swmm524":
-        p = subprocess.run([sys.executable, "-c", _RUN524, str(inp), str(rpt), str(out)], capture_output=True, text=True)
+    if engine in ("swmm524", "swmm515"):
+        py = sys.executable if engine == "swmm524" else SWMM51_PYTHON
+        p = subprocess.run([py, "-c", _RUN524, str(inp), str(rpt), str(out)], capture_output=True, text=True)
         if p.returncode != 0 or not out.is_file() or out.stat().st_size == 0:
             raise RuntimeError((p.stdout + p.stderr)[-800:] + (rpt.read_text(errors="replace")[-1500:] if rpt.is_file() else ""))
         return out, p.stdout.strip().split()[-1]
@@ -245,7 +248,24 @@ def swashes(m: dict, dx: float, routing: str, inp: Path) -> tuple[list[str], np.
     return links, 0.5 * (faces[1:] + faces[:-1]), list(range(len(links)))
 
 
-CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A1F-001": macdonald,
+def jump(m: dict, dx: float, routing: str, inp: Path) -> tuple[list[str], np.ndarray, list[int]]:
+    """A1F-020 (standing hydraulic jump): flat frictionless channel, the supercritical flow q entering
+    upstream, the sequent depth held at the outfall, and the two states either side of x = 50 m to start."""
+    from references.belanger import sequent_depths
+
+    prm = json.loads((Path(m["_case_dir"]) / "inputs/params.json").read_text())
+    L = prm["domain"]["xmax"]
+    ref = sequent_depths(np.array([0.0]), Fr1=prm["boundaries"]["upstream"]["Fr"], h1=prm["boundaries"]["upstream"]["h_m"], L=L)
+    faces = np.linspace(0.0, L, int(round(L / dx)) + 1)
+    z = np.zeros_like(faces)
+    depth0 = np.where(faces < L / 2, ref["h1"], ref["h2"])
+    links = write_inp(inp, faces, z, depth0, W_SWASHES, N_MIN, float(m["simulation"]["t_end"]), routing, dx,
+                      inflow=ref["q"] * W_SWASHES, stage_out=float(ref["h2"]),
+                      extra=(f"MIN_SURFAREA {MIN_SURFAREA_SWASHES}",), routing_step=dx / 20.0)
+    return links, 0.5 * (faces[1:] + faces[:-1]), list(range(len(links)))
+
+
+CASES = {"A1F-010": dam_break, "A1F-011": dam_break, "A1F-001": macdonald, "A1F-020": jump,
          "A1F-040": swashes, "A1F-041": swashes, "A1F-042": swashes, "A1F-043": swashes}
 
 
@@ -255,6 +275,7 @@ def main() -> int:
     ap.add_argument("--engines", nargs="+", choices=list(ENGINES), default=list(ENGINES))
     ap.add_argument("--openswmm-python", help="Python with the openswmm wheel")
     ap.add_argument("--hydra-exe", help="the hydra CLI (NEER AI Hydra)")
+    ap.add_argument("--swmm51-python", help="Python with swmm-toolkit==0.10.0 (EPA SWMM 5.1.15)")
     args = ap.parse_args()
 
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -264,10 +285,12 @@ def main() -> int:
     from benchmark1d2d.scoring.scorer import score_case
 
     key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
-    global HYDRA_EXE
+    global HYDRA_EXE, SWMM51_PYTHON
     HYDRA_EXE = args.hydra_exe
+    SWMM51_PYTHON = args.swmm51_python
     engines = [e for e in args.engines
-               if e == "swmm524" or (e == "hydra-uds" and args.hydra_exe) or (e.startswith("openswmm") and args.openswmm_python)]
+               if e == "swmm524" or (e == "hydra-uds" and args.hydra_exe) or (e.startswith("openswmm") and args.openswmm_python)
+               or (e == "swmm515" and args.swmm51_python)]
     failed = 0
     for engine in engines:
         out = OUT / engine
@@ -302,7 +325,7 @@ def main() -> int:
             if len(paths) < 2:
                 continue
             ver = version.replace("openswmm", "").strip()
-            solver = {"name": f"{ENGINES[engine]['label']}" + (f" ({ver})" if engine != "swmm524" else ""), "version": ver,
+            solver = {"name": f"{ENGINES[engine]['label']}" + (f" ({ver})" if engine not in ("swmm524", "swmm515") else ""), "version": ver,
                       "adapter": f"swmm ({ENGINES[engine]['routing']} routing, conduit per grid cell)"}
             card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)
             (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")

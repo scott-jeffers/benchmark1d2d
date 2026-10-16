@@ -26,7 +26,8 @@ sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO), str(REPO / "site")]
 
 OUT = REPO / "out" / "netres"
 FIXTURES = REPO / "site" / "fixtures" / "netres"
-FOLDERS = ["out/track_b", "out/hydra", "out/openswmm", "out/networks", "out/hydra_networks",
+FOLDERS = ["out/track_b", "out/hydra", "out/openswmm", "out/openswmm_fv", "out/networks", "out/hydra_networks", "out/wntr",
+           "out/swmm_track_a/swmm515",
            "out/swmm_track_a/swmm524", "out/swmm_track_a/openswmm-dw", "out/swmm_track_a/openswmm-fv", "out/swmm_track_a/hydra-uds"]
 
 

@@ -33,7 +33,7 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
+sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO), str(REPO / "scripts")]
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 
@@ -63,7 +63,8 @@ def run_swmm51(py: str, inp: Path, out_parquet: Path) -> str:
     return version
 
 
-def run_epanet20(inp: Path, out_parquet: Path) -> None:
+def run_epanet20(inp: Path, out_parquet: Path, wntr_sim: bool = False) -> None:
+    """EPANET 2.0 through WNTR, or (``wntr_sim``) WNTR's own Python hydraulic solver, the WNTRSimulator."""
     import numpy as np
     import wntr
 
@@ -71,7 +72,8 @@ def run_epanet20(inp: Path, out_parquet: Path) -> None:
 
     wn = wntr.network.WaterNetworkModel(str(inp))
     with tempfile.TemporaryDirectory() as td:  # keep WNTR scratch files out of the repo
-        res = wntr.sim.EpanetSimulator(wn).run_sim(file_prefix=str(Path(td) / "run"), version=2.0)
+        res = (wntr.sim.WNTRSimulator(wn).run_sim() if wntr_sim
+               else wntr.sim.EpanetSimulator(wn).run_sim(file_prefix=str(Path(td) / "run"), version=2.0))
     head, pres, flow, vel = res.node["head"], res.node["pressure"], res.link["flowrate"], res.link["velocity"]
     t = head.index.to_numpy(float)
     n = len(t)
@@ -150,6 +152,32 @@ def main() -> int:
             print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {card['test_id']} ({card['solver']['name']})")
             for r in card["criteria_results"]:
                 print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']} — {r.get('detail', '')}")
+        # the same engine with its new finite-volume routing (FLOW_ROUTING FV): a different numerical method,
+        # so differences from SWMM 5.2.4 are expected; reported as a finding
+        import corpus_parity
+
+        outf = REPO / "out" / "openswmm_fv"
+        outf.mkdir(parents=True, exist_ok=True)
+        for tid in ("B-EXTRAN-001", "B-RTC-001"):
+            m = load_manifest(tid, repo=REPO)
+            inp = Path(m["_case_dir"]) / "inputs/network.inp"
+            res = outf / f"{m['test_id']}.openswmm-fv.parquet"
+            with tempfile.TemporaryDirectory() as td:
+                fv_inp, _ = corpus_parity.with_routing(inp, "FV", Path(td))
+                try:
+                    version = openswmm.run(args.openswmm_python, fv_inp, Path(td) / "m.rpt", Path(td) / "m.out")
+                    swmm5.adapt_out_to_parquet(Path(td) / "m.out", res)
+                except Exception as exc:  # noqa: BLE001 - an engine that cannot run a model is a finding
+                    print(f"OpenSWMM FV did not run {tid}: {str(exc)[-400:]}")
+                    continue
+            ver = version.replace("openswmm", "").strip()
+            card = score_case(m, res, timestamp=TS, private_key=KEY,
+                              solver={"name": f"OpenSWMM Engine v6 finite volume ({ver})", "version": ver,
+                                      "adapter": "openswmm (v6 engine, FLOW_ROUTING FV, SWMM binary output)"})
+            (outf / f"{card['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {card['test_id']} ({card['solver']['name']})")
+            for r in card["criteria_results"]:
+                print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']} — {r.get('detail', '')}")
     if args.only_openswmm:
         return 0
     for tid in ("B-EXTRAN-001", "B-RTC-001"):
@@ -168,6 +196,23 @@ def main() -> int:
     res = OUT / f"{m['test_id']}.epanet20.parquet"
     run_epanet20(Path(m["_case_dir"]) / "inputs/network.inp", res)
     save(score_case(m, res, timestamp=TS, private_key=KEY, solver={"name": "EPANET 2.0", "version": "2.00.12", "adapter": "epanet (wntr libepanet2)"}))
+    # WNTR's own hydraulic solver (an independent implementation of the network equations, in Python)
+    import wntr
+
+    outw = REPO / "out" / "wntr"
+    outw.mkdir(parents=True, exist_ok=True)
+    res = outw / f"{m['test_id']}.wntr.parquet"
+    try:
+        run_epanet20(Path(m["_case_dir"]) / "inputs/network.inp", res, wntr_sim=True)
+        card = score_case(m, res, timestamp=TS, private_key=KEY,
+                          solver={"name": f"WNTR {wntr.__version__} WNTRSimulator", "version": wntr.__version__,
+                                  "adapter": "wntr.sim.WNTRSimulator (WNTR's own Newton solver, in Python)"})
+        (outw / f"{card['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+        print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {card['test_id']} ({card['solver']['name']})")
+        for r in card["criteria_results"]:
+            print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']} — {r.get('detail', '')}")
+    except Exception as exc:  # noqa: BLE001 - a solver that cannot run the network is a finding
+        print(f"WNTRSimulator did not run B-EPANET-001: {exc}")
     return 0
 
 
