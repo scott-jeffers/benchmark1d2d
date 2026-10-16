@@ -1089,6 +1089,35 @@ def compare_chart(m: dict, runs: dict, exact: dict | None, profiles: dict) -> tu
     return html_, ""
 
 
+BUILD_COMMIT = ""   # set by build.py: the commit the site was built from
+INPUT_ZIPS: dict = {}  # (sid, key) -> (published path, bytes), set by build.py
+
+
+def run_block(sid: str, k: str, card: dict, up: str = "../") -> str:
+    """How this result was produced, and how to produce it again."""
+    import recipes
+
+    r = recipes.recipe(k, sid)
+    if not r:
+        return ""
+    ver = (card.get("solver") or {}).get("version") or ""
+    commit = BUILD_COMMIT[:12] or "master"
+    clone = [f"git clone {recipes.REPO_URL} && cd benchmark1d2d", f"git checkout {commit}"]
+    steps = "\n".join(clone + r["install"] + r["run"])
+    z = INPUT_ZIPS.get((sid, k))
+    files = (f'<p class="small"><a href="{up}{esc(z[0])}" download>The model files the suite wrote for this run (.zip, {nice(z[1] / 1024, 2)} KB)</a>: '
+             'the exact inputs the solver read (one folder per grid, where the test has several), with their SHA-256.</p>' if z else
+             '<p class="small muted">The model files for this run will be published with its next run.</p>')
+    note = f'<p class="small">{esc(r["note"])}</p>' if r.get("note") else ""
+    return (f'<details class="share run-it"><summary>Run it yourself</summary>'
+            f'<p class="small">{esc(card.get("solver", {}).get("name", ""))}{f" · version {esc(ver)}" if ver and ver not in card.get("solver", {}).get("name", "") else ""} · '
+            f'runs on {esc(r["platform"])} · produced by <a href="{REPO_URL}/blob/master/{esc(r["script"])}">{esc(r["script"])}</a> '
+            f'in <a href="{REPO_URL}/blob/master/.github/workflows/{esc(r["workflow"])}">{esc(r["workflow"])}</a>.</p>'
+            f'<pre class="code"><code>{esc(steps)}</code></pre>{files}{note}'
+            f'<p class="small">The test itself (inputs, exact answer, limits): <a href="{up}data/cases/{esc(sid)}.zip" download>{esc(sid)}.zip</a>. '
+            f'The score card above is signed; check it with <code>benchmark1d2d verify-card</code>.</p></details>')
+
+
 def share_block(sid: str, k: str, card: dict) -> str:
     """A link to this result and a badge to embed it."""
     link = f"{SITE_URL}results.html#cell={sid}|{k}"
@@ -1240,6 +1269,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
   {f'<p class="note">{esc(note)}</p>' if note else ''}
   <p class="note small">Signed score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>
   {share_block(sid, k, c)}
+  {run_block(sid, k, c) if m["track"] == "A" else ""}
 </article>""")
     levels = (m["simulation"].get("mesh_refinement") or {}).get("levels") or []
     grid_txt = (f"Each model runs the same inputs on {len(levels)} grids, from {nice(max(levels), 3)} m down to {nice(min(levels), 3)} m cells."

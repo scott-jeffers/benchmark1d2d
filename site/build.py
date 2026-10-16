@@ -1188,6 +1188,16 @@ def main() -> int:
         evidence[c["test_id"]] = [c]  # later (fresh CI output) wins
     parity = load_parity()
     files = write_bundles(manifests, cards, index)
+    # how each result was run: the build's commit and the model files the runners kept
+    import os
+    import subprocess as _sp
+
+    pages.BUILD_COMMIT = os.environ.get("GITHUB_SHA") or _sp.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    for zp in sorted((SITE / "fixtures" / "inputs").glob("*/*.zip")):
+        rel = Path("data") / "inputs" / zp.parent.name / zp.name
+        (DIST / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(zp, DIST / rel)
+        pages.INPUT_ZIPS[(zp.parent.name, zp.stem)] = (rel.as_posix(), zp.stat().st_size)
     for tid, by in runs.items():  # every run's signed card, by solver
         for k, c in by.items():
             d = DIST / "data" / "scorecards" / k

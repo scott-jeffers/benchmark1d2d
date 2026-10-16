@@ -93,7 +93,7 @@ def run(out: Path, timeout: float) -> None:
         rpt, bin_ = inp.with_suffix(".rpt"), out / (inp.stem + ".out")
         t0 = time.perf_counter()
         try:
-            p = subprocess.run([sys.executable, "-c", _RUN, str(inp), str(rpt), str(bin_)], cwd=inp.parent,
+            p = subprocess.run([sys.executable, "-c", _RUN, str(inp.resolve()), str(rpt.resolve()), str(bin_.resolve())], cwd=inp.parent,
                                capture_output=True, text=True, timeout=timeout)
             status = "ran" if p.returncode == 0 else f"exit {p.returncode}: {(p.stderr or p.stdout)[-300:]}"
         except subprocess.TimeoutExpired:
