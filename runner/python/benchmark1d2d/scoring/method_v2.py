@@ -1,9 +1,9 @@
-"""Proposed scoring method (v2), computed alongside the current one for review.
+"""Scoring method 2 (adopted 16 October 2026; ``docs/methodology/scoring_v2.md``).
 
-Nothing here changes a verdict: the score card's ``passed`` stays the
-current method's (``docs/methodology/tolerance_rationale.md``). This module
-re-reads a score card under the rules proposed in
-``docs/methodology/scoring_v2.md`` so reviewers can see what would move:
+The scorer writes these verdicts into every new score card (``verdict``,
+``judgement``, a ``margin`` per check; ``passed`` is true only for *pass*).
+Cards from method 1 are re-judged with ``assess`` when they are read, so the
+whole site uses one method. The rules:
 
 1. **Two verdicts.** *Accurate*: every gating check within its limit.
    *Converges*: the error falls at the expected rate on finer grids.
@@ -32,7 +32,7 @@ import math
 import re
 from typing import Any
 
-METHOD = "2-proposed"
+METHOD = "2"
 CONFIDENCE = 0.90
 FLOOR_FACTOR = 3.0
 
@@ -132,4 +132,35 @@ def assess(card: dict) -> dict[str, Any]:
     else:
         overall = "pass"
     return {"method": METHOD, "checks": checks, "accurate": accurate, "worst_margin": max(ms) if ms else None,
-            "converges": conv, "overall": overall, "current": "pass" if card.get("passed") else "fail"}
+            "converges": conv, "overall": overall, "method1": _method1(card, accurate)}
+
+
+def _method1(card: dict, accurate: str) -> str:
+    """The verdict method 1 gave (or would give): every gating check, and the averaged rate at its minimum."""
+    if card.get("scoring_method") != METHOD:
+        return "pass" if card.get("method1_passed", card.get("passed")) else "fail"
+    conv = card.get("convergence_result") or {}
+    conv_ok = bool(conv.get("passed", True)) if conv.get("errors") else True
+    return "pass" if accurate == "pass" and conv_ok else "fail"
+
+
+def judgement(a: dict) -> dict[str, Any]:
+    """The part of ``assess`` that goes into a score card."""
+    conv = {k: v for k, v in a["converges"].items() if k != "current_order"}
+    return {"accurate": a["accurate"], "converges": conv, "worst_margin": a["worst_margin"]}
+
+
+def apply(card: dict) -> dict:
+    """Give a card read from disk its method-2 verdict (in place); method-1 cards keep theirs as ``method1_passed``."""
+    if "_judged" in card:
+        return card
+    if card.get("scoring_method") == METHOD and "verdict" in card:
+        a = assess(card)
+        a["overall"] = card["verdict"]
+    else:
+        card.setdefault("method1_passed", bool(card.get("passed")))
+        a = assess(card)
+        card["verdict"] = a["overall"]
+        card["passed"] = a["overall"] == "pass"
+    card["_judged"] = a
+    return card

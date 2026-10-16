@@ -532,7 +532,7 @@ def main() -> int:
                 failed += 1
                 continue
             (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-            log(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']}) in {time.perf_counter() - t0:.0f} s")
+            log(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']}) in {time.perf_counter() - t0:.0f} s")
             for r in card["criteria_results"]:
                 log(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}  {r.get('detail', '')}")
             c = card.get("convergence_result") or {}

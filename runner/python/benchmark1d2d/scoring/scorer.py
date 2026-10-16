@@ -796,6 +796,16 @@ def score_case(
     else:
         raise ValueError(f"unknown reference kind {ref_kind!r}")
 
+    # Method 2 (docs/methodology/scoring_v2.md): two verdicts, margins, the convergence
+    # rate with its 90 % range, and a third outcome, inconclusive.
+    from benchmark1d2d.scoring import method_v2
+
+    judged = method_v2.assess({"criteria_results": criteria_results, "convergence_result": convergence_result,
+                               "passed": passed, "solver": solver or {}})
+    for row, chk in zip(criteria_results, judged["checks"]):
+        row["margin"] = chk["margin"]
+    verdict = judged["overall"]
+    passed = verdict == "pass"
     claims = certification_claims(manifest, passed)
 
     return build_scorecard(
@@ -813,6 +823,9 @@ def score_case(
         convergence_result=convergence_result,
         passed=passed,
         certification_claims=claims,
+        scoring_method=method_v2.METHOD,
+        verdict=verdict,
+        judgement=method_v2.judgement(judged),
         timestamp=timestamp,
         private_key=private_key,
         key_id=key_id,

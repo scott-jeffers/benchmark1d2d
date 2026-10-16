@@ -1,6 +1,6 @@
-"""The scoring-method review page: every result under the current and the proposed method.
+"""The scoring-method page: every result under method 1 and method 2 (adopted 16 October 2026).
 
-The proposed method (``benchmark1d2d.scoring.method_v2``) is computed from the
+Method 2 (``benchmark1d2d.scoring.method_v2``) decides every verdict on the site; this page keeps the record of what it changed, computed from the
 same signed score cards; nothing on the rest of the site changes until
 reviewers adopt it (``docs/methodology/scoring_v2.md``).
 """
@@ -89,7 +89,7 @@ def order_chart(rs: list[dict]) -> str:
             ci = cv.get("ci")
             val = (f'{cv["order"]:.2f}' if cv.get("order") is not None else "–") + (f' <span class="muted">[{ci[0]:.2f}, {ci[1]:.2f}]</span>' if ci else "")
             now = r["a"]["converges"].get("current_order")
-            title = f'{r["name"]}: {VERDICT_WORD[cv["verdict"]]}. {cv.get("why", "")}. Current method: rate {now:.2f}.' if now is not None else r["name"]
+            title = f'{r["name"]}: {VERDICT_WORD[cv["verdict"]]}. {cv.get("why", "")}. Method 1 rate: {now:.2f}.' if now is not None else r["name"]
             lines.append(f'<div class="ord-row" title="{esc(title)}"><div class="lab"><span class="sw" style="background:{r["color"]}"></span>{esc(r["name"])}</div>'
                          f'{_whisker(cv)}<div class="val">{val} {_badge(cv["verdict"])}</div></div>')
         blocks.append(f'<div class="ord-group"><div class="ord-head"><a href="tests/{esc(sid)}.html"><b>{esc(sid)}</b></a> '
@@ -100,13 +100,13 @@ def order_chart(rs: list[dict]) -> str:
 
 def review_page(layout, manifests: list[dict], runs: dict, solver: dict, order) -> str:
     rs = rows(manifests, runs, solver, order)
-    now = Counter(r["a"]["current"] for r in rs)
+    now = Counter(r["a"]["method1"] for r in rs)
     new = Counter(r["a"]["overall"] for r in rs)
-    trans = Counter((r["a"]["current"], r["a"]["overall"]) for r in rs)
-    conv_only = [r for r in rs if r["a"]["current"] == "fail" and r["a"]["accurate"] == "pass"]
+    trans = Counter((r["a"]["method1"], r["a"]["overall"]) for r in rs)
+    conv_only = [r for r in rs if r["a"]["method1"] == "fail" and r["a"]["accurate"] == "pass"]
     near = sorted([r for r in rs if r["a"]["worst_margin"] is not None and 0.5 <= r["a"]["worst_margin"] <= 2.0],
                   key=lambda r: r["a"]["worst_margin"])
-    changed = [r for r in rs if r["a"]["current"] != r["a"]["overall"]]
+    changed = [r for r in rs if r["a"]["method1"] != r["a"]["overall"]]
     n_ord = sum(1 for r in rs if r["a"]["converges"]["verdict"] not in ("n/a",))
     n_inc = sum(1 for r in rs if r["a"]["converges"]["verdict"] == "inconclusive")
     three = sum(1 for r in rs if r["a"]["converges"]["verdict"] == "inconclusive" and r["a"]["converges"].get("levels") == 3)
@@ -115,7 +115,7 @@ def review_page(layout, manifests: list[dict], runs: dict, solver: dict, order) 
         n = trans.get((a, b), 0)
         return f'<td class="{"hl" if n and a != b else ""}">{n}</td>'
 
-    matrix = (f'<div class="table-scroll tmx-wrap"><table class="data tmx"><thead><tr><th scope="col">Current method</th><th scope="col">→ Passes</th><th scope="col">→ Inconclusive</th><th scope="col">→ Fails</th></tr></thead><tbody>'
+    matrix = (f'<div class="table-scroll tmx-wrap"><table class="data tmx"><thead><tr><th scope="col">Method 1</th><th scope="col">→ Passes</th><th scope="col">→ Inconclusive</th><th scope="col">→ Fails</th></tr></thead><tbody>'
               f'<tr><th scope="row">Passes ({now["pass"]})</th>{cell("pass", "pass")}{cell("pass", "inconclusive")}{cell("pass", "fail")}</tr>'
               f'<tr><th scope="row">Fails ({now["fail"]})</th>{cell("fail", "pass")}{cell("fail", "inconclusive")}{cell("fail", "fail")}</tr></tbody></table></div>')
 
@@ -126,37 +126,37 @@ def review_page(layout, manifests: list[dict], runs: dict, solver: dict, order) 
         return a["converges"].get("why", "")
 
     ch_rows = "".join(f'<tr><th scope="row"><a href="tests/{esc(r["sid"])}.html#m-{esc(r["key"])}">{esc(r["sid"])}</a></th><td>{esc(r["name"])}</td>'
-                      f'<td>{_badge(r["a"]["current"])}</td><td>{_badge(r["a"]["overall"])}</td><td class="small">{esc(why(r))}</td></tr>' for r in changed)
+                      f'<td>{_badge(r["a"]["method1"])}</td><td>{_badge(r["a"]["overall"])}</td><td class="small">{esc(why(r))}</td></tr>' for r in changed)
     near_rows = "".join(f'<tr><th scope="row"><a href="tests/{esc(r["sid"])}.html#m-{esc(r["key"])}">{esc(r["sid"])}</a></th><td>{esc(r["name"])}</td>'
-                        f'<td>{r["a"]["worst_margin"]:.2f}×</td><td>{_badge(r["a"]["current"])}</td></tr>' for r in near)
+                        f'<td>{r["a"]["worst_margin"]:.2f}×</td><td>{_badge(r["a"]["overall"])}</td></tr>' for r in near)
     body = f"""<div class="wrap">
 <section class="page-head">
-  <div class="kicker">Proposal under review</div>
-  <h1>How results are judged: a proposed change</h1>
-  <p class="lede">Every result on this site gets one verdict: passes or fails. This page shows the same {len(rs)} results under a proposed method that gives each one two verdicts, says how close each check came to its limit, and allows a third answer, <em>inconclusive</em>, when the grids run cannot settle the question. <b>Nothing else on the site changes until reviewers adopt it.</b> <a href="{NOTE_URL}">Read the proposal</a>.</p>
+  <div class="kicker">Adopted 16 October 2026</div>
+  <h1>How results are judged</h1>
+  <p class="lede">Every result on this site is judged by scoring method 2: two verdicts, how close each check came to its limit, and a third answer, <em>inconclusive</em>, when the grids run cannot settle the question. Until 16 October 2026 each result got one verdict, passes or fails. This page shows all {len(rs)} results both ways. <a href="{NOTE_URL}">Read the method</a>.</p>
 </section>
 
 <section class="section">
-  <h2>What changes</h2>
+  <h2>What changed</h2>
   <div class="grid review-rules">
-    <div class="card"><h3>Two verdicts, not one</h3><p><b>Accurate:</b> every check within its limit. <b>Converges:</b> the error falls as the grid gets finer, at the rate a correct method should. Today both are folded into one word, so a model 1 mm from the exact answer that converges slowly looks the same as one a metre out.</p></div>
+    <div class="card"><h3>Two verdicts, not one</h3><p><b>Accurate:</b> every check within its limit. <b>Converges:</b> the error falls as the grid gets finer, at the rate a correct method should. Method 1 folded both into one word, so a model 1 mm from the exact answer that converges slowly looks the same as one a metre out.</p></div>
     <div class="card"><h3>How close, not only which side</h3><p>Each check says how much of its limit it used: 4 % of it, or 1.4× over it. A near miss and a gross failure stop looking alike.</p></div>
-    <div class="card"><h3>The rate with its uncertainty</h3><p>The convergence rate is fitted through every grid, with a {round(CONFIDENCE * 100)} % range. It passes only if the whole range clears the minimum and fails only if the whole range is below it; otherwise the result is inconclusive. Today the rate is the average of the two finest pairs of grids, and a single number decides.</p></div>
+    <div class="card"><h3>The rate with its uncertainty</h3><p>The convergence rate is fitted through every grid, with a {round(CONFIDENCE * 100)} % range. It passes only if the whole range clears the minimum and fails only if the whole range is below it; otherwise the result is inconclusive. Method 1 took the average of the two finest pairs of grids, and that single number decided.</p></div>
     <div class="card"><h3>A solver's own precision</h3><p>A program that stores levels to 0.3 mm cannot show its error falling below that. When the finest grid is within {FLOOR_FACTOR:g}× a solver's declared precision, the rate is reported but does not decide the verdict. Errors at rounding level on every grid still fail.</p></div>
   </div>
 </section>
 
 <section class="section">
-  <h2>What would move</h2>
+  <h2>What moved</h2>
   <div class="cmp-summary">
-    <div><b>{now['pass']}</b><span>pass today</span></div>
-    <div><b>{new['pass']}</b><span>would pass</span></div>
-    <div class="hl"><b>{new['inconclusive']}</b><span>would be inconclusive</span></div>
-    <div><b>{new['fail']}</b><span>would fail ({now['fail']} today)</span></div>
-    <div><b>{len(conv_only)}</b><span>fail today only on the convergence rate</span></div>
+    <div><b>{now['pass']}</b><span>passed under method 1</span></div>
+    <div><b>{new['pass']}</b><span>pass now</span></div>
+    <div class="hl"><b>{new['inconclusive']}</b><span>inconclusive now</span></div>
+    <div><b>{new['fail']}</b><span>fail now ({now['fail']} before)</span></div>
+    <div><b>{len(conv_only)}</b><span>failed under method 1 only on the convergence rate</span></div>
   </div>
   {matrix}
-  <p class="muted">Of the {n_ord} results with a grid study, {n_inc} have a rate the grids cannot settle ({new["inconclusive"]} of them pass every accuracy check, so they come out inconclusive overall; the rest fail an accuracy check anyway). {three} of the {n_inc} are on tests run on three grids, where the fitted rate has one degree of freedom and its range is wide. The proposal therefore also asks for five grids per test.</p>
+  <p class="muted">Of the {n_ord} results with a grid study, {n_inc} have a rate the grids cannot settle ({new["inconclusive"]} of them pass every accuracy check, so they come out inconclusive overall; the rest fail an accuracy check anyway). {three} of the {n_inc} are on tests run on three grids, where the fitted rate has one degree of freedom and its range is wide. Moving every grid study to five grids, the next step, would settle most of them.</p>
 </section>
 
 <section class="section">
@@ -166,14 +166,14 @@ def review_page(layout, manifests: list[dict], runs: dict, solver: dict, order) 
 </section>
 
 <section class="section">
-  <h2>Results whose verdict would change ({len(changed)})</h2>
-  <div class="table-scroll"><table class="data"><thead><tr><th scope="col">Test</th><th scope="col">Model</th><th scope="col">Today</th><th scope="col">Proposed</th><th scope="col">Why</th></tr></thead><tbody>{ch_rows}</tbody></table></div>
+  <h2>Results whose verdict changed ({len(changed)})</h2>
+  <div class="table-scroll"><table class="data"><thead><tr><th scope="col">Test</th><th scope="col">Model</th><th scope="col">Method 1</th><th scope="col">Now</th><th scope="col">Why</th></tr></thead><tbody>{ch_rows}</tbody></table></div>
 </section>
 
 <section class="section">
   <h2>Close to the line ({len(near)})</h2>
-  <p class="muted">Results whose worst gating check used between half and twice its limit: today these are a confident ✓ or ✗ either way.</p>
-  <div class="table-scroll"><table class="data"><thead><tr><th scope="col">Test</th><th scope="col">Model</th><th scope="col">Worst check, share of its limit</th><th scope="col">Today</th></tr></thead><tbody>{near_rows}</tbody></table></div>
+  <p class="muted">Results whose worst gating check used between half and twice its limit: method 1 gave these a confident ✓ or ✗ either way; the share of the limit now shows how close they came.</p>
+  <div class="table-scroll"><table class="data"><thead><tr><th scope="col">Test</th><th scope="col">Model</th><th scope="col">Worst check, share of its limit</th><th scope="col">Now</th></tr></thead><tbody>{near_rows}</tbody></table></div>
 </section>
 </div>"""
-    return layout("Scoring review", body, "method.html", description="A proposed change to how benchmark results are judged, shown on every result.")
+    return layout("How results are judged", body, "method.html", description="How benchmark results are judged, and what changed when method 2 was adopted.")

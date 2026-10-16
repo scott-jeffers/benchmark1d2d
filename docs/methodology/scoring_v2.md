@@ -1,26 +1,30 @@
-# Proposal: scoring method v2
+# Scoring method 2
 
-**Status:** proposal for review. Nothing in it changes a published verdict.
-Under this suite's change-control rule
-([tolerance rationale](tolerance_rationale.md), principle 4), a reviewer must
-sign off before any verdict changes. The proposed method already runs
-alongside the current one, so every result can be seen both ways:
+**Status:** adopted on 16 October 2026 for rules R1–R3, R5 and R6. Every
+verdict on the site and in every new score card follows them. R4 (five grids)
+and R7 (limits set by a stated rule) are the next step. They change the
+tests' inputs, so they will come with new major versions of the tests and a
+re-run of every solver.
 
-* code: `runner/python/benchmark1d2d/scoring/method_v2.py`, tested in
-  `runner/python/tests/test_method_v2.py`;
-* the site's **[scoring review page](https://scott-jeffers.github.io/benchmark1d2d/scoring-review.html)**:
-  every result under both methods, the convergence rate of each with its
-  range, the results that would change and the near misses.
-* Every check on a test page now also shows how much of its limit it used
-  (for example "uses 4 % of it" or "1.1× the limit"). This is display only;
-  the verdict is unchanged.
+* Code: `runner/python/benchmark1d2d/scoring/method_v2.py`, tested in
+  `runner/python/tests/test_method_v2.py`.
+* The scorer writes `scoring_method: "2"`, `verdict`
+  (`pass`, `fail`, `inconclusive`), `judgement` (the two verdicts and the
+  worst margin) and a `margin` on every criterion into each new score card.
+  `passed` is true only for `pass`.
+* A card scored under method 1 is re-judged when the site reads it. Its
+  inputs are in the card (criterion values, errors per grid), so nothing is
+  re-run, and the signed file itself is not altered.
+* The [scoring page](https://scott-jeffers.github.io/benchmark1d2d/scoring-review.html)
+  keeps the record: every result under both methods, the convergence rate of
+  each with its range, the results whose verdict changed and the near misses.
 
 The numbers below are from the 154 results published on 16 October 2026
 (Track A and Track B).
 
 ## Why change
 
-The current method gives each result one verdict, pass or fail. A result
+Method 1 gave each result one verdict, pass or fail. A result
 passes when every gating check is within its limit **and**, where the test
 has a grid study, the observed order of convergence reaches the test's
 minimum (0.8 where a first-order scheme gives 1). The approach follows
@@ -56,7 +60,7 @@ Applying it to the results exposed five problems.
    from the exact answer and converge slowly, or converge cleanly to the
    wrong answer.
 
-## Proposed rules
+## The rules
 
 **R1. Two verdicts.**
 * *Accurate*: every gating check within its limit.
@@ -116,48 +120,39 @@ from tests run on three grids (the SWASHES set).
     so it cannot serve there.
   * The SWASHES tests have no reference run yet.
 
-## What would move
+## What moved
 
-Proposed method against today's verdicts:
+Method 2 against method 1:
 
-| Today | → Passes | → Inconclusive | → Fails |
+| Method 1 | → Passes | → Inconclusive | → Fails |
 |---|---|---|---|
 | Passes (99) | 87 | 12 | 0 |
 | Fails (55) | 1 | 8 | 46 |
 
-* No result goes from pass to fail, or from fail to pass, except HEC-RAS 1D
+* No result went from pass to fail, or from fail to pass, except HEC-RAS 1D
   on A1F-001 (R5).
-* The twelve passes that become inconclusive are rates whose interval
+* The twelve passes that became inconclusive are rates whose interval
   straddles the minimum. Examples: ANUGA on A1F-011 (0.03–1.42), and five
   SWASHES results on three grids.
-* The eight fails that become inconclusive have steady rates just under the
+* The eight fails that became inconclusive have steady rates just under the
   minimum, or erratic ones. Examples: LISFLOOD-FP FV1 on A1F-011
   (0.77–0.80), and OpenSWMM 6 finite volume on A1F-001 (0.73–0.85).
-* The full list, with the reason for each, is on the review page.
+* The full list, with the reason for each, is on the scoring page.
 
-## Decisions for reviewers
+## Decisions taken (16 October 2026)
 
-1. Adopt R1–R6 as one change? Under the change-control rule this is a
-   major version of every Track A case with a grid study, and their score
-   cards are re-issued.
-2. The confidence level: 90 % two-sided (proposed), or 95 %?
-3. Five grids (R4): extra coarse levels cost little; an extra fine level costs
-   about 4× the current finest run in 1D and 8× in 2D.
-4. How *inconclusive* appears on badges and in counts: a third grey state
-   (proposed), or counted with passes ("not shown to fail")?
-5. Precision floors (R5): who may declare one, and what evidence is enough.
-   Proposed: a published statement by the developer, or a reproducible test
-   in this repository.
-6. R7: adopt now, adopt test by test as references are added, or leave the
-   limits as they are and rely on margins.
-
-## What adopting it would change in the code
-
-* The scorer writes `method` and both verdicts into each score card.
-  `passed` keeps its meaning as the overall verdict, with inconclusive as a
-  third value.
-* The site shows two badges per result and the three-state overall verdict;
-  badges and counts gain the grey state.
-* Grid studies move to five levels; CI run time grows for the 2D tests.
-* `PRECISION` in `method_v2.py` becomes part of each solver's adapter
-  metadata.
+1. R1–R3, R5 and R6 adopted as one change. The tests' inputs, exact answers
+   and limits are unchanged, so no test changed version. The method is
+   recorded on each score card instead (`scoring_method`), and method-1 cards
+   are re-judged when read.
+2. Confidence: 90 % two-sided.
+3. *Inconclusive* is a third, grey state on badges, in counts and in the
+   results table. It is not counted with passes.
+4. Precision floors (R5) may be declared with a published statement by the
+   developer or a reproducible test in this repository. The only one today is
+   HEC-RAS 1D, at 0.3 mm on levels.
+5. Next step, as a separate versioned change: five grids per grid study (R4),
+   and R7 limits where a first-order reference exists. Extra coarse levels
+   cost little; an extra fine level costs about 4× the current finest run in
+   1D and 8× in 2D. Every Track A test with a grid study gets a new major
+   version, and every solver re-runs.

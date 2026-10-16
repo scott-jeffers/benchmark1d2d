@@ -179,6 +179,7 @@ def load_runs(dirs: list[Path]) -> dict[str, dict[str, dict]]:
             if k is None or "test_id" not in c:
                 continue
             c["_path"] = p
+            method_v2.apply(c)
             runs.setdefault(c["test_id"], {})[k] = c
     return runs
 
@@ -319,13 +320,19 @@ def checks_for(m: dict, card: dict) -> list[dict]:
         d = defs.get(r["id"], r)
         d = {**d, "threshold": r.get("threshold", d.get("threshold", {}))}
         mg = method_v2.margin(r.get("observed"), d.get("threshold") or {})
+        ok = bool(r.get("passed"))
         out.append(dict(label=check_label(d), value=check_value(d, r.get("observed")), limit=check_limit(d),
-                        ok=bool(r.get("passed")), gating=bool(r.get("gating", True)), margin=mg))
+                        ok=ok, state="ok" if ok else "no", gating=bool(r.get("gating", True)), margin=mg))
     conv = card.get("convergence_result") or {}
     if conv.get("errors"):
-        p = conv.get("observed_order")
-        out.append(dict(label="Improves with finer grids", value=f"rate {nice(p, 2)}" if p is not None else "no rate",
-                        limit=f"needed: {nice(conv.get('min_observed_order'), 2)} or better", ok=bool(conv.get("passed")), gating=True))
+        cv = (card.get("_judged") or method_v2.assess(card))["converges"]
+        p, ci, v = cv.get("order"), cv.get("ci"), cv["verdict"]
+        value = (f"rate {p:.2f}" + (f" (90 % range {ci[0]:.2f} to {ci[1]:.2f})" if ci else "")).replace("-", "−") if p is not None else "no rate"
+        need = f"needed: {nice(cv.get('min'), 2)} or better across the whole range"
+        if v == "at_floor":
+            need = "at the solver's own precision: reported, not judged"
+        state = {"pass": "ok", "at_floor": "ok", "fail": "no"}.get(v, "unsure")
+        out.append(dict(label="Improves with finer grids", value=value, limit=need, ok=state == "ok", state=state, gating=True))
     return out
 
 
@@ -339,8 +346,8 @@ def summary_line(m: dict, card: dict) -> str:
 
 # Findings worth a sentence on a model card: (short id, solver key) -> text
 NOTES = {
-    ("A1F-010", "telemac"): "The front is 5.8 m behind the exact one (2.5 m allowed) and closes in on finer grids at order 0.71, just under the 0.8 required. The thin leading edge, 1 mm deep, lags further (39 m): it stays dry too long. HLLC and second-order settings did not change that.",
-    ("A1F-001", "hecras"): "HEC-RAS stores input elevations to the nearest 0.001 ft (0.3 mm), even in a metric project. The depth error therefore stops at about 0.1 mm on every grid: far inside the limit, but it cannot shrink with the grid, so convergence cannot be shown.",
+    ("A1F-010", "telemac"): "The front is 5.8 m behind the exact one (2.5 m allowed) and closes in on finer grids at a rate of 0.69 (90 % range 0.64 to 0.73), all of it under the 0.8 required. The thin leading edge, 1 mm deep, lags further (39 m): it stays dry too long. HLLC and second-order settings did not change that.",
+    ("A1F-001", "hecras"): "HEC-RAS stores input elevations to the nearest 0.001 ft (0.3 mm), even in a metric project. The depth error therefore stops at about 0.1 mm on every grid, a hundredth of the limit, and cannot shrink with the grid. The convergence rate is reported but, at the solver's own precision, does not decide the verdict: it passes.",
     ("A1F-010", "hecras"): "The flood advances as a steep bore and its front is 97 m behind the exact one; the error does not fall on finer grids. HEC-RAS 2D was built and run with no GUI step; the dam-break step was carried in by a restart file.",
     ("A1F-010", "hecras-em"): "SWE-EM, the option HEC recommends for dam breaks, gets 40 m closer than the default SWE-ELM (58 m behind) but does not converge.",
     ("A1F-011", "hecras"): "The bore is in about the right place (depth error 5 mm), but the error does not fall on finer grids.",
@@ -350,9 +357,9 @@ NOTES = {
     ("A1F-010", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver, including the 9 m one-conduit spike near x = 1,126 m.",
     ("A1F-011", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver.",
     ("A1F-001", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4.",
-    ("A1F-011", "openswmm-fv"): "OpenSWMM 6's new finite-volume routing passes the test that SWMM's dynamic wave fails.",
-    ("A1F-010", "openswmm-fv"): "Much closer than dynamic wave (3.3 m behind instead of 41 m) and conserves water; it misses the 2.5 m limit and converges at 0.73.",
-    ("A1F-001", "openswmm-fv"): "Accurate (0.4 mm) but converges at 0.76, just under the 0.8 required, where dynamic wave reaches 1.7.",
+    ("A1F-011", "openswmm-fv"): "OpenSWMM 6's new finite-volume routing is 1 mm from the exact answer where SWMM's dynamic wave is 37 mm off. Its convergence rate is 0.87, but its 90 % range (0.79 to 0.95) dips just below the 0.8 required, so on these four grids the verdict is inconclusive.",
+    ("A1F-010", "openswmm-fv"): "Much closer than dynamic wave (3.3 m behind instead of 41 m) and conserves water; it misses the 2.5 m limit and converges at 0.66 (90 % range 0.54 to 0.77).",
+    ("A1F-001", "openswmm-fv"): "Accurate (0.4 mm). Its convergence rate fitted through the four grids is 0.79, with a 90 % range of 0.73 to 0.85 that includes the 0.8 required, so these grids cannot settle whether it converges: inconclusive. Dynamic wave reaches 1.8.",
     ("B-RTC-001", "openswmm6"): "Pumps switch the same 74 times, but one node peaks 50 % higher than in SWMM 5.2.4, at a different time; worth a look by the OpenSWMM developers.",
     ("A1F-010", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it is not expected to get a dam break right; it is shown because it is what most LISFLOOD-FP users run.",
     ("A1F-011", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it cannot form the right bore; it is shown because it is what most LISFLOOD-FP users run.",
@@ -361,19 +368,19 @@ NOTES = {
     ("A2A-020", "telemac"): "Run with TELEMAC's HLLC scheme: its default kinetic scheme goes unstable with this supercritical inflow. The depth is right (1 cm) and converges, but the stored water is 0.15 % above exact (0.1 % allowed), as with ANUGA (0.13 % below).",
     ("A2A-010", "telemac"): "Passes: 0.13 mm from the exact water level, converging at first order. The inflow discharge and outlet level are listed in the order TELEMAC numbers its open boundaries.",
     ("A2C-EA2", "telemac"): "Run with a 1 s largest step, as for the other codes: with TELEMAC's step left to the 5-minute output interval, the dry start took long first steps that undersampled the inflow and lost 6 % of the water.",
-    ("A2A-010", "hecras"): "Very accurate (0.09 mm), but the error stops falling below about 0.1 mm on finer grids (0.54, 0.16, 0.12, 0.09 mm), so the convergence check fails. HEC-RAS stops iterating at its default water-surface tolerance (0.01), which is the likely floor.",
-    ("A2A-010", "hecras-em"): "As SWE-ELM: 0.06 mm, but the error levels off near 0.1 mm on finer grids (order 0.67).",
+    ("A2A-010", "hecras"): "Very accurate (0.09 mm), but the error stops falling below about 0.1 mm on finer grids (0.54, 0.16, 0.12, 0.09 mm), so its convergence rate's range is wide (0.11 to 1.50) and the verdict is inconclusive. HEC-RAS stops iterating at its default water-surface tolerance (0.01), which is the likely floor.",
+    ("A2A-010", "hecras-em"): "As SWE-ELM: 0.06 mm, but the error levels off near 0.1 mm on finer grids (rate 1.02, 90 % range 0.43 to 1.60): inconclusive.",
     ("A2C-EA1", "hecras"): "Run on the EA's own 2 m DEM, which HEC-RAS uses as sub-grid terrain. The pond settles 1.3 cm above the sill (2 cm allowed).",
     ("A2C-EA2", "hecras"): "HEC-RAS's own volume accounting reports 1.4 % more water stored than flowed in (98,576 m³ from 97,194 m³). Integrating its water levels over the 2 m DEM gives +0.76 %, also over the limit. Run on the EA's own 2 m DEM as sub-grid terrain.",
     ("A2C-EA2", "hecras-em"): "As SWE-ELM: HEC-RAS's own accounting shows a 1.4 % volume error.",
     ("A1F-010", "hydronet-fvm"): "The dam never breaks: no water crosses onto the dry bed. HydroNet's Roe residual uses a fixed 1 cm dry threshold and, at a face between a wet and a dry cell, the wet cell's own flux, so still water next to dry ground feels no net force. The same happens below a 1 cm downstream layer. Mass is conserved because nothing moves.",
-    ("A1F-011", "hydronet-fvm"): "Into 10 cm of water the dam break runs normally: depth error 1.4 mm (passes) and mass 0.016 %, but the error falls at order 0.69 (minimum 0.8).",
+    ("A1F-011", "hydronet-fvm"): "Into 10 cm of water the dam break runs normally: depth error 1.4 mm (passes) and mass 0.016 %, but the error falls at a rate of 0.70 (90 % range 0.68 to 0.72; minimum 0.8).",
     ("A1F-011", "hydronet-pinn"): "The trained network smears the bore and the rarefaction: average depth error 12.6 cm (1 cm allowed), 4.5 % of the water lost, and no improvement on finer grids. Trained with the recipe of HydroNet's own dam-break example, which on its own 20 m, 1 s case gives an RMS error of 6 cm on a 2 m dam (3 %); this case is 2 km over 30 s.",
     ("A1D-001", "openswmm-fv"): "Accurate mid-line (under 2 mm), but up to 1.4 cm too deep in the pipes next to the normal-depth outfalls and 7 mm too deep in the first pipes below the inflows. EPA SWMM 5.2.4 holds normal depth to 0.3 mm everywhere.",
     ("A1D-002", "openswmm-fv"): "The pipes are surcharged and the finite-volume routing overestimates the friction loss: the hydraulic grade line falls 1.42 m over the five pipes instead of 1.19 m (19 % more), so the upstream manholes stand up to 28 cm too high. Dynamic wave in the same engine is 0.4 mm from exact.",
     ("A1D-001", "hydra-uds"): "Exact to rounding (0.0005 mm): Hydra computes the circular section exactly, where the SWMM engines interpolate a 51-entry table (0.27 mm off).",
     ("A1D-005", "openswmm-fv"): "Passes (3.7 mm). With one cell per pipe (FV_MIN_CELLS 1, as on the channel tests) it is 2.2 cm off and fails; the default subdivides each pipe.",
-    ("A1F-041", "anuga"): "Passes with the SWASHES downstream condition (0.66 m held while the outflow is subcritical). With a free (transmissive) outflow instead, ANUGA settled on a fully subcritical state 1.06 m deep, 0.39 m off.",
+    ("A1F-041", "anuga"): "Within 0.7 mm with the SWASHES downstream condition (0.66 m held while the outflow is subcritical); inconclusive only because three grids leave its convergence rate's range wide (0.69 to 1.14). With a free (transmissive) outflow instead, ANUGA settled on a fully subcritical state 1.06 m deep, 0.39 m off.",
     ("A1F-043", "anuga"): "Nothing moves (velocities 1e-14 m/s). The worst depth difference, 1.7 mm, is in the cells cut by the shoreline, where a cell-mean depth on the sloping bump differs from the exact depth at the cell centre; that check is informational.",
     ("A12-010", "swmm-anuga"): "The street carries exactly what the manhole releases (0.5 m³/s, depth 0.1 mm from exact), but 5 m³ of the 885 m³ is missing at the end (0.56 %; 0.5 % allowed). The coupler moves water exactly; the loss is SWMM's own continuity error (0.50 % in its report), made as the dead-end pipe filled and surcharged.",
     ("A12-011", "swmm-anuga"): "Passes. While the pipe runs full, SWMM's reported pipe and manhole volumes exceed its own balance by up to 3.1 m³ (1.2 %), which disappears as the pipe empties: its end-of-run continuity error is 0.000 %.",
@@ -464,10 +471,36 @@ def layout(title: str, body: str, active: str, depth: int = 0, description: str 
 """
 
 
+VERDICT_BADGE = {"pass": '<span class="badge pass">✓ Passes</span>', "fail": '<span class="badge fail">✗ Fails</span>',
+                 "inconclusive": '<span class="badge unsure">? Inconclusive</span>'}
+VERDICT_WORD = {"pass": "passes", "fail": "fails", "inconclusive": "inconclusive"}
+SYM = {"ok": "✓", "no": "✗", "unsure": "?"}
+
+
+def two_verdicts(card: dict) -> str:
+    """Method 2's two verdicts, when the test has a grid study (otherwise accuracy is the verdict)."""
+    a = card.get("_judged") or method_v2.assess(card)
+    cv = a["converges"]["verdict"]
+    if cv == "n/a":
+        return ""
+    acc = '<span class="ok">✓ yes</span>' if a["accurate"] == "pass" else '<span class="no">✗ no</span>'
+    con = {"pass": '<span class="ok">✓ yes</span>', "fail": '<span class="no">✗ no</span>',
+           "inconclusive": '<span class="unsure">? not settled by these grids</span>',
+           "at_floor": '<span class="ok">at its own precision</span>'}[cv]
+    return f'<p class="two-verdicts small"><span>Accurate: {acc}</span><span>Converges: {con}</span></p>'
+
+
+def verdict(card: dict | None) -> str:
+    """pass, fail or inconclusive (scoring method 2; docs/methodology/scoring_v2.md)."""
+    if not card:
+        return "none"
+    return card.get("verdict") or ("pass" if card.get("passed") else "fail")
+
+
 def badge(card: dict | None) -> str:
     if card is None:
         return '<span class="badge none">Not run</span>'
-    return '<span class="badge pass">✓ Passes</span>' if card.get("passed") else '<span class="badge fail">✗ Fails</span>'
+    return VERDICT_BADGE[verdict(card)]
 
 
 SOLVER_DOCS = {"hecras": "hecras.md", "hecras-em": "hecras.md", "openswmm-dw": "openswmm.md", "openswmm-fv": "openswmm.md",
@@ -490,7 +523,7 @@ def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
     rows = []
     for m, c in mine:
         sid = sid_of(m["test_id"])
-        checks = "; ".join(f'{"✓" if ck["ok"] else "✗"} {ck["label"]} {ck["value"]}' for ck in checks_for(m, c) if ck.get("gating", True))
+        checks = "; ".join(f'{SYM[ck["state"]]} {ck["label"]} {ck["value"]}' for ck in checks_for(m, c) if ck.get("gating", True))
         note = NOTES.get((sid, key), "")
         rows.append(f'<tr><td><a href="../tests/{sid}.html#m-{key}"><b>{esc(story(m)["name"])}</b></a><div class="muted small">{esc(sid)}</div></td>'
                     f'<td>{badge(c)}</td><td class="small">{esc(checks)}{("<p class=note>" + esc(note) + "</p>") if note else ""}</td></tr>')
@@ -526,7 +559,7 @@ def compare_page(manifests: list[dict], runs: dict) -> str:
             sid = sid_of(m["test_id"])
             res = {}
             for k, c in runs[m["test_id"]].items():
-                res[k] = dict(p=bool(c.get("passed")), c=[[ck["label"], ck["value"], bool(ck["ok"])] for ck in checks_for(m, c) if ck.get("gating", True)],
+                res[k] = dict(p=verdict(c) == "pass", v=verdict(c), c=[[ck["label"], ck["value"], ck["state"]] for ck in checks_for(m, c) if ck.get("gating", True)],
                               n=NOTES.get((sid, k), ""))
             tests.append(dict(sid=sid, name=story(m)["name"], group=gname, r=res))
     data = dict(models=models, tests=tests)
@@ -553,16 +586,16 @@ var M={};D.models.forEach(function(m){M[m.key]=m;});
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 var q=new URLSearchParams(location.search);A.value=M[q.get('a')]?q.get('a'):(M['swmm524']?'swmm524':D.models[0].key);
 B.value=M[q.get('b')]?q.get('b'):(M['openswmm-fv']?'openswmm-fv':D.models[1].key);
-function cell(r,m){var dm=' data-m="'+esc(m)+'"';if(!r)return '<td class="muted"'+dm+'>not run</td>';var h='<td'+dm+'><span class="badge '+(r.p?'pass">✓ Passes':'fail">✗ Fails')+'</span><ul class="cmp-checks">';
-r.c.forEach(function(c){h+='<li class="'+(c[2]?'ok':'no')+'">'+(c[2]?'✓ ':'✗ ')+esc(c[0])+': '+esc(c[1])+'</li>';});return h+'</ul></td>';}
+function cell(r,m){var dm=' data-m="'+esc(m)+'"';if(!r)return '<td class="muted"'+dm+'>not run</td>';var h='<td'+dm+'>'+({pass:'<span class="badge pass">✓ Passes</span>',fail:'<span class="badge fail">✗ Fails</span>',inconclusive:'<span class="badge unsure">? Inconclusive</span>'})[r.v]+'<ul class="cmp-checks">';
+r.c.forEach(function(c){h+='<li class="'+c[2]+'">'+({ok:'✓ ',no:'✗ ',unsure:'? '})[c[2]]+esc(c[0])+': '+esc(c[1])+'</li>';});return h+'</ul></td>';}
 function draw(){var a=A.value,b=B.value,both=[],onlyA=0,onlyB=0,s={bp:0,ap:0,bpo:0,bf:0};
 history.replaceState(null,'','?a='+encodeURIComponent(a)+'&b='+encodeURIComponent(b));
 document.getElementById('cmp-ha').textContent=M[a].full;document.getElementById('cmp-hb').textContent=M[b].full;
 D.tests.forEach(function(t){var ra=t.r[a],rb=t.r[b];if(ra&&rb){both.push(t);if(ra.p&&rb.p)s.bp++;else if(ra.p)s.ap++;else if(rb.p)s.bpo++;else s.bf++;}else if(ra)onlyA++;else if(rb)onlyB++;});
-both.sort(function(x,y){var dx=x.r[a].p!==x.r[b].p?0:1,dy=y.r[a].p!==y.r[b].p?0:1;return dx-dy;});
-var rows='';both.forEach(function(t){var diff=t.r[a].p!==t.r[b].p;rows+='<tr'+(diff?' class="cmp-diff"':'')+'><th scope="row"><a href="tests/'+esc(t.sid)+'.html">'+esc(t.name)+'</a><small>'+esc(t.sid)+' · '+esc(t.group)+'</small></th>'+cell(t.r[a],M[a].name)+cell(t.r[b],M[b].name)+'</tr>';});
+both.sort(function(x,y){var dx=x.r[a].v!==x.r[b].v?0:1,dy=y.r[a].v!==y.r[b].v?0:1;return dx-dy;});
+var rows='';both.forEach(function(t){var diff=t.r[a].v!==t.r[b].v;rows+='<tr'+(diff?' class="cmp-diff"':'')+'><th scope="row"><a href="tests/'+esc(t.sid)+'.html">'+esc(t.name)+'</a><small>'+esc(t.sid)+' · '+esc(t.group)+'</small></th>'+cell(t.r[a],M[a].name)+cell(t.r[b],M[b].name)+'</tr>';});
 document.querySelector('#cmp-table tbody').innerHTML=rows||'<tr><td colspan="3">These two models have no test in common yet.</td></tr>';
-var n=both.length;document.getElementById('cmp-summary').innerHTML=n?('<div><b>'+n+'</b><span>tests both ran</span></div><div><b>'+s.bp+'</b><span>both pass</span></div><div class="hl"><b>'+s.ap+'</b><span>only '+esc(M[a].name)+' passes</span></div><div class="hl"><b>'+s.bpo+'</b><span>only '+esc(M[b].name)+' passes</span></div><div><b>'+s.bf+'</b><span>both fail</span></div>'):'';
+var n=both.length;document.getElementById('cmp-summary').innerHTML=n?('<div><b>'+n+'</b><span>tests both ran</span></div><div><b>'+s.bp+'</b><span>both pass</span></div><div class="hl"><b>'+s.ap+'</b><span>only '+esc(M[a].name)+' passes</span></div><div class="hl"><b>'+s.bpo+'</b><span>only '+esc(M[b].name)+' passes</span></div><div><b>'+s.bf+'</b><span>neither passes</span></div>'):'';
 document.getElementById('cmp-only').textContent=(onlyA||onlyB)?('Not compared: '+onlyA+' test(s) only '+M[a].name+' ran, '+onlyB+' only '+M[b].name+' ran.'):'';}
 A.addEventListener('change',draw);B.addEventListener('change',draw);
 document.getElementById('cmp-swap').addEventListener('click',function(){var t=A.value;A.value=B.value;B.value=t;draw();});draw();})();
@@ -746,14 +779,16 @@ def test_card(m: dict, runs: dict, up: str = "", status_text: str | None = None)
     st = story(m)
     by = runs.get(m["test_id"]) or {}
     scored = [k for k in by if SOLVER.get(k, {}).get("kind") != "compat" or m["track"] == "B"]
-    n_ok = sum(1 for k in scored if by[k].get("passed"))
+    n_ok = sum(1 for k in scored if verdict(by[k]) == "pass")
+    n_un = sum(1 for k in scored if verdict(by[k]) == "inconclusive")
     if status_text:
         score = f'<div class="tc-score">{esc(status_text)}</div>'
     elif scored:
         n = len(scored)
         score = (f'<div class="tc-score"><div class="tc-bar" aria-hidden="true"><i class="p" style="width:{100 * n_ok / n:.1f}%"></i>'
-                 f'<i class="f" style="width:{100 * (n - n_ok) / n:.1f}%"></i></div>'
-                 f'<span>{n_ok} of {n} model{"s" if n != 1 else ""} pass</span></div>')
+                 f'<i class="u" style="width:{100 * n_un / n:.1f}%"></i>'
+                 f'<i class="f" style="width:{100 * (n - n_ok - n_un) / n:.1f}%"></i></div>'
+                 f'<span>{n_ok} of {n} model{"s" if n != 1 else ""} pass{f" · {n_un} inconclusive" if n_un else ""}</span></div>')
     else:
         score = '<div class="tc-score">Not run yet</div>'
     return (f'<a class="card test-card" href="{up}tests/{sid}.html" data-group="{st["group"]}">{tile_svg(sid)}'
@@ -809,11 +844,12 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
                     tds.append('<td><span class="notrun" aria-label="not run">—</span></td>')
                     continue
                 cid = f"{sid}|{k}"
-                ok = bool(c.get("passed"))
-                cells[cid] = dict(test=st["name"], sid=sid, solver=f'{SOLVER[k]["name"]} · {SOLVER[k]["sub"]}', passed=ok,
+                v = verdict(c)
+                cells[cid] = dict(test=st["name"], sid=sid, solver=f'{SOLVER[k]["name"]} · {SOLVER[k]["sub"]}', verdict=v,
                                   checks=checks_for(m, c), note=NOTES.get((sid, k), ""))
-                label = f'{st["name"]}, {SOLVER[k]["name"]} {SOLVER[k]["sub"]}: {"passes" if ok else "fails"}'
-                tds.append(f'<td><button type="button" class="cellbtn {"pass" if ok else "fail"}" data-cell="{esc(cid)}" aria-pressed="false" aria-label="{esc(label)}">{"✓" if ok else "✗"}</button></td>')
+                label = f'{st["name"]}, {SOLVER[k]["name"]} {SOLVER[k]["sub"]}: {VERDICT_WORD[v]}'
+                cls = {"pass": "pass", "fail": "fail"}.get(v, "unsure")
+                tds.append(f'<td><button type="button" class="cellbtn {cls}" data-cell="{esc(cid)}" aria-pressed="false" aria-label="{esc(label)}">{SYM[{"pass": "ok", "fail": "no"}.get(v, "unsure")]}</button></td>')
             rows.append(f'<tr data-group="{gkey}"><th scope="row"><a href="tests/{sid}.html">{esc(st["name"])}</a><small>{esc(sid)}</small></th>{"".join(tds)}</tr>')
     filters = '<button type="button" class="pill" data-filter="all" aria-pressed="true">All tests</button>' + "".join(
         f'<button type="button" class="pill" data-filter="{k}" aria-pressed="false">{esc(v)}</button>' for k, v in GROUPS.items()
@@ -900,10 +936,10 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
 (function(){var data=JSON.parse(document.getElementById('cells').textContent),panel=document.getElementById('panel');
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function render(id){var c=data[id];if(!c)return;var h='<div class="kicker">Selected result</div><div class="title">'+esc(c.test)+'</div><div class="solver">'+esc(c.solver)+'</div>'+
-(c.passed?'<span class="badge pass">✓ Passes</span>':'<span class="badge fail">✗ Fails</span>')+'<ul class="checks">';
-c.checks.forEach(function(k){h+='<li><span class="'+(k.ok?'ok':'no')+'" aria-label="'+(k.ok?'met':'not met')+'">'+(k.ok?'✓':'✗')+'</span><span><b>'+esc(k.label)+':</b> '+esc(k.value)+' <span class="muted">('+esc(k.limit)+')</span></span></li>';});
+({pass:'<span class="badge pass">✓ Passes</span>',fail:'<span class="badge fail">✗ Fails</span>',inconclusive:'<span class="badge unsure">? Inconclusive</span>'})[c.verdict]+'<ul class="checks">';
+c.checks.forEach(function(k){var sy={ok:'✓',no:'✗',unsure:'?'}[k.state],al={ok:'met',no:'not met',unsure:'not settled'}[k.state];h+='<li><span class="'+k.state+'" aria-label="'+al+'">'+sy+'</span><span><b>'+esc(k.label)+':</b> '+esc(k.value)+' <span class="muted">('+esc(k.limit)+')</span></span></li>';});
 h+='</ul>'+(c.note?'<p class="small">'+esc(c.note)+'</p>':'')+'<a href="tests/'+esc(c.sid)+'.html#m-'+esc(id.split('|')[1])+'" style="font-weight:600">Open the test →</a>'+
-'<div class="legend-mini"><span><b class="ok">✓</b> passes every check</span><span><b class="no">✗</b> fails at least one check</span><span><b style="color:#A7B4BC">—</b> not run yet</span></div>';
+'<div class="legend-mini"><span><b class="ok">✓</b> passes every check</span><span><b class="no">✗</b> fails at least one check</span><span><b class="unsure">?</b> inconclusive: the grids cannot settle the rate</span><span><b style="color:#A7B4BC">—</b> not run yet</span></div>';
 panel.innerHTML=h;var rc=panel.getBoundingClientRect();if(rc.top<60||rc.top>innerHeight-80)panel.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.cellbtn').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.cell===id?'true':'false');});}
 document.querySelectorAll('.cellbtn').forEach(function(b){b.addEventListener('click',function(){render(b.dataset.cell);try{history.replaceState(null,'','#cell='+encodeURIComponent(b.dataset.cell));}catch(e){}});});
 var first=document.querySelector('.cellbtn[data-cell="'+(%FIRST%)+'"]');if(first)first.setAttribute('aria-pressed','true');
@@ -926,13 +962,14 @@ document.querySelectorAll('[data-view]').forEach(function(b){b.addEventListener(
 def _panel_html(c: dict | None) -> str:
     if not c:
         return ""
-    checks = "".join(f'<li><span class="{"ok" if k["ok"] else "no"}" aria-label="{"met" if k["ok"] else "not met"}">{"✓" if k["ok"] else "✗"}</span>'
+    checks = "".join(f'<li><span class="{k["state"]}" aria-label="{ {"ok": "met", "no": "not met", "unsure": "not settled"}[k["state"]] }">{SYM[k["state"]]}</span>'
                      f'<span><b>{esc(k["label"])}:</b> {esc(k["value"])} <span class="muted">({esc(k["limit"])})</span></span></li>' for k in c["checks"])
     return (f'<div class="kicker">Selected result</div><div class="title">{esc(c["test"])}</div><div class="solver">{esc(c["solver"])}</div>'
-            f'{"<span class=\"badge pass\">✓ Passes</span>" if c["passed"] else "<span class=\"badge fail\">✗ Fails</span>"}'
+            f'{VERDICT_BADGE[c["verdict"]]}'
             f'<ul class="checks">{checks}</ul>' + (f'<p class="small">{esc(c["note"])}</p>' if c["note"] else "")
             + f'<a href="tests/{esc(c["sid"])}.html" style="font-weight:600">Open the test →</a>'
             '<div class="legend-mini"><span><b class="ok">✓</b> passes every check</span><span><b class="no">✗</b> fails at least one check</span>'
+            '<span><b class="unsure">?</b> inconclusive: the grids cannot settle the rate</span>'
             '<span><b style="color:#A7B4BC">—</b> not run yet</span></div>')
 
 
@@ -1030,8 +1067,9 @@ def share_block(sid: str, k: str, card: dict) -> str:
     """A link to this result and a badge to embed it."""
     link = f"{SITE_URL}results.html#cell={sid}|{k}"
     badge = f"{SITE_URL}badges/{sid}/{k}.svg"
-    md = f"[![OpenHydro Bench {sid}: {'passes' if card.get('passed') else 'fails'}]({badge})]({link})"
-    html_ = f'<a href="{link}"><img src="{badge}" alt="OpenHydro Bench {sid}: {"passes" if card.get("passed") else "fails"}"></a>'
+    word = VERDICT_WORD[verdict(card)]
+    md = f"[![OpenHydro Bench {sid}: {word}]({badge})]({link})"
+    html_ = f'<a href="{link}"><img src="{badge}" alt="OpenHydro Bench {sid}: {word}"></a>'
     return (f'<details class="share"><summary>Share or embed this result</summary>'
             f'<p class="small"><img src="../badges/{esc(sid)}/{esc(k)}.svg" alt="" height="20"></p>'
             f'<label class="small">Link<input type="text" readonly value="{esc(link)}" onclick="this.select()"></label>'
@@ -1164,13 +1202,14 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     for k in SOLVERS_ORDER(set(runs)):
         c = runs[k]
         s = SOLVER[k]
-        checks = "".join(f'<div class="check{"" if ck["ok"] else " bad"}"><div class="k">{esc(ck["label"])}</div>'
-                         f'<div class="v">{"✓" if ck["ok"] else "✗"} {esc(ck["value"])}</div><div class="lim">{esc(ck["limit"])}{_margin_span(ck)}</div></div>'
+        checks = "".join(f'<div class="check{ {"ok": "", "no": " bad", "unsure": " unsure"}[ck["state"]] }"><div class="k">{esc(ck["label"])}</div>'
+                         f'<div class="v">{SYM[ck["state"]]} {esc(ck["value"])}</div><div class="lim">{esc(ck["limit"])}{_margin_span(ck)}</div></div>'
                          for ck in checks_for(m, c))
         note = NOTES.get((sid, k), "")
         name = s["name"] if not k.startswith("lisflood") else f'{s["name"]} {s["sub"].split("·")[-1].strip()}'
         mcards.append(f"""<article class="model-card" id="m-{k}">
   <div class="top"><div><div class="name"><span class="sw" style="background:{s['color']}"></span>{esc(name)}</div><div class="what">{esc(s['what'])}</div></div>{badge(c)}</div>
+  {two_verdicts(c)}
   <div class="checks-grid">{checks}</div>
   {f'<p class="note">{esc(note)}</p>' if note else ''}
   <p class="note small">Signed score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>

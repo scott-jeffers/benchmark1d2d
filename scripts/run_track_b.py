@@ -94,7 +94,7 @@ def run_epanet20(inp: Path, out_parquet: Path) -> None:
 def save(card: dict) -> None:
     p = OUT / f"{card['test_id']}.scorecard.json"
     p.write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-    print(f"{'PASS' if card['passed'] else 'FAIL'} {card['test_id']} ({card['solver']['name']})")
+    print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {card['test_id']} ({card['solver']['name']})")
     for r in card["criteria_results"]:
         print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']} — {r.get('detail', '')}")
 
@@ -125,7 +125,7 @@ def main() -> int:
                               solver={"name": f"Hydra {ver.split('/')[0]} {names[eng]}", "version": ver,
                                       "adapter": f"hydra CLI {ver.split('/')[-1]} ({eng} engine, {'EPANET' if eng == 'wds' else 'SWMM'}-format binary output)"})
             (outh / f"{card['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-            print(f"{'PASS' if card['passed'] else 'FAIL'} {card['test_id']} ({card['solver']['name']})")
+            print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {card['test_id']} ({card['solver']['name']})")
             for r in card["criteria_results"]:
                 print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']} — {r.get('detail', '')}")
     if args.only_hydra:
@@ -147,7 +147,7 @@ def main() -> int:
             card = score_case(m, res, timestamp=TS, private_key=KEY,
                               solver={"name": f"OpenSWMM Engine {version}", "version": version, "adapter": "openswmm (v6 engine, SWMM binary output)"})
             (out6 / f"{card['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-            print(f"{'PASS' if card['passed'] else 'FAIL'} {card['test_id']} ({card['solver']['name']})")
+            print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {card['test_id']} ({card['solver']['name']})")
             for r in card["criteria_results"]:
                 print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']} — {r.get('detail', '')}")
     if args.only_openswmm:

@@ -9,7 +9,12 @@ Per ASME V&V 20 and Roache GCI:
    (L1 = mean |e|, so a scheme of order p gives L1 ∝ dx^p).
 3. Estimate the observed order of accuracy `p` from successive levels.
 4. Compute the Grid Convergence Index (GCI).
-5. **Pass** only if gating criteria pass **and** `p ≥ min_observed_order`.
+5. Judge with [scoring method 2](scoring_v2.md): *accurate* if every gating
+   criterion passes; *converges* if the order fitted through every grid has its
+   whole 90 % range at or above `min_observed_order`, fails if the whole range
+   is below it, and is *inconclusive* otherwise. The result **passes** only if
+   both pass, **fails** if either fails, and is **inconclusive** if it is
+   accurate and the grids cannot settle the rate.
 
 A solver that hits 1 % L1 on a fine grid but converges at order 0.4 **fails**.
 Errors at round-off on every mesh are **rejected**: a discretisation always

@@ -317,7 +317,7 @@ def main() -> int:
             continue
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)
         (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-        print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")
+        print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']})")
         for r in card["criteria_results"]:
             print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}")
         c = card.get("convergence_result") or {}

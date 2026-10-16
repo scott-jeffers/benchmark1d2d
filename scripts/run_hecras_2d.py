@@ -547,13 +547,13 @@ def main() -> int:
                 continue
             card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)
             (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-            log(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")
+            log(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']})")
             for r in card["criteria_results"]:
                 log(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}")
             c = card.get("convergence_result") or {}
             log(f"    convergence p={c.get('observed_order')} errors={c.get('errors')}")
             if not card["passed"]:
-                log(f"::warning title=HEC-RAS 2D {label} {m['test_id']}::fails at least one criterion (a finding, not a harness error)")
+                log(f"::warning title=HEC-RAS 2D {label} {m['test_id']}::{'is inconclusive (convergence range straddles the minimum)' if card.get('verdict') == 'inconclusive' else 'fails at least one criterion'} (a finding, not a harness error)")
     return 1 if failed else 0
 
 

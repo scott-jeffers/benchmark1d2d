@@ -103,7 +103,7 @@ def score_folder(folder: Path, key) -> tuple[list[str], list[str]]:
         if conv:
             order = conv.get("observed_order")
             crit += f"; convergence order {order:.2f}" if order is not None else "; convergence not measured"
-        lines.append(f"- **{tid}**: {'PASS' if card['passed'] else 'FAIL'} — {crit}")
+        lines.append(f"- **{tid}**: {card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} — {crit}")
     lines.append("")
     return lines, problems
 

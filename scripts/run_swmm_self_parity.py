@@ -83,7 +83,7 @@ def main() -> int:
                           solver={"name": f"EPA SWMM {pin['version']} official win64", "version": pin["version"], "adapter": "swmm5"})
         (OUT / f"{tid}.cross_build.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
         role = "gating" if opts["gating"] else f"informative — {opts['reason']}"
-        print(f"{tid} [{role}]: repeat runs byte-identical={identical}; vs {m['reference'].get('build')}: {'PASS' if card['passed'] else 'FAIL'}")
+        print(f"{tid} [{role}]: repeat runs byte-identical={identical}; vs {m['reference'].get('build')}: {card.get('verdict', 'pass' if card['passed'] else 'fail').upper()}")
         for r in card["criteria_results"]:
             print(f"    {r['id']}: {r['observed']} {r['threshold']['units']} ({r.get('detail', '')})")
         ok &= identical  # repeatability is required of every case

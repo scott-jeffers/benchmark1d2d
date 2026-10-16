@@ -550,7 +550,7 @@ def main() -> int:
                 sv["name"] += f" at {dx_alt:g} m (spec alternative resolution)"
             card = score_case(m, p, timestamp=TS, private_key=KEY, solver=sv)
             (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-            print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({sv['name']})", flush=True)
+            print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({sv['name']})", flush=True)
             for r in card["criteria_results"]:
                 print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}  {r.get('detail', '')}", flush=True)
             ok &= card["passed"]
@@ -563,7 +563,7 @@ def main() -> int:
         sv = solver if tid != "A2A-020" else dict(solver, adapter=solver["adapter"] + "; HLLC scheme (the default kinetic scheme is unstable here)")
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY, solver=sv)
         (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-        print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")
+        print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']})")
         for r in card["criteria_results"]:
             print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}")
         c = card.get("convergence_result") or {}

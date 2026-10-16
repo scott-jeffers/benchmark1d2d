@@ -322,7 +322,7 @@ def main(argv: list[str]) -> int:
             continue
         out = OUT / f"{card['test_id']}.scorecard.json"
         out.write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-        print(f"{'PASS' if card['passed'] else 'FAIL'} {card['test_id']}")
+        print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {card['test_id']}")
         for r in card["criteria_results"]:
             print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}  {r.get('detail', '')}")
         if card.get("convergence_result"):

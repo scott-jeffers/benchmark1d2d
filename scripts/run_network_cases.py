@@ -141,7 +141,7 @@ def main() -> int:
         write_results_parquet(res, build(Path(m["_case_dir"])))
         card = score_case(m, res, timestamp=TS, private_key=KEY, solver=solver)
         (out_dir / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-        print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")
+        print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']})")
         for r in card["criteria_results"]:
             print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']:.4g} {r['threshold']['units']} — {r.get('detail', '')}")
         ok &= card["passed"]

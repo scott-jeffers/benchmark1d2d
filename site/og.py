@@ -71,7 +71,7 @@ def _wrap(text: str, font, width: int) -> list[str]:
 
 
 def og_image(path: Path, sid: str, kicker: str, title: str, question: str, n_ok: int, n_run: int, site: str = "OpenHydro Bench",
-             footer: str | None = None) -> None:
+             footer: str | None = None, n_unsure: int = 0) -> None:
     from PIL import Image, ImageDraw
 
     im = Image.new("RGB", (W, H), BG)
@@ -107,9 +107,12 @@ def og_image(path: Path, sid: str, kicker: str, title: str, question: str, n_ok:
         d.rounded_rectangle([x, by, x + bw, by + 14], radius=7, fill=RULE)
         if n_ok:
             d.rounded_rectangle([x, by, x + int(bw * n_ok / n_run), by + 14], radius=7, fill=PASS)
-        if n_ok < n_run:
-            d.rounded_rectangle([x + int(bw * n_ok / n_run), by, x + bw, by + 14], radius=7, fill=FAIL)
-        d.text((x, by + 26), f"{n_ok} of {n_run} model{'s' if n_run != 1 else ''} pass", font=_font("bold", 26), fill=INK)
+        if n_ok + n_unsure < n_run:
+            d.rounded_rectangle([x + int(bw * (n_ok + n_unsure) / n_run), by, x + bw, by + 14], radius=7, fill=FAIL)
+        if n_unsure:
+            d.rectangle([x + int(bw * n_ok / n_run), by, x + int(bw * (n_ok + n_unsure) / n_run), by + 14], fill=INK2)
+        extra = f" · {n_unsure} inconclusive" if n_unsure else ""
+        d.text((x, by + 26), f"{n_ok} of {n_run} model{'s' if n_run != 1 else ''} pass{extra}", font=_font("bold", 26), fill=INK)
     else:
         d.text((x, by + 10), "Not run yet: run it and add yours", font=_font("bold", 26), fill=INK)
     if tile:
@@ -120,11 +123,13 @@ def og_image(path: Path, sid: str, kicker: str, title: str, question: str, n_ok:
     im.save(path, "PNG", optimize=True)
 
 
-def badge_svg(label: str, passed: bool) -> str:
-    """A shields-style badge: label on the left, passes/fails on the right."""
-    right = "passes" if passed else "fails"
+def badge_svg(label: str, verdict: str | bool) -> str:
+    """A shields-style badge: label on the left, passes / fails / inconclusive on the right."""
+    if isinstance(verdict, bool):
+        verdict = "pass" if verdict else "fail"
+    right = {"pass": "passes", "fail": "fails", "inconclusive": "inconclusive"}[verdict]
     lw, rw = 7 * len(label) + 14, 7 * len(right) + 14
-    col = "#1F7A4D" if passed else "#B5481A"
+    col = {"pass": "#1F7A4D", "fail": "#B5481A", "inconclusive": "#5D6D7E"}[verdict]
     w = lw + rw
     esc = label.replace("&", "&amp;").replace("<", "&lt;")
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="20" role="img" aria-label="{esc}: {right}">'

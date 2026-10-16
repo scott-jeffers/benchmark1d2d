@@ -122,6 +122,46 @@
     },
     "notes": {
       "type": "string"
+    },
+    "scoring_method": {
+      "type": "string",
+      "description": "Scoring method that produced the verdict (docs/methodology/scoring_v2.md). Absent on cards from method 1."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "inconclusive"
+      ],
+      "description": "Overall verdict (method 2): fail if a gating check fails or the convergence rate is below its minimum over its whole 90 % range; inconclusive if the checks pass and the range straddles the minimum; else pass. `passed` is true only for pass."
+    },
+    "judgement": {
+      "type": "object",
+      "description": "Method 2's two verdicts and margins.",
+      "properties": {
+        "accurate": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail"
+          ]
+        },
+        "converges": {
+          "type": "object"
+        },
+        "worst_margin": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Largest |observed| / limit over the gating checks."
+        }
+      },
+      "required": [
+        "accurate",
+        "converges"
+      ]
     }
   },
   "$defs": {
@@ -192,6 +232,13 @@
         },
         "detail": {
           "type": "string"
+        },
+        "margin": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "|observed| / limit (method 2)."
         }
       }
     },

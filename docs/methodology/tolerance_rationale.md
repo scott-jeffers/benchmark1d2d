@@ -1,10 +1,11 @@
 # How tolerances are set
 
-> **Under review:** a proposed revision of how results are judged (two verdicts,
-> margins, the convergence rate with its uncertainty) is set out in
-> [scoring method v2](scoring_v2.md); every result is shown under both methods on the
-> [scoring review page](https://scott-jeffers.github.io/benchmark1d2d/scoring-review.html).
-> Until reviewers adopt it, the rules below decide every verdict.
+> **Scoring method 2 (adopted 16 October 2026)** decides every verdict: two
+> verdicts (accurate, converges), each check's share of its limit, and the
+> convergence rate fitted through every grid with its 90 % range, with a third
+> outcome, inconclusive. See [scoring method 2](scoring_v2.md) and the
+> [page that shows every result both ways](https://scott-jeffers.github.io/benchmark1d2d/scoring-review.html).
+> The limits below are unchanged.
 
 Every scoring criterion carries a `rationale` string. That string appears on
 the public test page. A threshold is never a bare number.

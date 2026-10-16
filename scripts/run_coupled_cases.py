@@ -330,7 +330,7 @@ def main() -> int:
         res = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols)
         card = score_case(m, res, timestamp=TS, private_key=key, solver=sol)
         (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-        print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({time.perf_counter() - t0:.0f} s; SWMM's own routing continuity {info['swmm_continuity_pct']:.3f} %)")
+        print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({time.perf_counter() - t0:.0f} s; SWMM's own routing continuity {info['swmm_continuity_pct']:.3f} %)")
         for c in card["criteria_results"]:
             print(f"    [{'PASS' if c['passed'] else 'FAIL'}] {c['id']}: {c['observed']} {c['threshold']['units']} — {c.get('detail', '')}")
     return 0

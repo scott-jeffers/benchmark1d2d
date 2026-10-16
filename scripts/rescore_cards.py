@@ -59,7 +59,7 @@ def main() -> int:
         if k < len(args.fixtures):
             (args.fixtures[k] / card_path.name).write_text(text, encoding="utf-8")
         crit = "; ".join(f"{r['id']} {'ok' if r['passed'] else 'FAIL'} {r['observed']:.3g}" for r in card["criteria_results"])
-        print(f"{'PASS' if card['passed'] else 'FAIL'} {old['solver']['name']}: {crit}")
+        print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {old['solver']['name']}: {crit}")
     return 0
 
 

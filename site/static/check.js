@@ -172,14 +172,39 @@
     return o.reduce(function (a, b) { return a + b; }, 0) / o.length;
   }
 
+  // Scoring method 2 (docs/methodology/scoring_v2.md): the order fitted through every grid, with its 90 % range.
+  var T90 = { 1: 6.314, 2: 2.920, 3: 2.353, 4: 2.132, 5: 2.015, 6: 1.943, 7: 1.895, 8: 1.860, 9: 1.833, 10: 1.812 };
+  function fitOrder(sp, er) {
+    var pts = [];
+    for (var i = 0; i < er.length; i++) if (er[i] && sp[i] > 0) pts.push([Math.log(sp[i]), Math.log(Math.abs(er[i]))]);
+    var n = pts.length;
+    if (n < 2) return { p: null, ci: null, n: n };
+    var mx = 0, my = 0; pts.forEach(function (q) { mx += q[0] / n; my += q[1] / n; });
+    var sxx = 0, sxy = 0; pts.forEach(function (q) { sxx += (q[0] - mx) * (q[0] - mx); sxy += (q[0] - mx) * (q[1] - my); });
+    if (!sxx) return { p: null, ci: null, n: n };
+    var b = sxy / sxx;
+    if (n === 2) return { p: b, ci: null, n: n };
+    var ss = 0; pts.forEach(function (q) { var r = q[1] - (my + b * (q[0] - mx)); ss += r * r; });
+    var se = Math.sqrt(ss / (n - 2) / sxx), t = T90[n - 2] || 1.645;
+    return { p: b, ci: [b - t * se, b + t * se], n: n };
+  }
+  function judgeOrder(f, pmin) {
+    if (f.p === null || !f.ci) return "inconclusive";
+    if (f.ci[0] >= pmin) return "pass";
+    if (f.ci[1] < pmin) return "fail";
+    return "inconclusive";
+  }
+
   function render(meta, results, conv) {
     var h = "";
     var finest = results[results.length - 1];
     var all = finest.checks.filter(function (c) { return c.supported && c.gating; });
-    var ok = all.every(function (c) { return c.ok; }) && (!conv || conv.ok !== false);
+    var acc = all.every(function (c) { return c.ok; });
+    var v = !acc || (conv && conv.v === "fail") ? "fail" : (conv && conv.v === "inconclusive" ? "inconclusive" : "pass");
     var sub = meta.mode === "grid" || !meta.mode ? "Finest file: grid " + esc(finest.level) + " · " + esc(finest.file) : "File: " + esc(finest.file);
     h += '<div class="card"><div class="head-row" style="margin-bottom:12px"><div><h2 style="margin:0">' + esc(meta.name) + '</h2><div class="muted">' + sub + "</div></div>" +
-      (ok ? '<span class="badge pass">✓ Passes these checks</span>' : '<span class="badge fail">✗ Fails at least one check</span>') + "</div>";
+      ({ pass: '<span class="badge pass">✓ Passes these checks</span>', fail: '<span class="badge fail">✗ Fails at least one check</span>',
+         inconclusive: '<span class="badge unsure">? Inconclusive: accurate, but these grids cannot settle the rate</span>' })[v] + "</div>";
     h += '<div class="checks-grid">';
     finest.checks.forEach(function (c) {
       if (!c.supported) { h += '<div class="check"><div class="k">' + esc(c.label) + '</div><div class="v muted" style="font-size:15px">Checked by the command-line scorer</div></div>'; return; }
@@ -188,8 +213,10 @@
       h += '<div class="check' + (c.ok ? "" : " bad") + '"><div class="k">' + esc(c.label) + '</div><div class="v">' + (c.ok ? "✓ " : "✗ ") + val + '</div><div class="lim">' + lim + "</div></div>";
     });
     if (conv) {
-      h += '<div class="check' + (conv.ok ? "" : " bad") + '"><div class="k">Improves with finer grids</div><div class="v">' + (conv.ok ? "✓ " : "✗ ") +
-        (conv.p === null ? "needs 2+ grids" : "rate " + nice(conv.p, 2)) + '</div><div class="lim">needed: ' + nice(meta.conv.min_observed_order, 2) + " or better</div></div>";
+      var cls = { pass: "", fail: " bad", inconclusive: " unsure" }[conv.v], sym = { pass: "✓ ", fail: "✗ ", inconclusive: "? " }[conv.v];
+      var txt = conv.p === null ? "needs 3+ grids" : ("rate " + conv.p.toFixed(2) + (conv.ci ? " (90 % range " + conv.ci[0].toFixed(2) + " to " + conv.ci[1].toFixed(2) + ")" : "")).replace(/-/g, "−");
+      h += '<div class="check' + cls + '"><div class="k">Improves with finer grids</div><div class="v">' + sym + txt +
+        '</div><div class="lim">needed: ' + nice(meta.conv.min_observed_order, 2) + " or better across the whole range</div></div>";
     }
     h += "</div>";
     if (meta.mode === "elements" || meta.mode === "states") {
@@ -339,8 +366,8 @@
             var lv = Object.keys(uniq).map(Number).sort(function (a, b) { return a - b; });
             if (lv.length >= 2) {
               var er = lv.map(function (d) { return uniq[d].convErr; });
-              if (er.every(function (e) { return Math.abs(e) < 1e-12; })) conv = { p: null, ok: false };
-              else { var p = observedOrder(lv, er); conv = { p: p, ok: p >= meta.conv.min_observed_order }; }
+              if (er.every(function (e) { return Math.abs(e) < 1e-12; })) conv = { p: null, ci: null, v: "fail" };
+              else { var f = fitOrder(lv, er); conv = { p: f.p, ci: f.ci, v: judgeOrder(f, meta.conv.min_observed_order) }; }
             }
           }
           render(meta, results, conv);
@@ -355,5 +382,5 @@
     ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); }); });
     drop.addEventListener("drop", function (e) { if (e.dataTransfer.files.length) run(e.dataTransfer.files); });
   }
-  window.__benchCheck = { parseCSV: parseCSV, finalSlice: finalSlice, pickLevel: pickLevel, align: align, evaluate: evaluate, convError: convError, observedOrder: observedOrder };
+  window.__benchCheck = { parseCSV: parseCSV, finalSlice: finalSlice, pickLevel: pickLevel, align: align, evaluate: evaluate, convError: convError, observedOrder: observedOrder, fitOrder: fitOrder, judgeOrder: judgeOrder };
 })();

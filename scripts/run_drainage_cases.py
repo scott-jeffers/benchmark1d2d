@@ -195,7 +195,7 @@ def main() -> int:
                       "adapter": f"swmm ({ENGINES[engine]['routing']} routing, network.json as a SWMM input file)"}
             card = score_case(m, res, timestamp=TS, private_key=key, solver=solver)
             (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-            print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")
+            print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']})")
             for c in card["criteria_results"]:
                 print(f"    [{'PASS' if c['passed'] else 'FAIL'}] {c['id']}: {c['observed']} {c['threshold']['units']}")
     return 0

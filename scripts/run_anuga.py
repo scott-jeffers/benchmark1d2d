@@ -320,7 +320,7 @@ def main(argv: list[str]) -> int:
                 sv["name"] += f" at {dx_alt:g} m (spec alternative resolution)"
             card = score_case(m, p, timestamp=TS, private_key=KEY, solver=sv)
             (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-            print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({sv['name']}) in {time.perf_counter() - t0:.0f}s", flush=True)
+            print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({sv['name']}) in {time.perf_counter() - t0:.0f}s", flush=True)
             for r in card["criteria_results"]:
                 print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}  {r.get('detail', '')}", flush=True)
             continue
@@ -340,13 +340,13 @@ def main(argv: list[str]) -> int:
             print(f"  {tid} dx={dx}: {time.perf_counter() - t0:.1f}s")
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY, solver=solver)
         (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-        print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} ({solver['name']})")
+        print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']})")
         for r in card["criteria_results"]:
             print(f"    [{'PASS' if r['passed'] else 'FAIL'}] {r['id']}: {r['observed']} {r['threshold']['units']}")
         c = card.get("convergence_result") or {}
         print(f"    convergence p={c.get('observed_order')} errors={c.get('errors')}")
         if not card["passed"]:
-            print(f"::warning title=ANUGA {m['test_id']}::fails at least one criterion (a finding, not a harness error)")
+            print(f"::warning title=ANUGA {m['test_id']}::{'is inconclusive (convergence range straddles the minimum)' if card.get('verdict') == 'inconclusive' else 'fails at least one criterion'} (a finding, not a harness error)")
     return 0
 
 

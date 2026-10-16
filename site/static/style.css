@@ -527,3 +527,13 @@ table.tmx td.hl { background: var(--water-wash); }
   .ord-row .val { justify-content: flex-start; }
   table.tmx th, table.tmx td { padding: 8px 6px; font-size: 13px; }
 }
+
+/* scoring method 2: the third outcome, inconclusive */
+.v-unsure { color: var(--ink-2); } .v-unsure::before { background: var(--ink-3); }
+.cellbtn.unsure { background: var(--rule-2); color: var(--ink-2); }
+.unsure { color: var(--ink-2); font-weight: 800; }
+.check.unsure { background: var(--rule-2); font-weight: inherit; color: inherit; }
+.cmp-checks li.unsure { color: var(--ink-2); font-weight: inherit; }
+.tc-bar i.u { background: var(--ink-3); }
+.two-verdicts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 4px 0 10px; color: var(--ink-2); }
+.two-verdicts .ok, .two-verdicts .no, .two-verdicts .unsure { font-weight: 700; }

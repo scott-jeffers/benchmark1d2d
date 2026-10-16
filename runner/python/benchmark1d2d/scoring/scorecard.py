@@ -77,6 +77,9 @@ def build_scorecard(
     convergence_result: dict[str, Any] | None = None,
     score: float | None = None,
     notes: str | None = None,
+    scoring_method: str | None = None,
+    verdict: str | None = None,
+    judgement: dict[str, Any] | None = None,
     timestamp: str | None = None,
     private_key: Ed25519PrivateKey | bytes | str | None = None,
     key_id: str = "benchmark1d2d-dev",
@@ -114,6 +117,12 @@ def build_scorecard(
         card["score"] = float(score)
     if notes is not None:
         card["notes"] = notes
+    if scoring_method is not None:
+        card["scoring_method"] = scoring_method
+    if verdict is not None:
+        card["verdict"] = verdict
+    if judgement is not None:
+        card["judgement"] = judgement
 
     payload = _payload_for_hash(card)
     # Hash excludes signature.value (already ""); also exclude content_hash itself

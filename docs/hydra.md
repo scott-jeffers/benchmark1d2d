@@ -51,7 +51,7 @@ well defined (EPANET 2.0 shows the same four-day "difference" on Net6).
 
 | Test | Hydra | EPA SWMM 5.2.4 |
 |---|---|---|
-| A1F-001 backwater (exact) | passes (0.2 mm, order 0.90) | passes |
+| A1F-001 backwater (exact) | inconclusive (0.2 mm; rate 0.81, 90 % range 0.64–0.97) | passes |
 | A1F-011 Stoker dam break | fails: 2.1 cm, order −0.34; mass −0.015 % | fails: 3.7 cm; mass +4.1 % |
 | A1F-010 Ritter dam break | fails: front 102 m behind | fails: front 41 m behind |
 | B-EXTRAN-001 vs SWMM 5.2.4 | depth 1.3 %, volume 4.5 % | (reference) |

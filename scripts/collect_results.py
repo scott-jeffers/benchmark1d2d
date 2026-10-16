@@ -185,11 +185,18 @@ def record_news(lines: list[str]) -> None:
         fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+def card_verdict(card: dict) -> str:
+    """PASS, FAIL or INCONCLUSIVE under scoring method 2; a method-1 card is re-judged (on a copy)."""
+    from benchmark1d2d.scoring import method_v2
+
+    return method_v2.apply(json.loads(json.dumps(card, default=str)))["verdict"].upper()
+
+
 def summarise_change(old: dict | None, new: dict) -> str | None:
     if old is None:
-        return f"new: {'PASS' if new['passed'] else 'FAIL'}"
-    if old.get("passed") != new.get("passed"):
-        return f"**{'PASS' if old['passed'] else 'FAIL'} → {'PASS' if new['passed'] else 'FAIL'}**"
+        return f"new: {card_verdict(new)}"
+    if card_verdict(old) != card_verdict(new):
+        return f"**{card_verdict(old)} → {card_verdict(new)}**"
     a = {r["id"]: r.get("observed") for r in old.get("criteria_results", [])}
     b = {r["id"]: r.get("observed") for r in new.get("criteria_results", [])}
     moved = [k for k in b if isinstance(b[k], (int, float)) and isinstance(a.get(k), (int, float))

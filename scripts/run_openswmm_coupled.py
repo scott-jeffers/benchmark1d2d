@@ -102,7 +102,7 @@ def main() -> int:
             card = score_case(m, res, timestamp=TS, private_key=key, solver=sol)
             (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
             eng = rec["engine"]
-            print(f"{'PASS' if card['passed'] else 'FAIL'} {m['test_id']} {model_key} ({time.perf_counter() - t0:.0f} s; "
+            print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} {model_key} ({time.perf_counter() - t0:.0f} s; "
                   f"network continuity {eng['routing_continuity_pct']:.3f} %, surface {100 * eng['surface_continuity']:.1e} %)")
             for c in card["criteria_results"]:
                 print(f"    [{'PASS' if c['passed'] else 'FAIL'}] {c['id']}: {c['observed']} {c['threshold']['units']} — {c.get('detail', '')}")

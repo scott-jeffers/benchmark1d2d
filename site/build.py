@@ -34,6 +34,7 @@ SITE = Path(__file__).resolve().parent
 sys.path[:0] = [str(ROOT / "runner" / "python"), str(ROOT), str(SITE)]
 
 from charts import Axis, Chart, Series, esc, fmt, hbars, legend  # noqa: E402
+from benchmark1d2d.scoring import method_v2  # noqa: E402
 
 DIST = SITE / "dist"
 REPO_URL = "https://github.com/scott-jeffers/benchmark1d2d"
@@ -91,6 +92,11 @@ def load_manifests() -> list[dict[str, Any]]:
     return out
 
 
+def card_verdict(c: dict) -> str:
+    """pass, fail or inconclusive (scoring method 2)."""
+    return c.get("verdict") or ("pass" if c.get("passed") else "fail")
+
+
 def load_scorecards(dirs: list[Path]) -> dict[str, dict[str, Any]]:
     cards: dict[str, dict[str, Any]] = {}
     for d in dirs:
@@ -102,6 +108,7 @@ def load_scorecards(dirs: list[Path]) -> dict[str, dict[str, Any]]:
             except (OSError, json.JSONDecodeError):
                 continue
             c["_path"] = p
+            method_v2.apply(c)
             cards[c["test_id"]] = c
     return cards
 
@@ -143,7 +150,9 @@ def chip(status: str) -> str:
 def verdict(card: dict | None) -> str:
     if card is None:
         return '<span class="verdict v-none">Not scored</span>'
-    return '<span class="verdict v-pass">Pass</span>' if card.get("passed") else '<span class="verdict v-fail">Fail</span>'
+    v = card.get("verdict") or ("pass" if card.get("passed") else "fail")
+    return {"pass": '<span class="verdict v-pass">Pass</span>', "fail": '<span class="verdict v-fail">Fail</span>',
+            "inconclusive": '<span class="verdict v-unsure">Inconclusive</span>'}[v]
 
 
 def md(text: str, drop_h1: bool = True) -> str:
@@ -952,7 +961,7 @@ def reports_page(manifests: list[dict], cards: dict, evidence: dict[str, list[di
         conv = c.get("convergence_result") or {}
         text = f'{m["test_id"]} {m.get("title", "")} {c["solver"]["name"]}'.lower()
         rows.append(
-            f'<tr data-text="{esc(text)}" data-result="{"pass" if c.get("passed") else "fail"}"><td><a href="{page_name(m["test_id"])}">{esc(short_id(m["test_id"]))}</a><div class=muted>{esc(m.get("title", ""))}</div></td><td>{esc(c["solver"]["name"])}</td><td>{verdict(c)}</td>'
+            f'<tr data-text="{esc(text)}" data-result="{card_verdict(c)}"><td><a href="{page_name(m["test_id"])}">{esc(short_id(m["test_id"]))}</a><div class=muted>{esc(m.get("title", ""))}</div></td><td>{esc(c["solver"]["name"])}</td><td>{verdict(c)}</td>'
             f'<td>{esc(", ".join(c.get("certification_claims") or []) or "–")}</td>'
             f'<td class=num>{fmt(conv["observed_order"]) if conv.get("observed_order") is not None else "–"}</td>'
             f'<td><code class="hash" title="{esc(c.get("content_hash", ""))}" data-copy="{esc(c.get("content_hash", ""))}" data-label="content hash">{esc(c.get("content_hash", "")[:10])}…</code></td>'
@@ -1075,7 +1084,7 @@ def write_bundles(manifests: list[dict], cards: dict, index: pd.DataFrame | None
             c = cards.get(m["test_id"])
             w.writerow([m["test_id"], m.get("title", ""), m["track"], dict((x[0], x[1]) for x in COMPONENTS)[m["_component"]], m["test_class"], m["status"],
                         m["provenance"]["license"], m["case_version"], m["physics"]["dimensionality"], m["reference"]["kind"],
-                        "" if c is None else ("pass" if c["passed"] else "fail")])
+                        "" if c is None else card_verdict(c)])
     files += [("Catalog", "catalog.json (all manifests)", data / "catalog.json"), ("Catalog", "catalog.csv (one row per case)", data / "catalog.csv")]
     bib = []
     seen = set()
@@ -1263,13 +1272,14 @@ def main() -> int:
         st = pages.story(m)
         try:
             og.og_image(DIST / "assets" / "og" / f"{sid}.png", sid, pages.GROUPS.get(st["group"], ""), st["name"], st["question"],
-                        sum(1 for c in by.values() if c.get("passed")), len(by))
+                        sum(1 for c in by.values() if card_verdict(c) == "pass"), len(by),
+                        n_unsure=sum(1 for c in by.values() if card_verdict(c) == "inconclusive"))
         except Exception as exc:  # noqa: BLE001 - a preview image must not break the build
             print(f"WARN preview image for {sid}: {exc}", file=sys.stderr)
         for k, c in by.items():
             bp = DIST / "badges" / sid / f"{k}.svg"
             bp.parent.mkdir(parents=True, exist_ok=True)
-            bp.write_text(og.badge_svg(f"OpenHydro Bench {sid}", bool(c.get("passed"))), encoding="utf-8")
+            bp.write_text(og.badge_svg(f"OpenHydro Bench {sid}", card_verdict(c)), encoding="utf-8")
     try:
         og.og_image(DIST / "assets" / "og" / "home.png", "A1F-010", "Open benchmarks for water models",
                     "Does your flood model get the water right?", "Every test has a known right answer. Run your model, compare, and get a result anyone can check.",
