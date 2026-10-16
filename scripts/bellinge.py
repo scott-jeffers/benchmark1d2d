@@ -109,13 +109,49 @@ def run(out: Path, timeout: float) -> None:
     (out / "run.json").write_text(json.dumps(results, indent=1) + "\n", encoding="utf-8")
 
 
+def inventory(out: Path, role: str) -> None:
+    """Download another Bellinge item (by its role in A1F-100's manifest), list it, and show the head of a few files."""
+    from benchmark1d2d.catalog import load_manifest
+
+    m = load_manifest("A1F-100", repo=REPO)
+    entry = next(e for e in m["inputs"] if e["role"] == role)
+    out.mkdir(parents=True, exist_ok=True)
+    zpath = out / Path(entry["path"]).name
+    req = urllib.request.Request(entry["source"]["url"], headers={"User-Agent": "benchmark1d2d (github.com/scott-jeffers/benchmark1d2d)"})
+    with urllib.request.urlopen(req, timeout=1800) as r, zpath.open("wb") as fh:
+        while chunk := r.read(1 << 20):
+            fh.write(chunk)
+    data_hash = hashlib.sha256()
+    with zpath.open("rb") as fh:
+        while chunk := fh.read(1 << 20):
+            data_hash.update(chunk)
+    lines = [f"{role}: {zpath.stat().st_size:,d} bytes, SHA-256 {data_hash.hexdigest()}"]
+    with zipfile.ZipFile(zpath) as z:
+        infos = [zi for zi in z.infolist() if not zi.is_dir()]
+        lines += [f"{zi.file_size:>14,d}  {zi.filename}" for zi in infos]
+        lines.append("")
+        for zi in infos[:400]:
+            if zi.filename.lower().endswith((".csv", ".txt", ".dat", ".json", ".md")) and zi.file_size:
+                with z.open(zi) as fh:
+                    head = fh.read(1500).decode("latin-1", "replace")
+                lines += [f"==> {zi.filename}", head, ""]
+    (out / f"inventory_{role}.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print("\n".join(lines[:80]))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("action", choices=["fetch", "run"])
+    ap.add_argument("action", choices=["fetch", "run", "inventory"])
+    ap.add_argument("--role", default="observations", help="inventory: which A1F-100 input (observations, rainfall)")
     ap.add_argument("--out", type=Path, default=REPO / "out" / "bellinge")
     ap.add_argument("--timeout", type=float, default=3000)
     a = ap.parse_args()
-    fetch(a.out) if a.action == "fetch" else run(a.out, a.timeout)
+    if a.action == "fetch":
+        fetch(a.out)
+    elif a.action == "run":
+        run(a.out, a.timeout)
+    else:
+        inventory(a.out, a.role)
     return 0
 
 
