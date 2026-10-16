@@ -51,6 +51,9 @@ jobs:
         if: always()
         shell: bash -l {0}
         run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
+      - name: Export the network results (site/fixtures/netres via the result collector)
+        if: always()
+        run: python scripts/export_netresults.py || echo "::warning title=Network results::not exported"
       - name: Zip the kept model files (site/fixtures/inputs via the result collector)
         if: always()
         shell: bash -l {0}
@@ -64,6 +67,7 @@ jobs:
             out/networks/*.scorecard.json
             out/demo_2d/*.scorecard.json
             out/curves/**/*.curve.json
+            out/netres/**/*.netres.json
             out/inputs_zip/*.inputs.zip
 
   telemac:
@@ -132,6 +136,9 @@ jobs:
         if: always()
         shell: bash -l {0}
         run: python scripts/export_curves.py || echo "::warning title=Chart curves::not exported"
+      - name: Export the network results (site/fixtures/netres via the result collector)
+        if: always()
+        run: python scripts/export_netresults.py || echo "::warning title=Network results::not exported"
       - name: Zip the kept model files (site/fixtures/inputs via the result collector)
         if: always()
         shell: bash -l {0}
@@ -143,4 +150,5 @@ jobs:
           path: |
             out/swmm_track_a/*/*.scorecard.json
             out/curves/**/*.curve.json
+            out/netres/**/*.netres.json
             out/inputs_zip/*.inputs.zip

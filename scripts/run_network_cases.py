@@ -48,12 +48,34 @@ SOLVER = {"name": "EPA EPANET 2.2", "version": "2.2", "adapter": "epanet (WNTR 1
 HYDRA_EXE: str | None = None  # set by --hydra-exe: run NEER AI Hydra's wds engine instead of EPANET 2.2
 
 
-def _run_inp(text: str):
+def _with_coordinates(text: str) -> str:
+    """Add a schematic map (no effect on the run) before [END], so the file opens as a network in EPANET."""
+    from benchmark1d2d.io.layout import coordinates_section, layout
+
+    sec, nodes, links = None, [], []
+    for line in text.splitlines():
+        s = line.split(";", 1)[0].strip()
+        if s.startswith("["):
+            sec = s.strip("[]").upper()
+        elif s and sec in ("JUNCTIONS", "RESERVOIRS", "TANKS"):
+            nodes.append(s.split()[0])
+        elif s and sec in ("PIPES", "PUMPS", "VALVES"):
+            t = s.split()
+            links.append((t[1], t[2], float(t[3]) if sec == "PIPES" else None))
+    return text.replace("[END]", "\n".join(coordinates_section(layout(nodes, links))[1:]) + "\n[END]")
+
+
+def _run_inp(text: str, test: str = ""):
     import wntr
 
+    text = _with_coordinates(text)
     with tempfile.TemporaryDirectory() as td:
         inp = Path(td) / "model.inp"
         inp.write_text(text, encoding="utf-8")
+        if test:
+            from benchmark1d2d import keep as kept
+
+            kept.inputs("hydra-wds" if HYDRA_EXE else "epanet22", test, Path(td), "model", files=["model.inp"])
         if HYDRA_EXE:
             from benchmark1d2d.adapters import hydra
 
@@ -88,7 +110,7 @@ def single_pipe(case_dir: Path, segments: int = 10) -> dict:
         lines.append(f"P{i + 1} {nodes[i]} {nodes[i + 1]} {L / segments} {D * 1000.0} {eps * 1000.0} 0 Open")
     lines += ["[OPTIONS]", "Units LPS", "Headloss D-W", f"Viscosity {nu / EPANET_NU:.9f}", "Accuracy 0.000001",
               "[TIMES]", "Duration 0", "[END]"]
-    res = _run_inp("\n".join(lines) + "\n")
+    res = _run_inp("\n".join(lines) + "\n", "A1P-001")
     head = res.node["head"].iloc[0]
     rows = [{"t": 0.0, "x": L * i / segments, "y": 0.0, "h": float(head[n]), "p": float(head[n]) * 9810.0,
              "element_id": n, "element_type": "node"} for i, n in enumerate(nodes)]
@@ -107,7 +129,7 @@ def two_loop(case_dir: Path) -> dict:
     lines += ["[RESERVOIRS]"] + [f"{r['id']} {r['head']}" for r in net["reservoirs"]]
     lines += ["[PIPES]"] + [f"{p['id']} {p['from']} {p['to']} {p['L']} {p['D'] * 1000.0} {p['C']} 0 Open" for p in net["pipes"]]
     lines += ["[OPTIONS]", "Units LPS", "Headloss H-W", "Accuracy 0.000001", "[TIMES]", "Duration 0", "[END]"]
-    res = _run_inp("\n".join(lines) + "\n")
+    res = _run_inp("\n".join(lines) + "\n", "A1P-010")
     head, flow = res.node["head"].iloc[0], res.link["flowrate"].iloc[0]
     nodes = [r["id"] for r in net["reservoirs"]] + [j["id"] for j in net["junctions"]]
     rows = [{"t": 0.0, "x": float(i), "y": 0.0, "h": float(head[n]), "element_id": n, "element_type": "node"}

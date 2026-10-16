@@ -62,6 +62,9 @@ jobs:
       - name: Export the chart curves (site/fixtures/curves via the result collector)
         if: always()
         run: python scripts/export_curves.py --only ${{ matrix.engine }} || echo "::warning title=Curves::not exported"
+      - name: Export the network results (site/fixtures/netres via the result collector)
+        if: always()
+        run: python scripts/export_netresults.py || echo "::warning title=Network results::not exported"
       - name: Zip the model files (Run it yourself)
         if: always()
         run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
@@ -74,6 +77,7 @@ jobs:
             out/swmm_track_a/**/A1F-100_*.parquet
             out/swmm_track_a/**/A1F-100.runs.json
             out/curves/**/A1F-100.curve.json
+            out/netres/**/A1F-100.netres.json
             out/inputs_zip/*.inputs.zip
 
 

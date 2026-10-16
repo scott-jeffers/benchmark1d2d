@@ -116,7 +116,7 @@ def write_model(case_dir: Path, work: Path) -> tuple[Path, dict]:
         if j["id"] in crest:  # the rim is the crest of the grate
             assert abs(j["invert"] + j["max_depth"] - crest[j["id"]]) < 1e-9, (j, crest)
     inp = work / "model.inp"
-    write_inp(net, inp, "DYNWAVE")
+    write_inp(net, inp, "DYNWAVE", coordinates=False)
 
     vx, vy, vz, tris, sides = mesh(spec, MESH)
     s = spec["surface"]

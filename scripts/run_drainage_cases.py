@@ -47,7 +47,7 @@ def _hms(s: float) -> str:
     return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d}"
 
 
-def write_inp(net: dict, path: Path, routing: str, variable_step: float = 0.75, extra_options: tuple = ()) -> None:
+def write_inp(net: dict, path: Path, routing: str, variable_step: float = 0.75, extra_options: tuple = (), coordinates: bool = True) -> None:
     """A SWMM 5 input file for a drainage network.json.
 
     An inflow is constant (``Q``) or a hydrograph (``series``: [[t_s, Q], …],
@@ -97,6 +97,13 @@ def write_inp(net: dict, path: Path, routing: str, variable_step: float = 0.75, 
             L += ["", "[TIMESERIES]", ";;Name Date Time Value"]
             L += [f"TS_{i['node']} {t / 3600.0:.6f} {q:g}" for i in series for t, q in i["series"]]
     L += ["", "[REPORT]", "INPUT NO", "CONTROLS NO", "NODES ALL", "LINKS ALL"]
+    if coordinates:  # a schematic map (no effect on the run), so the file opens as a network in EPA SWMM
+        from benchmark1d2d.io.layout import coordinates_section, layout
+
+        nodes = [n["id"] for k in ("junctions", "outfalls", "storages") for n in net.get(k, [])]
+        links = [(c["from"], c["to"], c["length"]) for c in net.get("conduits", [])]
+        links += [(o["from"], o["to"], None) for k in ("outlets", "pumps") for o in net.get(k, [])]
+        L += coordinates_section(layout(nodes, links))
     path.write_text("\n".join(L) + "\n", encoding="ascii")
 
 

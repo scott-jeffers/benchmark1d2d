@@ -67,6 +67,9 @@ jobs:
       - name: Score submitted results (submissions/)
         run: python scripts/score_submissions.py --summary out/submissions.md || echo "::warning title=Submissions::a submission could not be scored (see the step log)"
 
+      - name: Network viewer results from this build's Track B and EPANET runs
+        run: python scripts/export_netresults.py --local --folders out/track_b out/openswmm out/hydra out/hydra_networks out/networks || echo "::warning title=Network results::not exported"
+
       - name: Build site
         run: |
           python site/build.py \

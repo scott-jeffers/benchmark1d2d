@@ -1199,6 +1199,10 @@ def main() -> int:
         (DIST / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(zp, DIST / rel)
         pages.INPUT_ZIPS[(zp.parent.name, zp.stem)] = (rel.as_posix(), zp.stat().st_size)
+    import netresults
+
+    netindex = netresults.write_data(DIST, manifests, runs, pages.SOLVER, pages.SOLVERS_ORDER, pages.verdict, pages.story)
+    pages.NETVIEW = {t["sid"]: t for t in netindex}
     for tid, by in runs.items():  # every run's signed card, by solver
         for k, c in by.items():
             d = DIST / "data" / "scorecards" / k
@@ -1323,6 +1327,7 @@ def main() -> int:
                     break
     vindex = viewer.write_data(DIST, manifests, runs, fields_by, pages.SOLVER, pages.SOLVERS_ORDER, pages.verdict, pages.story)
     out_pages["viewer.html"] = viewer.viewer_page(pages.layout, vindex)
+    out_pages["network.html"] = netresults.page(pages.layout, netindex)
     out_pages["scoring-review.html"] = pages.review.review_page(pages.layout, manifests, runs, pages.SOLVER, pages.SOLVERS_ORDER)
     (DIST / "solvers").mkdir(exist_ok=True)
     for k in {k for v in runs.values() for k in v}:

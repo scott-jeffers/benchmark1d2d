@@ -408,8 +408,8 @@ CASE_NOTES = {
 
 # ── layout ──────────────────────────────────────────────────────────────────
 
-NAV = [("results.html", "Tests &amp; results"), ("viewer.html", "Viewer"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
-FOOT = [("news.html", "What's new"), ("solvers.html", "Models"), ("compare.html", "Compare models"), ("viewer.html", "Results viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
+NAV = [("results.html", "Tests &amp; results"), ("viewer.html", "Viewer"), ("network.html", "Networks"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
+FOOT = [("news.html", "What's new"), ("solvers.html", "Models"), ("compare.html", "Compare models"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
         ("method.html", "Method"), ("get-started.html", "Command line")]
 LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 2 11 14 17 8 S27 2 33 8" fill="none" stroke-width="3" stroke-linecap="round"/>'
         '<path class="b" d="M1 18 H33" stroke-width="3" stroke-linecap="round"/></svg>')
@@ -1253,6 +1253,38 @@ def conv_chart(m: dict, runs: dict) -> str:
     return svg + f'<div class="keyrow">{"".join(legend)}</div>'
 
 
+NETVIEW: dict[str, dict] = {}  # sid -> the network viewer's entry (site/netresults.py), set by the build
+
+
+def model_file_card(m: dict) -> str:
+    """The SWMM or EPANET input file, up front: download it, or open it on the map."""
+    sid = sid_of(m["test_id"])
+    nv = NETVIEW.get(sid)
+    if not nv:
+        return ""
+    engine = "EPA SWMM 5" if nv["kind"] == "swmm" else "EPANET 2"
+    if sid.startswith("B-"):
+        what = f"Every engine runs this {engine} input file unchanged. Open it in {engine}, or in any engine that reads the format, and you are running exactly what was scored."
+    elif sid == "A1F-100":
+        what = (f"The published Bellinge model with the dates of the 29 June 2012 storm set, as the suite ran it. It reads the rain-gauge file "
+                f"that comes with the model from DTU Data; the other seven storms differ only in their dates.")
+    else:
+        what = (f"The suite writes this {engine} input file from the test's inputs. Each engine's own copy, as it ran, is in "
+                f"<em>Run it yourself</em> under its result below.")
+    return f"""<section class="section" style="padding-bottom:0"><div class="card nv-file-card">
+  <div class="nv-file-card-text">
+    <h2>The model file</h2>
+    <p>{what}</p>
+    <div class="btns">
+      <a class="btn primary" href="../{esc(nv['inp'])}" download>Download {esc(nv['inp_name'])} <span class="nv-kb">{(f"{nv['bytes'] / 1048576:.1f} MB") if nv['bytes'] >= 1048576 else f"{max(1, round(nv['bytes'] / 1024))} KB"}</span></a>
+      <a class="btn ghost" href="../network.html#{esc(sid)}">Open it on the map →</a>
+    </div>
+    <p class="small muted" style="margin-top:12px">On the map: click any element to see its line in the file and every engine's result there over time{", or colour the network by how far each engine is from the reference" if sid.startswith("B-") else ""}.</p>
+  </div>
+  {f'<a class="nv-thumb-link" href="../network.html#{esc(sid)}" aria-label="Open the network on the map">{nv["thumb"]}</a>' if nv.get("thumb") else ""}
+</div></section>"""
+
+
 def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_figs: str, evidence: list[dict], extra: list | None = None) -> str:
     from benchmark1d2d.catalog.promotion import checklist, next_stage
 
@@ -1416,7 +1448,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
            f'<dt>Results</dt><dd>{result_line} · <a href="#models">see them ↓</a></dd>'
            f'<dt>Must</dt><dd>{esc(st["must"][0])}</dd></dl>'
            f'<span class="small">Sketch, not to scale.</span></figcaption></figure>') if not hero_chart else ""
-    body = f'<div class="wrap">{head}{art}{figure}{story_cards}{netsec}{models}{split}{tech}</div>{chart_data}'
+    body = f'<div class="wrap">{head}{art}{model_file_card(m)}{figure}{story_cards}{netsec}{models}{split}{tech}</div>{chart_data}'
     scripts = '<script src="../static/chart.js" defer></script>' if chart_html else ""
     return layout(st["name"], body, "results.html", depth=1, description=st["question"], scripts=scripts, math=True,
                   og_image=f"assets/og/{sid}.png", path=f"tests/{sid}.html")

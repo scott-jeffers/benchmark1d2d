@@ -189,7 +189,7 @@ class Network:
             if j["id"] in manholes:
                 j["surcharge_depth"] = 1000.0  # the coupler, not SWMM, moves water out of a full manhole
         inp = td / "net.inp"
-        write_inp(net, inp, "DYNWAVE", variable_step=0.0, extra_options=(f"SURCHARGE_METHOD {SURCHARGE}",))
+        write_inp(net, inp, "DYNWAVE", variable_step=0.0, extra_options=(f"SURCHARGE_METHOD {SURCHARGE}",), coordinates=False)
         solver.swmm_open(str(inp), str(td / "net.rpt"), str(td / "net.out"))
         solver.swmm_start(0)
         self.nodes = [solver.project_get_id(se.ObjectType.NODE, i) for i in range(solver.project_get_count(se.ObjectType.NODE))]
