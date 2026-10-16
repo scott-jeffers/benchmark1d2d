@@ -883,8 +883,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id",
-        "x"
+        "id"
       ],
       "properties": {
         "id": {
@@ -919,7 +918,19 @@
           "minLength": 1,
           "description": "A network node or link name: the probe is matched by element_id rather than position."
         }
-      }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "x"
+          ]
+        },
+        {
+          "required": [
+            "element"
+          ]
+        }
+      ]
     },
     "mesh_refinement": {
       "type": "object",
@@ -1048,6 +1059,14 @@
         "against": {
           "type": "string",
           "description": "For metric expected_state_error: id of a reference.expected_states entry."
+        },
+        "aggregate": {
+          "type": "string",
+          "enum": [
+            "worst",
+            "median"
+          ],
+          "description": "Measured cases with many gauge records: judge the worst record (default) or the median one."
         }
       }
     },

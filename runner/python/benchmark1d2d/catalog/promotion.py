@@ -54,11 +54,11 @@ def _reference_ok(m: dict[str, Any]) -> tuple[bool, str]:
     if kind == "exact_states":
         return bool(ref.get("expected_states")), "exact states from conservation"
     if kind in ("pinned_engine", "measured"):
-        path = ref.get("results_path")
-        if ref.get("availability") and ref["availability"] != "committed":
+        path = ref.get("results_path") or ref.get("data_path")
+        if ref.get("availability") and ref["availability"] not in ("available", "committed"):
             return False, f"measured data not yet obtained ({ref['availability'].replace('_', ' ')})"
         if path and (case_dir / path).is_file():
-            return True, "committed reference results"
+            return True, "committed measured data" if kind == "measured" else "committed reference results"
         return False, "reference results file missing"
     return False, "no reference defined"
 

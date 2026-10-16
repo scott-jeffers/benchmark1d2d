@@ -75,6 +75,14 @@ def results_template(m: dict) -> tuple[list[str], list[list[Any]], str]:
         rows = [[t_end, "", "", "", "", "", "", "", e, t] for e, t in elems]
         return cols, rows, ("One row per node (depth h above its invert, or head for pressurized networks) and per "
                             "link (flow Q, and depth h for open-channel conduits) at the end of the run.")
+    if probes and kind == "measured" and all(p.get("element") for p in probes):
+        cols = BASE + ["z", "element_id", "element_type"]
+        rows = [[0.0, "", "", "", "", "", "", "", p["element"], "node"] for p in probes]
+        ev = sim.get("events") or []
+        return cols, rows, (f"A time series of depth h above the invert, with the invert elevation z, at each gauge node "
+                            f"({', '.join(p['element'] for p in probes)}) every {sim.get('output_interval', '?')} s, named "
+                            f"as in the input model; one run per storm ({len(ev)}), with t in seconds from "
+                            f"{sim.get('epoch', 'the epoch')}, all in one file.")
     if probes and kind in ("intercomparison", "measured"):
         cols = BASE + ["z"]
         rows = [[0.0, p["x"], p.get("y", ""), "", "", "", "", ""] for p in probes]

@@ -18,8 +18,61 @@ on:
     paths:
       - .github/workflows/bellinge.yml
       - scripts/bellinge.py
+      - scripts/run_bellinge.py
+      - test_catalog/track_a/1d_free_surface/A1F-100_bellinge_urban_drainage/**
+
+# a newer push supersedes a run still going (the runs are long)
+concurrency:
+  group: bellinge-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BENCH_KEEP_INPUTS: out/inputs  # runners keep a copy of the model files they write (Run it yourself)
 
 jobs:
+  field:
+    # A1F-100: the published model against the measured levels at the level meters, storm by storm
+    name: A1F-100, ${{ matrix.engine }} against the level meters
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [swmm524, openswmm-dw, hydra-uds]  # not FV: 78 min a storm on this model (the parity job runs it once)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download and verify the model
+        run: |
+          python -m pip install -q -e ".[dev]" swmm-toolkit==0.17.0
+          python scripts/bellinge.py fetch --out out/bellinge
+      - name: Run ${{ matrix.engine }} on every storm and score it (a finding, not a gate)
+        run: |
+          ARGS=""
+          case "${{ matrix.engine }}" in
+            openswmm-*)
+              python -m venv "$RUNNER_TEMP/openswmm"
+              "$RUNNER_TEMP/openswmm/bin/python" -m pip install -q "openswmm==6.0.0a4.dev1" numpy
+              ARGS="--openswmm-python $RUNNER_TEMP/openswmm/bin/python" ;;
+            hydra-uds) ARGS="--hydra-exe $(python scripts/fetch_hydra.py "$RUNNER_TEMP/hydra")" ;;
+          esac
+          python scripts/run_bellinge.py --model-dir out/bellinge/model/7_SWMM --engines ${{ matrix.engine }} $ARGS --timeout 7200
+      - name: Zip the model files (Run it yourself)
+        if: always()
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bellinge-field-${{ matrix.engine }}
+          path: |
+            out/bellinge_track_a/**/*.scorecard.json
+            out/bellinge_track_a/**/*.parquet
+            out/bellinge_track_a/**/runs.json
+            out/inputs_zip/*.inputs.zip
+
+
   parity:
     name: Bellinge, ${{ matrix.candidate }} vs SWMM 5.2.4
     runs-on: ubuntu-latest

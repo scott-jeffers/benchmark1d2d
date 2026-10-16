@@ -1,12 +1,12 @@
 {
   "schema_version": "1.1.0",
   "test_id": "A1F-100_bellinge_urban_drainage",
-  "case_version": "0.1.0",
-  "status": "draft",
+  "case_version": "1.0.0",
+  "status": "candidate",
   "track": "A",
   "test_class": "validation_field",
   "title": "Bellinge combined sewer system (Odense, Denmark) — field validation",
-  "description": "1.7 km² mainly combined urban drainage system with up to 10 years of level, flow and pump-power observations and a published EPA SWMM model. A candidate is run on the published network with observed rainfall and judged against measured water levels at the 13 level meters.",
+  "description": "1.7 km² mainly combined urban drainage system in Bellinge, Odense, with a published EPA SWMM model and years of level-meter records. A candidate runs the published model, unchanged except for its run dates, on eight storms (2011-2019) and is judged against the measured water levels at seven level meters.",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "mixed",
@@ -52,7 +52,7 @@
     ],
     "license": "CC-BY-4.0",
     "source_dataset_doi": "10.11583/DTU.c.5029124",
-    "adaptation_notes": "Uses only CC BY 4.0 items: 7 – Models (SWMM), 2 – Sensor data, 3b – radar and meteorological-station rainfall. Item 3a (rain gauges) is CC BY-NC 4.0 and is deliberately excluded so the case stays usable by commercial vendors. The published SWMM model is uncalibrated (ESSD paper §4); event selection and the validation window are still to be fixed."
+    "adaptation_notes": "Uses only CC BY 4.0 items: 7 – Models (SWMM; its rain-gauge file drives the runs) and 2 – Sensor data. Item 3a (rain gauges) is CC BY-NC 4.0 and is not used; the radar (3b) is not needed. The published SWMM model is uncalibrated (ESSD paper §4), so this case judges the model and the engine together. Storms: the eight most intense in the model's rain-gauge series after the level meters start (Aug 2010), including the model's own 29 June 2012 event."
   },
   "inputs": [
     {
@@ -68,20 +68,6 @@
       "sha256": "fe07d487925cef647d1657def9c6316f952c9ae75304d28f2e1798d5dd8a646b"
     },
     {
-      "path": "inputs/3b_DMI_C-band_v2.zip",
-      "role": "rainfall",
-      "format": "zip",
-      "committed": false,
-      "source": {
-        "url": "https://ndownloader.figshare.com/files/30592692",
-        "doi": "10.11583/DTU.12513236.v3"
-      },
-      "pending": {
-        "reason": "Radar rainfall (CC BY 4.0) for the selected events; choose events, then record SHA-256.",
-        "obtain_from": "DTU Data, item 12513236"
-      }
-    },
-    {
       "path": "inputs/2_cleaned_data.zip",
       "role": "observations",
       "format": "zip",
@@ -90,30 +76,109 @@
         "url": "https://ndownloader.figshare.com/files/30592524",
         "doi": "10.11583/DTU.12509249"
       },
-      "pending": {
-        "reason": "390 MB of cleaned sensor data; extract level-meter series for the selected events into reference/levels.parquet.",
-        "obtain_from": "DTU Data, item 12509249"
-      }
+      "sha256": "0801435a0077d9db18e3f07fd8671160004f7b44d460229c0be1674972c26279"
     }
   ],
   "reference": {
     "kind": "measured",
     "data_path": "reference/levels.parquet",
-    "availability": "to_digitise",
+    "availability": "available",
     "uncertainty": {
       "type": "absolute",
       "value": 0.02,
       "units": "m",
-      "notes": "Provisional; take level-meter accuracy from the sensor documentation (2_Sensordata_v2.pdf)."
+      "notes": "Provisional level-meter accuracy. Each meter reads no lower than its own floor (the lowest level it recorded in any of the storms); the scorer reads the model the same way."
     },
-    "include_measurement_uncertainty": true
+    "include_measurement_uncertainty": true,
+    "probe_map": {}
   },
   "simulation": {
-    "t_end": 86400,
+    "t_end": 172800,
     "output_interval": 60,
     "required_outputs": [
       "h",
-      "Q"
+      "z"
+    ],
+    "epoch": "2010-01-01T00:00:00",
+    "events": [
+      {
+        "id": "2012-06-29",
+        "start": "2012-06-28T12:00:00",
+        "score_from": "2012-06-29T00:00:00",
+        "end": "2012-07-01T00:00:00"
+      },
+      {
+        "id": "2011-06-30",
+        "start": "2011-06-29T12:00:00",
+        "score_from": "2011-06-30T00:00:00",
+        "end": "2011-07-02T00:00:00"
+      },
+      {
+        "id": "2011-08-26",
+        "start": "2011-08-25T12:00:00",
+        "score_from": "2011-08-26T00:00:00",
+        "end": "2011-08-28T00:00:00"
+      },
+      {
+        "id": "2013-08-12",
+        "start": "2013-08-11T12:00:00",
+        "score_from": "2013-08-12T00:00:00",
+        "end": "2013-08-14T00:00:00"
+      },
+      {
+        "id": "2014-06-24",
+        "start": "2014-06-23T12:00:00",
+        "score_from": "2014-06-24T00:00:00",
+        "end": "2014-06-26T00:00:00"
+      },
+      {
+        "id": "2014-08-17",
+        "start": "2014-08-16T12:00:00",
+        "score_from": "2014-08-17T00:00:00",
+        "end": "2014-08-19T00:00:00"
+      },
+      {
+        "id": "2015-07-25",
+        "start": "2015-07-24T12:00:00",
+        "score_from": "2015-07-25T00:00:00",
+        "end": "2015-07-27T00:00:00"
+      },
+      {
+        "id": "2019-10-11",
+        "start": "2019-10-10T12:00:00",
+        "score_from": "2019-10-11T00:00:00",
+        "end": "2019-10-13T00:00:00"
+      }
+    ],
+    "probes": [
+      {
+        "id": "G71F04R_Level2",
+        "element": "G71F04R"
+      },
+      {
+        "id": "G71F05R_LevelBasin",
+        "element": "G71F05R"
+      },
+      {
+        "id": "G71F05R_LevelInlet",
+        "element": "G71F05R_skyl"
+      },
+      {
+        "id": "G71F06R_LevelInlet",
+        "element": "G71F06R"
+      },
+      {
+        "id": "G71F68Y_LevelPS",
+        "element": "G71F68Y"
+      },
+      {
+        "id": "G73F010",
+        "element": "G73F010"
+      },
+      {
+        "id": "G80F13P_LevelPS",
+        "element": "G80F13P"
+      }
     ]
   },
   "scoring": {
@@ -122,26 +187,28 @@
       {
         "id": "level_nse",
         "metric": "NSE",
-        "variable": "h",
+        "variable": "wse",
+        "aggregate": "median",
         "threshold": {
           "op": ">=",
           "value": 0.5,
           "units": "1"
         },
         "gating": true,
-        "rationale": "Provisional. Moriasi et al. (2007) 'satisfactory' band; to be set once events and an uncalibrated-model baseline are fixed."
+        "rationale": "Set before any run: Moriasi et al. (2007) 'satisfactory' band, NSE ≥ 0.5, for the median gauge record (a meter on one storm). A record where the meter moved less than three times its accuracy is not scored for NSE."
       },
       {
         "id": "peak_level",
         "metric": "peak_error",
-        "variable": "h",
+        "variable": "wse",
+        "aggregate": "median",
         "threshold": {
           "op": "abs<=",
-          "value": 15.0,
-          "units": "%"
+          "value": 0.1,
+          "units": "m"
         },
         "gating": true,
-        "rationale": "Provisional; peak water level at each level meter."
+        "rationale": "Set before any run: the ±0.1 m depth criterion for verifying sewer models against measurements (WaPUG 2002; CIWEM UDG 2017 Code of Practice), for the median gauge record."
       }
     ]
   }

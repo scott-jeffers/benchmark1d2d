@@ -249,9 +249,55 @@ def scout(out: Path) -> None:
     print(f"SWMM {version}: {secs:.0f} s; {len(series)} nodes written")
 
 
+# level meter (sensor, as the data set names it) -> the model node it sits in. Each sits in that node by name,
+# except the inlet meter at the G71F05R basin, which reads the inlet chamber (G71F05R_skyl). Not used: G71F04R
+# Level1 (Level2 is the same basin with fuller records), G71F05R_position (a gate) and G71F68Yp1 (a pump).
+GAUGES = {
+    "G71F04R_Level2": "G71F04R",
+    "G71F05R_LevelBasin": "G71F05R",
+    "G71F05R_LevelInlet": "G71F05R_skyl",
+    "G71F06R_LevelInlet": "G71F06R",
+    "G71F68Y_LevelPS": "G71F68Y",
+    "G73F010": "G73F010",
+    "G80F13P_LevelPS": "G80F13P",
+}
+EPOCH = "2010-01-01T00:00:00"
+
+
+def reference(levels: Path, dest: Path) -> None:
+    """Build A1F-100's reference/levels.parquet from ``extract``'s levels_events.csv.gz.
+
+    Columns: ``t`` (s from the test's epoch), ``gauge``, ``wse`` (measured level,
+    m above DVR90, to the mm), ``event``, ``floor`` (the lowest level the gauge
+    recorded in any event: the meters do not read below it, so the scorer reads
+    the model the same way). Where a gauge has two sources in one event, the one
+    with more records is used.
+    """
+    import pandas as pd
+
+    d = pd.read_csv(levels, parse_dates=["time", "event"])
+    d = d[d["sensor"].isin(GAUGES)]
+    keep = d.groupby(["sensor", "event", "source"]).size().reset_index(name="n")
+    keep = keep.sort_values("n").groupby(["sensor", "event"]).tail(1)
+    d = d.merge(keep[["sensor", "event", "source"]], on=["sensor", "event", "source"])
+    d = d[d.groupby(["sensor", "event"])["level"].transform("size") >= 0.9 * 2880]  # whole windows only
+    floor = d.groupby("sensor")["level"].min()
+    out = pd.DataFrame({
+        "t": (d["time"] - pd.Timestamp(EPOCH)).dt.total_seconds().astype(float),
+        "gauge": d["sensor"].astype(str),
+        "wse": d["level"].round(3).astype(float),
+        "event": d["event"].dt.strftime("%Y-%m-%d"),
+        "floor": d["sensor"].map(floor).round(3).astype(float),
+    }).sort_values(["gauge", "t"]).reset_index(drop=True)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    out.to_parquet(dest, index=False, compression="zstd")
+    print(out.groupby(["event", "gauge"]).size().unstack().fillna(0).astype(int).to_string())
+    print(f"{len(out)} rows -> {dest} ({dest.stat().st_size:,d} bytes)")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("action", choices=["fetch", "run", "inventory", "extract", "scout"])
+    ap.add_argument("action", choices=["fetch", "run", "inventory", "extract", "scout", "reference"])
     ap.add_argument("--role", default="observations", help="inventory: which A1F-100 input (observations, rainfall)")
     ap.add_argument("--out", type=Path, default=REPO / "out" / "bellinge")
     ap.add_argument("--timeout", type=float, default=3000)
@@ -264,6 +310,9 @@ def main() -> int:
         extract(a.out)
     elif a.action == "scout":
         scout(a.out)
+    elif a.action == "reference":
+        reference(a.out / "levels_events.csv.gz", REPO / "test_catalog" / "track_a" / "1d_free_surface"
+                  / "A1F-100_bellinge_urban_drainage" / "reference" / "levels.parquet")
     else:
         inventory(a.out, a.role)
     return 0

@@ -98,10 +98,10 @@ STORIES: dict[str, dict] = {
     ),
     "A1F-100": dict(
         name="Real sewer network, Odense", group="drainage",
-        question="Does a sewer model reproduce ten years of measured water levels?",
-        what="The Bellinge combined sewer system in Denmark has a published SWMM model and years of level, flow and pump records.",
-        why="Field data is the final test of a drainage model: real rainfall, real pipes, real measurements.",
-        must=["track the measured levels at 13 meters", "get the peak levels within 15 %"],
+        question="Does a real sewer model, run as published, reproduce the water levels measured in eight storms?",
+        what="The Bellinge combined sewer system in Odense, Denmark (about 1,000 manholes and pipes, with basins, pumps and weirs) has a published SWMM model and years of level-meter records. Each model runs that SWMM model unchanged, apart from its dates, on eight storms from 2011 to 2019, and its water levels are compared with seven level meters.",
+        why="Field data is the final test of a drainage model: real rainfall, real pipes, real measurements. The published model is uncalibrated, so this test judges the model and the engine together. A miss here can come from the model's set-up as much as from the engine.",
+        must=["track the measured levels (Nash–Sutcliffe efficiency at least 0.5 for the typical meter and storm)", "get the typical peak level within 0.1 m"],
     ),
     # ── pipes and networks ───────────────────────────────────────────────────
     "A1P-001": dict(

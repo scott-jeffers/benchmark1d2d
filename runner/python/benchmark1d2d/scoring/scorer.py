@@ -706,11 +706,12 @@ def _score_measured(manifest: dict[str, Any], results_path: Path) -> tuple[list[
         df["wse"] = df["h"] + df["z"]  # water-surface level, for gauges that record a level above datum
     probe_map = ref.get("probe_map") or {}
     dt_out = float((manifest.get("simulation") or {}).get("output_interval", 60.0))
+    u_meas = float((ref.get("uncertainty") or {}).get("value", 0.0)) if (ref.get("uncertainty") or {}).get("type") == "absolute" else 0.0
     rows = []
     for c in manifest["scoring"]["criteria"]:
         var = c.get("variable", "h")
         absolute = c["threshold"].get("units") == "m"  # peak error in metres rather than per cent
-        errs, labels = [], []
+        errs, labels, quiet = [], [], 0
         for p in (manifest.get("simulation") or {}).get("probes") or []:
             gauge = probe_map.get(p["id"], p["id"])
             m = meas[meas["gauge"] == gauge].sort_values("t")
@@ -739,7 +740,13 @@ def _score_measured(manifest: dict[str, Any], results_path: Path) -> tuple[list[
                     continue
                 tm, obs = tm[near], obs[near]
                 sim_on_meas = np.interp(tm, ts, vs)
+                if "floor" in mg.columns:  # a gauge that cannot read below its own floor: the model is read the same way
+                    sim_on_meas = np.maximum(sim_on_meas, mg["floor"].to_numpy(float)[near])
                 if c["metric"] == "NSE":
+                    if np.ptp(obs) < 3 * u_meas:  # the gauge barely moved: a ratio of two noise terms, not a fit
+                        labels.pop()
+                        quiet += 1
+                        continue
                     errs.append(1.0 - np.sum((sim_on_meas - obs) ** 2) / np.sum((obs - obs.mean()) ** 2))
                 elif c["metric"] in ("peak_error", "relative_peak"):
                     d = sim_on_meas.max() - obs.max()
@@ -753,6 +760,13 @@ def _score_measured(manifest: dict[str, Any], results_path: Path) -> tuple[list[
         if any(not np.isfinite(e) for e in errs):
             missing = [lb for lb, e in zip(labels, errs) if not np.isfinite(e)]
             rows.append(_result_row(c, float("nan"), f"not simulated at {len(missing)} of {len(errs)} gauge records: {', '.join(missing[:4])}"))
+            continue
+        if c.get("aggregate") == "median":  # many gauge records: the typical one, not the single worst
+            e = np.asarray(errs, float)
+            val = float(np.median(e)) if c["metric"] == "NSE" else float(np.median(np.abs(e)))
+            i = int(np.argmin(errs)) if c["metric"] == "NSE" else int(np.argmax(np.abs(errs)))
+            skipped = f"; {quiet} record(s) where the gauge barely moved are not scored" if quiet else ""
+            rows.append(_result_row(c, val, f"median of {len(errs)} gauge records; worst {errs[i]:.3g} at {labels[i]}{skipped}"))
             continue
         i = int(np.argmin(errs)) if c["metric"] == "NSE" else int(np.argmax(np.abs(errs)))
         rows.append(_result_row(c, float(errs[i]), f"worst of {len(errs)} gauge records: {labels[i]}"))
