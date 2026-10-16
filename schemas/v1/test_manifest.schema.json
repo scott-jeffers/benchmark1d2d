@@ -838,6 +838,44 @@
         "steady": {
           "type": "boolean",
           "description": "The reference is a steady state; t_end only bounds a time-marching solver."
+        },
+        "epoch": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Calendar time of t = 0, for a test run on real dates (field cases); results' t counts seconds from it."
+        },
+        "events": {
+          "type": "array",
+          "description": "Separate runs on real dates (field cases). Each is run on its own from start to end; t continues from the epoch, so the runs' results concatenate.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "start",
+              "end"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "start": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Start of the run, including the warm-up."
+              },
+              "score_from": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Start of the scored window (after the warm-up)."
+              },
+              "end": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
         }
       }
     },
@@ -875,6 +913,11 @@
               "c"
             ]
           }
+        },
+        "element": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A network node or link name: the probe is matched by element_id rather than position."
         }
       }
     },

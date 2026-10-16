@@ -30,7 +30,7 @@ import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
+sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO), str(REPO / "scripts")]
 
 _RUN = (
     "import sys\n"
@@ -194,9 +194,64 @@ def extract(out: Path) -> None:
     print(cov.to_string())
 
 
+SENSOR_NODES = ["G71F04R", "G71F05R", "G71F06R", "G71F68Y", "G72F040", "G73F010", "G80F11B", "G80F13P", "G80F66Y"]
+
+
+def scout(out: Path) -> None:
+    """The model's set-up and the nodes around each level meter, and one SWMM 5.2.4 run of the June 2012 storm.
+
+    Writes ``scout.txt`` (options, rain gauges, report section; every node whose
+    name starts with a sensor's node name, with its invert, depth and the links
+    touching it) and ``scout_heads.csv.gz`` (water level, invert + depth, at those
+    nodes, every minute from 29 June to 1 July 2012).
+    """
+    from datetime import datetime
+
+    import numpy as np
+    import pandas as pd
+
+    import run_bellinge as rb
+    from benchmark1d2d.adapters.swmm5 import read_out
+
+    fetch(out)
+    model = out / "model" / "7_SWMM"
+    inp = next(model.glob("*.inp"))
+    text = inp.read_text(encoding="latin-1")
+    sec = rb._sections(text)
+    lines = [f"model: {inp.name}", ""]
+    for name in ("OPTIONS", "RAINGAGES", "REPORT", "FILES", "EVAPORATION", "DWF", "INFLOWS"):
+        rows = sec.get(name, [])
+        lines += [f"[{name}] ({len(rows)} rows)"] + ["  " + " ".join(r) for r in rows[:30]] + [""]
+    lines += ["section sizes: " + ", ".join(f"{k} {len(v)}" for k, v in sec.items()), ""]
+    kinds = {}
+    for k in ("JUNCTIONS", "OUTFALLS", "STORAGE", "DIVIDERS"):
+        for r in sec.get(k, []):
+            kinds[r[0]] = (k, r)
+    links = []
+    for k in ("CONDUITS", "PUMPS", "ORIFICES", "WEIRS", "OUTLETS"):
+        links += [(k, r) for r in sec.get(k, [])]
+    near = sorted(n for n in kinds if any(n.startswith(p) for p in SENSOR_NODES))
+    for n in near:
+        k, r = kinds[n]
+        lines.append(f"{n:<14} {k:<10} {' '.join(r[1:])}")
+        for lk, lr in links:
+            if n in lr[1:3]:
+                lines.append(f"    {lk:<9} {' '.join(lr[:6])}")
+    (out / "scout.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print("\n".join(lines))
+    ev = {"id": "2012-06-29", "start": "2012-06-28T12:00:00", "score_from": "2012-06-29T00:00:00", "end": "2012-07-01T00:00:00"}
+    epoch = datetime.fromisoformat(ev["score_from"])
+    series, version, secs = rb.run_event("swmm524", model, ev, epoch, 60, {n: n for n in near}, None, 7200)
+    nodes = rb.node_table(text)
+    frames = [pd.DataFrame({"time": epoch + pd.to_timedelta(t, unit="s"), "node": n, "depth": h, "head": h + nodes[n]["z"]})
+              for n, (t, h) in series.items()]
+    pd.concat(frames).to_csv(out / "scout_heads.csv.gz", index=False, compression="gzip")
+    print(f"SWMM {version}: {secs:.0f} s; {len(series)} nodes written")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("action", choices=["fetch", "run", "inventory", "extract"])
+    ap.add_argument("action", choices=["fetch", "run", "inventory", "extract", "scout"])
     ap.add_argument("--role", default="observations", help="inventory: which A1F-100 input (observations, rainfall)")
     ap.add_argument("--out", type=Path, default=REPO / "out" / "bellinge")
     ap.add_argument("--timeout", type=float, default=3000)
@@ -207,6 +262,8 @@ def main() -> int:
         run(a.out, a.timeout)
     elif a.action == "extract":
         extract(a.out)
+    elif a.action == "scout":
+        scout(a.out)
     else:
         inventory(a.out, a.role)
     return 0

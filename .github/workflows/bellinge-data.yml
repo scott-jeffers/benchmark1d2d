@@ -1,7 +1,8 @@
 name: Bellinge data
 
 # Inventories and extracts the Bellinge observations (DTU Data, CC BY 4.0) on a
-# runner: the file store is not reachable from the build sandbox. Run by hand.
+# runner: the file store is not reachable from the build sandbox. Run by hand
+# (bellinge.py extract: the measured levels; scout: the model around the level meters).
 on:
   workflow_dispatch:
     inputs:
@@ -22,10 +23,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Extract the measured levels for the selected storms
+      - name: Read the model around the level meters and run SWMM 5.2.4 on its own storm
         run: |
-          python -m pip install -q -e ".[dev]"
-          python scripts/bellinge.py extract --out out/bellinge_data
+          python -m pip install -q -e ".[dev]" swmm-toolkit==0.17.0
+          python scripts/bellinge.py scout --out out/bellinge_data
       - uses: actions/upload-artifact@v4
         if: always()
         with:

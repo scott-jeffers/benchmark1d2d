@@ -700,33 +700,62 @@ def _score_measured(manifest: dict[str, Any], results_path: Path) -> tuple[list[
             f"{manifest['test_id']}: measured reference {ref['data_path']} is not available "
             f"(availability: {ref.get('availability', 'unknown')})"
         )
-    meas = pd.read_parquet(path)  # columns: t, gauge, and measured variables
+    meas = pd.read_parquet(path)  # columns: t, gauge, and measured variables; optionally event
     df = read_results_parquet(results_path)
+    if "z" in df.columns:
+        df["wse"] = df["h"] + df["z"]  # water-surface level, for gauges that record a level above datum
     probe_map = ref.get("probe_map") or {}
+    dt_out = float((manifest.get("simulation") or {}).get("output_interval", 60.0))
     rows = []
     for c in manifest["scoring"]["criteria"]:
         var = c.get("variable", "h")
-        errs = []
+        absolute = c["threshold"].get("units") == "m"  # peak error in metres rather than per cent
+        errs, labels = [], []
         for p in (manifest.get("simulation") or {}).get("probes") or []:
             gauge = probe_map.get(p["id"], p["id"])
             m = meas[meas["gauge"] == gauge].sort_values("t")
             if m.empty or var not in m.columns:
                 continue
-            ts, vs = _series_at(df, p["x"], p.get("y", 0.0), var)
-            sim_on_meas = np.interp(m["t"].to_numpy(float), ts, vs)
-            obs = m[var].to_numpy(float)
-            if c["metric"] == "NSE":
-                errs.append(1.0 - np.sum((sim_on_meas - obs) ** 2) / np.sum((obs - obs.mean()) ** 2))
-            elif c["metric"] in ("peak_error", "relative_peak"):
-                errs.append(100.0 * (sim_on_meas.max() - obs.max()) / obs.max())
-            elif c["metric"] == "arrival_time_error":
-                thr = 0.05 * obs.max()
-                errs.append(float(m["t"].to_numpy(float)[np.argmax(sim_on_meas > thr)] - m["t"].to_numpy(float)[np.argmax(obs > thr)]))
+            if p.get("element"):  # a network node: matched by name, not position
+                if "element_id" not in df.columns:
+                    raise ValueError("this test's gauges are network nodes; add element_id rows to your results")
+                sub = df[df["element_id"].astype(str) == str(p["element"])].sort_values("t").drop_duplicates("t")
+                ts, vs = sub["t"].to_numpy(float), sub[var].to_numpy(float)
+            else:
+                ts, vs = _series_at(df, p["x"], p.get("y", 0.0), var)
+            groups = m.groupby("event", sort=True) if "event" in m.columns else [(None, m)]
+            for ev, mg in groups:
+                tm, obs = mg["t"].to_numpy(float), mg[var].to_numpy(float)
+                label = f"{p['id']}" + (f" ({ev})" if ev is not None else "")
+                labels.append(label)
+                if len(ts) == 0:
+                    errs.append(float("nan"))
+                    continue
+                # a gauge record outside the simulated period is not scored against an extrapolated value
+                near = np.abs(ts[np.clip(np.searchsorted(ts, tm), 0, len(ts) - 1)] - tm) <= 2 * dt_out
+                near |= np.abs(ts[np.clip(np.searchsorted(ts, tm) - 1, 0, len(ts) - 1)] - tm) <= 2 * dt_out
+                if near.mean() < 0.9:
+                    errs.append(float("nan"))
+                    continue
+                tm, obs = tm[near], obs[near]
+                sim_on_meas = np.interp(tm, ts, vs)
+                if c["metric"] == "NSE":
+                    errs.append(1.0 - np.sum((sim_on_meas - obs) ** 2) / np.sum((obs - obs.mean()) ** 2))
+                elif c["metric"] in ("peak_error", "relative_peak"):
+                    d = sim_on_meas.max() - obs.max()
+                    errs.append(float(d) if absolute else 100.0 * d / obs.max())
+                elif c["metric"] == "arrival_time_error":
+                    thr = 0.05 * obs.max()
+                    errs.append(float(tm[np.argmax(sim_on_meas > thr)] - tm[np.argmax(obs > thr)]))
         if not errs:
             rows.append(_result_row(c, float("nan"), "no gauge matched a declared probe"))
             continue
-        worst = min(errs) if c["metric"] == "NSE" else max(errs, key=abs)
-        rows.append(_result_row(c, float(worst), f"worst of {len(errs)} gauges"))
+        if any(not np.isfinite(e) for e in errs):
+            missing = [lb for lb, e in zip(labels, errs) if not np.isfinite(e)]
+            rows.append(_result_row(c, float("nan"), f"not simulated at {len(missing)} of {len(errs)} gauge records: {', '.join(missing[:4])}"))
+            continue
+        i = int(np.argmin(errs)) if c["metric"] == "NSE" else int(np.argmax(np.abs(errs)))
+        rows.append(_result_row(c, float(errs[i]), f"worst of {len(errs)} gauge records: {labels[i]}"))
     return rows, None, _passed(rows)
 
 
