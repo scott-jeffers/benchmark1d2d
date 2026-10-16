@@ -22,7 +22,8 @@ from pathlib import Path
 import numpy as np
 
 MAX_BINS = 96
-MAX_FRAMES = 40
+MAX_FRAMES = 30
+FRAME_BINS = 48  # frames are drawn on a coarser grid, to keep the files small
 
 
 def is_2d(m: dict) -> bool:
@@ -98,14 +99,25 @@ def extract_field(m: dict, folder: Path) -> dict | None:
     x, y, h = (last[c].to_numpy(float) for c in ("x", "y", "h"))
     g = grid_for(x, y, cell=cell_size(x, y))
     out = {**g, "t": float(last["t"].iloc[0]), "h": _pack(np.maximum(_bin(g, x, y, h), 0.0)), "cells": int(len(last))}
+    ft = sorted(full.index)
+    if len(ft) >= 3:  # the results hold the whole field at several times (the EA tests): frames for the animation
+        idx = np.unique(np.linspace(0, len(ft) - 1, min(len(ft), MAX_FRAMES)).round().astype(int))
+        fg = grid_for(x, y, FRAME_BINS, cell=cell_size(x, y))
+        hs = []
+        for i in idx:
+            snap = df[df["t"] == ft[i]]
+            hs.append([None if v is None else round(v, 3) for v in
+                       _pack(np.maximum(_bin(fg, snap["x"].to_numpy(float), snap["y"].to_numpy(float), snap["h"].to_numpy(float)), 0.0))])
+        out["frames"] = {"grid": fg, "t": [float(ft[i]) for i in idx], "h": hs}
     fr = folder / f"{m['test_id']}.frames.npz"
-    if fr.is_file():
+    if fr.is_file() and "frames" not in out:
         try:
             z = np.load(fr)
             t, fx, fy, fh = z["t"], z["x"], z["y"], z["h"]
             idx = np.unique(np.linspace(0, len(t) - 1, min(len(t), MAX_FRAMES)).round().astype(int))
-            out["frames"] = {"t": [float(t[i]) for i in idx],
-                             "h": [_pack(np.maximum(_bin(g, fx, fy, fh[i]), 0.0)) for i in idx]}
+            fg = grid_for(fx, fy, FRAME_BINS, cell=cell_size(fx, fy))
+            out["frames"] = {"grid": fg, "t": [float(t[i]) for i in idx],
+                             "h": [_pack(np.maximum(_bin(fg, fx, fy, fh[i]), 0.0)) for i in idx]}
         except Exception:  # noqa: BLE001 - frames are optional
             pass
     return out
@@ -132,5 +144,5 @@ def exact_field(m: dict, g: dict, times: list[float] | None = None) -> dict | No
     t_end = float(m["simulation"]["t_end"])
     out = {**g, "t": t_end, "h": at(t_end)}
     if times:
-        out["frames"] = {"t": [float(t) for t in times], "h": [at(t) for t in times]}
+        out["frames"] = {"grid": {k: g[k] for k in ("x0", "y0", "dx", "nx", "ny")}, "t": [float(t) for t in times], "h": [at(t) for t in times]}
     return out

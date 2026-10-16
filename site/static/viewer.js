@@ -29,6 +29,12 @@
     return [mid[0] + (e[0] - mid[0]) * k, mid[1] + (e[1] - mid[1]) * k, mid[2] + (e[2] - mid[2]) * k];
   }
 
+  function clock(t) {
+    if (t < 120) return "t = " + fmt(t) + " s";
+    var hh = Math.floor(t / 3600), mm = Math.round((t - hh * 3600) / 60);
+    if (mm === 60) { hh++; mm = 0; }
+    return "t = " + (hh ? hh + " h " : "") + (mm < 10 && hh ? "0" : "") + mm + " min";
+  }
   function fieldAt(f, i) { if (!f) return null; if (f.frames && i !== null && i < f.frames.h.length) return f.frames.h[i]; return f.h; }
   function frameIndexFor(f, t) {
     if (!f || !f.frames) return null;
@@ -111,19 +117,23 @@
     if (!D || !D.two_d) return;
     var ext = extent();
     var t = times ? times[frame] : D.t_end;
-    var exIdx = D.exact ? frameIndexFor(D.exact, t) : null;
-    var exactH = D.exact ? (times && D.exact.frames ? fieldAt(D.exact, exIdx) : D.exact.h) : null;
+    var exactH = D.exact ? D.exact.h : null;  // differences are taken at the end of the run
     mapsEl.querySelectorAll("canvas").forEach(function (cv) {
       var key = cv.getAttribute("data-key");
       var f = key === "exact" ? D.exact : (D.models.filter(function (m) { return m.key === key; })[0] || {}).field;
       if (!f) return;
+      var isExact = key === "exact";
       var idx = times ? frameIndexFor(f, t) : null;
-      var h = (times && f.frames) ? (idx === null ? null : f.frames.h[idx]) : f.h;
-      var stale = times && !f.frames && Math.abs(t - (f.t || D.t_end)) > 1e-6;
-      cv.parentNode.classList.toggle("vw-stale", !!stale);
-      drawMap(cv, f, h, ext, mode === "diff" ? exactH : null, key === "exact");
+      // depth: every map follows the time slider; difference: models are compared at the end of the run,
+      // where the exact answer has been computed on each model's own grid
+      var useFrame = !!(times && f.frames && idx !== null && (isExact || mode !== "diff"));
+      var g = useFrame ? f.frames.grid : f, h = useFrame ? f.frames.h[idx] : f.h;
+      var shownT = useFrame ? f.frames.t[idx] : (f.t || D.t_end);
+      cv.parentNode.classList.toggle("vw-stale", !!(times && Math.abs(t - shownT) > 1e-6 * Math.max(1, t)));
+      drawMap(cv, g, h, ext, mode === "diff" && !isExact ? exactH : null, isExact);
     });
-    if (times) tlabel.textContent = "t = " + fmt(t) + " s" + (D.models.some(function (m) { return m.field && !m.field.frames; }) ? " · models without snapshots show their final state, faded" : "");
+    if (times) tlabel.textContent = clock(t) + (mode === "diff" ? " · differences are at the end of the run" :
+      D.models.some(function (m) { return m.field && !m.field.frames; }) ? " · models without snapshots show their final state, faded" : "");
     legendHtml();
   }
 
@@ -154,7 +164,7 @@
     document.querySelector('[data-mode="diff"]').hidden = !D.exact;
     if (!D.exact) mode = "depth";
     note.textContent = (D.exact ? "Exact answer and each model's finest grid, on one colour scale." : "Each model's finest grid, on one colour scale (this test has no exact map: it is judged on gauges and water balance).") +
-      " Dry cells are blank. Maps are binned to at most 96 cells along the longer side.";
+      " Dry cells are blank. Maps are binned to at most 96 cells along the longer side, frames over time to 48.";
     scales(); renderMaps();
   }
 
