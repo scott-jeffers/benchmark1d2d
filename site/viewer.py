@@ -97,9 +97,9 @@ def viewer_page(layout, index: list[dict]) -> str:
                    for t in index)
     first = next((t["sid"] for t in index if t["frames"]), index[0]["sid"] if index else "")
     body = f"""<div class="wrap">
-<section class="page-head">
+<section class="page-head nv-head">
   <h1>Results viewer</h1>
-  <p class="lede">Pick a test and compare every model's result with the exact answer and with each other: depth maps side by side for the 2D tests, the difference from the exact answer, and how each model's error shrinks on finer grids.</p>
+  <p class="lede">Every model's result on one test, side by side: depth maps over time, the difference from the exact answer, and how the error shrinks on finer grids.</p>
 </section>
 <div class="vw-pick card">
   <label>Test <select id="vw-test">{opts}</select></label>
@@ -110,17 +110,26 @@ def viewer_page(layout, index: list[dict]) -> str:
     <div class="view-toggle" role="group" aria-label="Map mode"><button type="button" data-mode="depth" aria-pressed="true">Depth</button><button type="button" data-mode="diff" aria-pressed="false">Difference from exact</button></div>
   </div>
   <p class="muted small" id="vw-maps-note"></p>
-  <div class="vw-time" id="vw-time" hidden>
-    <button type="button" class="play" id="vw-play" aria-label="Play"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2 L16 9 L4 16 Z"/></svg></button>
-    <input type="range" id="vw-scrub" min="0" max="0" value="0" aria-label="Time">
-    <span id="vw-tlabel" class="small"></span>
+  <div class="vw-player" id="vw-player">
+    <div class="vw-time" id="vw-time" hidden>
+      <button type="button" class="vw-step" id="vw-back" aria-label="Previous frame"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 2h2.5v14H3zM16 2 7 9l9 7z"/></svg></button>
+      <button type="button" class="play" id="vw-play" aria-label="Play"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2 L16 9 L4 16 Z"/></svg></button>
+      <button type="button" class="vw-step" id="vw-fwd" aria-label="Next frame"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M12.5 2H15v14h-2.5zM2 2l9 7-9 7z"/></svg></button>
+      <input type="range" id="vw-scrub" min="0" max="0" value="0" aria-label="Time">
+      <span id="vw-tlabel" class="vw-tlabel"></span>
+      <div class="vw-speed" role="group" aria-label="Speed"><button type="button" data-speed="0.5" aria-pressed="false">½×</button><button type="button" data-speed="1" aria-pressed="true">1×</button><button type="button" data-speed="2" aria-pressed="false">2×</button><button type="button" data-speed="4" aria-pressed="false">4×</button></div>
+    </div>
+    <div class="vw-legend" id="vw-legend"></div>
   </div>
-  <div class="vw-legend" id="vw-legend"></div>
+  <p class="vw-hint small muted" id="vw-hint">Point at any map to read every model's depth at that spot. Click a map to enlarge it.</p>
+  <div class="vw-chips" id="vw-chips" role="group" aria-label="Models shown"></div>
+  <p class="small muted vw-stale-note" id="vw-stale-note" hidden></p>
   <div class="vw-maps" id="vw-maps"></div>
 </section>
 <section class="section" id="vw-conv-sec" hidden>
   <h2>Error on finer grids</h2>
-  <p class="muted small">Each model's error against the exact answer on every grid it ran (both axes logarithmic). A correct method's line falls at the test's expected rate; the dashed line shows the minimum rate, drawn through the best model's coarsest point. Hover a point for its value.</p>
+  <p class="muted small">Each model's error against the exact answer on every grid it ran (both axes logarithmic). A correct method's line falls at the test's expected rate; the dashed line shows the minimum rate, drawn through the best model's coarsest point. Point at a line or a row to pick it out; the chips show and hide models.</p>
+  <div class="vw-chips" id="vw-chips2" role="group" aria-label="Models shown"></div>
   <svg id="vw-conv" class="chart" viewBox="0 0 1000 420" role="img" aria-label="Error against grid spacing for each model"></svg>
   <div class="table-scroll" style="margin-top:12px"><table class="data" id="vw-table"><thead><tr><th>Model</th><th>Result</th><th class="num">Rate</th><th>90 % range</th><th>Converges</th><th class="num">Worst check</th></tr></thead><tbody></tbody></table></div>
 </section>

@@ -316,23 +316,31 @@ def page(layout, index: list[dict]) -> str:
   <span class="nv-summary small muted" id="nv-summary"></span>
 </div>
 <section id="nv-map-pane" class="nv-pane" role="tabpanel" aria-labelledby="nv-tab-map">
+  <div class="nv-engines" id="nv-engines" role="group" aria-label="Result shown on the map"></div>
   <div class="nv-controls">
-    <label class="nv-field">Show <select id="nv-model"></select></label>
-    <label class="nv-field">Colour <select id="nv-mode"><option value="value">by value</option><option value="diff">by difference from the reference</option></select></label>
+    <div class="view-toggle nv-mode" id="nv-mode" role="group" aria-label="Colour the map by">
+      <button type="button" data-nvmode="value" aria-pressed="true">Values</button><button type="button" data-nvmode="diff" aria-pressed="false">Difference</button>
+    </div>
+    <label class="nv-flow-t small"><input type="checkbox" id="nv-flow"> Animate flow</label>
     <div class="nv-time" id="nv-time" hidden>
+      <button type="button" class="vw-step" id="nv-back" aria-label="Previous time"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 2h2.5v14H3zM16 2 7 9l9 7z"/></svg></button>
       <button type="button" class="play" id="nv-play" aria-label="Play"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2 L16 9 L4 16 Z"/></svg></button>
+      <button type="button" class="vw-step" id="nv-fwd" aria-label="Next time"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M12.5 2H15v14h-2.5zM2 2l9 7-9 7z"/></svg></button>
       <input type="range" id="nv-scrub" min="0" max="0" value="0" aria-label="Time">
-      <span id="nv-tlabel" class="small"></span>
+      <span id="nv-tlabel" class="vw-tlabel"></span>
+      <div class="vw-speed" role="group" aria-label="Speed"><button type="button" data-nvspeed="0.5" aria-pressed="false">½×</button><button type="button" data-nvspeed="1" aria-pressed="true">1×</button><button type="button" data-nvspeed="3" aria-pressed="false">3×</button></div>
     </div>
   </div>
   <div class="nv-main">
     <div class="nv-canvas-box">
+      <div class="nv-stage">
       <canvas id="nv-canvas" aria-label="Map of the network" role="img"></canvas>
       <div class="nv-zoom">
         <button type="button" id="nv-zin" aria-label="Zoom in">+</button><button type="button" id="nv-zout" aria-label="Zoom out">−</button><button type="button" id="nv-fit" aria-label="Fit the network">⤢</button>
       </div>
       <div class="nv-tip small" id="nv-tip" hidden></div>
       <div class="nv-legend small" id="nv-legend"></div>
+      </div>
       <div class="nv-foot small muted" id="nv-foot"></div>
     </div>
     <aside class="nv-side card" id="nv-side" aria-live="polite">
