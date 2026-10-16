@@ -87,6 +87,10 @@ SOLVERS: list[dict] = [
          what="WNTR 1.5 (US EPA and Sandia), its own Python solver of the network equations (WNTRSimulator), independent of EPANET's code; Hazen-Williams friction only"),
     dict(key="tsnet", name="TSNet", sub="water hammer · MOC", kind="research", color="#9C4F96",
          what="TSNet 0.3.1 (Xing and Sela 2020), an open-source water-hammer solver: the method of characteristics on an EPANET network"),
+    dict(key="basilisk", name="Basilisk", sub="Saint-Venant", kind="research", color="#3B6EA8",
+         what="Basilisk (Popinet, basilisk.fr), its second-order well-balanced Saint-Venant solver on a uniform Cartesian grid with its defaults; Manning friction added as the usual semi-implicit term (it has none built in)"),
+    dict(key="landlab", name="Landlab", sub="OverlandFlow", kind="research", color="#8A6D3B",
+         what="Landlab 2.11 (CSDMS), its OverlandFlow component: the local-inertial 2D flood scheme of de Almeida et al. (2012), written independently in NumPy, with its defaults"),
     dict(key="openswmm6", name="OpenSWMM 6", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-5)",
          what="OpenSWMM Engine v6 (HydroCouple's SWMM 6, pre-release), compared with SWMM 5.2.4"),
     dict(key="epanet20", name="EPANET 2.0", sub="vs EPANET 2.2", kind="compat", color="var(--cat-2)",
@@ -103,6 +107,10 @@ def solver_key(name: str) -> str | None:
     n = (name or "").lower()
     if n.startswith("tsnet"):
         return "tsnet"
+    if n.startswith("basilisk"):
+        return "basilisk"
+    if n.startswith("landlab"):
+        return "landlab"
     if n.startswith("wntr"):
         return "wntr"
     if n.startswith("demo-swe2d"):

@@ -28,6 +28,9 @@ HYDRONET = ['# HydroNet 0d98ff5 and pyHMT2D 57645ff (github.com/psu-efd), CPU Py
             'python -m pip install -e <HydroNet> && python -m pip install -e <pyHMT2D> --no-deps']
 HYDRA = ['HYDRA=$(python scripts/fetch_hydra.py .hydra)  # the pinned Hydra 17 CLI']
 SWMM51 = ['python3.10 -m venv .venv-swmm51 && .venv-swmm51/bin/python -m pip install "swmm-toolkit==0.10.0"  # EPA SWMM 5.1.15']
+BASILISK = ['curl -O https://basilisk.fr/basilisk/basilisk.tar.gz && tar xzf basilisk.tar.gz  # a rolling snapshot: the score card names its SHA-256',
+            '(cd basilisk/src && ln -s config.gcc config && make -k; make)']
+LANDLAB = ['python -m pip install -e ".[dev]" "landlab==2.11.0"']
 TSNET = ['python3 -m venv .venv-tsnet && .venv-tsnet/bin/python -m pip install "numpy<2" "tsnet==0.3.1"']
 
 HECRAS_2D_CASES = ("A2A-010", "A2C-")
@@ -64,6 +67,13 @@ def recipe(key: str, sid: str) -> dict | None:
         return dict(install=['python -m pip install -e ".[dev,engines]"', *(HYDRA if key == "hydra-wds" else [])],
                     run=[f"python scripts/run_network_cases.py{flag}"], script="scripts/run_network_cases.py", workflow="track-a.yml", platform="Linux",
                     note="The script writes the EPANET input file from the test's inputs; the model files below are that file.")
+    if key == "basilisk":
+        return dict(install=[SUITE, *BASILISK], run=[f"python scripts/run_basilisk.py --basilisk basilisk/src {sid}"],
+                    script="scripts/run_basilisk.py", workflow="open-solvers.yml", platform="Linux",
+                    note="The script writes a small Basilisk C program for the test (kept in the model files below) and compiles it with qcc.")
+    if key == "landlab":
+        return dict(install=LANDLAB, run=[f"python scripts/run_landlab.py {sid}"], script="scripts/run_landlab.py",
+                    workflow="open-solvers.yml", platform="Linux", note="Landlab models are built in Python: the script is the model.")
     if key == "tsnet":
         return dict(install=[SUITE, *TSNET], run=["python scripts/run_tsnet.py --tsnet-python .venv-tsnet/bin/python"],
                     script="scripts/run_tsnet.py", workflow="track-a.yml", platform="Linux")

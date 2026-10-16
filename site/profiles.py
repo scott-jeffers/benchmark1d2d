@@ -220,7 +220,7 @@ def finest(dir_: Path, test_id: str) -> Path | None:
 
 # Solver output folders under out/ -> solver key used on the site
 SOURCES = [
-    ("telemac", "out/telemac"), ("anuga", "out/anuga"), ("geoclaw", "out/geoclaw"),
+    ("telemac", "out/telemac"), ("anuga", "out/anuga"), ("geoclaw", "out/geoclaw"), ("basilisk", "out/basilisk"), ("landlab", "out/landlab"),
     ("lisflood-fv1", "out/lisflood/fv1"), ("lisflood-dg2", "out/lisflood/dg2"), ("lisflood-acc", "out/lisflood/acc"),
     ("swmm524", "out/swmm_track_a/swmm524"), ("openswmm-dw", "out/swmm_track_a/openswmm-dw"), ("openswmm-fv", "out/swmm_track_a/openswmm-fv"), ("hydra-uds", "out/swmm_track_a/hydra-uds"),
     ("hydronet-fvm", "out/hydronet/fvm"), ("hydronet-pinn", "out/hydronet/pinn"),

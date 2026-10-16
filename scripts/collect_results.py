@@ -65,6 +65,8 @@ ROUTES = [
     (r"^EPA SWMM 5\.2\.4$", "swmm_track_a/swmm524"),
     (r"^EPA SWMM 5\.1\.15$", "swmm_track_a/swmm515"),
     (r"^TSNet", "tsnet"),
+    (r"^Basilisk", "basilisk"),
+    (r"^Landlab", "landlab"),
     (r"^WNTR", "wntr"),
     (r"^OpenSWMM Engine v6 dynamic wave", "swmm_track_a/openswmm-dw"),
     (r"^OpenSWMM Engine v6 finite volume", "swmm_track_a/openswmm-fv"),
