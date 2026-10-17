@@ -924,11 +924,15 @@ def test_card(m: dict, runs: dict, up: str = "", status_text: str | None = None)
     elif scored:
         n = len(scored)
         rows = ranking.rank_test({k: by[k] for k in scored})
-        dots = "".join(f'<i class="{ranking.klass(r["score"])}" title="{esc(SOLVER[r["key"]]["name"])}: {esc(ranking.short(r["score"]))}"></i>' for r in rows)
-        best = rows[0] if rows and rows[0]["score"] is not None else None
-        lead = f' · best: {esc(SOLVER[best["key"]]["name"])} ({esc(ranking.short(best["score"]))})' if best else ""
-        score = (f'<div class="tc-score"><div class="tc-dots" aria-hidden="true">{dots}</div>'
-                 f'<span>{n} model{"s" if n != 1 else ""}{lead}</span></div>')
+        # a small leaderboard: every model on the test (up to six), with its difference
+        shown_rows = rows[:6]
+        lis = "".join(
+            f'<li><span class="tc-rk">{(str(r["rank"]) + ("=" if r.get("tie") else "")) if r.get("rank") else "–"}</span>'
+            f'<span class="sw" style="background:{esc(SOLVER[r["key"]]["color"])}"></span>'
+            f'<span class="tc-nm">{esc(SOLVER[r["key"]]["name"])} <span class="tc-sub">{esc(SOLVER[r["key"]]["sub"])}</span></span>'
+            f'<span class="lb-cell {ranking.klass(r["score"])}">{esc(ranking.short(r["score"]))}</span></li>' for r in shown_rows)
+        more = f'<li class="tc-more">and {n - len(shown_rows)} more</li>' if n > len(shown_rows) else ""
+        score = f'<div class="tc-score"><ol class="tc-board" aria-label="{n} model{"s" if n != 1 else ""} on this test">{lis}{more}</ol></div>'
     else:
         score = '<div class="tc-score">Not run yet</div>'
     return (f'<a class="card test-card" href="{up}tests/{sid}.html" data-group="{st["group"]}">{tile_svg(sid)}'
