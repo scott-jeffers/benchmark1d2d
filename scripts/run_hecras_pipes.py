@@ -267,12 +267,77 @@ def layer_report(ghdf: Path, tmpl: Path | None) -> None:
                 if rel.split("/")[0] == "Davis":
                     continue
                 a, b = tm.get(rel), fm.get(rel)
-                if a != b:
+                if repr(a) != repr(b):
                     log(f"    attrs {grp}/{rel}: Davis={ {k: str(v)[:60] for k, v in (a or {}).items()} } ours={ {k: str(v)[:60] for k, v in (b or {}).items()} }"[:500])
         for k in ("", "Geometry"):
             a = {x: str(v)[:50] for x, v in (t[k] if k else t).attrs.items()}
             b = {x: str(v)[:50] for x, v in (f[k] if k else f).attrs.items()}
             log(f"    attrs /{k}: Davis={a} ours={b}"[:700])
+
+
+def _file_type(dt: np.dtype, data: np.ndarray):
+    """The HDF5 type RAS Mapper writes for ``dt``: strings null-terminated and as long as the longest value
+    (HEC's own .NET writer; h5py's default is null-padded), compounds packed in order."""
+    import h5py
+
+    if dt.names:
+        parts = []
+        for n in dt.names:
+            parts.append((n, _file_type(dt.fields[n][0], data[n] if data.size else data[n])))
+        tid = h5py.h5t.create(h5py.h5t.COMPOUND, sum(t.get_size() for _, t in parts))
+        off = 0
+        for n, t in parts:
+            tid.insert(n.encode(), off, t)
+            off += t.get_size()
+        return tid
+    if dt.kind == "S":
+        n = max([len(x) for x in data.ravel()] + [1]) if data.size else max(dt.itemsize, 1)
+        tid = h5py.h5t.C_S1.copy()
+        tid.set_size(n)
+        tid.set_strpad(h5py.h5t.STR_NULLTERM)
+        return tid
+    return h5py.h5t.py_create(dt)
+
+
+def _np_twin(tid) -> np.dtype:
+    """The packed numpy dtype with the same bytes as the HDF5 type ``tid``."""
+    import h5py
+
+    if isinstance(tid, h5py.h5t.TypeCompoundID):
+        return np.dtype({"names": [tid.get_member_name(i).decode() for i in range(tid.get_nmembers())],
+                         "formats": [_np_twin(tid.get_member_type(i)) for i in range(tid.get_nmembers())],
+                         "offsets": [tid.get_member_offset(i) for i in range(tid.get_nmembers())],
+                         "itemsize": tid.get_size()})
+    if isinstance(tid, h5py.h5t.TypeStringID):
+        return np.dtype(f"S{tid.get_size()}")
+    return tid.dtype
+
+
+def h5_write(g, name: str, data: np.ndarray):
+    """A dataset laid out as RAS Mapper lays out its feature tables: chunked, gzip level 1, unlimited, with
+    null-terminated strings."""
+    import h5py
+
+    shape = data.shape
+    dcpl = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
+    dcpl.set_chunk(tuple(max(1, min(n, 4096)) if n else (4096 if i == 0 else 2) for i, n in enumerate(shape)))
+    dcpl.set_deflate(1)
+    if data.dtype.kind == "f":
+        dcpl.set_fill_value(np.array(np.nan, data.dtype))
+    space = h5py.h5s.create_simple(shape, (h5py.h5s.UNLIMITED,) * len(shape))
+    tid = _file_type(data.dtype, data)
+    dsid = h5py.h5d.create(g.id, name.encode(), tid, space, dcpl=dcpl)
+    if data.size:
+        # the bytes as they lie in the file (no conversion: HDF5's to null-terminated would cut each
+        # full-length string's last character to make room for a terminator)
+        raw = np.empty(shape, dtype=_np_twin(tid))
+        if data.dtype.names:
+            for n in data.dtype.names:
+                raw[n] = data[n]
+        else:
+            raw[...] = data
+        dsid.write(h5py.h5s.ALL, h5py.h5s.ALL, raw, mtype=tid)
+    return g[name]
 
 
 def write_network(ghdf: Path, spec: dict) -> dict:
@@ -288,14 +353,13 @@ def write_network(ghdf: Path, spec: dict) -> dict:
     n_up = {i: sum(1 for c in conduits if c["to"] == i) for i in ids}
     n_dn = {i: sum(1 for c in conduits if c["from"] == i) for i in ids}
 
+    # HEC's Davis example uses two node types: "Start" (no conduit in) and "Junction" (everything else,
+    # its outlet a junction with no conduit out); the status reads "US Junction" at a start
     def ntype(i: str) -> str:
-        if i in outs:
-            return "External"
-        if n_up[i] == 0:
-            return "Start"
-        if n_dn[i] == 0:
-            return "Closed"
-        return "Junction"
+        return "Start" if n_up[i] == 0 else "Junction"
+
+    def nstatus(i: str) -> str:
+        return ("US Junction" if n_up[i] == 0 else "Junction") + (" -with top inlet " if i in crest else "")
 
     node_dt = np.dtype([("Name", "S16"), ("System Name", "S16"), ("Node Type", "S16"), ("Node Status", "S40"),
                         ("Condtui Connections (US:DS)", "S8"), ("Invert Elevation", "<f4"), ("Base Area", "<f4"),
@@ -306,8 +370,8 @@ def write_network(ghdf: Path, spec: dict) -> dict:
     for i in ids:
         inv = float((juncs.get(i) or outs.get(i))["invert"])
         top = float(crest[i]["crest"]) if i in crest else inv + float((juncs.get(i) or {}).get("max_depth", 1.0))
-        rows.append((i, NET, ntype(i), ntype(i) + (" -with top inlet " if i in crest else ""), f"{n_up[i]}:{n_dn[i]}", inv,
-                     SWMM_NODE_AREA, top, np.nan if i in crest else top, top - inv,
+        rows.append((i, NET, ntype(i), nstatus(i), f"{n_up[i]}:{n_dn[i]}", inv,
+                     SWMM_NODE_AREA, top, np.nan, top - inv,
                      "Manhole" if i in crest else "", float(crest[i]["crest"]) if i in crest else np.nan, "", np.nan, n_up[i] + n_dn[i]))
     nodes = np.array(rows, dtype=node_dt)
     pts = np.array([[pos[i][0] + X0, pos[i][1] + Y0] for i in ids], float)
@@ -341,7 +405,7 @@ def write_network(ghdf: Path, spec: dict) -> dict:
     def ds(g, name, data, attrs=None):
         if name in g:
             del g[name]
-        d = g.create_dataset(name, data=data)
+        d = h5_write(g, name, np.asarray(data))
         for k, v in (attrs or {}).items():
             d.attrs[k] = v
         return d
