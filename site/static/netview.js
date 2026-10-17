@@ -3,6 +3,7 @@
 (function () {
   "use strict";
   var IDX = JSON.parse(document.getElementById("nv-index").textContent);
+  function scoreChip(sc) { return sc ? '<span class="vw-chip-v score ' + sc.k + '">' + esc(sc.l) + '</span>' : ''; }
   function $(id) { return document.getElementById(id); }
   var testSel = $("nv-test"), engines = $("nv-engines"), modeBox = $("nv-mode"), flowBox = $("nv-flow"), dl = $("nv-dl"), summary = $("nv-summary");
   var canvas = $("nv-canvas"), tip = $("nv-tip"), legend = $("nv-legend"), side = $("nv-side");
@@ -679,7 +680,7 @@
         esc(tag ? (r.role === "reference" ? parts[0].replace(/ \(reference\)$/, "") : tag.charAt(0).toUpperCase() + tag.slice(1)) : parts[0]) +
         (!tag && parts.length > 1 ? ' <span class="vw-chip-sub">' + esc(parts.slice(1).join(" · ")) + "</span>" : "") +
         (tag && r.role === "reference" ? ' <span class="vw-chip-sub">reference</span>' : "") +
-        (r.verdict ? '<span class="vw-chip-v ' + (r.verdict === "pass" ? "pass" : "fail") + '" title="' + (r.verdict === "pass" ? "passes the test" : "fails the test") + '">' + (r.verdict === "pass" ? "✓" : "✗") + "</span>" : "") + "</button>";
+        scoreChip(r.score) + "</button>";
     });
     engines.innerHTML = h;
     engines.querySelectorAll("[data-res]").forEach(function (b) { b.addEventListener("click", function () { setResult(b.getAttribute("data-res")); }); });

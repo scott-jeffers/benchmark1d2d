@@ -41,8 +41,7 @@ def test_data(m: dict, by: dict, model_fields: dict, solver: dict, order, verdic
         conv = c.get("convergence_result") or {}
         cv = a.get("converges") or {}
         rec = dict(key=k, label=f'{solver[k]["name"]} · {solver[k]["sub"]}' if solver[k].get("sub") else solver[k]["name"],
-                   color=solver[k]["color"], verdict=verdict(c), verified=bool(a.get("verified")),
-                   worst_margin=a.get("worst_margin"))
+                   color=solver[k]["color"], score=verdict(c), verified=bool(a.get("verified")))
         if conv.get("errors"):
             rec["conv"] = dict(errors=[abs(e) for e in conv["errors"]], spacings=conv["spacings"], order=cv.get("order"),
                                ci=cv.get("ci"), verdict=cv.get("verdict"), min=conv.get("min_observed_order"),
@@ -131,7 +130,7 @@ def viewer_page(layout, index: list[dict]) -> str:
   <p class="muted small">Each model's error against the exact answer on every grid it ran (both axes logarithmic). A correct method's line falls at the test's expected rate; the dashed line shows the minimum rate, drawn through the best model's coarsest point. Point at a line or a row to pick it out; the chips show and hide models.</p>
   <div class="vw-chips" id="vw-chips2" role="group" aria-label="Models shown"></div>
   <svg id="vw-conv" class="chart" viewBox="0 0 1000 420" role="img" aria-label="Error against grid spacing for each model"></svg>
-  <div class="table-scroll" style="margin-top:12px"><table class="data" id="vw-table"><thead><tr><th>Model</th><th>Result</th><th class="num">Rate</th><th>90 % range</th><th>Converges</th><th class="num">Worst check</th></tr></thead><tbody></tbody></table></div>
+  <div class="table-scroll" style="margin-top:12px"><table class="data" id="vw-table"><thead><tr><th>Model</th><th class="num">Difference</th><th class="num">Rate</th><th>90 % range</th><th>Against the design order</th></tr></thead><tbody></tbody></table></div>
 </section>
 </div>
 <script type="application/json" id="vw-index">{json.dumps(dict(tests=index, first=first))}</script>"""

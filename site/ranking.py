@@ -1,19 +1,19 @@
-"""Scores and rankings: how much of each test's allowance a result uses, and where models stand.
+"""Scores and rankings: how far each result is from the right answer, and where models stand.
 
 The suite reports measurements, not verdicts (docs/methodology/ranking.md):
 
-* **Allowance used** (a result's score): the largest observed error ÷ limit
-  over a test's accuracy checks, already in every score card as method 2's
-  ``worst_margin``. 0.34 = uses 34 % of the allowance; 2.1 = 2.1 times it.
-  Lower is better.
-* **Rank within a test**: by allowance used. Two results tie when they are
-  within 10 % of each other or both under 1 % of the allowance (the solvers'
-  own precision). A rank is 1 + the number of results clearly ahead.
+* **Percent difference** (a result's score): every check's error as a
+  percentage of the quantity it is an error in (site/difference.py), the
+  largest over a test's judged checks. 0.4 = 0.4 % off; lower is better.
+  There is no limit and no pass or fail.
+* **Rank within a test**: by percent difference. Two results tie when they are
+  within 10 % of each other or both under 0.01 % (the solvers' own
+  precision). A rank is 1 + the number of results clearly ahead.
 * **Overall, two measures**: the *win rate* over head-to-head comparisons on
   the tests both models ran (a tie is half a win; HELM's method), and the
-  *typical error against the field*: on each test, the model's score over the
-  median model's, geometric mean over its tests (SPEC's geometric mean, PMP's
-  median-relative error). Models need ``MIN_TESTS`` tests to be ranked overall.
+  *typical error against the field*: on each test, the model's difference over
+  the median model's, geometric mean over its tests (SPEC's geometric mean,
+  PMP's median-relative error). Models need ``MIN_TESTS`` tests to be ranked overall.
 """
 
 from __future__ import annotations
@@ -22,8 +22,10 @@ import math
 import statistics
 from collections import defaultdict
 
+import difference
+
 TIE_REL = 0.10      # within 10 % of each other
-TIE_FLOOR = 0.01    # both under 1 % of the allowance
+TIE_FLOOR = 0.01    # both under 0.01 % (percent difference)
 MIN_TESTS = 5
 
 GROUPS = [
@@ -56,17 +58,18 @@ def group_of(test_id: str) -> str:
 
 
 def score(card: dict | None) -> float | None:
-    """Allowance used: the largest |observed| / limit over the accuracy checks (None when nothing gates)."""
-    if not card:
-        return None
-    j = card.get("_judged") or card.get("judgement") or {}
-    s = j.get("worst_margin")
-    if s is None:
-        ms = [r.get("margin") for r in card.get("criteria_results", []) if r.get("margin") is not None]
-        s = max(ms) if ms else None
-    if s is None or not math.isfinite(float(s)):
-        return None if s is None else float("inf")
-    return float(s)
+    """Percent difference from the right answer: the largest over the test's judged checks (None when none applies)."""
+    return difference.result(card)
+
+
+def _num(s: float) -> str:
+    if s < 1:
+        return f"{s:.2g}"
+    if s < 10:
+        return f"{s:.1f}"
+    if s < 1e4:
+        return f"{s:.0f}"
+    return f"{s:.0e}".replace("e+0", "e").replace("e+", "e")
 
 
 def label(s: float | None) -> str:
@@ -75,47 +78,32 @@ def label(s: float | None) -> str:
     if not math.isfinite(s):
         return "no result"
     if s < 0.01:
-        return "under 1 % of allowance"
-    if s < 1:
-        return f"{s * 100:.0f} % of allowance"
-    if s < 10:
-        return f"{s:.1f}× allowance"
-    if s < 1e4:
-        return f"{s:.0f}× allowance"
-    return f"{s:.0e}× allowance".replace("e+0", "e").replace("e+", "e")
+        return "under 0.01 % off"
+    return f"{_num(s)} % off"
 
 
 def short(s: float | None) -> str:
-    """Compact form for tables and heat-map cells: '34 %', '2.1×'."""
+    """Compact form for tables and heat-map cells: '0.42 %', '12 %'."""
     if s is None:
         return "–"
     if not math.isfinite(s):
         return "∞"
     if s < 0.01:
-        return "<1 %"
-    if s < 1:
-        return f"{s * 100:.0f} %"
-    if s < 10:
-        return f"{s:.1f}×"
-    if s < 1e4:
-        return f"{s:.0f}×"
-    return f"{s:.0e}×".replace("e+0", "e").replace("e+", "e")
+        return "<0.01 %"
+    return f"{_num(s)} %"
+
+
+# colour bands of the percent difference (no band is a verdict)
+BANDS = [(0.1, "s0", "under 0.1 %"), (1.0, "s1", "0.1–1 %"), (3.0, "s2", "1–3 %"), (10.0, "s3", "3–10 %"), (30.0, "s4", "10–30 %"), (math.inf, "s5", "over 30 %")]
 
 
 def klass(s: float | None) -> str:
-    """CSS class on a continuous-looking scale: s0 (well inside) … s5 (far outside)."""
+    """CSS class on a continuous-looking scale: s0 (closest) … s5 (furthest)."""
     if s is None:
         return "sn"
-    if s < 0.1:
-        return "s0"
-    if s < 0.5:
-        return "s1"
-    if s < 1.0:
-        return "s2"
-    if s < 2.0:
-        return "s3"
-    if s < 10.0:
-        return "s4"
+    for hi, k, _ in BANDS:
+        if s < hi:
+            return k
     return "s5"
 
 
@@ -140,7 +128,7 @@ def rank_test(by: dict[str, dict], keep=None) -> list[dict]:
 
 
 def overall(runs: dict[str, dict[str, dict]], keep=None, group: str | None = None) -> list[dict]:
-    """Per model: tests, win rate, typical error vs the field, median allowance used, median run time, rank.
+    """Per model: tests, win rate, typical error vs the field, median percent difference, median run time, rank.
 
     ``runs``: test_id -> model key -> card. ``keep(key)`` filters models (e.g. production only);
     ``group`` limits to one test group.
@@ -179,7 +167,6 @@ def overall(runs: dict[str, dict[str, dict]], keep=None, group: str | None = Non
             "win_rate": p["wins"] / p["comps"] if p["comps"] else None,
             "vs_field": math.exp(sum(math.log(v) for v in p["rel"]) / len(p["rel"])) if p["rel"] else None,
             "median_score": statistics.median(p["scores"]) if p["scores"] else None,
-            "within": sum(1 for s in p["scores"] if s <= 1.0),
             "median_time": statistics.median(p["times"]) if p["times"] else None,
             "timed": len(p["times"]),
         })

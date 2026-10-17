@@ -31,7 +31,8 @@ def data(manifests: list[dict], runs: dict, solver: dict, story, sid_of, machine
     tests.sort(key=lambda t: (order.get(t["group"], 99), t["sid"]))
     models = {k: {"name": solver[k]["name"], "sub": solver[k]["sub"], "kind": solver[k]["kind"], "color": solver[k]["color"]} for k in keys if k in solver}
     return {"models": models, "tests": tests, "results": results, "groups": ranking.GROUPS,
-            "rules": {"tie_rel": ranking.TIE_REL, "tie_floor": ranking.TIE_FLOOR, "min_tests": ranking.MIN_TESTS}}
+            "rules": {"tie_rel": ranking.TIE_REL, "tie_floor": ranking.TIE_FLOOR, "min_tests": ranking.MIN_TESTS,
+                      "bands": [[hi if hi != float("inf") else 1e300, k, t] for hi, k, t in ranking.BANDS]}}
 
 
 def page(layout, d: dict) -> str:
@@ -44,7 +45,7 @@ def page(layout, d: dict) -> str:
     body = f"""<div class="wrap">
 <section class="page-head nv-head">
   <h1>Rankings</h1>
-  <p class="lede">How close each model gets to the right answer, test by test and overall. No pass or fail: every result is the share of the test's error allowance it uses, and lower is better.</p>
+  <p class="lede">How close each model gets to the right answer, test by test and overall. No pass or fail: every result is its percent difference from the right answer, and lower is better.</p>
 </section>
 <div class="rk-controls card">
   <div class="filters" role="group" aria-label="Test group"><button type="button" class="pill" data-g="" aria-pressed="true">All tests</button>{groups}</div>
@@ -57,29 +58,29 @@ def page(layout, d: dict) -> str:
     <th scope="col" class="num">Rank</th><th scope="col">Model</th>
     <th scope="col">Head-to-head wins <span class="muted">(share of comparisons)</span></th>
     <th scope="col" class="num">Error vs the field <span class="muted">(× typical)</span></th>
-    <th scope="col" class="num">Tests</th><th scope="col" class="num">Median allowance used</th><th scope="col" class="num">Median run time</th>
+    <th scope="col" class="num">Tests</th><th scope="col" class="num">Median difference</th><th scope="col" class="num">Median run time</th>
   </tr></thead><tbody></tbody></table></div>
 </section>
 <section class="section tight">
   <h2>Every result</h2>
-  <p class="muted small">Rows in rank order; each cell is the share of that test's allowance the model uses. Click a cell to open the result.</p>
+  <p class="muted small">Rows in rank order; each cell is the model's percent difference from the right answer on that test. Click a cell to open the result.</p>
   <div class="rk-legend small" id="rk-legend"></div>
   <div class="table-scroll rk-portrait-wrap"><table class="rk-portrait" id="rk-portrait"></table></div>
 </section>
 <section class="section tight">
   <h2>Accuracy and run time</h2>
-  <p class="muted small">One test at a time: allowance used against wall time on the finest grid. The best models sit bottom left. Times compare models run on the same kind of machine only; the machine is in each point's label.</p>
+  <p class="muted small">One test at a time: percent difference against wall time on the finest grid. The best models sit bottom left. Times compare models run on the same kind of machine only; the machine is in each point's label.</p>
   <label class="nv-field rk-test-pick">Test <select id="rk-test"></select></label>
   <div id="rk-speed"></div>
 </section>
 <section class="section tight">
   <h2>How the ranking works</h2>
   <div class="grid">
-    <div class="card"><h3>Allowance used</h3><p>Each check has a limit with a stated reason. A result's score is its largest error as a share of its limit, over the test's accuracy checks. Convergence on finer grids is reported on each test page beside it.</p></div>
-    <div class="card"><h3>Head-to-head wins</h3><p>For every pair of models and every test both ran, the lower score wins; within 10 % of each other (or both under 1 % of the allowance) is a tie, worth half. A model's win rate is its share of those comparisons, so nobody is judged on tests they did not run. Models need {d["rules"]["min_tests"]} tests to be ranked.</p></div>
-    <div class="card"><h3>Error vs the field</h3><p>On each test, a model's score divided by the median model's, then the geometric mean over its tests: 0.5 means half the typical error. Scores under 1 % count as 1 %, the solvers' own precision.</p></div>
+    <div class="card"><h3>Percent difference</h3><p>Each check's error as a percentage of the quantity it is an error in: a depth error over the exact mean depth, a front error over the distance the front travels, a mass error as it is. A result's score is its largest percent difference over the test's checks. There is no limit to pass. Convergence on finer grids is reported on each test page beside it.</p></div>
+    <div class="card"><h3>Head-to-head wins</h3><p>For every pair of models and every test both ran, the lower score wins; within 10 % of each other (or both under 0.01 %) is a tie, worth half. A model's win rate is its share of those comparisons, so nobody is judged on tests they did not run. Models need {d["rules"]["min_tests"]} tests to be ranked.</p></div>
+    <div class="card"><h3>Error vs the field</h3><p>On each test, a model's score divided by the median model's, then the geometric mean over its tests: 0.5 means half the typical error. Differences under 0.01 % count as 0.01 %, the solvers' own precision.</p></div>
   </div>
-  <p class="small muted">Why no pass/fail: a result using 99 % of an allowance and one using 101 % are almost the same, but a verdict makes them opposites. Leading benchmarks (SPEC, MLPerf, HELM, the climate models' PCMDI metrics) report measured scores and rank them instead.</p>
+  <p class="small muted">Why no pass/fail: a limit chosen by the suite would make two nearly equal results opposites when they fall either side of it. Leading benchmarks (SPEC, MLPerf, HELM, the climate models' PCMDI metrics) report measured scores and rank them instead.</p>
 </section>
 </div>
 <script type="application/json" id="rk-data">{json.dumps(d, separators=(",", ":")).replace("</", "<\\/")}</script>"""

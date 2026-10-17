@@ -183,6 +183,7 @@
     legendHtml();
   }
 
+  function scoreChip(sc) { return sc ? '<span class="vw-chip-v score ' + sc.k + '">' + esc(sc.l) + '</span>' : ''; }
   // ── model chips (shared by the maps and the convergence chart) ────────────
   function chipModels() {
     return D.models.filter(function (m) { return m.field || (m.conv && m.conv.errors && m.conv.errors.length > 1); });
@@ -193,8 +194,8 @@
       var on = !hidden[m.key];
       return '<button type="button" class="vw-chip" data-key="' + esc(m.key) + '" aria-pressed="' + on + '"><span class="sw" style="background:' + esc(m.color) + '"></span>' +
         esc(m.label.split(" · ")[0]) + (m.label.indexOf(" · ") > 0 ? ' <span class="vw-chip-sub">' + esc(m.label.split(" · ").slice(1).join(" · ")) + "</span>" : "") +
-        '<span class="vw-chip-v ' + (m.verdict === "pass" ? "pass" : "fail") + '" aria-label="' + (m.verdict === "pass" ? "passes" : "fails") + '">' + (m.verdict === "pass" ? "✓" : "✗") + "</span></button>";
-    }).join("") + '<span class="vw-chip-all"><button type="button" class="linkish" data-all="1">All</button> · <button type="button" class="linkish" data-all="pass">Passing</button> · <button type="button" class="linkish" data-all="fail">Failing</button></span>' : "";
+        scoreChip(m.score) + "</button>";
+    }).join("") + '<span class="vw-chip-all"><button type="button" class="linkish" data-all="1">All</button> · <button type="button" class="linkish" data-all="best">Closest half</button></span>' : "";
     [chipsA, chipsB].forEach(function (box) {
       box.innerHTML = html;
       box.querySelectorAll("[data-key]").forEach(function (b) {
@@ -203,7 +204,9 @@
       box.querySelectorAll("[data-all]").forEach(function (b) {
         b.addEventListener("click", function () {
           var w = b.getAttribute("data-all");
-          ms.forEach(function (m) { hidden[m.key] = w === "1" ? false : w === "pass" ? m.verdict !== "pass" : m.verdict === "pass"; });
+          var sc = ms.map(function (m) { return m.score && m.score.s !== null ? m.score.s : Infinity; }).sort(function (a, b) { return a - b; });
+          var cut = sc[Math.max(0, Math.ceil(sc.length / 2) - 1)];
+          ms.forEach(function (m) { hidden[m.key] = w === "1" ? false : !(m.score && m.score.s !== null && m.score.s <= cut); });
           applyHidden();
         });
       });
@@ -229,10 +232,10 @@
     var aspect = (ext.y1 - ext.y0) / (ext.x1 - ext.x0);
     var W = 720, H = Math.max(80, Math.round(W * aspect));
     if (H > 840) { W = Math.round(840 / aspect); H = 840; }
-    var cards = (D.exact ? [{ key: "exact", label: "Exact answer", color: "var(--water)", verdict: null }] : []).concat(ms);
+    var cards = (D.exact ? [{ key: "exact", label: "Exact answer", color: "var(--water)", score: null }] : []).concat(ms);
     cards.forEach(function (m) {
       var fig = document.createElement("figure"); fig.className = "vw-map" + (m.key === "exact" ? " vw-exact" : ""); fig.setAttribute("data-key", m.key);
-      var b = m.verdict ? '<span class="badge sm ' + (m.verdict === "pass" ? "pass" : "fail") + '">' + (m.verdict === "pass" ? "✓ Passes" : "✗ Fails") + "</span>" : "";
+      var b = m.score ? '<span class="score sm ' + m.score.k + '">' + esc(m.score.l) + " off</span>" : "";
       fig.innerHTML = '<figcaption><span class="sw" style="background:' + esc(m.color) + '"></span><span class="vw-name">' + esc(m.label) + "</span> " + b + '<output class="vw-read" aria-live="off"></output></figcaption>';
       var cv = document.createElement("canvas"); cv.width = W; cv.height = H; cv.setAttribute("data-key", m.key);
       cv.setAttribute("role", "img"); cv.setAttribute("aria-label", "Depth map: " + m.label);
@@ -312,10 +315,9 @@
       });
       g.addEventListener("mouseenter", function () { highlight(m.key); });
       g.addEventListener("mouseleave", function () { highlight(null); });
-      var cv = { pass: "✓ yes", fail: "✗ no", inconclusive: "? not settled", at_floor: "at its precision" }[m.conv.verdict] || "–";
-      rows += '<tr data-key="' + esc(m.key) + '"><td><span class="sw" style="background:' + esc(m.color) + '"></span> ' + esc(m.label) + "</td><td>" + (m.verdict === "pass" ? '<span class="badge sm pass">✓ Passes</span>' : '<span class="badge sm fail">✗ Fails</span>') +
-        '</td><td class="num">' + fmt(m.conv.order) + "</td><td>" + (m.conv.ci ? fmt(m.conv.ci[0]) + " to " + fmt(m.conv.ci[1]) : "–") + "</td><td>" + cv +
-        '</td><td class="num">' + (m.worst_margin === null || m.worst_margin === undefined ? "–" : (m.worst_margin < 0.01 ? "under 1 % of limit" : m.worst_margin < 1 ? Math.round(m.worst_margin * 100) + " % of limit" : fmt(m.worst_margin) + "× limit")) + "</td></tr>";
+      var cv = { pass: "as designed", fail: "slower", inconclusive: "not settled", at_floor: "at its precision" }[m.conv.verdict] || "–";
+      rows += '<tr data-key="' + esc(m.key) + '"><td><span class="sw" style="background:' + esc(m.color) + '"></span> ' + esc(m.label) + "</td><td class=\"num\">" + (m.score ? '<span class="score sm ' + m.score.k + '">' + esc(m.score.l) + "</span>" : "–") +
+        '</td><td class="num">' + fmt(m.conv.order) + "</td><td>" + (m.conv.ci ? fmt(m.conv.ci[0]) + " to " + fmt(m.conv.ci[1]) : "–") + "</td><td>" + cv + "</td></tr>";
     });
     tb.innerHTML = rows;
     tb.querySelectorAll("tr").forEach(function (tr) {

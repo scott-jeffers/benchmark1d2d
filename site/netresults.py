@@ -246,7 +246,7 @@ def write_data(dist: Path, manifests: list[dict], runs: dict, solver: dict, orde
                 continue
             s = solver[k]
             results.append(dict(key=k, role="model", label=f'{s["name"]} · {s["sub"]}' if s.get("sub") else s["name"], color=s["color"],
-                                verdict=verdict(by[k]), t=rec["t"], nodes=rec["nodes"], links=rec["links"]))
+                                score=verdict(by[k]), t=rec["t"], nodes=rec["nodes"], links=rec["links"]))
         zips = [dict(key=k, label=(f'{solver[k]["name"]} · {solver[k]["sub"]}' if solver[k].get("sub") else solver[k]["name"]), url=f"data/inputs/{sid}/{k}.zip")
                 for k in order(set(by)) if (SITE / "fixtures" / "inputs" / sid / f"{k}.zip").is_file()]
         st = story(m)

@@ -31,6 +31,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import difference  # noqa: E402  (what each check is a percentage of)
 
 SUPPORTED = {"L1", "L2", "Linf", "global_mass_error", "front_position_error", "volume_front_error"}
 SUPPORTED_STATES = {"expected_state_error", "continuity_error"}
@@ -65,7 +66,7 @@ def _elements_meta(m: dict, out: Path, names: dict, check_label) -> dict | None:
             "elements": [[str(t), str(e)] for t, e in zip(ref.get("element_type") or [""] * len(ref["element_id"]), ref["element_id"])],
             "ref": vals,
             "criteria": [{"id": c["id"], "label": check_label(c), "metric": c["metric"], "variable": c.get("variable", "h"),
-                          "threshold": c["threshold"], "gating": bool(c.get("gating", True)), "supported": c["metric"] in ("L1", "L2", "Linf")}
+                          "threshold": c["threshold"], "scale": difference.scale_for(m["test_id"], c["id"]), "gating": bool(c.get("gating", True)), "supported": c["metric"] in ("L1", "L2", "Linf")}
                          for c in crit]}
     (out / f"{sid}.json").write_text(json.dumps(meta, separators=(",", ":")), encoding="utf-8")
     (out / f"{sid}_template.csv").write_text(kit_files(m)["RESULTS_TEMPLATE.csv"], encoding="utf-8")
@@ -79,7 +80,7 @@ def _states_meta(m: dict, out: Path, names: dict, check_label) -> dict:
     meta = {"sid": sid, "mode": "states", "name": names.get(sid, m.get("title", sid)), "t_end": float(m["simulation"]["t_end"]),
             "states": m["reference"]["expected_states"], "probes": m["simulation"].get("probes") or [],
             "criteria": [{"id": c["id"], "label": check_label(c), "metric": c["metric"], "variable": c.get("variable", "h"),
-                          "against": c.get("against"), "threshold": c["threshold"], "gating": bool(c.get("gating", True)),
+                          "against": c.get("against"), "threshold": c["threshold"], "scale": difference.scale_for(m["test_id"], c["id"]), "gating": bool(c.get("gating", True)),
                           "supported": c["metric"] in SUPPORTED_STATES} for c in m["scoring"]["criteria"]]}
     (out / f"{sid}.json").write_text(json.dumps(meta, separators=(",", ":")), encoding="utf-8")
     (out / f"{sid}_template.csv").write_text(kit_files(m)["RESULTS_TEMPLATE.csv"], encoding="utf-8")
@@ -180,7 +181,7 @@ def build(manifests: list[dict], result_dirs: list[Path], out: Path, names: dict
             vfront = {"fraction": frac, "x0": x0, "exact": volume_front_position(
                 t_end, frac, h0=float(params.get("h0", 1.0)), x0=x0, g=float(params.get("g", 9.81)))}
         meta = {"sid": sid, "mode": "grid", "name": names.get(sid, m.get("title", sid)), "t_end": t_end, "is2d": is2d, "levels": meta_levels,
-                "criteria": [{"id": c["id"], "label": check_label(c), "metric": c["metric"], "variable": c.get("variable", "h"), "threshold": c["threshold"],
+                "criteria": [{"id": c["id"], "label": check_label(c), "metric": c["metric"], "variable": c.get("variable", "h"), "threshold": c["threshold"], "scale": difference.scale_for(m["test_id"], c["id"]),
                               "gating": bool(c.get("gating", True)), "supported": c["metric"] in SUPPORTED} for c in crit],
                 "conv": conv, "front": front, "vfront": vfront}
         (out / f"{sid}.json").write_text(json.dumps(meta, separators=(",", ":")), encoding="utf-8")

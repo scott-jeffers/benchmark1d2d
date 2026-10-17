@@ -3,6 +3,7 @@
 (function () {
   "use strict";
   var IDX = JSON.parse(document.getElementById("cv-index").textContent);
+  function scoreChip(sc) { return sc ? '<span class="vw-chip-v score ' + sc.k + '">' + esc(sc.l) + '</span>' : ''; }
   function $(id) { return document.getElementById(id); }
   var sel = $("cv-test"), modelsBox = $("cv-models"), link = $("cv-link"), story = $("cv-story");
   var map = $("cv-map"), prof = $("cv-prof"), qSvg = $("cv-q"), lvSvg = $("cv-lv"), volSvg = $("cv-vol"), bal = $("cv-bal"), leg = $("cv-leg"), read = $("cv-read");
@@ -342,7 +343,7 @@
     try { history.replaceState(null, "", "#" + sid); } catch (e) { /* file:// */ }
     modelsBox.innerHTML = t.models.map(function (m) {
       return '<button type="button" class="vw-chip" data-key="' + esc(m.key) + '" aria-pressed="false"><span class="sw" style="background:' + esc(m.color) + '"></span>' + esc(m.label) +
-        (m.verdict ? '<span class="vw-chip-v ' + (m.verdict === "pass" ? "pass" : "fail") + '">' + (m.verdict === "pass" ? "✓ passes" : "✗ fails") + "</span>" : "") + "</button>";
+        scoreChip(m.score) + "</button>";
     }).join("");
     modelsBox.querySelectorAll("button").forEach(function (b) { b.addEventListener("click", function () { loadModel(t.models.filter(function (m) { return m.key === b.getAttribute("data-key"); })[0]); }); });
     if (t.models.length) loadModel(t.models[0]);

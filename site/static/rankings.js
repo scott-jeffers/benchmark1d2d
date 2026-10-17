@@ -9,18 +9,17 @@
   document.querySelectorAll(".rk-kinds input").forEach(function (c) { kinds[c.value] = c.checked; });
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
-  function short(s) {
+  function num(s) { return s < 1 ? String(Number(s.toPrecision(2))) : s < 10 ? s.toFixed(1) : s < 1e4 ? String(Math.round(s)) : s.toExponential(0).replace("e+", "e"); }
+  function short(s) {  // percent difference, as site/ranking.py
     if (s === null || s === undefined) return "–";
     if (!isFinite(s) || s >= 1e12) return "∞";
-    if (s < 0.01) return "<1 %";
-    if (s < 1) return Math.round(s * 100) + " %";
-    if (s < 10) return s.toFixed(1) + "×";
-    if (s < 1e4) return Math.round(s) + "×";
-    return s.toExponential(0).replace("e+", "e") + "×";
+    if (s < 0.01) return "<0.01 %";
+    return num(s) + " %";
   }
   function klass(s) {
     if (s === null || s === undefined) return "sn";
-    return s < 0.1 ? "s0" : s < 0.5 ? "s1" : s < 1 ? "s2" : s < 2 ? "s3" : s < 10 ? "s4" : "s5";
+    for (var i = 0; i < R.bands.length; i++) if (s < R.bands[i][0]) return R.bands[i][1];
+    return "s5";
   }
   function time(s) {
     if (s === null || s === undefined) return "–";
@@ -132,11 +131,10 @@
     var y0 = Math.floor(Math.min(Math.min.apply(null, ys), -1) - 0.1), y1 = Math.ceil(Math.max(Math.max.apply(null, ys), 0.3) + 0.1);
     function X(v) { return L + (v - x0) / (x1 - x0) * (W - L - Rr); }
     function Y(v) { return T + (y1 - v) / (y1 - y0) * (H - T - B); }
-    var svg = '<svg viewBox="0 0 ' + W + " " + H + '" class="rk-scatter" role="img" aria-label="Allowance used against run time">';
+    var svg = '<svg viewBox="0 0 ' + W + " " + H + '" class="rk-scatter" role="img" aria-label="Percent difference against run time">';
     for (var d = y0; d <= y1; d++) svg += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + Y(d) + '" y2="' + Y(d) + '" class="g"/><text x="' + (L - 6) + '" y="' + (Y(d) + 4) + '" text-anchor="end">' + short(Math.pow(10, d)) + "</text>";
     for (var e = x0; e <= x1; e++) svg += '<line y1="' + T + '" y2="' + (H - B) + '" x1="' + X(e) + '" x2="' + X(e) + '" class="g"/><text x="' + X(e) + '" y="' + (H - B + 16) + '" text-anchor="middle">' + time(Math.pow(10, e)) + "</text>";
-    svg += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + Y(0) + '" y2="' + Y(0) + '" class="lim"/><text x="' + (W - Rr) + '" y="' + (Y(0) - 5) + '" text-anchor="end" class="lim-t">the allowance</text>';
-    svg += '<text x="' + ((L + W - Rr) / 2) + '" y="' + (H - 6) + '" text-anchor="middle">wall time, finest grid (log)</text><text x="14" y="' + ((T + H - B) / 2) + '" text-anchor="middle" transform="rotate(-90 14 ' + ((T + H - B) / 2) + ')">allowance used (log)</text>';
+    svg += '<text x="' + ((L + W - Rr) / 2) + '" y="' + (H - 6) + '" text-anchor="middle">wall time, finest grid (log)</text><text x="14" y="' + ((T + H - B) / 2) + '" text-anchor="middle" transform="rotate(-90 14 ' + ((T + H - B) / 2) + ')">percent difference (log)</text>';
     pts.forEach(function (p, i) {
       var m = D.models[p.key], cx = X(xs[i]), cy = Y(ys[i]);
       svg += '<g><circle cx="' + cx + '" cy="' + cy + '" r="6" fill="' + esc(m.color) + '" stroke="var(--sheet)" stroke-width="1.5"><title>' + esc(name(p.key) + ": " + short(p.score) + " in " + time(p.time) + (p.machine ? " on " + p.machine : "")) + "</title></circle>" +
@@ -146,7 +144,7 @@
   }
 
   function legend() {
-    $("rk-legend").innerHTML = [["s0", "under 10 %"], ["s1", "10–50 %"], ["s2", "50–100 %"], ["s3", "1–2×"], ["s4", "2–10×"], ["s5", "over 10×"], ["rk-none", "not run"]]
+    $("rk-legend").innerHTML = R.bands.map(function (b) { return [b[1], b[2]]; }).concat([["rk-none", "not run"]])
       .map(function (x) { return '<span><i class="' + x[0] + '"></i>' + x[1] + "</span>"; }).join("");
   }
 

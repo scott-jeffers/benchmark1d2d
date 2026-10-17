@@ -124,6 +124,15 @@
     if (name === "L2") { err.forEach(function (e) { s += e * e; }); return Math.sqrt(s / err.length); }
     err.forEach(function (e) { s += Math.abs(e); }); return s / err.length;
   }
+  // a check's result as a percent difference from the right answer (site/difference.py)
+  function pct(c, v) {
+    if (v === undefined || v === null || !isFinite(v)) return null;
+    if (c.threshold.op === ">=" || c.metric === "NSE") return Math.max(0, 100 * (1 - v));
+    if ((c.threshold.units || "").trim() === "%") return Math.abs(v);
+    return c.scale && c.scale[0] ? 100 * Math.abs(v) / c.scale[0] : null;
+  }
+  function band(s) { if (s === null) return "sn"; var b = [0.1, 1, 3, 10, 30]; for (var i = 0; i < b.length; i++) if (s < b[i]) return "s" + i; return "s5"; }
+  function pctText(s) { return s === null ? "–" : s < 0.01 ? "<0.01 %" : (s < 1 ? Number(s.toPrecision(2)) : s < 10 ? s.toFixed(1) : Math.round(s)) + " %"; }
   function pass(v, thr) {
     var x = +thr.value;
     if (thr.op === "abs<=") return Math.abs(v) <= x;
@@ -137,7 +146,7 @@
     var ref = function (v) { return order.map(function (p) { return lvData.ref[v] ? lvData.ref[v][p[0]] : null; }); };
     var out = [];
     meta.criteria.forEach(function (c) {
-      var r = { label: c.label, threshold: c.threshold, gating: c.gating, supported: c.supported };
+      var r = { label: c.label, threshold: c.threshold, gating: c.gating, supported: c.supported, scale: c.scale, metric: c.metric };
       if (!c.supported) { out.push(r); return; }
       try {
         if (c.metric === "L1" || c.metric === "L2" || c.metric === "Linf") {
@@ -236,25 +245,25 @@
     var h = "";
     var finest = results[results.length - 1];
     var all = finest.checks.filter(function (c) { return c.supported && c.gating; });
-    var acc = all.every(function (c) { return c.ok; });
-    // scoring method 2.1: the result passes when every check is within its limit; how it converges is a separate verdict
-    var v = acc ? "pass" : "fail";
+    // measurements, not verdicts: the result is its largest percent difference over the counted checks
+    var worst = all.reduce(function (a, c) { var p = pct(c, c.value); return p === null ? a : Math.max(a === null ? 0 : a, p); }, null);
     var sub = meta.mode === "grid" || !meta.mode ? "Finest file: grid " + esc(finest.level) + " · " + esc(finest.file) : "File: " + esc(finest.file);
     h += '<div class="card"><div class="head-row" style="margin-bottom:12px"><div><h2 style="margin:0">' + esc(meta.name) + '</h2><div class="muted">' + sub + "</div></div>" +
-      ({ pass: '<span class="badge pass">✓ Passes these checks</span>', fail: '<span class="badge fail">✗ Fails at least one check</span>',
-         inconclusive: '<span class="badge unsure">? Inconclusive</span>' })[v] + "</div>";
+      '<span class="score ' + band(worst) + '">' + esc(pctText(worst)) + " off</span></div>";
     h += '<div class="checks-grid">';
     finest.checks.forEach(function (c) {
       if (!c.supported) { h += '<div class="check"><div class="k">' + esc(c.label) + '</div><div class="v muted" style="font-size:15px">Checked by the command-line scorer</div></div>'; return; }
-      var lim = (c.threshold.op === ">=" ? "needed: at least " : "allowed: ") + units(+c.threshold.value, c.threshold.units);
+      var p = pct(c, c.value), already = (c.threshold.units || "").trim() === "%" && c.threshold.op !== ">=";
+      var lim = c.error ? "" : already ? "" : p === null ? "" : pctText(p) + (c.threshold.op === ">=" ? " of the measured variance, missed" : c.scale ? " of " + esc(c.scale[2]) : "");
+      if (!c.gating) lim = "reported, not counted" + (lim ? " · " + lim : "");
       var val = c.error ? esc(c.error) : units(Math.abs(c.value), c.threshold.units);
-      h += '<div class="check' + (c.ok ? "" : " bad") + '"><div class="k">' + esc(c.label) + '</div><div class="v">' + (c.ok ? "✓ " : "✗ ") + val + '</div><div class="lim">' + lim + "</div></div>";
+      h += '<div class="check' + (c.gating ? "" : " info") + '"><div class="k">' + esc(c.label) + '</div><div class="v">' + val + '</div><div class="lim">' + lim + "</div></div>";
     });
     if (conv) {
-      var cls = { pass: "", fail: " bad", inconclusive: " unsure" }[conv.v], sym = { pass: "✓ ", fail: "✗ ", inconclusive: "? " }[conv.v];
+      var cls = " info", sym = "";
       var txt = conv.p === null ? "needs 3+ grids" : ("rate " + conv.p.toFixed(2) + (conv.ci ? " (90 % range " + conv.ci[0].toFixed(2) + " to " + conv.ci[1].toFixed(2) + ")" : "")).replace(/-/g, "−");
       h += '<div class="check' + cls + '"><div class="k">Improves with finer grids</div><div class="v">' + sym + txt +
-        '</div><div class="lim">needed: ' + nice(meta.conv.min_observed_order, 2) + " or better across the whole range</div></div>";
+        '</div><div class="lim">reported, not counted · the scheme\'s design order is about ' + nice(meta.conv.min_observed_order, 2) + "</div></div>";
     }
     h += "</div>";
     if (meta.mode === "elements" || meta.mode === "states") {

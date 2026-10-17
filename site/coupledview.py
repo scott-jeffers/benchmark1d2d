@@ -53,7 +53,7 @@ def write_data(dist: Path, manifests: list[dict], runs: dict, solver: dict, verd
         t = index.setdefault(sid, dict(sid=sid, name=st["name"], question=st["question"], models=[]))
         sv = solver.get(key, {})
         t["models"].append(dict(key=key, label=f'{sv.get("name", key)} · {sv.get("sub", "")}'.rstrip(" ·"), color=sv.get("color", "var(--ink)"),
-                                verdict=verdict(card) if card else None, url=f"data/coupled/{sid}/{key}.json"))
+                                score=verdict(card) if card else None, url=f"data/coupled/{sid}/{key}.json"))
     return [index[k] for k in sorted(index)]
 
 

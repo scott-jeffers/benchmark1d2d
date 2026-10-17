@@ -588,6 +588,8 @@ def fig_convergence(card: dict) -> str:
 
 
 def criteria_table(m: dict, card: dict | None) -> str:
+    import difference
+    import ranking
     res = {r["id"]: r for r in (card or {}).get("criteria_results", [])}
     rows = []
     for c in m["scoring"]["criteria"]:
@@ -597,11 +599,13 @@ def criteria_table(m: dict, card: dict | None) -> str:
             got = '<td class="num muted">–</td><td></td>'
         else:
             obs = r.get("observed")
-            got = f'<td class="num">{fmt(obs) if obs is not None else "n/a"} {esc(thr.get("units", ""))}</td><td>{verdict({"passed": r["passed"]})}</td>'
+            pc = difference.percent(m["test_id"], {**r, "threshold": thr, "metric": c["metric"]})
+            got = f'<td class="num">{fmt(obs) if obs is not None else "n/a"} {esc(thr.get("units", ""))}</td><td class="num">{esc(ranking.short(pc)) if pc is not None else "–"}</td>'
         rows.append(
             f"<tr><td><b>{esc(c['id'])}</b><div class=muted>{esc(c['metric'])} of {esc(c.get('variable', ''))}"
-            f"{' · gating' if c.get('gating') else ' · informational'}</div></td>"
-            f'<td class="num">{esc(thr["op"].replace("abs<=", "|x| ≤").replace("<=", "≤").replace(">=", "≥"))} {fmt(thr["value"])} {esc(thr.get("units", ""))}</td>'
+            f"{' · counted' if c.get('gating') else ' · reported, not counted'}</div></td>"
+            f'<td>{esc(difference.of_what(m["test_id"], {"id": c["id"], "threshold": thr, "metric": c["metric"]}) or "already a percentage")}'
+            f'<div class=muted>former limit: {esc(thr["op"].replace("abs<=", "|x| ≤").replace("<=", "≤").replace(">=", "≥"))} {fmt(thr["value"])} {esc(thr.get("units", ""))}</div></td>'
             f"{got}<td class=rationale>{esc(c.get('rationale', ''))}</td></tr>"
         )
     conv = m["scoring"].get("convergence")
@@ -613,18 +617,18 @@ def criteria_table(m: dict, card: dict | None) -> str:
         cr = (card or {}).get("convergence_result") or {}
         if cr:
             o = cr.get("observed_order")
-            got = f'<td class="num">{fmt(o) if o is not None else "n/a"}</td><td>{verdict({"passed": cr.get("passed")})}</td>'
+            got = f'<td class="num">{fmt(o) if o is not None else "n/a"}</td><td class="num muted">–</td>'
         else:
             got = '<td class="num muted">–</td><td></td>'
         note = esc(cr.get("note", "")) if cr else ""
         rows.append(
-            f"<tr><td><b>convergence</b><div class=muted>observed order of {esc(conv['norm'])} error in {esc(conv['variable'])} · gating</div></td>"
-            f'<td class="num">≥ {fmt(conv["min_observed_order"])} <span class=muted>(design {fmt(conv["expected_order"])})</span></td>{got}'
+            f"<tr><td><b>convergence</b><div class=muted>observed order of {esc(conv['norm'])} error in {esc(conv['variable'])} · reported, not counted</div></td>"
+            f'<td>the design order, {fmt(conv["expected_order"])}</td>{got}'
             f"<td class=rationale>Measured from the error on every refinement level, as in ASME V&V 20. {note}</td></tr>"
         )
     return (
-        '<div class="table-scroll"><table class="data criteria"><thead><tr><th>Criterion</th><th class=num>Pass when</th>'
-        "<th class=num>Latest</th><th>Result</th><th>Why this tolerance</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>"
+        '<div class="table-scroll"><table class="data criteria"><thead><tr><th>Check</th><th>Difference measured as a percentage of</th>'
+        "<th class=num>Latest</th><th class=num>Difference</th><th>Why this check (written with its former limit)</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>"
     )
 
 
@@ -1206,7 +1210,7 @@ def main() -> int:
         pages.INPUT_ZIPS[(zp.parent.name, zp.stem)] = (rel.as_posix(), zp.stat().st_size)
     import netresults
 
-    netindex = netresults.write_data(DIST, manifests, runs, pages.SOLVER, pages.SOLVERS_ORDER, pages.verdict, pages.story)
+    netindex = netresults.write_data(DIST, manifests, runs, pages.SOLVER, pages.SOLVERS_ORDER, pages.score_tag, pages.story)
     pages.NETVIEW = {t["sid"]: t for t in netindex}
     for tid, by in runs.items():  # every run's signed card, by solver
         for k, c in by.items():
@@ -1292,8 +1296,9 @@ def main() -> int:
         by = runs.get(m["test_id"], {})
         st = pages.story(m)
         try:
+            best = min((s for s in (pages.ranking.score(c) for c in by.values()) if s is not None), default=None)
             og.og_image(DIST / "assets" / "og" / f"{sid}.png", sid, pages.GROUPS.get(st["group"], ""), st["name"], st["question"],
-                        sum(1 for c in by.values() if (pages.ranking.score(c) or 9) <= 1.0), len(by))
+                        0, len(by), summary=f"{len(by)} model{'s' if len(by) != 1 else ''} scored · closest: {pages.ranking.label(best)}")
         except Exception as exc:  # noqa: BLE001 - a preview image must not break the build
             print(f"WARN preview image for {sid}: {exc}", file=sys.stderr)
         for k, c in by.items():
@@ -1301,7 +1306,7 @@ def main() -> int:
             bp.parent.mkdir(parents=True, exist_ok=True)
             sc = pages.ranking.score(c)
             rk = next((r for r in pages.ranking.rank_test(by) if r["key"] == k), {})
-            right = (f"#{rk['rank']} of {len(by)} · " if rk.get("rank") else "") + pages.ranking.short(sc) + " of allowance"
+            right = (f"#{rk['rank']} of {len(by)} · " if rk.get("rank") else "") + pages.ranking.label(sc)
             bp.write_text(og.badge_svg(f"OpenHydro Bench {sid}", right, pages.ranking.klass(sc)), encoding="utf-8")
     try:
         og.og_image(DIST / "assets" / "og" / "home.png", "A1F-010", "Open benchmarks for water models",
@@ -1330,7 +1335,7 @@ def main() -> int:
                 if f:
                     fields_by.setdefault(sid_, {})["demo2d"] = f
                     break
-    vindex = viewer.write_data(DIST, manifests, runs, fields_by, pages.SOLVER, pages.SOLVERS_ORDER, pages.verdict, pages.story)
+    vindex = viewer.write_data(DIST, manifests, runs, fields_by, pages.SOLVER, pages.SOLVERS_ORDER, pages.score_tag, pages.story)
     out_pages["viewer.html"] = viewer.viewer_page(pages.layout, vindex)
     out_pages["network.html"] = netresults.page(pages.layout, netindex)
     import rankpage
@@ -1338,7 +1343,7 @@ def main() -> int:
     out_pages["rankings.html"] = rankpage.page(pages.layout, rankpage.data(manifests, runs, pages.SOLVER, pages.story, pages.sid_of, pages.machine_info.summary))
     import coupledview
 
-    cindex = coupledview.write_data(DIST, manifests, runs, pages.SOLVER, pages.verdict, pages.story)
+    cindex = coupledview.write_data(DIST, manifests, runs, pages.SOLVER, pages.score_tag, pages.story)
     pages.COUPLEDVIEW = {t["sid"] for t in cindex}
     out_pages["coupled.html"] = coupledview.page(pages.layout, cindex)
     out_pages["scoring-review.html"] = pages.review.review_page(pages.layout, manifests, runs, pages.SOLVER, pages.SOLVERS_ORDER)

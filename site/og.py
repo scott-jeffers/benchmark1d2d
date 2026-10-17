@@ -71,7 +71,7 @@ def _wrap(text: str, font, width: int) -> list[str]:
 
 
 def og_image(path: Path, sid: str, kicker: str, title: str, question: str, n_ok: int, n_run: int, site: str = "OpenHydro Bench",
-             footer: str | None = None, n_unsure: int = 0) -> None:
+             footer: str | None = None, n_unsure: int = 0, summary: str | None = None) -> None:
     from PIL import Image, ImageDraw
 
     im = Image.new("RGB", (W, H), BG)
@@ -102,6 +102,8 @@ def og_image(path: Path, sid: str, kicker: str, title: str, question: str, n_ok:
     by = H - 92
     if footer:
         d.text((x, by + 10), footer, font=_font("bold", 26), fill=INK)
+    elif summary:  # measurements, not verdicts: no pass/fail bar
+        d.text((x, by + 10), summary, font=_font("bold", 26), fill=INK)
     elif n_run:
         bw = text_w - 20
         d.rounded_rectangle([x, by, x + bw, by + 14], radius=7, fill=RULE)
@@ -127,7 +129,7 @@ BADGE_COLOURS = {"s0": "#1A7F4B", "s1": "#3E8E5B", "s2": "#8A8420", "s3": "#A963
 
 
 def badge_svg(label: str, right: str, klass: str = "sn") -> str:
-    """A shields-style badge: label on the left, the result's score (allowance used, rank) on the right."""
+    """A shields-style badge: label on the left, the result's score (percent difference, rank) on the right."""
     lw, rw = 7 * len(label) + 14, 7 * len(right) + 14
     col = BADGE_COLOURS.get(klass, BADGE_COLOURS["sn"])
     w = lw + rw

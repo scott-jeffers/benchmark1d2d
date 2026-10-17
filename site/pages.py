@@ -111,16 +111,17 @@ NOT_YET_DRAINAGE = ["InfoWorks ICM", "MIKE+ (MOUSE)", "PCSWMM", "XPSWMM", "Flood
 
 
 import ranking  # noqa: E402  (scores and rankings: site/ranking.py)
+import difference  # noqa: E402  (percent differences: site/difference.py)
 import machine_info  # noqa: E402
 
 
 def score_pill(card: dict | None, rank: int | None = None, tie: bool = False) -> str:
-    """A result's score: the share of the test's error allowance it uses (lower is better), with its rank."""
+    """A result's score: its percent difference from the right answer (lower is better), with its rank."""
     if card is None:
         return '<span class="score sn">Not run</span>'
     sc = ranking.score(card)
     rk = f'<b class="rk">#{rank}{"=" if tie else ""}</b> ' if rank else ""
-    return (f'<span class="score {ranking.klass(sc)}" title="Largest error as a share of its limit, over the accuracy checks: lower is better">'
+    return (f'<span class="score {ranking.klass(sc)}" title="Largest percent difference from the right answer over the test’s checks: lower is better">'
             f'{rk}{esc(ranking.label(sc))}</span>')
 
 
@@ -201,7 +202,7 @@ def register_submitted(solver: dict) -> str:
         entry = dict(key=key, name=solver["name"], sub=f"submitted by {solver['submitted_by']}", kind="submitted",
                      color=SUBMITTED_COLORS[n % len(SUBMITTED_COLORS)],
                      what=(f"{solver['name']}, run by {solver['submitted_by']} and submitted as results files; "
-                           "scored by the suite with the same scorer and limits as every other run"))
+                           "scored by the suite with the same scorer as every other run"))
         SOLVERS.append(entry)
         SOLVER[key] = entry
     return key
@@ -360,9 +361,30 @@ def check_limit(c: dict) -> str:
 _VERDICT_LEAD = re.compile(r"^(Passes|Fails)(?: overall)?(?:[:;,.]\s*|\s+(?=\())")
 
 
+# pass/fail and allowance wording inside a finding, rewritten as measurements (the notes predate the switch)
+_VERDICT_WORDS = [
+    (re.compile(r";\s*[^;()]*\ballowed\)"), ")"),          # "(0.56 %; 0.5 % allowed)" -> "(0.56 %)"
+    (re.compile(r"\s*\([^()]*\ballowed\)"), ""),             # "(9.8 m allowed)"
+    (re.compile(r",?\s*a hundredth of the limit"), ""),
+    (re.compile(r",?\s*(?:also )?(?:inside|over|within) the limit"), ""),
+    (re.compile(r"\s*It passes\."), ""),
+    (re.compile(r"It passes; the"), "The"),
+    (re.compile(r"\s*\(passes\)"), ""),
+    (re.compile(r":\s*passes, not verified"), ""),
+    (re.compile(r",? so it passes but"), ", but"),
+    (re.compile(r" and fails;"), ";"),
+    (re.compile(r"where dynamic wave fails:"), "unlike dynamic wave:"),
+    (re.compile(r"The balance passes \("), "The balance closes ("),
+    (re.compile(r"\bpasses all four bump tests"), "stays close on all four bump tests"),
+    (re.compile(r"\bwhich every production code failed by"), "which every production code missed by"),
+]
+
+
 def plain_note(text: str) -> str:
-    """A finding without its pass/fail opener ('Passes: the front is…' -> 'The front is…')."""
+    """A finding as a measurement: no pass/fail opener ('Passes: the front is…' -> 'The front is…'), no allowances."""
     t = _VERDICT_LEAD.sub("", text or "", count=1)
+    for pat, rep in _VERDICT_WORDS:
+        t = pat.sub(rep, t)
     if t.startswith("(") and ")" in t:
         t = t[1:t.index(")")] + t[t.index(")") + 1:]
     return t[:1].upper() + t[1:] if t else t
@@ -376,28 +398,31 @@ def _margin_span(ck: dict) -> str:
 
 
 def checks_for(m: dict, card: dict) -> list[dict]:
-    """Every check of one run in plain words: label, value, limit, ok."""
+    """Every check of one run in plain words: label, measured value, and that value as a percent difference."""
     defs = {c["id"]: c for c in m["scoring"]["criteria"]}
+    tid = card.get("test_id", m["test_id"])
     out = []
     for r in card.get("criteria_results", []):
         d = defs.get(r["id"], r)
         d = {**d, "threshold": r.get("threshold", d.get("threshold", {}))}
-        mg = method_v2.margin(r.get("observed"), d.get("threshold") or {})
-        ok = bool(r.get("passed"))
         gating = bool(r.get("gating", True))
+        pct = difference.percent(tid, {**r, "threshold": d["threshold"], "metric": d.get("metric", r.get("metric"))})
+        of = difference.of_what(tid, {**r, "threshold": d["threshold"], "metric": d.get("metric", r.get("metric"))})
+        already_pct = (d["threshold"].get("units") or "").strip() == "%" and d["threshold"].get("op") != ">="
+        diff = "" if already_pct else (f"{ranking.short(pct)} {of}".strip() if pct is not None else "")
         out.append(dict(label=check_label(d), value=check_value(d, r.get("observed")),
-                        limit=check_limit(d) if gating else f"reported, not judged · {check_limit(d).replace('allowed', 'guide')}",
-                        ok=ok, state="ok" if ok else ("no" if gating else "info"), gating=gating, margin=mg))
+                        limit=diff if gating else ("reported, not counted" + (f" · {diff}" if diff else "")),
+                        pct=pct, state="m" if gating else "info", gating=gating))
     conv = card.get("convergence_result") or {}
     if conv.get("errors"):
         cv = (card.get("_judged") or method_v2.assess(card))["converges"]
-        p, ci, v = cv.get("order"), cv.get("ci"), cv["verdict"]
+        p, ci = cv.get("order"), cv.get("ci")
         value = (f"rate {p:.2f}" + (f" (90 % range {ci[0]:.2f} to {ci[1]:.2f})" if ci else "")).replace("-", "−") if p is not None else "no rate"
-        need = f"needed: {nice(cv.get('min'), 2)} or better across the whole range"
-        if v == "at_floor":
-            need = "at the solver's own precision: reported, not judged"
-        state = {"pass": "ok", "at_floor": "ok", "fail": "no"}.get(v, "unsure")
-        out.append(dict(label="Improves with finer grids", value=value, limit=need, ok=state == "ok", state=state, gating=True))
+        expect = (m.get("scoring") or {}).get("convergence", {}).get("expected_order")
+        note = f"the scheme's design order is {nice(expect, 1)}" if expect else "how fast the error shrinks"
+        if cv.get("verdict") == "at_floor":
+            note = "already at the solver's own precision"
+        out.append(dict(label="Improves with finer grids", value=value, limit=f"reported, not counted · {note}", pct=None, state="info", gating=False))
     return out
 
 
@@ -542,7 +567,7 @@ def layout(title: str, body: str, active: str, depth: int = 0, description: str 
 VERDICT_BADGE = {"pass": '<span class="badge pass">✓ Passes</span>', "fail": '<span class="badge fail">✗ Fails</span>',
                  "inconclusive": '<span class="badge unsure">? Inconclusive</span>'}
 VERDICT_WORD = {"pass": "passes", "fail": "fails", "inconclusive": "inconclusive"}
-SYM = {"ok": "✓", "no": "✗", "unsure": "?", "info": "·"}
+SYM = {"m": "•", "info": "·", "ok": "•", "no": "•", "unsure": "•"}  # measurements, not verdicts: no ✓ or ✗
 
 
 def two_verdicts(card: dict) -> str:
@@ -564,6 +589,14 @@ def two_verdicts(card: dict) -> str:
     return f'<p class="two-verdicts small"><span>Rate the error shrinks on finer grids: {txt}</span></p>'
 
 
+def score_tag(card: dict | None) -> dict | None:
+    """A result's percent difference for the viewers: label, colour band and value."""
+    if not card:
+        return None
+    sc = ranking.score(card)
+    return {"l": ranking.short(sc), "k": ranking.klass(sc), "s": sc if sc is not None and sc < 1e300 else None}
+
+
 def verdict(card: dict | None) -> str:
     """pass, fail or inconclusive (scoring method 2; docs/methodology/scoring_v2.md)."""
     if not card:
@@ -583,7 +616,7 @@ KIND_WORDS = {"production": "Production software, run by the suite as a black bo
               "research": "Research code, run with the settings of its own examples.",
               "suite": "A worked example that ships with the suite.",
               "compat": "Scored for compatibility with the current release, not for physics.",
-              "submitted": "Run by others and submitted as results files; scored by the suite with the same limits as every other run."}
+              "submitted": "Run by others and submitted as results files; scored by the suite with the same scorer as every other run."}
 
 
 def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
@@ -592,7 +625,7 @@ def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
     mine = [(m, runs[m["test_id"]][key]) for m in manifests if key in (runs.get(m["test_id"]) or {})]
     ov = {r["key"]: r for r in ranking.overall(runs)}.get(key, {})
     standing = (f'Ranked <b>#{ov["rank"]}</b> overall: wins <b>{ov["win_rate"] * 100:.0f} %</b> of head-to-head comparisons on the tests it shares with other models; '
-                f'median allowance used <b>{esc(ranking.short(ov["median_score"]))}</b> over <b>{ov["tests"]}</b> tests.' if ov.get("rank") else
+                f'median difference <b>{esc(ranking.short(ov["median_score"]))}</b> over <b>{ov["tests"]}</b> tests.' if ov.get("rank") else
                 f'Ran <b>{len(mine)}</b> test{"s" if len(mine) != 1 else ""} (fewer than {ranking.MIN_TESTS}, so not ranked overall).')
     versions = sorted({(c.get("solver") or {}).get("name", "") for _, c in mine})
     rows = []
@@ -614,7 +647,7 @@ def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
   {doc_link}
   <p><a href="../compare.html?a={esc(key)}">Compare {esc(s['name'])} with another model →</a></p>
 </section>
-<section class="section"><div class="table-scroll"><table class="data"><thead><tr><th>Test</th><th>Allowance used, rank</th><th>Checks</th></tr></thead>
+<section class="section"><div class="table-scroll"><table class="data"><thead><tr><th>Test</th><th>Difference, rank</th><th>Checks</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table></div></section>
 </div>"""
     return layout(s["name"] + " " + s["sub"], body, "solvers.html", depth=1, description=f"Every benchmark result for {s['name']} ({s['sub']}).")
@@ -637,7 +670,7 @@ def compare_page(manifests: list[dict], runs: dict) -> str:
             for k, c in runs[m["test_id"]].items():
                 sc = ranking.score(c)
                 res[k] = dict(s=sc if sc is None or sc < 1e300 else 1e300, l=ranking.label(sc), k=ranking.klass(sc),
-                              c=[[ck["label"], ck["value"], ck["state"]] for ck in checks_for(m, c) if ck.get("gating", True)],
+                              c=[[ck["label"], ck["value"], ck["state"], ck["limit"]] for ck in checks_for(m, c) if ck.get("gating", True)],
                               n=NOTES.get((sid, k), ""))
             tests.append(dict(sid=sid, name=story(m)["name"], group=gname, r=res))
     data = dict(models=models, tests=tests)
@@ -645,7 +678,7 @@ def compare_page(manifests: list[dict], runs: dict) -> str:
     body = f"""<div class="wrap">
 <section class="page-head">
   <h1>Compare two models</h1>
-  <p class="lede">Pick two models to see, test by test, which gets closer to the right answer. Each result is the share of the test's error allowance it uses; within 10 % of each other counts as a tie.</p>
+  <p class="lede">Pick two models to see, test by test, which gets closer to the right answer. Each result is its percent difference from the right answer; within 10 % of each other counts as a tie.</p>
 </section>
 <div class="cmp-pick">
   <label>Model A<select id="cmp-a">{opts}</select></label>
@@ -666,7 +699,7 @@ var q=new URLSearchParams(location.search);A.value=M[q.get('a')]?q.get('a'):(M['
 B.value=M[q.get('b')]?q.get('b'):(M['openswmm-fv']?'openswmm-fv':D.models[1].key);
 function tie(x,y){if(x==null||y==null)return false;if(x<0.01&&y<0.01)return true;var h=Math.max(x,y);return h===0||Math.abs(x-y)<=0.1*h;}
 function cell(r,m){var dm=' data-m="'+esc(m)+'"';if(!r)return '<td class="muted"'+dm+'>not run</td>';var h='<td'+dm+'><span class="score '+r.k+'">'+esc(r.l)+'</span><ul class="cmp-checks">';
-r.c.forEach(function(c){h+='<li class="'+c[2]+'">'+({ok:'✓ ',no:'✗ ',unsure:'? '})[c[2]]+esc(c[0])+': '+esc(c[1])+'</li>';});return h+'</ul></td>';}
+r.c.forEach(function(c){h+='<li class="'+c[2]+'">'+esc(c[0])+': '+esc(c[1])+(c[3]?' <span class="muted">('+esc(c[3])+')</span>':'')+'</li>';});return h+'</ul></td>';}
 function draw(){var a=A.value,b=B.value,both=[],onlyA=0,onlyB=0,s={bp:0,ap:0,bpo:0,bf:0};
 history.replaceState(null,'','?a='+encodeURIComponent(a)+'&b='+encodeURIComponent(b));
 document.getElementById('cmp-ha').textContent=M[a].full;document.getElementById('cmp-hb').textContent=M[b].full;
@@ -843,9 +876,9 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
   <div class="grid how">
     <div class="card"><div class="label">01 — Same inputs</div><p>Every model gets identical terrain, flows and settings, each file fixed by a fingerprint so nobody can quietly change it.</p></div>
     <div class="card"><div class="label">02 — A known right answer</div><p>An exact mathematical solution, laboratory measurements, or — for compatibility — the output of a pinned SWMM or EPANET release.</p></div>
-    <div class="card"><div class="label">03 — A result anyone can check</div><p>Pass or fail, with the number that decided it and the limit it was held to. Every result is re-run automatically and signed.</p></div>
+    <div class="card"><div class="label">03 — A result anyone can check</div><p>Every result as a percent difference from the right answer, with the measurement behind it. Every result is re-run automatically and signed.</p></div>
   </div>
-  <p class="muted" style="margin-top:24px">Want the full method — convergence rates, how limits are chosen, the audit log? <a href="how-it-works.html">Read how it works</a>.</p>
+  <p class="muted" style="margin-top:24px">Want the full method — convergence rates, what each difference is measured against, the audit log? <a href="how-it-works.html">Read how it works</a>.</p>
 </section>
 </div>"""
     script = """<script>
@@ -866,8 +899,6 @@ def test_card(m: dict, runs: dict, up: str = "", status_text: str | None = None)
     st = story(m)
     by = runs.get(m["test_id"]) or {}
     scored = [k for k in by if SOLVER.get(k, {}).get("kind") != "compat" or m["track"] == "B"]
-    n_ok = sum(1 for k in scored if verdict(by[k]) == "pass")
-    n_un = sum(1 for k in scored if verdict(by[k]) == "inconclusive")
     if status_text:
         score = f'<div class="tc-score">{esc(status_text)}</div>'
     elif scored:
@@ -1007,7 +1038,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
             f'{sum(1 for m in shown if k in (runs.get(m["test_id"]) or {}))} tests</li>' for k in subs)
         submitted = f"""<div class="card" style="flex:1 1 340px;min-width:0">
   <h2 style="font-size:22px">Submitted results</h2>
-  <p class="muted">Run by the solver's developer or user and submitted as results files; the suite scores them with the same limits as every other run.</p>
+  <p class="muted">Run by the solver's developer or user and submitted as results files; the suite scores them with the same scorer as every other run.</p>
   <ul class="waitlist">{items}</ul>
   <p style="margin:12px 0 0"><a href="{REPO_URL}/blob/master/docs/submitting.md">Submit yours →</a></p>
 </div>"""
@@ -1021,7 +1052,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
 <div class="wrap">
 <section class="page-head">
   <h1>Tests and results</h1>
-  <p class="lede">Every model runs the same inputs against a known right answer. Each result shows how much of the test's error allowance it uses; lower is better. <a href="rankings.html">See the rankings →</a></p>
+  <p class="lede">Every model runs the same inputs against a known right answer. Each result shows its percent difference from the right answer; lower is better. <a href="rankings.html">See the rankings →</a></p>
 </section>
 <div class="filters" role="group" aria-label="Filter tests">{filters}
   <div class="view-toggle" role="group" aria-label="View"><button type="button" data-view="cards" aria-pressed="true">Cards</button><button type="button" data-view="table" aria-pressed="false">Table</button></div>
@@ -1045,7 +1076,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function render(id){var c=data[id];if(!c)return;var h='<div class="kicker">Selected result</div><div class="title">'+esc(c.test)+'</div><div class="solver">'+esc(c.solver)+'</div>'+
 ('<span class="score '+c.cls+'"><b class="rk">#'+(c.rank||'–')+'</b> '+esc(c.label)+'</span>')+'<ul class="checks">';
-c.checks.forEach(function(k){var sy={ok:'✓',no:'✗',unsure:'?',info:'·'}[k.state],al={ok:'met',no:'not met',unsure:'not settled',info:'reported only'}[k.state];h+='<li><span class="'+k.state+'" aria-label="'+al+'">'+sy+'</span><span><b>'+esc(k.label)+':</b> '+esc(k.value)+' <span class="muted">('+esc(k.limit)+')</span></span></li>';});
+c.checks.forEach(function(k){var sy={m:'•',info:'·'}[k.state]||'•',al={m:'counted',info:'reported only'}[k.state]||'';h+='<li><span class="'+k.state+'" aria-label="'+al+'">'+sy+'</span><span><b>'+esc(k.label)+':</b> '+esc(k.value)+' <span class="muted">('+esc(k.limit)+')</span></span></li>';});
 h+='</ul>'+(c.note?'<p class="small">'+esc(c.note)+'</p>':'')+'<a href="tests/'+esc(c.sid)+'.html#m-'+esc(id.split('|')[1])+'" style="font-weight:600">Open the test →</a>'+
 %LEGEND%;
 panel.innerHTML=h;var rc=panel.getBoundingClientRect();if(rc.top<60||rc.top>innerHeight-80)panel.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.cellbtn').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.cell===id?'true':'false');});}
@@ -1067,16 +1098,15 @@ document.querySelectorAll('[data-view]').forEach(function(b){b.addEventListener(
                   description="How close each flood, river, drainage and network model gets to the right answer on every test.")
 
 
-SCORE_LEGEND = ('<div class="legend-mini score-legend"><span>Share of the error allowance used:</span>'
-                '<span><i class="score s0">&lt;10 %</i></span><span><i class="score s1">10–50 %</i></span><span><i class="score s2">50–100 %</i></span>'
-                '<span><i class="score s3">1–2×</i></span><span><i class="score s4">2–10×</i></span><span><i class="score s5">&gt;10×</i></span>'
-                '<span><b style="color:#A7B4BC">—</b> not run</span></div>')
+SCORE_LEGEND = ('<div class="legend-mini score-legend"><span>Percent difference from the right answer:</span>'
+                + "".join(f'<span><i class="score {k}">{esc(t)}</i></span>' for _, k, t in ranking.BANDS)
+                + '<span><b style="color:#A7B4BC">—</b> not run</span></div>')
 
 
 def _panel_html(c: dict | None) -> str:
     if not c:
         return ""
-    checks = "".join(f'<li><span class="{k["state"]}" aria-label="{ {"ok": "met", "no": "not met", "unsure": "not settled", "info": "reported only"}[k["state"]] }">{SYM[k["state"]]}</span>'
+    checks = "".join(f'<li><span class="{k["state"]}" aria-label="{ {"m": "counted", "info": "reported only"}.get(k["state"], "") }">{SYM[k["state"]]}</span>'
                      f'<span><b>{esc(k["label"])}:</b> {esc(k["value"])} <span class="muted">({esc(k["limit"])})</span></span></li>' for k in c["checks"])
     return (f'<div class="kicker">Selected result</div><div class="title">{esc(c["test"])}</div><div class="solver">{esc(c["solver"])}</div>'
             f'<span class="score {c["cls"]}"><b class="rk">#{c["rank"] or "–"}</b> {esc(c["label"])}</span>'
@@ -1396,8 +1426,8 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     for k in [r["key"] for r in order]:
         c = runs[k]
         s = SOLVER[k]
-        checks = "".join(f'<div class="check{ {"ok": "", "no": " bad", "unsure": " unsure", "info": " info"}[ck["state"]] }"><div class="k">{esc(ck["label"])}</div>'
-                         f'<div class="v">{SYM[ck["state"]]} {esc(ck["value"])}</div><div class="lim">{esc(ck["limit"])}{_margin_span(ck)}</div></div>'
+        checks = "".join(f'<div class="check{ {"m": "", "info": " info"}.get(ck["state"], "") }"><div class="k">{esc(ck["label"])}</div>'
+                         f'<div class="v">{SYM[ck["state"]]} {esc(ck["value"])}</div><div class="lim">{esc(ck["limit"])}</div></div>'
                          for ck in checks_for(m, c))
         note = NOTES.get((sid, k), "")
         name = s["name"] if not k.startswith("lisflood") else f'{s["name"]} {s["sub"].split("·")[-1].strip()}'
@@ -1414,7 +1444,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     levels = (m["simulation"].get("mesh_refinement") or {}).get("levels") or []
     grid_txt = (f"Each model runs the same inputs on {len(levels)} grids, from {nice(max(levels), 3)} m down to {nice(min(levels), 3)} m cells."
                 if len(levels) > 1 else "Each model runs the same inputs.")
-    case_note = CASE_NOTES.get(sid)
+    case_note = plain_note(CASE_NOTES.get(sid, "")) or None
     not_yet = ""
     if (sid.startswith("A1D") or sid.startswith("A12")) and m["status"] != "draft":
         nyl = NOT_YET_DRAINAGE if sid.startswith("A1D") else NOT_YET_COUPLED
@@ -1430,7 +1460,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     if mcards:
         models = f"""<section class="section" style="padding-bottom:0" id="models">
   <h2>How models did</h2>
-  <p class="muted">In rank order: by the share of this test's error allowance each model uses (lower is better; results within 10 % of each other share a rank). {esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
+  <p class="muted">In rank order: by each model's percent difference from the right answer, the largest over the test's checks (lower is better; results within 10 % of each other share a rank). {esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
   {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
   <div class="models">{''.join(mcards)}{not_yet}</div>
 </section>"""
@@ -1527,8 +1557,8 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     truth = {"analytic": "Exact solution", "exact_states": "Exact, from conservation", "intercomparison": "Known end states",
              "measured": "Laboratory or field measurements", "pinned_engine": "A pinned reference engine"}.get(kind, "")
     n_run = len(runs)
-    n_ok = sum(1 for c in runs.values() if c.get("passed"))
-    result_line = (f"<b>{n_ok} of {n_run}</b> model{'s' if n_run != 1 else ''} pass" if n_run else "No model run yet")
+    best_sc = min((x for x in (ranking.score(c) for c in runs.values()) if x is not None), default=None)
+    result_line = (f"<b>{n_run}</b> model{'s' if n_run != 1 else ''} · closest {esc(ranking.label(best_sc))}" if n_run else "No model run yet")
     hero_chart = bool(chart_html) and not net_html
     art = (f'<figure class="case-art">{tile_svg(sid, "Sketch of the test: " + st["name"], fit="meet")}'
            f'<figcaption><dl class="glance"><dt>Right answer</dt><dd>{esc(truth)}{(" · " + esc(_source_short(m))) if _source_short(m) else ""}</dd>'
@@ -1664,7 +1694,7 @@ def how_page(manifests: list[dict], runs: dict) -> str:
 <section class="section tight">
   <h2>How results are scored and ranked</h2>
   <div class="grid">
-    <div class="card"><h3>Measurements, not verdicts</h3><p>Each test sets an error allowance per check, with its reason. A result's score is the largest share of an allowance it uses: 34 % is well inside, 2.1× is twice the allowance. Models are listed in that order on every test; results within 10 % of each other share a rank. <a href="rankings.html">Overall rankings</a> count head-to-head wins on the tests two models share, so a model is never compared on tests it did not run.</p></div>
+    <div class="card"><h3>Measurements, not verdicts</h3><p>Each check's error is given as a percentage of the quantity it is an error in (a depth error over the exact mean depth, a front error over the distance the front travels; mass errors are already percentages). A result's score is its largest percent difference over the test's checks; there is no limit and no pass or fail. Models are listed in that order on every test; results within 10 % of each other share a rank. <a href="rankings.html">Overall rankings</a> count head-to-head wins on the tests two models share, so a model is never compared on tests it did not run.</p></div>
     <div class="card"><h3>Getting better on finer grids</h3><p>A model that is close by luck on one grid is not verified. Each test is run on four grids; the error must shrink at the rate the method promises (the "observed order", as in ASME V&amp;V 20).</p></div>
     <div class="card"><h3>Limits with reasons</h3><p>Every limit is written down with why it was chosen — a measurement uncertainty, a published accuracy, or the size of two grid cells. Open any test's technical details to read them.</p></div>
   </div>
