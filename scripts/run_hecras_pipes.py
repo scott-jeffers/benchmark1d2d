@@ -187,16 +187,35 @@ def layout_network(spec: dict) -> tuple[dict, list[dict]]:
     pos = dict(mh)
     conduits = [c for c in net["conduits"] if not (c["to"] in {o["id"] for o in net.get("outfalls", [])}
                                                     and any(o["id"] == c["to"] and o.get("gated") and o.get("type") == "FIXED" for o in net["outfalls"]))]
+    outs = {o["id"] for o in net.get("outfalls", [])}
+    step = 2.0 * float(spec["surface"]["cell_size"])
     changed = True
     while changed:
         changed = False
         for c in conduits:
             a, b = c["from"], c["to"]
             if a in pos and b not in pos:
-                pos[b] = (pos[a][0] + c["length"], pos[a][1]); changed = True
+                # downstream: an outfall beyond the area at the conduit's length (HEC-RAS makes a node outside
+                # every 2D area "External", where a stage boundary belongs); a junction two cells on
+                dx = c["length"] if b in outs else step
+                pos[b] = (pos[a][0] + dx, pos[a][1]); changed = True
             elif b in pos and a not in pos:
-                pos[a] = (pos[b][0] - c["length"], pos[b][1]); changed = True
+                # upstream: inside the area, two cells back, so it stays a Start node (an inflow boundary
+                # can't sit on an External node); the conduit takes a detour to keep its length
+                pos[a] = (pos[b][0] - step, pos[b][1]); changed = True
     return pos, conduits
+
+
+def conduit_line(p: tuple, q: tuple, length: float) -> list[tuple]:
+    """The conduit's plan line from ``p`` to ``q``, ``length`` long: straight when the nodes are that far
+    apart, else bent once at its middle (to the south, where it may leave the area: the pipe is underground)."""
+    d = math.dist(p, q)
+    if length <= d * (1 + 1e-9):
+        return [p, q]
+    ux, uy = (q[0] - p[0]) / d, (q[1] - p[1]) / d
+    h = math.sqrt(max((length / 2) ** 2 - (d / 2) ** 2, 0.0))
+    mid = ((p[0] + q[0]) / 2 + uy * h, (p[1] + q[1]) / 2 - ux * h)
+    return [p, mid, q]
 
 
 EXAMPLES = "https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.45/Example_Projects_7_0.zip"
@@ -380,11 +399,14 @@ def write_network(ghdf: Path, spec: dict) -> dict:
                         ("Top Inlet Type", "S16"), ("Top Inlet Elevation", "<f4"), ("Side Inlet Type", "S16"),
                         ("Side Inlet Elevation", "<f4"), ("Total Connection Count", "<i4")])
     # a node with a boundary (the inflow, the outfall) is HEC-RAS's "External" node, which has no storage
-    bc_nodes = {f["node"] for f in net.get("inflows", [])} | set(outs)
+    bc_nodes = set(outs)
+    zbed = bed_function(spec["surface"]["bed"])
     rows = []
     for i in ids:
         inv = float((juncs.get(i) or outs.get(i))["invert"])
-        top = float(crest[i]["crest"]) if i in crest else inv + float((juncs.get(i) or {}).get("max_depth", 1.0))
+        # the rim: a manhole's crest, else the ground there (as HEC-RAS takes it from the terrain)
+        top = float(crest[i]["crest"]) if i in crest else float(zbed(pos[i][0], pos[i][1]))
+        top = max(top, inv + 0.01)
         rows.append((i, NET, ntype(i), nstatus(i), f"{n_up[i]}:{n_dn[i]}", inv,
                      0.0 if i in bc_nodes else SWMM_NODE_AREA, top, np.nan, top - inv,
                      "Manhole" if i in crest else "", float(crest[i]["crest"]) if i in crest else np.nan, "", np.nan, n_up[i] + n_dn[i]))
@@ -405,9 +427,10 @@ def write_network(ghdf: Path, spec: dict) -> dict:
         L = float(c["length"])
         crow.append((c["id"], NET, a, b, "Hydraulic", L, L / 20.0, "Circular", c["D"], c["D"], c["n"],
                      c.get("in_offset", 0.0), c.get("out_offset", 0.0), zi, zo, (zi - zo) / L, 0.0, 0.0, 0.0, 0.0, "None", "", "", 0))
-        info.append([len(cpts), 2, len(parts), 1])
-        parts.append([0, 2])
-        cpts += [[pos[a][0] + X0, pos[a][1] + Y0], [pos[b][0] + X0, pos[b][1] + Y0]]
+        line = conduit_line(pos[a], pos[b], L)
+        info.append([len(cpts), len(line), len(parts), 1])
+        parts.append([0, len(line)])
+        cpts += [[x + X0, y + Y0] for x, y in line]
 
     tdt = np.dtype([("Name", "S16"), ("Orifice Area", "<f4"), ("Orifice Coef", "<f4"), ("Weir Length", "<f4"),
                     ("Weir Coef", "<f4"), ("Surcharge Only", "S5")])
