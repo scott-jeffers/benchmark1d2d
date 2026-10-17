@@ -615,8 +615,8 @@ def rerun_with_pipe_parameters(folder: Path, name: str, hdf: Path) -> None:
     tmp = folder / f"{name}.p01.tmp.hdf"
     shutil.copy2(hdf, tmp)
     with h5py.File(tmp, "a") as f:  # the engine refuses to write over earlier output
-        for k in [k for k in f.get("Results", {}).keys() if k != "Summary"]:
-            del f["Results"][k]
+        if "Results" in f:
+            del f["Results"]
     log(f"    re-running {exe.name} {args} with the pipe settings")
     p = subprocess.run(f'"{exe}" {args}', cwd=folder, capture_output=True, text=True, timeout=4 * 3600)
     log(f"    exit {p.returncode}: {(p.stdout or '')[-1500:]} {(p.stderr or '')[-500:]}")
