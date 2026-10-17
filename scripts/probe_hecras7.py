@@ -52,11 +52,13 @@ def h5_tree(path: Path, skip: tuple = ()) -> str:
         def visit(name, obj):
             if any(name.startswith(s) for s in skip):
                 return
+            full = name.startswith(("Plan Data", "Event Conditions"))  # every attribute there (what the engine reads)
             if isinstance(obj, h5py.Dataset):
                 dt = obj.dtype.names or obj.dtype
-                lines.append(f"D {name} {obj.shape} {dt}")
+                extra = f" {dict(obj.attrs.items())}" if full else ""
+                lines.append(f"D {name} {obj.shape} {dt}{extra}")
             else:
-                at = {k: (v.decode() if isinstance(v, bytes) else v) for k, v in list(obj.attrs.items())[:10]}
+                at = {k: (v.decode() if isinstance(v, bytes) else v) for k, v in list(obj.attrs.items())[: None if full else 10]}
                 lines.append(f"G {name} {at}")
         f.visititems(visit)
     return "\n".join(lines)
