@@ -366,6 +366,21 @@ jobs:
           # which HEC's installer expects on the machine and the runner image does not have
           if (-not (Test-Path "$env:SystemRoot\System32\msvcr100.dll")) { choco install vcredist2010 -y --no-progress | Select-Object -Last 3 }
           Get-ChildItem 'C:\Program Files (x86)\HEC', 'C:\Program Files\HEC' -Recurse -Filter Ras.exe -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+      - name: How HEC-RAS writes and reads a pipe-node boundary (decompiled, excerpts only)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          dotnet tool install -g ilspycmd --version 9.1.0.7988 | Select-Object -Last 1
+          $ras = Split-Path (Get-ChildItem 'C:\Program Files (x86)\HEC', 'C:\Program Files\HEC' -Recurse -Filter Ras.exe -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match '7\.0' } | Select-Object -First 1).FullName
+          New-Item -ItemType Directory -Force out/hecras7probe/decomp | Out-Null
+          foreach ($n in 'Ras.exe', 'RasMapperLib.dll', 'RAS.dll', 'RasCore.dll', 'RasData.dll') {
+            $p = Join-Path $ras $n
+            if (Test-Path $p) { ilspycmd $p -p -o "out/hecras7probe/decomp/$n" 2>&1 | Select-Object -Last 2 }
+          }
+          Get-ChildItem $ras -Filter *.dll | ForEach-Object { $_.Name } | Out-File out/hecras7probe/dlls.txt
+          $hits = Get-ChildItem out/hecras7probe/decomp -Recurse -Filter *.cs | Select-String -Pattern 'PipeNode=|Pipe Node|PipeNetwork.*Boundary|Boundary Location=|BoundaryLocation|QPN|Pipe Networks/' -Context 6,10
+          $hits | Out-File -Width 400 out/hecras7probe/decomp_hits.txt
+          "hits: $($hits.Count)"
       - name: Probe
         timeout-minutes: 75
         run: python scripts/probe_hecras7.py --accept-hec-terms
