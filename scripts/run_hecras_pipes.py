@@ -3,11 +3,15 @@
 
 HEC-RAS 7 keeps a pipe network in the geometry HDF: nodes, conduits and the
 inlets that join a node to the 2D surface. RAS Mapper normally draws them; here
-they are written straight into the HDF, in the layout of HEC's own Davis
-example, after the 2D area has been built headless as in the other HEC-RAS 2D
-runs (``run_hecras_2d.py``: GeoTIFF terrain, a mesh from seed points), and
-HEC-RAS's geometry preprocessor builds the network's computational cells
-itself. Then:
+they are written straight into the HDF after the 2D area has been built
+headless as in the other HEC-RAS 2D runs (``run_hecras_2d.py``: GeoTIFF
+terrain, a mesh from seed points), byte for byte in the layout RAS Mapper
+writes for HEC's own Davis example (null-terminated strings, chunked and
+compressed tables; h5py's defaults are not read). HEC-RAS's compute builds the
+network's cells and tables itself. Ras.exe 7.0.1 leaves the pipe-network solver
+settings out of the plan HDF it hands its engine for these plans (the engine
+stops in READ_UN_QPN), so they are added, with HEC-RAS's defaults as written
+for Davis, and the engine is run again with HEC-RAS's own command line. Then:
 
 * each case's manhole is a node with a **top inlet** at the rim: orifice area
   and coefficient and weir length (the manhole's perimeter) from the case, and
@@ -23,7 +27,12 @@ itself. Then:
 * the surface: the case's bed as a terrain, square cells of the case's size,
   its Manning's n, walls, or a normal-depth outflow line for the street
   (A12-010); HEC-RAS's default full shallow-water equations (SWE-ELM) and its
-  default pipe solver (diffusion wave) with the Courant-controlled time step.
+  default pipe solver (diffusion wave) with the Courant-controlled time step,
+  the pipe network on its own adaptive step (target Courant 0.9; on the 2D
+  step alone A12-012's pipe solution went unstable);
+* the inflow node sits inside the 2D area (outside, HEC-RAS makes a node
+  "External", where no inflow may go) and its conduit is bent to keep its
+  length; the outfall is an External node beyond the area.
 
 Results carry the surface at the case's probes (water level over the cell's
 terrain), the exchange at the manhole (HEC-RAS's top-inlet flow), and the
