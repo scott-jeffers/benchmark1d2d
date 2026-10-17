@@ -41,6 +41,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import shutil
 import sys
 import time
@@ -560,6 +561,17 @@ def event_dump(hdf: Path) -> None:
                     log(f"       = {obj[()]!r}"[:300])
 
             f["Event Conditions"].visititems(visit)
+            for grp in ("Geometry/Pipe Networks", "Geometry/Pipe Nodes", "Geometry/Pipe Conduits"):
+                if grp in f:
+                    log(f"    {grp}: {sorted(f[grp].keys())} {dict((k, str(v)[:40]) for k, v in f[grp].attrs.items())}"[:600])
+                    for k in f[grp]:
+                        o = f[f"{grp}/{k}"]
+                        if isinstance(o, h5py.Group):
+                            log(f"      {k}: {len(o)} items {dict((a, str(v)[:40]) for a, v in o.attrs.items())}"[:400])
+            pp = "Plan Data/Plan Parameters"
+            if pp in f:
+                log("    plan parameters: " + "; ".join(f"{k}={str(v)[:30]}" for k, v in f[pp].attrs.items()
+                                                      if not k.startswith(("1D", "2D")))[:2500])
             pp = "Plan Data/Plan Information"
             if pp in f:
                 log("    plan info: " + ", ".join(f"{k}={str(v)[:40]}" for k, v in f[pp].attrs.items())[:800])
@@ -687,7 +699,8 @@ def run_case(m: dict, ras_exe: Path) -> tuple[dict, dict]:
     base.preprocess_and_associate(folder, ras_exe, terrain)
     ghdf = folder / f"{name}.g01.hdf"
     netinfo = write_network(ghdf, spec)
-    compile_network(folder, ras_exe, ghdf)
+    if os.environ.get("PIPES_RASMAPPER"):  # diagnostics only: HEC-RAS's compute builds the network itself
+        compile_network(folder, ras_exe, ghdf)
     log(f"    compiled pipe network: {compiled(ghdf)}")
     from benchmark1d2d import keep
 
