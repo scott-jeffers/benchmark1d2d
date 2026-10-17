@@ -186,6 +186,95 @@ def layout_network(spec: dict) -> tuple[dict, list[dict]]:
     return pos, conduits
 
 
+EXAMPLES = "https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.45/Example_Projects_7_0.zip"
+PIPE_GROUPS = ("Pipe Nodes", "Pipe Conduits", "Pipe Networks")
+
+
+def davis_template() -> Path | None:
+    """HEC's Davis example geometry (HEC-RAS 7.0 examples), whose pipe layers RAS Mapper wrote: the template
+    for the attributes and layout HEC-RAS expects. None when it can't be fetched."""
+    import urllib.request
+    import zipfile
+
+    cache = REPO / ".cache" / "hecras"
+    cache.mkdir(parents=True, exist_ok=True)
+    dst = cache / "DavisStormSystem.g02.hdf"
+    if dst.is_file():
+        return dst
+    zp = cache / "Example_Projects_7_0.zip"
+    try:
+        if not zp.is_file():
+            urllib.request.urlretrieve(EXAMPLES, zp)
+        with zipfile.ZipFile(zp) as z:
+            name = next(i for i in z.namelist() if i.endswith("Pipes/Davis/DavisStormSystem.g02.hdf"))
+            dst.write_bytes(z.read(name))
+        return dst
+    except Exception as exc:  # noqa: BLE001
+        log(f"    Davis template: {type(exc).__name__}: {exc}"[:300])
+        return None
+
+
+def _attr_map(f, root: str) -> dict:
+    """{relative path: {attr: value}} for every group and dataset under ``root``."""
+    out = {"": dict(f[root].attrs)}
+
+    def visit(name, obj):
+        out[name] = dict(obj.attrs)
+
+    f[root].visititems(visit)
+    return out
+
+
+def apply_template(ghdf: Path, tmpl: Path) -> list[str]:
+    """Give the written pipe layers every attribute Davis's carry (and Davis's extra conduit datasets, empty)."""
+    import h5py
+
+    notes = []
+    with h5py.File(tmpl, "r") as t, h5py.File(ghdf, "a") as f:
+        for grp in PIPE_GROUPS:
+            if f"Geometry/{grp}" not in t or f"Geometry/{grp}" not in f:
+                continue
+            tm, fm = _attr_map(t, f"Geometry/{grp}"), _attr_map(f, f"Geometry/{grp}")
+            for rel, attrs in tm.items():
+                if rel.split("/")[0] == "Davis":
+                    continue  # the compiled network: HEC-RAS builds ours
+                path = f"Geometry/{grp}" + (f"/{rel}" if rel else "")
+                if rel not in fm:
+                    obj = t[path]
+                    if isinstance(obj, h5py.Dataset):
+                        f.create_dataset(path, shape=(0,) + obj.shape[1:], dtype=obj.dtype, maxshape=(None,) + obj.shape[1:])
+                        notes.append(f"+{path}")
+                    else:
+                        continue
+                for k, v in attrs.items():
+                    if k not in f[path].attrs:
+                        f[path].attrs[k] = v
+                        notes.append(f"{path}@{k}")
+    return notes
+
+
+def layer_report(ghdf: Path, tmpl: Path | None) -> None:
+    """Diagnostics: every attribute on Davis's pipe layers and on ours, side by side."""
+    import h5py
+
+    if not tmpl:
+        return
+    with h5py.File(tmpl, "r") as t, h5py.File(ghdf, "r") as f:
+        for grp in PIPE_GROUPS:
+            tm = _attr_map(t, f"Geometry/{grp}") if f"Geometry/{grp}" in t else {}
+            fm = _attr_map(f, f"Geometry/{grp}") if f"Geometry/{grp}" in f else {}
+            for rel in sorted(set(tm) | set(fm)):
+                if rel.split("/")[0] == "Davis":
+                    continue
+                a, b = tm.get(rel), fm.get(rel)
+                if a != b:
+                    log(f"    attrs {grp}/{rel}: Davis={ {k: str(v)[:60] for k, v in (a or {}).items()} } ours={ {k: str(v)[:60] for k, v in (b or {}).items()} }"[:500])
+        for k in ("", "Geometry"):
+            a = {x: str(v)[:50] for x, v in (t[k] if k else t).attrs.items()}
+            b = {x: str(v)[:50] for x, v in (f[k] if k else f).attrs.items()}
+            log(f"    attrs /{k}: Davis={a} ours={b}"[:700])
+
+
 def write_network(ghdf: Path, spec: dict) -> dict:
     """Nodes, conduits and the manholes' top inlets, in HEC-RAS 7's geometry-HDF layout (as HEC's Davis example)."""
     import h5py
@@ -307,8 +396,6 @@ def compile_network(folder: Path, ras_exe: Path, ghdf: Path) -> None:
     from System.Collections.Generic import List  # type: ignore
 
     ns = _imports()
-    geom = ns["RASGeometry"](str(ghdf))
-    steps = []
 
     def cnt(layer):
         try:
@@ -316,6 +403,28 @@ def compile_network(folder: Path, ras_exe: Path, ghdf: Path) -> None:
         except Exception as exc:  # noqa: BLE001
             return f"? ({type(exc).__name__}: {str(exc)[:80]})"
 
+    tmpl = davis_template()
+    if tmpl:
+        # does RasMapperLib read Davis's own layers this way? (tells a reading problem from a writing one)
+        copy = folder / "_davis_probe.g02.hdf"
+        shutil.copy2(tmpl, copy)
+        try:
+            dg = ns["RASGeometry"](str(copy))
+            log("    Davis via RasMapperLib: " + "; ".join(f"{n}={cnt(getattr(dg, n))}" for n in ("PipeNodes", "PipeLinks", "PipeNetworks")))
+        except Exception as exc:  # noqa: BLE001
+            log(f"    Davis via RasMapperLib: {type(exc).__name__}: {exc}"[:300])
+        layer_report(ghdf, tmpl)
+        added = apply_template(ghdf, tmpl)
+        log(f"    from the Davis template: {added}"[:600])
+    geom =ns["RASGeometry"](str(ghdf))
+    steps = []
+
+    for lname in ("PipeNodes", "PipeLinks"):
+        for m in ("IsOlderVersion", "Is1_0_0Version"):
+            try:
+                steps.append(f"{lname}.{m}={getattr(getattr(geom, lname), m)()}")
+            except Exception as exc:  # noqa: BLE001
+                steps.append(f"{lname}.{m}: {type(exc).__name__}")
     for lname in ("PipeNodes", "PipeLinks", "PipeTopInlets", "PipeSideInlets", "PipeNetworks"):
         try:
             steps.append(f"{lname}={cnt(getattr(geom, lname))}")
