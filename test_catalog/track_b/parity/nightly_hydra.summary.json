@@ -6,16 +6,16 @@
   "candidate_version": "17.0.0/4.1.1",
   "models": 500,
   "status": {
-    "scored": 476,
+    "scored": 477,
     "candidate_error": 18,
-    "candidate_timeout": 3,
-    "nothing_reported": 3
+    "nothing_reported": 3,
+    "candidate_timeout": 2
   },
   "within_pct": {
     "1": 65,
     "2": 87,
     "5": 125
   },
-  "median_worst_pct": 28.614754014978868,
+  "median_worst_pct": 28.989136557618757,
   "metrics": "peak_depth = worst node, relative peak depth; volume = worst link, relative integral of |Q|"
 }
