@@ -566,6 +566,62 @@ def compile_network(folder: Path, ras_exe: Path, ghdf: Path) -> None:
         log(f"    geometry preprocessor (force=False): {type(exc).__name__}: {exc}"[:600])
 
 
+# The pipe-network solver settings HEC-RAS 7's engine reads from the plan HDF (READ_UN_QPN), as HEC-RAS
+# writes them for its Davis example; Ras.exe left them out of these plans (diagnosed 2026-10-17).
+PS_PARAMETERS = {
+    "PS Adaptive Time Step": np.array([0], np.uint8),
+    "PS Cores": np.array([2], np.int32),
+    "PS Equation Set": np.array([b"Diffusion Wave"]),
+    "PS Iterate With 2D": np.array([b"False"]),
+    "PS Maximum Iterations": np.array([20], np.int32),
+    "PS Number of Time Slices": np.array([1], np.int32),
+    "PS Project Initial WSE from DS": np.array([b"True"]),
+    "PS Ramp Up Initial WSE from US": np.array([b"True"]),
+    "PS Target Courant": np.array([0.9], np.float32),
+    "PS Theta": np.array([1.0], np.float32),
+    "PS Volume Tolerance": np.array([0.01], np.float32),
+    "PS Water Surface Tolerance": np.array([0.01], np.float32),
+}
+
+
+def has_results(hdf: Path) -> bool:
+    import h5py
+
+    with h5py.File(hdf, "r") as f:
+        return "Results/Unsteady/Output/Output Blocks/Base Output/Unsteady Time Series/Time" in f
+
+
+def rerun_with_pipe_parameters(folder: Path, name: str, hdf: Path) -> None:
+    """Add the pipe-network settings to the plan HDF HEC-RAS wrote, then run its unsteady engine again with
+    the arguments HEC-RAS used (from the plan's Compute Processes table)."""
+    import subprocess
+
+    import h5py
+
+    with h5py.File(hdf, "a") as f:
+        pp = f.require_group("Plan Data/Plan Parameters")
+        for k, v in {**PS_PARAMETERS, "PS Names": np.array([NET.encode()])}.items():
+            if k not in pp.attrs:
+                pp.attrs[k] = v
+        procs = f["Results/Summary/Compute Processes"][()] if "Results/Summary/Compute Processes" in f else []
+    rows = [{k: (r[k].decode(errors="replace").strip() if isinstance(r[k], bytes) else r[k]) for k in r.dtype.names} for r in procs]
+    log(f"    compute processes: {[(r.get('Process'), r.get('Filename'), r.get('Arguments')) for r in rows]}"[:800])
+    eng = next((r for r in rows if "unsteady" in str(r.get("Process", "")).lower() or "RasUnsteady" in str(r.get("Filename", ""))), None)
+    if eng is None:
+        log("    no unsteady engine in the compute processes; not re-run")
+        return
+    exe = Path(eng["Filename"])
+    args = str(eng.get("Arguments", "")).split()
+    tmp = folder / f"{name}.p01.tmp.hdf"
+    if not tmp.is_file():
+        shutil.copy2(hdf, tmp)
+    log(f"    re-running {exe.name} {' '.join(args)} with the pipe settings")
+    p = subprocess.run([str(exe), *args], cwd=folder, capture_output=True, text=True, timeout=4 * 3600)
+    log(f"    exit {p.returncode}: {(p.stdout or '')[-1500:]} {(p.stderr or '')[-500:]}")
+    if tmp.is_file() and tmp.stat().st_mtime > hdf.stat().st_mtime:
+        shutil.copy2(tmp, hdf)
+
+
 def event_dump(hdf: Path) -> None:
     """Diagnostics: the boundaries as HEC-RAS wrote them into the plan (groups, datasets and attributes)."""
     import h5py
@@ -742,6 +798,8 @@ def run_case(m: dict, ras_exe: Path) -> tuple[dict, dict]:
         log(base.messages(folder))
         raise RuntimeError("no results")
     event_dump(hdf)
+    if not has_results(hdf):
+        rerun_with_pipe_parameters(folder, name, hdf)
     r = read_run(hdf, ghdf)
     log("    " + r["messages"][-1500:].replace("\n", "\n    "))
     log("    HEC-RAS volume accounting:\n      " + "\n      ".join(r["accounting"][:10]))
