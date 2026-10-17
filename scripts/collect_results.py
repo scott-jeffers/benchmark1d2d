@@ -103,6 +103,26 @@ def latest_run(repo: str, workflow: str) -> dict | None:
     return runs[0] if runs else None
 
 
+def artifact_sources(repo: str, workflow: str, wanted: list[str] | None, lookback: int = 20) -> list[tuple[dict, list[str]]]:
+    """Each artifact from the newest successful run that made it, among the workflow's last ``lookback``
+    successful runs on master: a run of a few jobs (a dispatch, a diagnostic) no longer hides the
+    artifacts of the last full run. [(run, [artifact names])], oldest run first."""
+    out = gh("run", "list", "-R", repo, "--workflow", workflow, "--branch", "master", "--status", "success",
+             "--limit", str(lookback), "--json", "databaseId,headSha,createdAt,displayTitle")
+    chosen: dict[str, dict] = {}
+    for run in json.loads(out or "[]"):
+        arts = json.loads(gh("api", f"repos/{repo}/actions/runs/{run['databaseId']}/artifacts?per_page=100",
+                             "--jq", "[.artifacts[] | select(.expired | not) | .name]", check=False) or "[]")
+        for name in arts:
+            if (wanted is None or name in wanted) and name not in chosen:
+                chosen[name] = run
+    groups: dict[int, tuple[dict, list[str]]] = {}
+    for name, run in chosen.items():
+        groups.setdefault(run["databaseId"], (run, []))[1].append(name)
+    # oldest first, so where two runs wrote the same file (a chart extract, a model zip) the newer one wins
+    return sorted(groups.values(), key=lambda g: g[0]["createdAt"])
+
+
 def route(card: dict) -> str | None:
     name = (card.get("solver") or {}).get("name", "")
     for pat, d in ROUTES:
@@ -238,108 +258,109 @@ def main() -> int:
 
     lines, flips, n_changed, n_curves, n_inputs = ["# Collected results", ""], 0, 0, 0, 0
     for wf, wanted in WORKFLOWS.items():
-        run = latest_run(args.repo, wf)
-        if run is None:
+        sources = artifact_sources(args.repo, wf, wanted)
+        if not sources:
             lines.append(f"- `{wf}`: no successful run on master")
             continue
-        lines.append(f"- `{wf}`: run {run['databaseId']} ({run['createdAt'][:10]}, {run['headSha'][:7]})")
-        with tempfile.TemporaryDirectory() as td:
-            dl = ["run", "download", str(run["databaseId"]), "-R", args.repo, "-D", td]
-            for name in wanted or []:
-                dl += ["-n", name]
-            gh(*dl, check=False)
-            for path in sorted(Path(td).rglob("*")):
-                if path.is_file() and PARITY_FILES.match(path.name):
-                    dest = PARITY / path.name
-                    if not dest.is_file() or dest.read_bytes() != path.read_bytes():
-                        lines.append(f"  - parity table `{path.name}` updated")
-                        n_changed += 1
-                        if not args.dry_run:
-                            shutil.copyfile(path, dest)
-                    if path.name.endswith(".summary.json") and path.name.startswith("nightly_"):
-                        shift = append_history(history_row(json.loads(path.read_text(encoding="utf-8")), run), args.dry_run)
-                        if shift:
-                            lines.append(f"  - {shift}")
-                            flips += 1
-                    continue
-                if path.name.endswith(".inputs.zip"):  # the model files a runner wrote (Run it yourself)
-                    sid, _, key = path.name[: -len(".inputs.zip")].partition(".")
-                    dest = INPUTS / sid / f"{key}.zip"
-                    if key and (not dest.is_file() or dest.read_bytes() != path.read_bytes()):
-                        n_inputs += 1
-                        if not args.dry_run:
-                            dest.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.copyfile(path, dest)
-                    continue
-                if path.name.endswith(".replay.json"):  # a coupled run, frame by frame, for the 1D/2D viewer
-                    try:
-                        rec = json.loads(path.read_text(encoding="utf-8"))
-                        sid, key = rec["test_id"].split("_")[0], rec["key"]
-                    except (ValueError, KeyError):
+        for run, names in sources:
+            lines.append(f"- `{wf}`: run {run['databaseId']} ({run['createdAt'][:10]}, {run['headSha'][:7]}): {', '.join(names)}")
+            with tempfile.TemporaryDirectory() as td:
+                dl = ["run", "download", str(run["databaseId"]), "-R", args.repo, "-D", td]
+                for name in names:
+                    dl += ["-n", name]
+                gh(*dl, check=False)
+                for path in sorted(Path(td).rglob("*")):
+                    if path.is_file() and PARITY_FILES.match(path.name):
+                        dest = PARITY / path.name
+                        if not dest.is_file() or dest.read_bytes() != path.read_bytes():
+                            lines.append(f"  - parity table `{path.name}` updated")
+                            n_changed += 1
+                            if not args.dry_run:
+                                shutil.copyfile(path, dest)
+                        if path.name.endswith(".summary.json") and path.name.startswith("nightly_"):
+                            shift = append_history(history_row(json.loads(path.read_text(encoding="utf-8")), run), args.dry_run)
+                            if shift:
+                                lines.append(f"  - {shift}")
+                                flips += 1
                         continue
-                    if case_version(rec["test_id"]) not in (None, rec.get("case_version")):
+                    if path.name.endswith(".inputs.zip"):  # the model files a runner wrote (Run it yourself)
+                        sid, _, key = path.name[: -len(".inputs.zip")].partition(".")
+                        dest = INPUTS / sid / f"{key}.zip"
+                        if key and (not dest.is_file() or dest.read_bytes() != path.read_bytes()):
+                            n_inputs += 1
+                            if not args.dry_run:
+                                dest.parent.mkdir(parents=True, exist_ok=True)
+                                shutil.copyfile(path, dest)
                         continue
-                    dest = REPLAY / sid / f"{key}.json"
-                    if not dest.is_file() or dest.read_bytes() != path.read_bytes():
-                        n_curves += 1
-                        if not args.dry_run:
-                            dest.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.copyfile(path, dest)
-                    continue
-                if path.name.endswith(".netres.json"):  # per-element results for the network viewer
-                    try:
-                        rec = json.loads(path.read_text(encoding="utf-8"))
-                        sid, key = rec["test_id"].split("_")[0], rec["key"]
-                    except (ValueError, KeyError):
+                    if path.name.endswith(".replay.json"):  # a coupled run, frame by frame, for the 1D/2D viewer
+                        try:
+                            rec = json.loads(path.read_text(encoding="utf-8"))
+                            sid, key = rec["test_id"].split("_")[0], rec["key"]
+                        except (ValueError, KeyError):
+                            continue
+                        if case_version(rec["test_id"]) not in (None, rec.get("case_version")):
+                            continue
+                        dest = REPLAY / sid / f"{key}.json"
+                        if not dest.is_file() or dest.read_bytes() != path.read_bytes():
+                            n_curves += 1
+                            if not args.dry_run:
+                                dest.parent.mkdir(parents=True, exist_ok=True)
+                                shutil.copyfile(path, dest)
                         continue
-                    if case_version(rec["test_id"]) not in (None, rec.get("case_version")):
+                    if path.name.endswith(".netres.json"):  # per-element results for the network viewer
+                        try:
+                            rec = json.loads(path.read_text(encoding="utf-8"))
+                            sid, key = rec["test_id"].split("_")[0], rec["key"]
+                        except (ValueError, KeyError):
+                            continue
+                        if case_version(rec["test_id"]) not in (None, rec.get("case_version")):
+                            continue
+                        dest = NETRES / sid / f"{key}.json"
+                        if not dest.is_file() or dest.read_bytes() != path.read_bytes():
+                            n_curves += 1
+                            if not args.dry_run:
+                                dest.parent.mkdir(parents=True, exist_ok=True)
+                                shutil.copyfile(path, dest)
                         continue
-                    dest = NETRES / sid / f"{key}.json"
-                    if not dest.is_file() or dest.read_bytes() != path.read_bytes():
-                        n_curves += 1
-                        if not args.dry_run:
-                            dest.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.copyfile(path, dest)
-                    continue
-                if path.name.endswith(".curve.json"):
-                    try:
-                        rec = json.loads(path.read_text(encoding="utf-8"))
-                        sid, key = rec["test_id"].split("_")[0], rec["key"]
-                    except (ValueError, KeyError):
+                    if path.name.endswith(".curve.json"):
+                        try:
+                            rec = json.loads(path.read_text(encoding="utf-8"))
+                            sid, key = rec["test_id"].split("_")[0], rec["key"]
+                        except (ValueError, KeyError):
+                            continue
+                        if case_version(rec["test_id"]) not in (None, rec.get("case_version")):
+                            continue
+                        dest = CURVES / sid / f"{key}.json"
+                        if not dest.is_file() or dest.read_bytes() != path.read_bytes():
+                            n_curves += 1
+                            if not args.dry_run:
+                                dest.parent.mkdir(parents=True, exist_ok=True)
+                                shutil.copyfile(path, dest)
                         continue
-                    if case_version(rec["test_id"]) not in (None, rec.get("case_version")):
+                    if not path.name.endswith(".scorecard.json"):
                         continue
-                    dest = CURVES / sid / f"{key}.json"
-                    if not dest.is_file() or dest.read_bytes() != path.read_bytes():
-                        n_curves += 1
-                        if not args.dry_run:
-                            dest.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.copyfile(path, dest)
-                    continue
-                if not path.name.endswith(".scorecard.json"):
-                    continue
-                card = json.loads(path.read_text(encoding="utf-8"))
-                d = route(card)
-                if d is None:
-                    continue
-                current = case_version(card["test_id"])
-                if current and card.get("case_version") != current:
-                    lines.append(f"  - skipped `{path.name}` ({card['solver']['name']}): case v{card.get('case_version')}, catalog v{current}")
-                    continue
-                if not verify(card):
-                    lines.append(f"  - REJECTED (signature) `{path.name}` from {card['solver']['name']}")
-                    continue
-                dest = FIXTURES / d / path.name
-                old = json.loads(dest.read_text(encoding="utf-8")) if dest.is_file() else None
-                change = summarise_change(old, card)
-                if change is None:
-                    continue
-                n_changed += 1
-                flips += change.startswith("**")
-                lines.append(f"  - {card['test_id']} · {card['solver']['name']}: {change}")
-                if not args.dry_run:
-                    dest.parent.mkdir(parents=True, exist_ok=True)
-                    dest.write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+                    card = json.loads(path.read_text(encoding="utf-8"))
+                    d = route(card)
+                    if d is None:
+                        continue
+                    current = case_version(card["test_id"])
+                    if current and card.get("case_version") != current:
+                        lines.append(f"  - skipped `{path.name}` ({card['solver']['name']}): case v{card.get('case_version')}, catalog v{current}")
+                        continue
+                    if not verify(card):
+                        lines.append(f"  - REJECTED (signature) `{path.name}` from {card['solver']['name']}")
+                        continue
+                    dest = FIXTURES / d / path.name
+                    old = json.loads(dest.read_text(encoding="utf-8")) if dest.is_file() else None
+                    change = summarise_change(old, card)
+                    if change is None:
+                        continue
+                    n_changed += 1
+                    flips += change.startswith("**")
+                    lines.append(f"  - {card['test_id']} · {card['solver']['name']}: {change}")
+                    if not args.dry_run:
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        dest.write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
     lines += ["", f"{n_changed} file(s) changed, {flips} pass/fail change(s), {n_curves} chart curve(s) or network extract(s) updated, {n_inputs} model-file zip(s) updated."]
     if n_changed and not args.dry_run:
         record_news(lines)
