@@ -318,6 +318,7 @@ jobs:
           path: |
             out/coupled/hecras-pipes/*.scorecard.json
             out/coupled/hecras-pipes/*.parquet
+            out/coupled/hecras-pipes/*.replay.json
             out/coupled/hecras-pipes/work/**/*.u01
             out/coupled/hecras-pipes/work/**/*.p01
             out/coupled/hecras-pipes/work/**/*.g01

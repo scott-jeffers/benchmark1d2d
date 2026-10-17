@@ -879,9 +879,78 @@ def run_case(m: dict, ras_exe: Path) -> tuple[dict, dict]:
         emit(t[k], V=float(cum_in[k]), eid="inflow", etype="account")
         emit(t[k], V=float(cum_out[k]), eid="outflow", etype="account")
     cols = {k: (np.asarray(v, dtype=float) if k not in ("element_id", "element_type") else v) for k, v in rows.items()}
+    try:
+        write_replay(OUT / f"{m['test_id']}.replay.json", m, spec, netinfo, r, t, pixels, jj, ii, gx, gy, exch,
+                     netv, surf_vol, cum_in, cum_out, ras_exe.parent.name)
+    except Exception as exc:  # noqa: BLE001 - the viewer's record must not lose the score
+        log(f"    replay not written: {type(exc).__name__}: {exc}")
     log(f"    end: surface {surf_vol[-1]:.2f} m³, network {netv[-1]:.2f} m³, in {cum_in[-1]:.2f}, out {cum_out[-1]:.2f}; "
         f"exchange peak {exch.max():+.4f} / {exch.min():+.4f} m³/s")
     return cols, {"version": ras_exe.parent.name}
+
+
+def write_replay(path: Path, m: dict, spec: dict, netinfo: dict, r: dict, t, pixels, jj, ii, gx, gy, exch,
+                 netv, surf_vol, cum_in, cum_out, ver: str, max_cells: int = 128) -> None:
+    """The run frame by frame for the site's 1D/2D viewer, in the format of run_coupled_cases.Replay: surface
+    depth on a regular grid (at most 128 cells along the longer side), the manholes' surface level, head and
+    exchange, every node's head, every conduit's flow and depth, and the volume accounts."""
+    s = spec["surface"]
+    lx, ly = s["x1"] - s["x0"], s["y1"] - s["y0"]
+    dx = max(float(s["cell_size"]), max(lx, ly) / max_cells)
+    nx, ny = int(math.ceil(lx / dx - 1e-9)), int(math.ceil(ly / dx - 1e-9))
+    cx, cy = gx[ii], gy[jj]
+    b = np.clip(((cy - s["y0"]) / dx).astype(int), 0, ny - 1) * nx + np.clip(((cx - s["x0"]) / dx).astype(int), 0, nx - 1)
+    cnt = np.maximum(np.bincount(b, minlength=nx * ny), 1)
+    z = np.bincount(b, weights=pixels.zmean(jj, ii), minlength=nx * ny) / cnt
+    h = []
+    for k in range(len(t)):
+        d = pixels.depth(jj, ii, r["ws"][k])
+        hb = np.bincount(b, weights=d, minlength=nx * ny) / cnt
+        h.append([round(float(v), 4) if v >= 1e-4 else 0 for v in hb])
+    names = r["node_names"]
+    node_ws = r["node_ws"]
+    net = spec["network"]
+    crest = {mh["id"]: mh["crest"] for mh in spec["manholes"]}
+    ids = netinfo["ids"]
+    juncs = {j["id"]: j for j in net.get("junctions", [])}
+    outs = {o["id"]: o for o in net.get("outfalls", [])}
+    nodes = []
+    for i in ids:
+        if i in juncs:
+            j = juncs[i]
+            nodes.append({"id": i, "kind": "manhole" if i in crest else "junction", "invert": j["invert"],
+                          "top": crest.get(i, j["invert"] + j.get("max_depth", 0.0))})
+        else:
+            nodes.append({"id": i, "kind": "outfall", "invert": outs[i]["invert"], "top": outs[i]["invert"], "closed": False})
+    head = {i: [round(float(v), 4) for v in node_ws[:, names.index(i)]] for i in ids if i in names}
+    inv = {n["id"]: float(n["invert"]) for n in nodes}
+    links, flow, depth = [], {}, {}
+    cn = r["conduit_names"]
+    for c in netinfo["conduits"]:
+        if c["id"] not in cn:
+            continue
+        links.append({"id": c["id"], "from": c["from"], "to": c["to"], "length": c["length"], "D": c["D"],
+                      "in_offset": c.get("in_offset", 0.0), "out_offset": c.get("out_offset", 0.0)})
+        flow[c["id"]] = [round(float(v), 5) for v in r["pipe_q_ds"][:, cn.index(c["id"])]]
+        ha = np.asarray(head.get(c["from"], [inv[c["from"]]] * len(t))) - (inv[c["from"]] + c.get("in_offset", 0.0))
+        hb = np.asarray(head.get(c["to"], [inv[c["to"]]] * len(t))) - (inv[c["to"]] + c.get("out_offset", 0.0))
+        depth[c["id"]] = [round(float(v), 4) for v in np.clip(0.5 * (ha + hb), 0.0, float(c["D"]))]
+    mhs = []
+    for mh in spec["manholes"]:
+        dd = np.hypot(r["centres"][:, 0] - mh["x"], r["centres"][:, 1] - mh["y"])
+        near = int(np.argmin(dd))
+        mhs.append({**{k: mh[k] for k in ("id", "x", "y", "crest")},
+                    "eta": [round(float(r["ws"][k][near]), 4) for k in range(len(t))],
+                    "H": head.get(mh["id"], []), "q": [round(float(v), 5) for v in exch]})
+    doc = {"test_id": m["test_id"], "case_version": m["case_version"], "key": "hecras-pipes",
+           "label": f"HEC-RAS {ver} pipe networks (its own 1D/2D coupling)",
+           "t": [round(float(v), 3) for v in t],
+           "surface": {"x0": s["x0"], "y0": s["y0"], "dx": dx, "nx": nx, "ny": ny, "z": [round(float(v), 4) for v in z], "h": h},
+           "manholes": mhs, "network": {"nodes": nodes, "links": links, "head": head, "flow": flow, "depth": depth},
+           "volume": {"surface": [round(float(v), 4) for v in surf_vol], "network": [round(float(v), 4) for v in netv],
+                      "inflow": [round(float(v), 4) for v in cum_in], "outflow": [round(float(v), 4) for v in cum_out]}}
+    path.write_text(json.dumps(doc, separators=(",", ":")) + "\n", encoding="utf-8")
+    log(f"    replay: {path.name} ({len(t)} frames, {nx}×{ny} cells)")
 
 
 def main() -> int:
