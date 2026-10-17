@@ -140,6 +140,31 @@ def deps(ras_dir: Path) -> None:
     w("deps.txt", "\n".join(out))
 
 
+def strings(ras_dir: Path) -> None:
+    """Text inside the programs that mentions pipe nodes and boundaries (the unsteady-flow file's keywords)."""
+    import re
+
+    out = []
+    pat = re.compile(r"pipe|boundary location|external|closed node|drop inlet|top inlet", re.I)
+    for rel in ("Ras.exe", "RAS.dll", "RasMapperLib.dll", "x64/RasUnsteady.exe", "x64/RasGeomPreprocess.exe"):
+        f = ras_dir / rel
+        if not f.is_file():
+            continue
+        data = f.read_bytes()
+        found = set()
+        for m in re.finditer(rb"[\x20-\x7e]{5,}", data):
+            t = m.group().decode("ascii", "replace")
+            if pat.search(t):
+                found.add(t)
+        for m in re.finditer(rb"(?:[\x20-\x7e]\x00){5,}", data):
+            t = m.group().decode("utf-16le", "replace")
+            if pat.search(t):
+                found.add(t)
+        out.append(f"## {rel} ({len(found)})")
+        out += sorted(found)[:1500]
+    w("strings.txt", "\n".join(out))
+
+
 def run(cmd: list[str], cwd: Path | None = None, timeout: float = 120) -> str:
     try:
         p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
@@ -247,7 +272,7 @@ def main() -> int:
     w("install.txt", "\n".join(str(p.relative_to(ras_dir)) for p in sorted(ras_dir.rglob("*")) if p.is_file()))
     rp = ras_dir / "RasProcess.exe"
     w("rasprocess.txt", "\n\n".join(run([str(rp), a]) if a else run([str(rp)]) for a in ("", "-?", "/?", "help")))
-    for step, fn in (("deps", lambda: deps(ras_dir)), ("reflection", lambda: reflect(ras_dir)), ("davis", lambda: davis(ras_exe))):
+    for step, fn in (("deps", lambda: deps(ras_dir)), ("strings", lambda: strings(ras_dir)), ("reflection", lambda: reflect(ras_dir)), ("davis", lambda: davis(ras_exe))):
         try:
             fn()
         except Exception:  # noqa: BLE001
