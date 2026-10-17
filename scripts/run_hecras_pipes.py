@@ -387,10 +387,13 @@ def write_network(ghdf: Path, spec: dict) -> dict:
 
     # HEC's Davis example uses two node types: "Start" (no conduit in) and "Junction" (everything else,
     # its outlet a junction with no conduit out); the status reads "US Junction" at a start
+    # an outfall is "External" (a stage boundary must sit on one); the engine reads the type from here
     def ntype(i: str) -> str:
-        return "Start" if n_up[i] == 0 else "Junction"
+        return "External" if i in outs else "Start" if n_up[i] == 0 else "Junction"
 
     def nstatus(i: str) -> str:
+        if i in outs:
+            return "External"
         return ("US Junction" if n_up[i] == 0 else "Junction") + (" -with top inlet " if i in crest else "")
 
     node_dt = np.dtype([("Name", "S16"), ("System Name", "S16"), ("Node Type", "S16"), ("Node Status", "S40"),
@@ -619,7 +622,10 @@ def rerun_with_pipe_parameters(folder: Path, name: str, hdf: Path) -> None:
             del f["Results"]
     log(f"    re-running {exe.name} {args} with the pipe settings")
     p = subprocess.run(f'"{exe}" {args}', cwd=folder, capture_output=True, text=True, timeout=4 * 3600)
-    log(f"    exit {p.returncode}: {(p.stdout or '')[-1500:]} {(p.stderr or '')[-500:]}")
+    text = "\n".join(ln for ln in (p.stdout or "").splitlines()
+                      if not ln.strip().startswith(("ABSTIME=", "ABSDATE=", "ITER2D=", "SIMTIME=", "PIPEDT=", "PROGRESS=")))
+    (folder / f"{name}.engine.log").write_text(text + "\n" + (p.stderr or ""), encoding="utf-8")
+    log(f"    exit {p.returncode}: {text[-2500:]} {(p.stderr or '')[-500:]}")
     if tmp.is_file() and tmp.stat().st_mtime > hdf.stat().st_mtime:
         shutil.copy2(tmp, hdf)
 
@@ -695,7 +701,10 @@ def read_run(hdf: Path, ghdf: Path) -> dict:
             out["node_inlet"] = p["Nodes/Top + Side Inlet Flow"][()]
             out["pipe_q_ds"] = p["Pipes/Pipe Flow DS"][()]
             out["pcell_ws"] = p["Cell Water Surface"][()]
-        out["messages"] = f["Results/Summary/Compute Messages (text)"][0].decode(errors="replace")
+        cm = "Results/Summary/Compute Messages (text)"
+        log_file = hdf.with_name(hdf.name.split(".")[0] + ".engine.log")
+        out["messages"] = (f[cm][0].decode(errors="replace") if cm in f
+                           else log_file.read_text(errors="replace") if log_file.is_file() else "")
         acc = []
 
         def visit(name, obj):
