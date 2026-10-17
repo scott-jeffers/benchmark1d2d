@@ -611,12 +611,12 @@ def rerun_with_pipe_parameters(folder: Path, name: str, hdf: Path) -> None:
         log("    no unsteady engine in the compute processes; not re-run")
         return
     exe = Path(eng["Filename"])
-    args = str(eng.get("Arguments", "")).split()
+    args = str(eng.get("Arguments", ""))  # a Windows command line, quotes and all
     tmp = folder / f"{name}.p01.tmp.hdf"
     if not tmp.is_file():
         shutil.copy2(hdf, tmp)
-    log(f"    re-running {exe.name} {' '.join(args)} with the pipe settings")
-    p = subprocess.run([str(exe), *args], cwd=folder, capture_output=True, text=True, timeout=4 * 3600)
+    log(f"    re-running {exe.name} {args} with the pipe settings")
+    p = subprocess.run(f'"{exe}" {args}', cwd=folder, capture_output=True, text=True, timeout=4 * 3600)
     log(f"    exit {p.returncode}: {(p.stdout or '')[-1500:]} {(p.stderr or '')[-500:]}")
     if tmp.is_file() and tmp.stat().st_mtime > hdf.stat().st_mtime:
         shutil.copy2(tmp, hdf)
