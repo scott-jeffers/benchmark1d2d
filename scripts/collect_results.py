@@ -216,6 +216,16 @@ def summarise_change(old: dict | None, new: dict) -> str | None:
              and abs(b[k] - a[k]) > 1e-6 * max(1.0, abs(a[k]))]
     if moved or old.get("solver") != new.get("solver") or old.get("case_version") != new.get("case_version"):
         return "updated (" + ", ".join(moved or ["version"]) + ")"
+    # run time and machine: taken when the stored card has none, or the machine changed (not for timing
+    # noise alone, which would rewrite every card on every run)
+    ra, rb = old.get("run") or {}, new.get("run") or {}
+
+    def kind(r):  # the kind of machine (a GitHub runner's exact processor varies from run to run)
+        m = r.get("machine") or {}
+        return (m.get("runner"), m.get("os"), m.get("cores_logical"))
+
+    if rb.get("wall_seconds") is not None and (ra.get("wall_seconds") is None or kind(ra) != kind(rb)):
+        return f"run time recorded ({rb['wall_seconds']:.3g} s)"
     return None
 
 
