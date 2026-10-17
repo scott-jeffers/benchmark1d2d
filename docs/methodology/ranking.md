@@ -50,25 +50,40 @@ less than 10 % of the larger, or when both are under 0.01 % (the solvers' own
 precision). A result's rank is 1 + the number of results clearly better than it
 (a tie shares the rank), the rule Chatbot Arena uses for overlapping intervals.
 
-## Overall ranking
+## The OpenHydro rating (the leaderboard)
 
-* **Head-to-head wins.** For each pair of models and each test both ran,
-  the lower score wins and a tie counts half. A model's win rate is its
-  share of those comparisons (HELM's mean win rate). Models are never
-  compared on tests they did not both run.
-* **Error against the field.** On each test, a model's percent difference divided
-  by the median model's (differences under 0.01 % count as 0.01 %); the geometric mean
-  over its tests. 0.5 means half the typical error (SPEC's geometric mean;
-  the PCMDI metrics' median-relative error).
-* **Coverage.** A model needs 5 tests in the current view to be ranked;
-  others are listed without a rank. Ranks are given overall and per group
+The leaderboard follows LMArena, the chat-model arena: one rating per model
+from head-to-head results, shown with its uncertainty.
+
+* **Every shared test is a match.** On each test two models both ran, the one
+  with the smaller percent difference wins; a tie (above) is half a win each.
+  Models are never compared on tests they did not both run.
+* **Bradley–Terry fit.** All the matches are fitted with the Bradley–Terry
+  model (Hunter's MM algorithm), each model also playing one virtual draw
+  against an average model so a model with no wins keeps a finite rating. The
+  strengths are shown on the Elo scale: 1000 is the average model (geometric
+  mean strength), and 400 points more is ten times the odds of being closer on
+  a test.
+* **95 % interval.** The tests are redrawn with replacement 200 times (a fixed
+  seed, so the page and the build agree to the digit) and the rating refitted
+  each time; the interval covers the middle 95 % of those fits.
+* **Rank.** 1 + the number of models whose whole interval lies above the
+  model's own (LMArena's rule), so models that cannot be told apart share a
+  rank. Rows are in rank order, then rating.
+* **Coverage.** A model needs 5 tests in the current board to be ranked;
+  others are listed without a rank. There is a board for every test group
   (1D channels, 2D surface, drainage networks, water networks, coupled 1D/2D,
-  field data, parity with the reference engines), and for any mix of model
-  kinds (production defaults, research codes, submitted results, worked
-  examples, previous releases).
+  field data, parity with the reference engines) and any mix of model kinds
+  (production defaults, research codes, submitted results, worked examples,
+  previous releases); by default the leaderboard shows production software,
+  research codes and submitted results.
+* **Beside the rating**, as AI benchmark boards show category scores: the
+  median percent difference in each test group, the median run time, the
+  organisation and the licence. The board is downloadable as
+  `data/leaderboard.csv` and `data/leaderboard.json`.
 
-Models are ranked by win rate; two models within 2 percentage points share
-a rank.
+The code is `ranking.rating_board` in `site/ranking.py`, repeated in
+`site/static/rankings.js` with the same random numbers and arithmetic.
 
 ## Run time and machine
 

@@ -497,8 +497,8 @@ CASE_NOTES = {
 
 # ── layout ──────────────────────────────────────────────────────────────────
 
-NAV = [("results.html", "Tests &amp; results"), ("rankings.html", "Rankings"), ("viewer.html", "Viewer"), ("network.html", "Networks"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
-FOOT = [("news.html", "What's new"), ("rankings.html", "Rankings"), ("solvers.html", "Models"), ("compare.html", "Compare models"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("coupled.html", "1D/2D viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
+NAV = [("rankings.html", "Leaderboard"), ("results.html", "Tests &amp; results"), ("viewer.html", "Viewer"), ("network.html", "Networks"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
+FOOT = [("news.html", "What's new"), ("rankings.html", "Leaderboard"), ("solvers.html", "Models"), ("compare.html", "Compare models"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("coupled.html", "1D/2D viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
         ("method.html", "Method"), ("get-started.html", "Command line")]
 LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 2 11 14 17 8 S27 2 33 8" fill="none" stroke-width="3" stroke-linecap="round"/>'
         '<path class="b" d="M1 18 H33" stroke-width="3" stroke-linecap="round"/></svg>')
@@ -619,14 +619,35 @@ KIND_WORDS = {"production": "Production software, run by the suite as a black bo
               "submitted": "Run by others and submitted as results files; scored by the suite with the same scorer as every other run."}
 
 
+_BOARD: dict = {}
+
+
+def leaderboard(runs: dict) -> dict:
+    """The default leaderboard (rankpage.board), by model key; computed once per build."""
+    if id(runs) not in _BOARD:
+        import rankpage
+        _BOARD.clear()
+        _BOARD[id(runs)] = {r["key"]: r for r in rankpage.board(runs, SOLVER)}
+    return _BOARD[id(runs)]
+
+
+def standing_text(o: dict, html: bool = True) -> str | None:
+    if not o or not o.get("ranked"):
+        return None
+    b = (lambda x: f"<b>{x}</b>") if html else (lambda x: x)
+    return (f'Rank {b("#" + str(o["rank"]))} on the leaderboard, OpenHydro rating {b(format(o["rating"], ".0f"))} '
+            f'(95 % interval {o["lo"]:.0f} to {o["hi"]:.0f}) over {b(o["tests"])} tests; median difference {b(esc(ranking.short(o["median_score"])))}.')
+
+
 def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
     """One model: every test it ran, with the checks and the notes."""
     s = SOLVER[key]
     mine = [(m, runs[m["test_id"]][key]) for m in manifests if key in (runs.get(m["test_id"]) or {})]
-    ov = {r["key"]: r for r in ranking.overall(runs)}.get(key, {})
-    standing = (f'Ranked <b>#{ov["rank"]}</b> overall: wins <b>{ov["win_rate"] * 100:.0f} %</b> of head-to-head comparisons on the tests it shares with other models; '
-                f'median difference <b>{esc(ranking.short(ov["median_score"]))}</b> over <b>{ov["tests"]}</b> tests.' if ov.get("rank") else
-                f'Ran <b>{len(mine)}</b> test{"s" if len(mine) != 1 else ""} (fewer than {ranking.MIN_TESTS}, so not ranked overall).')
+    ov = leaderboard(runs).get(key, {})
+    standing = standing_text(ov) or (
+        f'Ran <b>{len(mine)}</b> test{"s" if len(mine) != 1 else ""}; '
+        + (f"fewer than {ranking.MIN_TESTS} with other models, so not ranked on the leaderboard." if s["kind"] not in ("suite", "compat")
+           else "worked examples and previous releases are shown beside the leaderboard, not ranked on it."))
     versions = sorted({(c.get("solver") or {}).get("name", "") for _, c in mine})
     rows = []
     for m, c in mine:
@@ -726,17 +747,18 @@ def solvers_index(manifests: list[dict], runs: dict) -> str:
         if not ks:
             continue
         lis = []
-        ov = {r["key"]: r for r in ranking.overall(runs)}
-        ks = sorted(ks, key=lambda k: (ov.get(k, {}).get("rank") or 999, -(ov.get(k, {}).get("tests") or 0)))
+        ov = leaderboard(runs)
+        ks = sorted(ks, key=lambda k: ((ov.get(k, {}).get("rank") if ov.get(k, {}).get("ranked") else 999), -(ov.get(k, {}).get("rating") or 0)))
         for k in ks:
             o = ov.get(k, {})
-            stand = (f'#{o["rank"]} overall · wins {o["win_rate"] * 100:.0f} % head to head · {o["tests"]} tests' if o.get("rank")
-                     else f'{o.get("tests", 0)} test{"s" if o.get("tests", 0) != 1 else ""}, not ranked overall')
+            n = sum(1 for by in runs.values() if k in by)
+            stand = (f'#{o["rank"]} on the leaderboard · rating {o["rating"]:.0f} · {o["tests"]} tests' if o.get("ranked")
+                     else f'{n} test{"s" if n != 1 else ""}, not ranked')
             lis.append(f'<li><a href="solvers/{k}.html"><span class="sw" style="background:{SOLVER[k]["color"]}"></span><b>{esc(SOLVER[k]["name"])}</b> '
                        f'<span class="muted">{esc(SOLVER[k]["sub"])}</span></a> — {esc(stand)}</li>')
         out.append(f'<section class="section"><h2>{title}</h2><p class="muted">{esc(KIND_WORDS[kind])}</p><ul class="waitlist">{"".join(lis)}</ul></section>')
     body = f"""<div class="wrap"><section class="page-head"><h1>Models</h1>
-<p class="lede">Every model scored on the benchmark, with all of its results on one page. <a href="rankings.html">See the rankings →</a> · <a href="compare.html">Compare two models side by side →</a></p></section>{''.join(out)}</div>"""
+<p class="lede">Every model scored on the benchmark, with all of its results on one page. <a href="rankings.html">See the leaderboard →</a> · <a href="compare.html">Compare two models side by side →</a></p></section>{''.join(out)}</div>"""
     return layout("Models", body, "solvers.html", description="Every model scored on the benchmark.")
 
 
@@ -775,17 +797,13 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
                 fronts[k] = abs(r["observed"])
     cards = []
     if fronts:
-        lim = 9.8
-        for mm in manifests:
-            if mm["test_id"].startswith("A1F-010"):
-                lim = next((float(c["threshold"]["value"]) for c in mm["scoring"]["criteria"] if c["id"] == "volume_front"), lim)
-        ok = sorted((k for k, v in fronts.items() if v <= lim), key=lambda k: fronts[k])
-        far = sorted(v for v in fronts.values() if v > lim)
-        who = ", ".join(dict.fromkeys(SOLVER[k]["name"].split(" ")[0] for k in ok)) or "none"
+        order = sorted(fronts, key=lambda k: fronts[k])
+        best, worst = order[0], order[-1]
+        travel = (difference.scale_for("A1F-010", "volume_front") or (376.0,))[0]
         cards.append(f"""<a class="finding" href="tests/A1F-010.html">
-  <div class="num">{len(ok)} of {len(fronts)}</div>
+  <div class="num">{nice(fronts[best], 2)}–{nice(fronts[worst], 2)} m</div>
   <b>The dam-break front splits the field</b>
-  <p>In the classic dam break, {len(ok)} of {len(fronts)} production runs put the flood front within {nice(lim, 2)} m of the exact one after a minute ({esc(who)}: {nice(min(fronts[k] for k in ok), 2) if ok else '–'}–{nice(max(fronts[k] for k in ok), 2) if ok else '–'} m). The other {len(far)} are {nice(far[0], 2) if far else '–'}–{nice(far[-1], 3) if far else '–'} m behind.</p>
+  <p>A minute after the classic dam break, production codes put the flood front between {nice(fronts[best], 2)} m ({esc(SOLVER[best]["name"])}) and {nice(fronts[worst], 2)} m ({esc(SOLVER[worst]["name"])}) from the exact one: {nice(100 * fronts[best] / travel, 2)} % to {nice(100 * fronts[worst] / travel, 2)} % of the {nice(travel, 3)} m it travels.</p>
 </a>""")
     if "hecras66" in (runs.get("A1F-001_macdonald_m1_backwater") or {}):
         cards.append("""<a class="finding" href="tests/A1F-001.html">
@@ -820,6 +838,8 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
   <p>On a dam break into shallow water, HydroCouple's finite-volume routing gets the bore right and converges; SWMM's classic dynamic wave, in both 5.2.4 and 6, does not.</p>
 </a>""")
     findings = "".join(cards[:4])
+    import rankpage
+    top_chart = rankpage.rating_chart_html(rankpage.board(runs, SOLVER), SOLVER, top=10)
     by_sid = {sid_of(m["test_id"]): m for m in manifests}
     featured = ["A1F-010", "A2C-EA4", "A1F-042", "A1D-002", "A12-012", "A1P-020", "B-RTC-001"]
     tcards = "".join(test_card(by_sid[s_], runs) for s_ in featured if s_ in by_sid)
@@ -829,16 +849,16 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
                f'<span class="more-link">Browse every test →</span></a>')
     body = f"""
 <div class="wrap">
-<section class="hero">
+<section class="home-board">
   <div>
-    <p class="eyebrow">Open benchmarks for water models</p>
-    <h1>Does your flood model get the water right?</h1>
-    <p class="lede">Every test here has a known right answer. Run your model, compare, and get a result anyone can check.</p>
-    <div class="btns"><a class="btn primary" href="rankings.html">See how models rank</a><a class="btn ghost" href="score.html">Score your model</a></div>
+    <h1>Which water models get the answer right?</h1>
+    <p class="lede">An open leaderboard for flood, river, drainage and water-network models. Every test has a known right answer, every model runs the same inputs, and every result can be re-run by anyone.</p>
+    <div class="btns"><a class="btn primary" href="rankings.html">See the full leaderboard</a><a class="btn ghost" href="score.html">Score your model</a></div>
   </div>
-  <figure>
-    {_ritter_hero()}
-    <figcaption>A dam vanishes and the water floods dry ground. This is the exact answer, worked out by Ritter in 1892. <a href="tests/A1F-010.html">See how real models do on it →</a></figcaption>
+  <figure class="home-top" aria-labelledby="home-top-h">
+    <div class="lb-sec-head"><h2 id="home-top-h">Top models by OpenHydro rating</h2></div>
+    {top_chart}
+    <figcaption><span>Higher is better. Each dot is a model's rating and the band its 95 % interval. Production software and research codes, all tests.</span><a href="rankings.html">Full table and per-group boards</a></figcaption>
   </figure>
 </section>
 <section class="section tight" aria-label="At a glance">
@@ -1052,7 +1072,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
 <div class="wrap">
 <section class="page-head">
   <h1>Tests and results</h1>
-  <p class="lede">Every model runs the same inputs against a known right answer. Each result shows its percent difference from the right answer; lower is better. <a href="rankings.html">See the rankings →</a></p>
+  <p class="lede">Every model runs the same inputs against a known right answer. Each result shows its percent difference from the right answer; lower is better. <a href="rankings.html">See the leaderboard →</a></p>
 </section>
 <div class="filters" role="group" aria-label="Filter tests">{filters}
   <div class="view-toggle" role="group" aria-label="View"><button type="button" data-view="cards" aria-pressed="true">Cards</button><button type="button" data-view="table" aria-pressed="false">Table</button></div>
@@ -1457,10 +1477,26 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         missing = list(dict.fromkeys(missing)) + NOT_YET
         not_yet = (f'<div class="notyet"><div><b>Not run yet:</b> {esc(", ".join(missing))}</div>'
                    f'<a href="../score.html#{sid}" style="font-weight:600">Run it and add yours →</a></div>')
+    tb_rows = []
+    for r in order:
+        c = runs[r["key"]]
+        s_ = SOLVER[r["key"]]
+        wc = difference.worst_check(c)
+        why = ""
+        if wc is not None:
+            d_ = {cc["id"]: cc for cc in m["scoring"]["criteria"]}.get(wc["id"], wc)
+            why = check_label({**d_, "threshold": wc.get("threshold", d_.get("threshold", {}))})
+        tb_rows.append(f'<tr><td class="num lb-rank">{(str(r["rank"]) + ("=" if r.get("tie") else "")) if r.get("rank") else "–"}</td>'
+                       f'<td><a href="#m-{esc(r["key"])}"><span class="sw" style="background:{esc(s_["color"])}"></span><b>{esc(s_["name"])}</b> <span class="lb-sub">{esc(s_["sub"])}</span></a></td>'
+                       f'<td class="num"><span class="lb-cell {ranking.klass(r["score"])}">{esc(ranking.short(r["score"]))}</span></td>'
+                       f'<td class="tb-why">{esc(why)}</td><td class="num">{esc(ranking.fmt_time((c.get("run") or {}).get("wall_seconds")))}</td></tr>')
+    tboard = ('<div class="table-scroll"><table class="tb"><thead><tr><th class="num">Rank</th><th>Model</th><th class="num">Difference</th>'
+              '<th>Largest difference in</th><th class="num">Run time</th></tr></thead><tbody>' + "".join(tb_rows) + "</tbody></table></div>") if len(tb_rows) > 1 else ""
     if mcards:
         models = f"""<section class="section" style="padding-bottom:0" id="models">
   <h2>How models did</h2>
   <p class="muted">In rank order: by each model's percent difference from the right answer, the largest over the test's checks (lower is better; results within 10 % of each other share a rank). {esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
+  {tboard}
   {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
   <div class="models">{''.join(mcards)}{not_yet}</div>
 </section>"""
@@ -1734,3 +1770,31 @@ def how_page(manifests: list[dict], runs: dict) -> str:
 def redirect(to: str) -> str:
     return (f'<!doctype html><html lang="en"><meta charset="utf-8"><title>Moved</title><meta http-equiv="refresh" content="0; url={esc(to)}">'
             f'<link rel="canonical" href="{esc(to)}"><p>This page moved to <a href="{esc(to)}">{esc(to)}</a>.</p>')
+
+
+# Who makes each model and how it is licensed (the leaderboard's organisation and licence columns)
+_META = [
+    ("demo", "OpenHydro Bench", "Open (Apache-2.0)"),
+    ("swmm-anuga", "OpenHydro Bench coupler", "Open (Apache-2.0)"),
+    ("epanet", "US EPA", "Open (public domain)"),
+    ("hecras", "US Army Corps of Engineers (HEC)", "Free, closed source"),
+    ("telemac", "openTELEMAC consortium", "Open (GPL-3.0)"),
+    ("anuga", "Geoscience Australia and ANU", "Open (Apache-2.0)"),
+    ("geoclaw", "Clawpack developers", "Open (BSD-3)"),
+    ("lisflood", "University of Bristol", "Open (GPL-3.0)"),
+    ("swmm5", "US EPA", "Open (public domain)"),
+    ("openswmm", "HydroCouple", "Open (MIT)"),
+    ("hydra", "NEER AI", "AGPL-3.0 or commercial"),
+    ("hydronet", "Penn State", "Open (MIT)"),
+    ("wntr", "US EPA and Sandia", "Open (BSD-3)"),
+    ("tsnet", "University of Texas at Austin", "Open (MIT)"),
+    ("basilisk", "Basilisk (S. Popinet, CNRS)", "Open (GPL-3.0)"),
+    ("landlab", "Landlab (CSDMS)", "Open (MIT)"),
+]
+
+
+def model_meta(key: str) -> dict:
+    for pre, org, lic in _META:
+        if key.startswith(pre):
+            return {"org": org, "licence": lic, "open": lic.startswith("Open")}
+    return {"org": "", "licence": "", "open": False}

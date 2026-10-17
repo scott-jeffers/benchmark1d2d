@@ -1340,7 +1340,13 @@ def main() -> int:
     out_pages["network.html"] = netresults.page(pages.layout, netindex)
     import rankpage
 
-    out_pages["rankings.html"] = rankpage.page(pages.layout, rankpage.data(manifests, runs, pages.SOLVER, pages.story, pages.sid_of, pages.machine_info.summary))
+    rk_data = rankpage.data(manifests, runs, pages.SOLVER, pages.story, pages.sid_of, pages.machine_info.summary, pages.model_meta)
+    lb_rows = rankpage.board(runs, pages.SOLVER)
+    out_pages["rankings.html"] = rankpage.page(pages.layout, rk_data, lb_rows, pages.SOLVER, pages.model_meta)
+    lb_json, lb_csv = rankpage.exports(rk_data["updated"], lb_rows, pages.SOLVER, pages.model_meta)
+    (DIST / "data").mkdir(exist_ok=True)
+    (DIST / "data" / "leaderboard.json").write_text(lb_json, encoding="utf-8")
+    (DIST / "data" / "leaderboard.csv").write_text(lb_csv, encoding="utf-8")
     import coupledview
 
     cindex = coupledview.write_data(DIST, manifests, runs, pages.SOLVER, pages.score_tag, pages.story)

@@ -189,3 +189,119 @@ def fmt_time(s: float | None) -> str:
     if s < 3600:
         return f"{s / 60:.1f} min"
     return f"{s / 3600:.1f} h"
+
+
+# ── the rating: Bradley–Terry from head-to-head results, as LMArena rates chat models ──────────────
+# Every test two models both ran is a match between them: the closer one wins, a tie (within 10 %,
+# or both under 0.01 %) is half a win each. A Bradley–Terry fit turns all the matches into one
+# strength per model, shown on the Elo scale (1000 = the average model, +400 = ten times the odds of
+# winning). Its 95 % interval comes from re-drawing the tests with replacement (bootstrap) and
+# refitting. As on LMArena, a model's rank is 1 + the number of models whose whole interval lies
+# above its own. ``static/rankings.js`` repeats this exactly (same random numbers, same arithmetic).
+
+BOOT = 200          # bootstrap draws
+BOOT_SEED = 20261017
+PRIOR = 0.5         # each model also plays one virtual draw against an average model (keeps zero-win models finite)
+
+
+def _mulberry32(seed: int):
+    """The browser's small seeded generator (mulberry32), bit for bit."""
+    a = seed & 0xFFFFFFFF
+
+    def nxt() -> float:
+        nonlocal a
+        a = (a + 0x6D2B79F5) & 0xFFFFFFFF
+        t = a
+        t = ((t ^ (t >> 15)) * (t | 1)) & 0xFFFFFFFF
+        t ^= (t + (((t ^ (t >> 7)) * (t | 61)) & 0xFFFFFFFF)) & 0xFFFFFFFF
+        return ((t ^ (t >> 14)) & 0xFFFFFFFF) / 4294967296.0
+    return nxt
+
+
+def _fit(keys: list[str], tests: list[list[tuple[str, float]]], pick: list[int]) -> list[float]:
+    """Bradley–Terry strengths (Hunter's MM algorithm) from the tests at indices ``pick``; Elo-scale ratings."""
+    n = len(keys)
+    idx = {k: i for i, k in enumerate(keys)}
+    wins = [PRIOR] * n
+    games: dict[tuple[int, int], float] = {}
+    for ti in pick:
+        rows = tests[ti]
+        for a in range(len(rows)):
+            ka, sa = rows[a]
+            for b in range(a + 1, len(rows)):
+                kb, sb = rows[b]
+                i, j = idx[ka], idx[kb]
+                if tied(sa, sb):
+                    wins[i] += 0.5
+                    wins[j] += 0.5
+                elif sa < sb:
+                    wins[i] += 1.0
+                else:
+                    wins[j] += 1.0
+                key = (i, j) if i < j else (j, i)
+                games[key] = games.get(key, 0.0) + 1.0
+    p = [1.0] * n
+    pairs = sorted(games.items())
+    for _ in range(100):
+        den = [2 * PRIOR / (pi + 1.0) for pi in p]  # the virtual draw against strength 1
+        for (i, j), g in pairs:
+            s = g / (p[i] + p[j])
+            den[i] += s
+            den[j] += s
+        new = [wins[i] / den[i] for i in range(n)]
+        lg = sum(math.log(x) for x in new) / n
+        new = [x / math.exp(lg) for x in new]
+        if max(abs(math.log(new[i] / p[i])) for i in range(n)) < 1e-9:
+            p = new
+            break
+        p = new
+    return [1000.0 + 400.0 * math.log10(x) for x in p]
+
+
+def rating_board(runs: dict[str, dict[str, dict]], keep=None, group: str | None = None) -> list[dict]:
+    """The leaderboard: per model its rating, 95 % interval, rank (LMArena's rule), tests, per-group median
+    difference, median run time. ``runs``: test_id -> model key -> card."""
+    tests, keys_set, times, by_group = [], set(), defaultdict(list), defaultdict(lambda: defaultdict(list))
+    for tid in sorted(runs):
+        if group and group_of(tid) != group:
+            continue
+        rows = []
+        for k in sorted(runs[tid]):
+            if keep is not None and not keep(k):
+                continue
+            s = score(runs[tid][k])
+            if s is None:
+                continue
+            s = s if math.isfinite(s) else 1e12
+            rows.append((k, s))
+            keys_set.add(k)
+            by_group[k][group_of(tid)].append(s)
+            w = (runs[tid][k].get("run") or {}).get("wall_seconds")
+            if w is not None:
+                times[k].append(float(w))
+        if len(rows) >= 2:
+            tests.append(rows)
+    keys = sorted(keys_set)
+    if not keys:
+        return []
+    n_tests = {k: sum(1 for t in tests if any(r[0] == k for r in t)) for k in keys}
+    point = _fit(keys, tests, list(range(len(tests))))
+    rnd = _mulberry32(BOOT_SEED)
+    draws = []
+    for _ in range(BOOT):
+        pick = [int(rnd() * len(tests)) for _ in range(len(tests))]
+        draws.append(_fit(keys, tests, pick))
+    out = []
+    for i, k in enumerate(keys):
+        col = sorted(d[i] for d in draws)
+        lo, hi = col[int(0.025 * (BOOT - 1))], col[int(math.ceil(0.975 * (BOOT - 1)))]
+        out.append({"key": k, "rating": point[i], "lo": lo, "hi": hi, "tests": n_tests[k],
+                    "groups": {g: statistics.median(v) for g, v in by_group[k].items()},
+                    "median_score": statistics.median([s for v in by_group[k].values() for s in v]),
+                    "median_time": statistics.median(times[k]) if times[k] else None, "timed": len(times[k])})
+    for r in out:
+        r["rank"] = 1 + sum(1 for o in out if o["lo"] > r["hi"])
+        r["ranked"] = r["tests"] >= MIN_TESTS
+    # ranked models first, by rank (LMArena's order), then rating; a model with no head-to-head result has no rating
+    out.sort(key=lambda r: (not r["ranked"], r["rank"] if r["ranked"] else 0, -r["rating"] if r["tests"] else 1e9))
+    return out

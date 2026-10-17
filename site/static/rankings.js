@@ -1,20 +1,22 @@
-// Rankings: leaderboard, models × tests portrait and accuracy against run time, re-ranked in the browser for the
-// chosen test group and model kinds with the rules of site/ranking.py. Data: #rk-data (site/rankpage.py).
+// Leaderboard: the OpenHydro rating (Bradley–Terry over head-to-head results, 95 % bootstrap interval),
+// the full table, accuracy against run time and every result, recomputed in the browser for the chosen
+// board and model kinds. The arithmetic repeats site/ranking.py exactly (same random numbers, same order).
+// Data: #rk-data (site/rankpage.py).
 (function () {
   "use strict";
   var D = JSON.parse(document.getElementById("rk-data").textContent);
   function $(id) { return document.getElementById(id); }
-  var NS = "http://www.w3.org/2000/svg";
-  var R = D.rules, group = "", kinds = {};
+  var R = D.rules, group = "", kinds = {}, query = "", sortKey = "rank", sortDir = 1;
   document.querySelectorAll(".rk-kinds input").forEach(function (c) { kinds[c.value] = c.checked; });
+  var GNAME = {}; D.groups.forEach(function (g) { GNAME[g[0]] = g[1]; });
+  var TORDER = {}; D.tests.forEach(function (t, i) { TORDER[t.sid] = i; });
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function num(s) { return s < 1 ? String(Number(s.toPrecision(2))) : s < 10 ? s.toFixed(1) : s < 1e4 ? String(Math.round(s)) : s.toExponential(0).replace("e+", "e"); }
-  function short(s) {  // percent difference, as site/ranking.py
+  function short(s) {
     if (s === null || s === undefined) return "–";
     if (!isFinite(s) || s >= 1e12) return "∞";
-    if (s < 0.01) return "<0.01 %";
-    return num(s) + " %";
+    return s < 0.01 ? "<0.01 %" : num(s) + " %";
   }
   function klass(s) {
     if (s === null || s === undefined) return "sn";
@@ -32,144 +34,241 @@
     return hi === 0 || Math.abs(a - b) <= R.tie_rel * hi;
   }
   function median(v) { var s = v.slice().sort(function (a, b) { return a - b; }), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; }
-  function name(k) { var m = D.models[k]; return m.name + (m.sub ? " · " + m.sub : ""); }
 
-  function shown(k) { var m = D.models[k]; return m && kinds[m.kind]; }
-  function testsShown() { return D.tests.filter(function (t) { return !group || t.group === group; }); }
-  function byTest() {  // sid -> [{key, score, time, machine}]
-    var out = {};
+  // ── the rating (site/ranking.py: _mulberry32, _fit, rating_board) ───────────
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function fit(keys, tests, pick) {
+    var n = keys.length, idx = {}, wins = [], games = {}, i, j;
+    keys.forEach(function (k, q) { idx[k] = q; wins.push(R.prior); });
+    pick.forEach(function (ti) {
+      var rows = tests[ti];
+      for (var a = 0; a < rows.length; a++) for (var b = a + 1; b < rows.length; b++) {
+        i = idx[rows[a][0]]; j = idx[rows[b][0]];
+        var sa = rows[a][1], sb = rows[b][1];
+        if (tied(sa, sb)) { wins[i] += 0.5; wins[j] += 0.5; } else if (sa < sb) wins[i] += 1; else wins[j] += 1;
+        var key = i < j ? i * 100000 + j : j * 100000 + i;
+        games[key] = (games[key] || 0) + 1;
+      }
+    });
+    var pairs = Object.keys(games).map(Number).sort(function (x, y) { return x - y; })
+      .map(function (k) { return [Math.floor(k / 100000), k % 100000, games[k]]; });
+    var p = []; for (i = 0; i < n; i++) p.push(1);
+    for (var it = 0; it < 100; it++) {
+      var den = p.map(function (pi) { return 2 * R.prior / (pi + 1); });
+      pairs.forEach(function (q) { var s = q[2] / (p[q[0]] + p[q[1]]); den[q[0]] += s; den[q[1]] += s; });
+      var nw = [], lg = 0;
+      for (i = 0; i < n; i++) nw.push(wins[i] / den[i]);
+      for (i = 0; i < n; i++) lg += Math.log(nw[i]);
+      var g = Math.exp(lg / n), dmax = 0;
+      for (i = 0; i < n; i++) { nw[i] = nw[i] / g; dmax = Math.max(dmax, Math.abs(Math.log(nw[i] / p[i]))); }
+      p = nw;
+      if (dmax < 1e-9) break;
+    }
+    return p.map(function (x) { return 1000 + 400 * Math.log10(x); });
+  }
+  function shown(k) { var m = D.models[k]; return !!(m && kinds[m.kind]); }
+  function board() {
+    var bt = {}, keysSet = {}, times = {}, byG = {};
     D.results.forEach(function (r) {
-      if (!shown(r[1])) return;
-      (out[r[0]] = out[r[0]] || []).push({ key: r[1], score: r[2], time: r[3], machine: r[4] });
+      var t = D.tests[TORDER[r[0]]];
+      if (!t || (group && t.group !== group) || !shown(r[1]) || r[2] === null) return;
+      (bt[r[0]] = bt[r[0]] || []).push([r[1], r[2]]);
+      keysSet[r[1]] = 1;
+      var gg = (byG[r[1]] = byG[r[1]] || {});
+      (gg[t.group] = gg[t.group] || []).push(r[2]);
+      if (r[3] !== null && r[3] !== undefined) (times[r[1]] = times[r[1]] || []).push(r[3]);
+    });
+    var tests = Object.keys(bt).sort(function (a, b) { return TORDER[a] - TORDER[b]; })
+      .map(function (sid) { return bt[sid].sort(function (x, y) { return x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0; }); })
+      .filter(function (rows) { return rows.length >= 2; });
+    var keys = Object.keys(keysSet).sort();
+    if (!keys.length) return [];
+    var all = []; for (var q = 0; q < tests.length; q++) all.push(q);
+    var point = fit(keys, tests, all), rnd = mulberry32(R.seed), draws = [];
+    for (var b = 0; b < R.boot; b++) {
+      var pick = []; for (var z = 0; z < tests.length; z++) pick.push(Math.floor(rnd() * tests.length));
+      draws.push(fit(keys, tests, pick));
+    }
+    var out = keys.map(function (k, i) {
+      var col = draws.map(function (d) { return d[i]; }).sort(function (x, y) { return x - y; });
+      var g = byG[k] || {}, allS = [], gm = {};
+      Object.keys(g).forEach(function (x) { gm[x] = median(g[x]); allS = allS.concat(g[x]); });
+      return { key: k, rating: point[i], lo: col[Math.floor(0.025 * (R.boot - 1))], hi: col[Math.ceil(0.975 * (R.boot - 1))],
+               tests: tests.filter(function (t) { return t.some(function (r) { return r[0] === k; }); }).length,
+               groups: gm, med: median(allS), time: median(times[k] || []), timed: (times[k] || []).length };
+    });
+    out.forEach(function (r) { r.rank = 1 + out.filter(function (o) { return o.lo > r.hi; }).length; r.ranked = r.tests >= R.min_tests; });
+    out.sort(function (a, b) {  // ranked first, by rank, then rating (site/ranking.py)
+      return (a.ranked === b.ranked ? 0 : a.ranked ? -1 : 1) || (a.ranked ? a.rank - b.rank : 0) || ((b.tests ? b.rating : -1e9) - (a.tests ? a.rating : -1e9));
     });
     return out;
   }
-  function overall(bt, tests) {
-    var per = {};
-    tests.forEach(function (t) {
-      var rows = (bt[t.sid] || []).filter(function (r) { return r.score !== null; });
-      if (!rows.length) return;
-      var med = median(rows.map(function (r) { return r.score; }).filter(isFinite)) || 1;
-      rows.forEach(function (r) {
-        var p = per[r.key] = per[r.key] || { key: r.key, tests: 0, wins: 0, comps: 0, rel: [], scores: [], times: [] };
-        p.tests++; p.scores.push(r.score);
-        p.rel.push(Math.max(r.score, R.tie_floor) / Math.max(med, R.tie_floor));
-        if (r.time !== null && r.time !== undefined) p.times.push(r.time);
-        rows.forEach(function (o) {
-          if (o === r) return;
-          p.comps++;
-          if (tied(r.score, o.score)) p.wins += 0.5; else if (r.score < o.score) p.wins += 1;
-        });
+
+  function match(k) { if (!query) return true; var m = D.models[k]; return (m.name + " " + m.sub + " " + (m.org || "")).toLowerCase().indexOf(query) >= 0; }
+
+  // ── rating chart ────────────────────────────────────────────────────────────
+  function chart(rows) {
+    var box = $("rc"); if (!box) return;
+    var rr = rows.filter(function (r) { return r.ranked && match(r.key); });
+    if (!rr.length) { box.innerHTML = '<li class="rc-empty">No ranked models in this view: a model needs ' + R.min_tests + " tests in the board.</li>"; return; }
+    var lo = Math.min.apply(null, rr.map(function (r) { return r.lo; })), hi = Math.max.apply(null, rr.map(function (r) { return r.hi; }));
+    var base = (Math.floor(lo / 50) - 1) * 50, span = Math.max(hi - base, 1);
+    box.innerHTML = rr.map(function (r) {
+      var m = D.models[r.key], w = 100 * (r.rating - base) / span, a = 100 * (r.lo - base) / span, b = 100 * (r.hi - base) / span;
+      return '<li><a class="rc-name" href="solvers/' + esc(r.key) + '.html"><span class="rc-rank">' + r.rank + '</span><span class="sw" style="background:' + esc(m.color) + '"></span><b>' + esc(m.name) + '</b> <span class="lb-sub">' + esc(m.sub) + "</span></a>" +
+        '<span class="rc-track" title="' + Math.round(r.rating) + " (95 % interval " + Math.round(r.lo) + " to " + Math.round(r.hi) + ')">' +
+        '<i class="rc-ci" style="left:' + a.toFixed(2) + "%;width:" + Math.max(b - a, 0.6).toFixed(2) + '%"></i><i class="rc-dot" style="left:' + w.toFixed(2) + '%"></i></span><span class="rc-val">' + Math.round(r.rating) + "</span></li>";
+    }).join("");
+  }
+
+  // ── full table ──────────────────────────────────────────────────────────────
+  function groupsShown() { return D.groups.filter(function (g) { return D.tests.some(function (t) { return t.group === g[0] && (!group || t.group === group); }); }); }
+  function sorted(rows) {
+    var v = function (r) {
+      if (sortKey === "rating") return r.rating;
+      if (sortKey === "rank") return r.ranked ? r.rank : 1e9 + (r.tests ? -r.rating : 0);
+      if (sortKey === "tests") return r.tests;
+      if (sortKey === "time") return r.time === null ? Infinity : r.time;
+      if (sortKey === "name") return D.models[r.key].name + " " + D.models[r.key].sub;
+      if (sortKey.indexOf("g:") === 0) { var x = r.groups[sortKey.slice(2)]; return x === undefined ? Infinity : x; }
+      return 0;
+    };
+    return rows.slice().sort(function (a, b) {
+      var x = v(a), y = v(b);
+      if (typeof x === "string") return sortDir * (x < y ? -1 : x > y ? 1 : 0);
+      if (x === y) return current.indexOf(a) - current.indexOf(b);
+      if (!isFinite(x)) return 1;
+      if (!isFinite(y)) return -1;
+      return sortDir * (x - y);
+    });
+  }
+  function table(rows) {
+    var gs = groupsShown(), t = $("lb-table");
+    var th = function (key, label, cls) {
+      var on = sortKey === key;
+      return '<th scope="col"' + (cls ? ' class="' + cls + '"' : "") + (on ? ' aria-sort="' + (sortDir < 0 ? "descending" : "ascending") + '"' : "") +
+        '><button type="button" data-sort="' + key + '">' + esc(label) + (on ? (sortDir < 0 ? " ↓" : " ↑") : "") + "</button></th>";
+    };
+    var h = "<thead><tr>" + th("rank", "Rank", "num") + th("name", "Model") + th("rating", "Rating", "num") + '<th scope="col" class="num">95 % interval</th>' + th("tests", "Tests", "num") +
+      gs.map(function (g) { return th("g:" + g[0], g[1], "num lb-g"); }).join("") + th("time", "Median run time", "num") + '<th scope="col">Licence</th></tr></thead><tbody>';
+    var shownRows = sorted(rows).filter(function (r) { return match(r.key); });
+    shownRows.forEach(function (r) {
+      var m = D.models[r.key];
+      h += "<tr" + (r.ranked ? "" : ' class="lb-unranked"') + '><td class="num lb-rank">' + (r.ranked ? r.rank : "–") + "</td>" +
+        '<td class="lb-model"><a href="solvers/' + esc(r.key) + '.html"><span class="sw" style="background:' + esc(m.color) + '"></span><b>' + esc(m.name) + '</b> <span class="lb-sub">' + esc(m.sub) + "</span></a>" +
+        '<div class="lb-org">' + esc(m.org || "") + "</div></td>" +
+        '<td class="num lb-rating">' + (r.tests ? Math.round(r.rating) : "–") + '</td><td class="num lb-ci">' + (r.tests ? Math.round(r.lo) + "–" + Math.round(r.hi) : "–") + "</td>" +
+        '<td class="num">' + r.tests + "</td>" +
+        gs.map(function (g) { var x = r.groups[g[0]]; return x === undefined ? '<td class="num lb-none">–</td>' : '<td class="num"><span class="lb-cell ' + klass(x) + '">' + short(x) + "</span></td>"; }).join("") +
+        '<td class="num">' + time(r.time) + (r.timed && r.timed < r.tests ? '<div class="lb-org">' + r.timed + " of " + r.tests + " timed</div>" : "") + "</td>" +
+        '<td class="lb-lic">' + esc(m.licence || "") + "</td></tr>";
+    });
+    if (!shownRows.length) h += '<tr><td colspan="' + (7 + gs.length) + '">No model matches this view.</td></tr>';
+    t.innerHTML = h + "</tbody>";
+    t.querySelectorAll("[data-sort]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var k = b.getAttribute("data-sort");
+        if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = (k === "rating" || k === "tests") ? -1 : 1; }
+        table(current);
+        var nb = t.querySelector('[data-sort="' + k + '"]'); if (nb) nb.focus();
       });
     });
-    var out = Object.keys(per).map(function (k) {
-      var p = per[k];
-      return { key: k, tests: p.tests, comps: p.comps, win: p.comps ? p.wins / p.comps : null,
-               field: p.rel.length ? Math.exp(p.rel.reduce(function (a, v) { return a + Math.log(v); }, 0) / p.rel.length) : null,
-               med: median(p.scores), time: median(p.times), timed: p.times.length };
-    });
-    var ranked = out.filter(function (r) { return r.tests >= R.min_tests && r.win !== null; })
-      .sort(function (a, b) { return b.win - a.win || (a.field || 1e9) - (b.field || 1e9); });
-    ranked.forEach(function (r) { r.rank = 1 + ranked.filter(function (o) { return o.win > r.win + 0.02; }).length; });
-    var rest = out.filter(function (r) { return ranked.indexOf(r) < 0; }).sort(function (a, b) { return (b.win || 0) - (a.win || 0) || b.tests - a.tests; });
-    rest.forEach(function (r) { r.rank = null; });
-    return ranked.concat(rest);
+    var nr = rows.filter(function (r) { return r.ranked; }).length, nt = D.tests.filter(function (x) { return !group || x.group === group; }).length;
+    $("lb-note").textContent = nr + " model" + (nr === 1 ? "" : "s") + " ranked on " + nt + " test" + (nt === 1 ? "" : "s") + (group ? " in " + GNAME[group] : "") +
+      ". Select a column heading to sort. Group columns are the median percent difference from the right answer on that group's tests; models with fewer than " + R.min_tests + " tests are listed without a rank.";
   }
 
-  function board(rows, nTests) {
-    var tb = document.querySelector("#rk-board tbody"), h = "";
-    rows.forEach(function (r) {
-      var m = D.models[r.key];
-      h += "<tr" + (r.rank ? "" : ' class="rk-unranked"') + '><td class="num"><b>' + (r.rank ? r.rank : "–") + "</b></td>" +
-        '<td><a href="solvers/' + esc(r.key) + '.html"><span class="sw" style="background:' + esc(m.color) + '"></span><b>' + esc(m.name) + '</b> <span class="muted">' + esc(m.sub) + "</span></a></td>" +
-        '<td><div class="rk-bar"><i style="width:' + (r.win === null ? 0 : (100 * r.win).toFixed(1)) + '%"></i><span>' + (r.win === null ? "–" : Math.round(100 * r.win) + " %") + '</span></div><span class="muted small">' + r.comps + " comparisons</span></td>" +
-        '<td class="num">' + (r.field === null ? "–" : r.field < 0.1 ? r.field.toFixed(2) + "×" : r.field.toFixed(1) + "×") + "</td>" +
-        '<td class="num">' + r.tests + "</td>" +
-        '<td class="num"><span class="score ' + klass(r.med) + '">' + short(r.med) + "</span></td>" +
-        '<td class="num">' + time(r.time) + (r.timed && r.timed < r.tests ? '<div class="muted small">' + r.timed + " of " + r.tests + " timed</div>" : "") + "</td></tr>";
+  // ── accuracy against run time ─────────────────────────────────────────────
+  function speed(rows) {
+    var box = $("rk-speed");
+    var pts = rows.filter(function (r) { return r.ranked && r.time !== null && match(r.key); });
+    if (pts.length < 2) { box.innerHTML = '<p class="muted small">Not enough timed models in this view.</p>'; return; }
+    var W = Math.max(320, box.clientWidth || 560), H = 340, L = 52, Rr = 18, T = 14, B = 40;
+    var xs = pts.map(function (p) { return Math.log10(Math.max(p.time, 1e-3)); }), ys = pts.map(function (p) { return p.rating; });
+    var x0 = Math.floor(Math.min.apply(null, xs) - 0.2), x1 = Math.ceil(Math.max.apply(null, xs) + 0.2);
+    var y0 = Math.floor((Math.min.apply(null, pts.map(function (p) { return p.lo; })) - 20) / 100) * 100;
+    var y1 = Math.ceil((Math.max.apply(null, pts.map(function (p) { return p.hi; })) + 20) / 100) * 100;
+    function X(v) { return L + (v - x0) / (x1 - x0) * (W - L - Rr); }
+    function Y(v) { return T + (y1 - v) / (y1 - y0) * (H - T - B); }
+    var mx = median(xs), my = median(ys);
+    var svg = '<svg viewBox="0 0 ' + W + " " + H + '" class="rk-scatter" role="img" aria-label="Rating against median run time">';
+    svg += '<rect x="' + L + '" y="' + T + '" width="' + Math.max(0, X(mx) - L) + '" height="' + Math.max(0, Y(my) - T) + '" class="best"/><text x="' + (L + 8) + '" y="' + (T + 16) + '" class="best-t">more accurate and faster</text>';
+    for (var d = y0; d <= y1; d += 100) svg += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + Y(d) + '" y2="' + Y(d) + '" class="g"/><text x="' + (L - 6) + '" y="' + (Y(d) + 4) + '" text-anchor="end">' + d + "</text>";
+    for (var e = x0; e <= x1; e++) svg += '<line y1="' + T + '" y2="' + (H - B) + '" x1="' + X(e) + '" x2="' + X(e) + '" class="g"/><text x="' + X(e) + '" y="' + (H - B + 16) + '" text-anchor="middle">' + time(Math.pow(10, e)) + "</text>";
+    svg += '<text x="' + ((L + W - Rr) / 2) + '" y="' + (H - 4) + '" text-anchor="middle">median run time, finest grid (log)</text>';
+    // labels: the model's name (with its variant when two shown models share a name), placed clear of the others
+    var names = {}; pts.forEach(function (p) { var n = D.models[p.key].name; names[n] = (names[n] || 0) + 1; });
+    var boxes = pts.map(function (p, i) { return { x0: X(xs[i]) - 7, x1: X(xs[i]) + 7, y0: Y(ys[i]) - 7, y1: Y(ys[i]) + 7 }; });
+    function hits(bx) { return boxes.some(function (o) { return bx.x0 < o.x1 && bx.x1 > o.x0 && bx.y0 < o.y1 && bx.y1 > o.y0; }) || bx.x1 > W - 2 || bx.y0 < T || bx.y1 > H - B; }
+    var order = pts.map(function (p, i) { return i; }).sort(function (a, b) { return pts[b].rating - pts[a].rating; });
+    var labels = {};
+    order.forEach(function (i) {
+      var m = D.models[pts[i].key], txt = names[m.name] > 1 ? m.name + " " + m.sub.split(" · ").pop() : m.name;
+      var w = txt.length * 6.6 + 4, cx = X(xs[i]), cy = Y(ys[i]);
+      var tries = [[9, 4], [9, -10], [9, 18], [-9 - w, 4], [-9 - w, -10], [-9 - w, 18], [9, -24], [9, 32]];
+      for (var k = 0; k < tries.length; k++) {
+        var lx = cx + tries[k][0], ly = cy + tries[k][1], bx = { x0: lx, x1: lx + w, y0: ly - 11, y1: ly + 3 };
+        if (!hits(bx)) { boxes.push(bx); labels[i] = '<text x="' + lx + '" y="' + ly + '" class="pl">' + esc(txt) + "</text>"; break; }
+      }
     });
-    tb.innerHTML = h || '<tr><td colspan="7">No results for this choice.</td></tr>';
-    var nr = rows.filter(function (r) { return r.rank; }).length;
-    $("rk-board-note").textContent = nr + " model" + (nr === 1 ? "" : "s") + " ranked over " + nTests + " test" + (nTests === 1 ? "" : "s") +
-      ". Models with fewer than " + R.min_tests + " tests in this view are listed below the ranked ones, without a rank.";
+    pts.forEach(function (p, i) {
+      var m = D.models[p.key], cx = X(xs[i]), cy = Y(ys[i]);
+      svg += '<g><line x1="' + cx + '" x2="' + cx + '" y1="' + Y(p.lo) + '" y2="' + Y(p.hi) + '" class="ci"/><circle cx="' + cx + '" cy="' + cy + '" r="6" fill="' + esc(m.color) + '" stroke="var(--sheet)" stroke-width="2"><title>' +
+        esc(m.name + " " + m.sub + ": rating " + Math.round(p.rating) + ", median run time " + time(p.time)) + "</title></circle>" + (labels[i] || "") + "</g>";
+    });
+    box.innerHTML = svg + "</svg>";
   }
 
-  function portrait(rows, tests, bt) {
-    var t = $("rk-portrait"), h = '<thead><tr><th scope="col" class="rk-corner">Model</th>';
-    var cols = tests.filter(function (x) { return (bt[x.sid] || []).length; });
-    var gname = {}; D.groups.forEach(function (g) { gname[g[0]] = g[1]; });
-    cols.forEach(function (x) { h += '<th scope="col" title="' + esc(x.name + " · " + gname[x.group]) + '"><a href="tests/' + esc(x.sid) + '.html"><span>' + esc(x.sid) + "</span></a></th>"; });
+  // ── every result ────────────────────────────────────────────────────────────
+  function portrait(rows) {
+    var t = $("rk-portrait");
+    var cols = D.tests.filter(function (x) { return (!group || x.group === group) && D.results.some(function (r) { return r[0] === x.sid && shown(r[1]); }); });
+    var h = '<thead><tr><th scope="col" class="rk-corner">Model</th>';
+    cols.forEach(function (x) { h += '<th scope="col" title="' + esc(x.name + " · " + GNAME[x.group]) + '"><a href="tests/' + esc(x.sid) + '.html"><span>' + esc(x.sid) + "</span></a></th>"; });
     h += "</tr></thead><tbody>";
-    rows.forEach(function (r) {
+    var res = {}; D.results.forEach(function (r) { res[r[0] + "|" + r[1]] = r; });
+    rows.filter(function (r) { return match(r.key); }).forEach(function (r) {
       var m = D.models[r.key];
       h += '<tr><th scope="row"><span class="sw" style="background:' + esc(m.color) + '"></span>' + esc(m.name) + ' <span class="muted">' + esc(m.sub) + "</span></th>";
       cols.forEach(function (x) {
-        var res = (bt[x.sid] || []).filter(function (q) { return q.key === r.key; })[0];
-        if (!res) { h += '<td class="rk-none"></td>'; return; }
-        h += '<td class="' + klass(res.score) + '"><a href="tests/' + esc(x.sid) + ".html#m-" + esc(r.key) + '" title="' + esc(x.name + " · " + name(r.key) + ": " + short(res.score)) + '">' + short(res.score) + "</a></td>";
+        var q = res[x.sid + "|" + r.key];
+        if (!q || q[2] === null) { h += '<td class="rk-none"></td>'; return; }
+        h += '<td class="' + klass(q[2]) + '"><a href="tests/' + esc(x.sid) + ".html#m-" + esc(r.key) + '" title="' + esc(x.name + " · " + m.name + " " + m.sub + ": " + short(q[2]) + " off") + '">' + short(q[2]) + "</a></td>";
       });
       h += "</tr>";
     });
     t.innerHTML = h + "</tbody>";
   }
 
-  function speedPick(tests, bt) {
-    var sel = $("rk-test"), keep = sel.value;
-    var withTime = tests.filter(function (x) { return (bt[x.sid] || []).some(function (r) { return r.time !== null && r.time !== undefined && r.score !== null; }); });
-    sel.innerHTML = withTime.map(function (x) { return '<option value="' + esc(x.sid) + '">' + esc(x.sid + " · " + x.name) + "</option>"; }).join("");
-    if (withTime.some(function (x) { return x.sid === keep; })) sel.value = keep;
-    sel.disabled = !withTime.length;
-    speed(bt);
-  }
-  function speed(bt) {
-    var box = $("rk-speed"), sid = $("rk-test").value;
-    var pts = (bt[sid] || []).filter(function (r) { return r.time !== null && r.time !== undefined && r.score !== null && isFinite(r.score); });
-    if (!pts.length) { box.innerHTML = '<p class="muted small">No timed results in this view yet: run times are recorded by every run from 17 October 2026 and appear as the solver jobs re-run.</p>'; return; }
-    var W = Math.max(320, box.clientWidth || 640), H = 320, L = 64, Rr = 16, T = 14, B = 44;
-    var xs = pts.map(function (p) { return Math.log10(Math.max(p.time, 1e-3)); }), ys = pts.map(function (p) { return Math.log10(Math.max(p.score, 1e-3)); });
-    var x0 = Math.floor(Math.min.apply(null, xs) - 0.2), x1 = Math.ceil(Math.max.apply(null, xs) + 0.2);
-    var y0 = Math.floor(Math.min(Math.min.apply(null, ys), -1) - 0.1), y1 = Math.ceil(Math.max(Math.max.apply(null, ys), 0.3) + 0.1);
-    function X(v) { return L + (v - x0) / (x1 - x0) * (W - L - Rr); }
-    function Y(v) { return T + (y1 - v) / (y1 - y0) * (H - T - B); }
-    var svg = '<svg viewBox="0 0 ' + W + " " + H + '" class="rk-scatter" role="img" aria-label="Percent difference against run time">';
-    for (var d = y0; d <= y1; d++) svg += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + Y(d) + '" y2="' + Y(d) + '" class="g"/><text x="' + (L - 6) + '" y="' + (Y(d) + 4) + '" text-anchor="end">' + short(Math.pow(10, d)) + "</text>";
-    for (var e = x0; e <= x1; e++) svg += '<line y1="' + T + '" y2="' + (H - B) + '" x1="' + X(e) + '" x2="' + X(e) + '" class="g"/><text x="' + X(e) + '" y="' + (H - B + 16) + '" text-anchor="middle">' + time(Math.pow(10, e)) + "</text>";
-    svg += '<text x="' + ((L + W - Rr) / 2) + '" y="' + (H - 6) + '" text-anchor="middle">wall time, finest grid (log)</text><text x="14" y="' + ((T + H - B) / 2) + '" text-anchor="middle" transform="rotate(-90 14 ' + ((T + H - B) / 2) + ')">percent difference (log)</text>';
-    pts.forEach(function (p, i) {
-      var m = D.models[p.key], cx = X(xs[i]), cy = Y(ys[i]);
-      svg += '<g><circle cx="' + cx + '" cy="' + cy + '" r="6" fill="' + esc(m.color) + '" stroke="var(--sheet)" stroke-width="1.5"><title>' + esc(name(p.key) + ": " + short(p.score) + " in " + time(p.time) + (p.machine ? " on " + p.machine : "")) + "</title></circle>" +
-        '<text x="' + (cx + 9) + '" y="' + (cy + 4) + '" class="pl">' + esc(m.name) + "</text></g>";
-    });
-    box.innerHTML = svg + "</svg>";
-  }
-
-  function legend() {
-    $("rk-legend").innerHTML = R.bands.map(function (b) { return [b[1], b[2]]; }).concat([["rk-none", "not run"]])
-      .map(function (x) { return '<span><i class="' + x[0] + '"></i>' + x[1] + "</span>"; }).join("");
-  }
-
+  var current = [];
+  function redraw() { chart(current); table(current); speed(current); portrait(current); }
   function render() {
-    var tests = testsShown(), bt = byTest(), rows = overall(bt, tests);
-    board(rows, tests.filter(function (x) { return (bt[x.sid] || []).length; }).length);
-    portrait(rows, tests, bt);
-    speedPick(tests, bt);
+    current = board();
+    redraw();
     try { history.replaceState(null, "", group ? "#" + group : location.pathname); } catch (e) { /* file:// */ }
   }
-  document.querySelectorAll("[data-g]").forEach(function (b) {
+  document.querySelectorAll(".lb-tab").forEach(function (b) {
     b.addEventListener("click", function () {
       group = b.getAttribute("data-g");
-      document.querySelectorAll("[data-g]").forEach(function (o) { o.setAttribute("aria-pressed", o === b ? "true" : "false"); });
+      document.querySelectorAll(".lb-tab").forEach(function (o) { o.setAttribute("aria-pressed", o === b ? "true" : "false"); });
       render();
     });
   });
   document.querySelectorAll(".rk-kinds input").forEach(function (c) { c.addEventListener("change", function () { kinds[c.value] = c.checked; render(); }); });
-  $("rk-test").addEventListener("change", function () { speed(byTest()); });
-  window.addEventListener("resize", function () { speed(byTest()); });
-  var h = decodeURIComponent((location.hash || "").slice(1));
-  if (h && D.groups.some(function (g) { return g[0] === h; })) {
-    group = h;
-    document.querySelectorAll("[data-g]").forEach(function (o) { o.setAttribute("aria-pressed", o.getAttribute("data-g") === h ? "true" : "false"); });
+  $("lb-q").addEventListener("input", function () { query = this.value.trim().toLowerCase(); redraw(); });
+  window.addEventListener("resize", function () { speed(current); });
+  var h0 = decodeURIComponent((location.hash || "").slice(1));
+  if (h0 && D.groups.some(function (g) { return g[0] === h0; })) {
+    group = h0;
+    document.querySelectorAll(".lb-tab").forEach(function (o) { o.setAttribute("aria-pressed", o.getAttribute("data-g") === h0 ? "true" : "false"); });
   }
-  legend();
+  $("rk-legend").innerHTML = R.bands.map(function (b) { return '<span><i class="' + b[1] + '"></i>' + esc(b[2]) + "</span>"; }).join("") + '<span><i class="rk-none"></i>not run</span>';
   render();
 })();
