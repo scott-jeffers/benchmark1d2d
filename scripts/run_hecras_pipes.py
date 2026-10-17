@@ -295,7 +295,11 @@ def compiled(ghdf: Path) -> list[str]:
 
 
 def compile_network(folder: Path, ras_exe: Path, ghdf: Path) -> None:
-    """Have HEC-RAS (RasMapperLib) build the network's computational cells and property tables from the layers."""
+    """Have HEC-RAS build the network's computational cells and property tables from the layers written above.
+
+    Tries, in order, until the compiled network appears in the geometry HDF: RasMapperLib's own calls (the ones
+    RAS Mapper makes), then HEC-RAS's geometry preprocessor through ras-commander.
+    """
     from ras_commander.geom.GeomMesh import _imports, _load_dlls
 
     _load_dlls(str(ras_exe.parent))
@@ -304,28 +308,51 @@ def compile_network(folder: Path, ras_exe: Path, ghdf: Path) -> None:
 
     ns = _imports()
     geom = ns["RASGeometry"](str(ghdf))
-    pn = geom.PipeNetworks
     steps = []
+
+    def cnt(layer):
+        try:
+            return int(layer.FeatureCount())
+        except Exception as exc:  # noqa: BLE001
+            return f"? ({type(exc).__name__}: {str(exc)[:80]})"
+
+    for lname in ("PipeNodes", "PipeLinks", "PipeTopInlets", "PipeSideInlets", "PipeNetworks"):
+        try:
+            steps.append(f"{lname}={cnt(getattr(geom, lname))}")
+        except Exception as exc:  # noqa: BLE001
+            steps.append(f"{lname}: {type(exc).__name__}: {str(exc)[:120]}")
+    pn = geom.PipeNetworks
+    idxs = List[System.Int32]()
+    for i in range(max(1, int(pn.FeatureCount()) if isinstance(cnt(pn), int) else 1)):
+        idxs.Add(i)
     for label, call in (
+        ("load all layers", lambda: geom.LoadSaveAllLayers()),
+        ("node types", lambda: geom.PipeNodes.UpdateNodeType(List[System.Int32]([i for i in range(int(geom.PipeNodes.FeatureCount()))]) if False else None)),
         ("reconcile network names", lambda: pn.ReconcileNetworksWithPipeLinkSystemNames()),
-        ("compute meshes from inputs", lambda: pn.ComputeMeshesFromInputs(List[System.Int32]([i for i in range(max(1, pn.FeatureCount()))]), False)),
-        ("compute out-of-date meshes", lambda: pn.ComputeOutOfDateMeshes(False)),
+        ("out-of-date meshes", lambda: list(pn.GetOutOfDateMeshes())),
+        ("compute meshes from inputs", lambda: pn.ComputeMeshesFromInputs(idxs, False)),
+        ("complete for computations", lambda: pn.CompleteForComputations(None)),
         ("property tables", lambda: pn.EnsurePropertyTables(True, True, False, None)),
         ("save", lambda: geom.Save()),
     ):
         try:
             r = call()
-            steps.append(f"{label}: {r!r}")
+            steps.append(f"{label}: {r!r}"[:200])
         except Exception as exc:  # noqa: BLE001 - diagnostics: which of HEC-RAS's steps works headless
             steps.append(f"{label}: {type(exc).__name__}: {exc}"[:300])
+    steps.append(f"networks after={cnt(pn)}")
     log("    RasMapperLib pipe network: " + "; ".join(steps))
-    if not compiled(ghdf):
-        try:
-            ok = geom.CompleteForComputations(True, None)
-            geom.Save()
-            log(f"    CompleteForComputations: {ok!r}")
-        except Exception as exc:  # noqa: BLE001
-            log(f"    CompleteForComputations: {type(exc).__name__}: {exc}"[:300])
+    if compiled(ghdf):
+        return
+    try:
+        from ras_commander import init_ras_project
+        from ras_commander.geom.GeomPreprocessor import GeomPreprocessor
+
+        ras = init_ras_project(folder, str(ras_exe))
+        r = GeomPreprocessor.run_geometry_preprocessor("01", ras_object=ras, max_wait=900, force=False)
+        log(f"    geometry preprocessor (force=False): success={getattr(r, 'success', '?')} {getattr(r, 'error', '')}"[:600])
+    except Exception as exc:  # noqa: BLE001
+        log(f"    geometry preprocessor (force=False): {type(exc).__name__}: {exc}"[:600])
 
 
 # ── results ─────────────────────────────────────────────────────────────────
