@@ -93,7 +93,7 @@ SOLVERS: list[dict] = [
     dict(key="landlab", name="Landlab", sub="OverlandFlow", kind="research", color="#8A6D3B",
          what="Landlab 2.11 (CSDMS), its OverlandFlow component: the local-inertial 2D flood scheme of de Almeida et al. (2012), written independently in NumPy, with its defaults"),
     dict(key="hecras-pipes", name="HEC-RAS 7.0", sub="pipe networks · 1D/2D", kind="production", color="#5C4B1E",
-         what="HEC-RAS 7.0.1 with its own storm-drain pipe networks: nodes, conduits and top inlets joined to a 2D SWE-ELM surface, HEC-RAS's defaults; the network is written into the geometry file headless and built by HEC-RAS's preprocessor"),
+         what="HEC-RAS 7.0.1 with its own storm-drain pipe networks: nodes, conduits and top inlets joined to a 2D SWE-ELM surface, HEC-RAS's defaults; the network is written into the geometry file headless and HEC-RAS's compute builds its cells. HEC-RAS 7.0.1 leaves the pipe solver's settings out of what it hands its engine for these headless plans, so the suite adds HEC-RAS's defaults and runs the engine again (the run time includes both passes)"),
     dict(key="hecras66", name="HEC-RAS 6.6", sub="previous release", kind="compat", color="#B5A46A",
          what="HEC-RAS 6.6, the release before 7.0, run the same way (1D, and 2D with its default SWE-ELM): kept so a change between versions shows"),
     dict(key="hecras66-em", name="HEC-RAS 6.6", sub="previous release · 2D SWE-EM", kind="compat", color="#C98A6B",
@@ -456,6 +456,9 @@ NOTES = {
     ("A12-011", "openswmm-2d-x"): "As on the two-triangle mesh: the yard drains 14 mm below the crest and 5 % too much leaves by the outfall; the exchange keeps running below the crest while the yard drains. The balance passes (0.31 % short, the network's own continuity error).",
     ("A12-012", "openswmm-2d"): "Passes: 110 m³ surges onto the surface and drains back; 179.6 of the 180 m³ leaves by the outfall and 0.4 m³ stays on the slope. The balance closes to 0.03 m³.",
     ("A12-012", "openswmm-2d-x"): "Passes, as on the two-triangle mesh: 179.6 m³ out, 0.4 m³ left on the slope, balance within 0.03 m³.",
+    ("A12-010", "hecras-pipes"): "The manhole passes exactly 0.5 m³/s onto the street, but the street runs 83.6 mm deep where normal depth is 77.7 mm (3 mm allowed). The suite's balance (2D cells, the pipe cells' volume tables, the outflow line) is 4.3 m³ short of 900 m³ (0.48 %); HEC-RAS's own report closes to 0.017 %.",
+    ("A12-011", "hecras-pipes"): "The yard drains to 58 mm, 8 mm above the 5 cm gully crest, and 221.3 of the 225 m³ leaves by the outfall (1.6 % short). The balance gains 3.7 m³ (1.4 %; 0.5 % allowed); HEC-RAS's own report shows 0.88 %.",
+    ("A12-012", "hecras-pipes"): "The surge goes onto the slope and drains back: 182.3 m³ leaves by the outfall for 180 m³ in, 0.7 m³ stays on the surface. The balance gains 2.5 m³ (1.4 %); HEC-RAS's own report shows 1.9 %. The pipe network runs on its own Courant-controlled step: on the 2D step alone (up to 8.6 s) its solution went unstable after 15 minutes.",
     ("A1F-010", "hydronet-pinn"): "The trained network spreads 0.3–0.4 m of water over the whole dry channel downstream, so its front is 713 m ahead of the exact one; it gains 3.3 % of the water, and the error grows on finer grids. Its own finite-volume engine, by contrast, never starts the flow.",
 }
 CASE_NOTES = {
