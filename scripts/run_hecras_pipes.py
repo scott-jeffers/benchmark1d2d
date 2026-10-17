@@ -168,7 +168,7 @@ def add_pipe_solver(plan: Path) -> None:
     """The plan's pipe-network solver block ("PS ..."), as in HEC's Davis example: a default block, then one
     named for the network. HEC-RAS's defaults: the diffusion-wave equation (0), a Courant target of 0.9."""
     block = ["PS Theta= 1 ", "PS WS Tol= 0.01 ", "PS Volume Tol= 0.01 ", "PS Max Iterations= 20 ", "PS Equation= 0 ",
-             "PS Advance Time Step=0", "PS Target Courant=0.9", "PS Time Slices= 1 ", "PS Iterate With 2D=0",
+             "PS Advance Time Step=-1", "PS Target Courant=0.9", "PS Time Slices= 1 ", "PS Iterate With 2D=0",
              "PS Project Initial WSE from DS=-1", "PS Ramp Up Initial WSE from US=-1", "PS Cores=0"]
     lines = plan.read_text(encoding="ascii").splitlines()
     at = next(i for i, ln in enumerate(lines) if ln.startswith("UNET D1D2 MaxIter"))
@@ -572,7 +572,9 @@ def compile_network(folder: Path, ras_exe: Path, ghdf: Path) -> None:
 # The pipe-network solver settings HEC-RAS 7's engine reads from the plan HDF (READ_UN_QPN), as HEC-RAS
 # writes them for its Davis example; Ras.exe left them out of these plans (diagnosed 2026-10-17).
 PS_PARAMETERS = {
-    "PS Adaptive Time Step": np.array([0], np.uint8),
+    # the pipe network on its own Courant-controlled step (target 0.9) inside the 2D step: with the 2D step
+    # alone (up to 8.6 s on these grids) the pipe solution went unstable in A12-012
+    "PS Adaptive Time Step": np.array([1], np.uint8),
     "PS Cores": np.array([2], np.int32),
     "PS Equation Set": np.array([b"Diffusion Wave"]),
     "PS Iterate With 2D": np.array([b"False"]),
