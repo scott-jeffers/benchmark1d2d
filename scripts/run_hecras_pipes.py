@@ -163,6 +163,18 @@ def write_unsteady(path: Path, title: str, ic_level: float | None, bcs: list[dic
     _crlf(path, lines)
 
 
+def add_pipe_solver(plan: Path) -> None:
+    """The plan's pipe-network solver block ("PS ..."), as in HEC's Davis example: a default block, then one
+    named for the network. HEC-RAS's defaults: the diffusion-wave equation (0), a Courant target of 0.9."""
+    block = ["PS Theta= 1 ", "PS WS Tol= 0.01 ", "PS Volume Tol= 0.01 ", "PS Max Iterations= 20 ", "PS Equation= 0 ",
+             "PS Advance Time Step=0", "PS Target Courant=0.9", "PS Time Slices= 1 ", "PS Iterate With 2D=0",
+             "PS Project Initial WSE from DS=-1", "PS Ramp Up Initial WSE from US=-1", "PS Cores=0"]
+    lines = plan.read_text(encoding="ascii").splitlines()
+    at = next(i for i, ln in enumerate(lines) if ln.startswith("UNET D1D2 MaxIter"))
+    lines[at:at] = [*block, f"PS Name={NET}", *block]
+    _crlf(plan, lines)
+
+
 # ── the pipe network, written into the geometry HDF ────────────────────────
 
 
@@ -670,6 +682,7 @@ def run_case(m: dict, ras_exe: Path) -> tuple[dict, dict]:
     d1, c1 = date_clock(t_end)
     base.write_plan(folder / f"{name}.p01", "Main", "main", "01", "0000", c1, "1SEC", interval(t_out), False, 1,
                     end_date=d1, map_dt=interval(t_out))
+    add_pipe_solver(folder / f"{name}.p01")
     log(f"    project {tid}: {len(seeds)} cells, {len(bcs)} boundary conditions")
     base.preprocess_and_associate(folder, ras_exe, terrain)
     ghdf = folder / f"{name}.g01.hdf"
