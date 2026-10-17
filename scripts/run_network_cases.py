@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import math
 import sys
+import time
 import tempfile
 from pathlib import Path
 
@@ -217,7 +218,8 @@ def main() -> int:
             continue
         m = load_manifest(tid, repo=REPO)
         res = out_dir / f"{m['test_id']}.{tag}.parquet"
-        write_results_parquet(res, build(Path(m["_case_dir"])))
+        t0 = time.perf_counter()
+        write_results_parquet(res, build(Path(m["_case_dir"])), wall_seconds=time.perf_counter() - t0)
         card = score_case(m, res, timestamp=TS, private_key=KEY, solver=solver)
         (out_dir / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
         print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']})")
@@ -228,7 +230,8 @@ def main() -> int:
         m = load_manifest("A1P-030", repo=REPO)
         paths = []
         for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
-            paths.append(write_results_parquet(out_dir / f"{m['test_id']}_dx{dx:g}.parquet", tracer(Path(m["_case_dir"]), float(dx))))
+            t0 = time.perf_counter()
+            paths.append(write_results_parquet(out_dir / f"{m['test_id']}_dx{dx:g}.parquet", tracer(Path(m["_case_dir"]), float(dx)), wall_seconds=time.perf_counter() - t0))
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY,
                           solver={**SOLVER, "adapter": SOLVER["adapter"] + "; water quality, Lagrangian advection (no dispersion)"})
         (out_dir / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")

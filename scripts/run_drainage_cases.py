@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import tempfile
 from pathlib import Path
 
@@ -194,13 +195,14 @@ def main() -> int:
 
                 keep.inputs(engine, tid, td, files=["m.inp"])
                 try:
+                    t0 = time.perf_counter()
                     o, version = run_engine(engine, td / "m.inp", td, args.openswmm_python)
                     t, r = read_final(o)
                     series = read_series(o)
                 except Exception as exc:  # noqa: BLE001 - an engine that cannot run a case is a finding
                     print(f"  {engine} {tid}: did not run: {str(exc)[-600:]}")
                     continue
-            res = write_results_parquet(out / f"{m['test_id']}.parquet", to_columns(t, r))
+            res = write_results_parquet(out / f"{m['test_id']}.parquet", to_columns(t, r), wall_seconds=time.perf_counter() - t0)
             if series:  # time series of small networks, for the site's charts
                 (out / f"{m['test_id']}.series.json").write_text(json.dumps(series, separators=(",", ":")) + "\n", encoding="utf-8")
             ver = version.replace("openswmm", "").strip()

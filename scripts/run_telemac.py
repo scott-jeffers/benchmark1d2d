@@ -45,6 +45,7 @@ import os
 import struct
 import subprocess
 import sys
+import time
 import tempfile
 from pathlib import Path
 
@@ -604,8 +605,9 @@ def main() -> int:
     for tid in args.cases:
         m = load_manifest(tid, repo=REPO)
         if tid.startswith(EA_CASES):
+            t0 = time.perf_counter()
             cols, dx_alt = run_ea(tid, m, env, py)
-            p = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols)
+            p = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols, wall_seconds=time.perf_counter() - t0)
             sv = dict(solver, adapter="telemac2d (Selafin, nodes at the grid's cell centres)")
             if dx_alt:
                 sv["name"] += f" at {dx_alt:g} m (spec alternative resolution)"
@@ -618,8 +620,9 @@ def main() -> int:
             continue
         paths = []
         for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
+            t0 = time.perf_counter()
             cols = (run_level_2d if tid in CASES_2D else run_level)(tid, m, float(dx), env, py)
-            paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx}.parquet", cols))
+            paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx}.parquet", cols, wall_seconds=time.perf_counter() - t0))
             print(f"  {tid} dx={dx}: t={cols['t'][0]:.3f} s")
         sv = solver if tid not in ("A2A-020", "A1F-020") else dict(solver, adapter=solver["adapter"] + "; HLLC scheme (the default kinetic scheme is unstable here)")
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY, solver=sv)

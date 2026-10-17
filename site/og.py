@@ -112,7 +112,7 @@ def og_image(path: Path, sid: str, kicker: str, title: str, question: str, n_ok:
         if n_unsure:
             d.rectangle([x + int(bw * n_ok / n_run), by, x + int(bw * (n_ok + n_unsure) / n_run), by + 14], fill=INK2)
         extra = f" · {n_unsure} inconclusive" if n_unsure else ""
-        d.text((x, by + 26), f"{n_ok} of {n_run} model{'s' if n_run != 1 else ''} pass{extra}", font=_font("bold", 26), fill=INK)
+        d.text((x, by + 26), f"{n_run} model{'s' if n_run != 1 else ''} scored · {n_ok} within the error allowance", font=_font("bold", 26), fill=INK)
     else:
         d.text((x, by + 10), "Not run yet: run it and add yours", font=_font("bold", 26), fill=INK)
     if tile:
@@ -123,13 +123,13 @@ def og_image(path: Path, sid: str, kicker: str, title: str, question: str, n_ok:
     im.save(path, "PNG", optimize=True)
 
 
-def badge_svg(label: str, verdict: str | bool) -> str:
-    """A shields-style badge: label on the left, passes / fails / inconclusive on the right."""
-    if isinstance(verdict, bool):
-        verdict = "pass" if verdict else "fail"
-    right = {"pass": "passes", "fail": "fails", "inconclusive": "inconclusive"}[verdict]
+BADGE_COLOURS = {"s0": "#1A7F4B", "s1": "#3E8E5B", "s2": "#8A8420", "s3": "#A96313", "s4": "#B9471F", "s5": "#93271A", "sn": "#5D6D7E"}
+
+
+def badge_svg(label: str, right: str, klass: str = "sn") -> str:
+    """A shields-style badge: label on the left, the result's score (allowance used, rank) on the right."""
     lw, rw = 7 * len(label) + 14, 7 * len(right) + 14
-    col = {"pass": "#1F7A4D", "fail": "#B5481A", "inconclusive": "#5D6D7E"}[verdict]
+    col = BADGE_COLOURS.get(klass, BADGE_COLOURS["sn"])
     w = lw + rw
     esc = label.replace("&", "&amp;").replace("<", "&lt;")
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="20" role="img" aria-label="{esc}: {right}">'

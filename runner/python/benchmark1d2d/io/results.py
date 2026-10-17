@@ -31,8 +31,17 @@ def validate_results_columns(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def write_results_parquet(path: str | Path, columns: Mapping[str, Any]) -> Path:
-    """Write results Parquet from a mapping of column name → array-like."""
+WALL_KEY = b"benchmark1d2d.wall_seconds"
+
+
+def write_results_parquet(path: str | Path, columns: Mapping[str, Any], wall_seconds: float | None = None) -> Path:
+    """Write results Parquet from a mapping of column name → array-like.
+
+    ``wall_seconds``: how long the run that produced these results took (the
+    runner writing the model, the engine running, its results read back). It is
+    kept in the file's metadata and carried into the score card with the machine
+    it ran on.
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -61,8 +70,28 @@ def write_results_parquet(path: str | Path, columns: Mapping[str, Any]) -> Path:
                 raise ValueError(f"column {name!r} length {len(arr)} != {n}")
             df[name] = arr
     validate_results_columns(df)
-    df.to_parquet(path, index=False, engine="pyarrow")
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    table = pa.Table.from_pandas(df, preserve_index=False)
+    if wall_seconds is not None and wall_seconds == wall_seconds:
+        meta = dict(table.schema.metadata or {})
+        meta[WALL_KEY] = f"{float(wall_seconds):.3f}".encode()
+        table = table.replace_schema_metadata(meta)
+    pq.write_table(table, path)
     return path
+
+
+def results_wall_seconds(path: str | Path) -> float | None:
+    """The run time a results file carries (``write_results_parquet(..., wall_seconds=)``), if any."""
+    try:
+        import pyarrow.parquet as pq
+
+        meta = pq.read_schema(path).metadata or {}
+        v = meta.get(WALL_KEY)
+        return float(v) if v is not None else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 # Column names people write in their own tools, mapped to the results contract (lower case, units stripped).

@@ -412,7 +412,7 @@ def main() -> int:
         m = load_manifest(tid, repo=REPO)
         t0 = time.perf_counter()
         cols, info = run_case(m, OUT / f"{m['test_id'].split('_')[0]}.replay.json", sol["name"])
-        res = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols)
+        res = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols, wall_seconds=time.perf_counter() - t0)
         card = score_case(m, res, timestamp=TS, private_key=key, solver=sol)
         (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
         print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({time.perf_counter() - t0:.0f} s; SWMM's own routing continuity {info['swmm_continuity_pct']:.3f} %)")

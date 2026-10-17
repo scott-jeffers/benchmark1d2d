@@ -131,7 +131,7 @@ def main() -> int:
         n = len(r["x"])
         nan = np.full(n, np.nan)
         paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet",
-                                           {"t": np.full(n, r["t"]), "x": r["x"], "y": nan, "h": nan, "u": r["u"], "v": nan, "p": r["p"]}))
+                                           {"t": np.full(n, r["t"]), "x": r["x"], "y": nan, "h": nan, "u": r["u"], "v": nan, "p": r["p"]}, wall_seconds=time.perf_counter() - t0))
         print(f"  tsnet dx={dx}: {time.perf_counter() - t0:.1f}s, peak {np.nanmax(r['p']) / 1e6:.4f} MPa at t={r['t']:g}")
     solver = {"name": f"TSNet {version}", "version": version,
               "adapter": "tsnet (method of characteristics on a WNTR network; the pipe split into reaches of the grid length)"}

@@ -101,7 +101,7 @@ def main() -> int:
             ver = rec["version"]
             sol = {"name": f"OpenSWMM Engine v6 1D/2D ({what}) {ver}", "version": ver,
                    "adapter": f"OpenSWMM's own 1D/2D coupling, defaults; vertex-coupled manholes; {what}"}
-            res = write_results_parquet(out / f"{m['test_id']}.parquet", columns(m, rec))
+            res = write_results_parquet(out / f"{m['test_id']}.parquet", columns(m, rec), wall_seconds=time.perf_counter() - t0)
             card = score_case(m, res, timestamp=TS, private_key=key, solver=sol)
             (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
             eng = rec["engine"]

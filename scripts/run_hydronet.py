@@ -238,7 +238,7 @@ def main() -> int:
                           f"({int((~np.isfinite(h)).sum())} of {h.size} cells not finite); no score card", flush=True)
                     paths = []
                     break
-                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", to_rows(kind, mesh, t_end, h, u, v)))
+                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", to_rows(kind, mesh, t_end, h, u, v), wall_seconds=time.perf_counter() - t0))
             if not paths:
                 continue
             card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)

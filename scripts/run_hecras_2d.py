@@ -547,7 +547,7 @@ def main() -> int:
                     traceback.print_exc()
                     failed += 1
                     break
-                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols))
+                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0))
                 log(f"  {label} {tid} dx={dx}: {time.perf_counter() - t0:.0f}s")
             if len(paths) < len(levels) or len(paths) < 2:
                 continue

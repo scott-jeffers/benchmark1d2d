@@ -275,7 +275,7 @@ def main() -> int:
         for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
             t0 = time.perf_counter()
             cols = CASES[tid](exe, claw, m, float(dx), tid)
-            paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols))
+            paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0))
             print(f"  {tid} dx={dx}: {time.perf_counter() - t0:.1f}s, t={cols['t'][0]:.3f}")
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)
         (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")

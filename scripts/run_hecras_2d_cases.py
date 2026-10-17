@@ -514,7 +514,7 @@ def main() -> int:
             try:
                 if tid.startswith(EA_CASES):
                     log(f"  {label} {tid}")
-                    p = write_results_parquet(out / f"{m['test_id']}.parquet", ea(m, tid, eq, ras_exe))
+                    p = write_results_parquet(out / f"{m['test_id']}.parquet", ea(m, tid, eq, ras_exe), wall_seconds=time.perf_counter() - t0)
                     card = score_case(m, p, timestamp=TS, private_key=key, solver=solver)
                 else:
                     levels = sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True)
@@ -523,7 +523,9 @@ def main() -> int:
                     paths = []
                     for dx in levels:
                         log(f"  {label} {tid} dx={dx}")
-                        paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", macdonald_2d(m, float(dx), eq, ras_exe)))
+                        t1 = time.perf_counter()
+                        paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", macdonald_2d(m, float(dx), eq, ras_exe),
+                                                           wall_seconds=time.perf_counter() - t1))
                     if len(paths) < 2:
                         continue
                     card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)

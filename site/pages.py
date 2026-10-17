@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 import math
 from datetime import datetime, timezone
 from pathlib import Path
@@ -105,6 +106,29 @@ PRODUCTION_2D = ["hecras", "hecras-em", "telemac", "anuga", "geoclaw", "lisflood
 NOT_YET = ["TUFLOW", "MIKE 21", "Iber", "BASEMENT", "Delft3D FM"]
 NOT_YET_COUPLED = ["TUFLOW", "InfoWorks ICM", "MIKE+", "HEC-RAS 6.6 (pipe networks)", "PCSWMM 2D", "Flood Modeller"]
 NOT_YET_DRAINAGE = ["InfoWorks ICM", "MIKE+ (MOUSE)", "PCSWMM", "XPSWMM", "Flood Modeller", "HEC-RAS"]
+
+
+import ranking  # noqa: E402  (scores and rankings: site/ranking.py)
+import machine_info  # noqa: E402
+
+
+def score_pill(card: dict | None, rank: int | None = None, tie: bool = False) -> str:
+    """A result's score: the share of the test's error allowance it uses (lower is better), with its rank."""
+    if card is None:
+        return '<span class="score sn">Not run</span>'
+    sc = ranking.score(card)
+    rk = f'<b class="rk">#{rank}{"=" if tie else ""}</b> ' if rank else ""
+    return (f'<span class="score {ranking.klass(sc)}" title="Largest error as a share of its limit, over the accuracy checks: lower is better">'
+            f'{rk}{esc(ranking.label(sc))}</span>')
+
+
+def run_line(card: dict) -> str:
+    """How long the run took, and on what."""
+    r = card.get("run") or {}
+    if r.get("wall_seconds") is None:
+        return ""
+    return (f'<p class="small run-time">Run time, finest grid: <b>{esc(ranking.fmt_time(r["wall_seconds"]))}</b>'
+            f' <span class="muted">· {esc(machine_info.summary(r.get("machine")))}</span></p>')
 
 
 def solver_key(name: str) -> str | None:
@@ -329,6 +353,17 @@ def check_limit(c: dict) -> str:
     return {"abs<=": f"allowed: {v}", "<=": f"allowed: {v}", ">=": f"needed: at least {v}"}.get(op, f"{op} {v}")
 
 
+_VERDICT_LEAD = re.compile(r"^(Passes|Fails)(?: overall)?(?:[:;,.]\s*|\s+(?=\())")
+
+
+def plain_note(text: str) -> str:
+    """A finding without its pass/fail opener ('Passes: the front is…' -> 'The front is…')."""
+    t = _VERDICT_LEAD.sub("", text or "", count=1)
+    if t.startswith("(") and ")" in t:
+        t = t[1:t.index(")")] + t[t.index(")") + 1:]
+    return t[:1].upper() + t[1:] if t else t
+
+
 def _margin_span(ck: dict) -> str:
     t = review.margin_text(ck.get("margin"))
     if ck.get("state") == "info":
@@ -430,8 +465,8 @@ CASE_NOTES = {
 
 # ── layout ──────────────────────────────────────────────────────────────────
 
-NAV = [("results.html", "Tests &amp; results"), ("viewer.html", "Viewer"), ("network.html", "Networks"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
-FOOT = [("news.html", "What's new"), ("solvers.html", "Models"), ("compare.html", "Compare models"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("coupled.html", "1D/2D viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
+NAV = [("results.html", "Tests &amp; results"), ("rankings.html", "Rankings"), ("viewer.html", "Viewer"), ("network.html", "Networks"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
+FOOT = [("news.html", "What's new"), ("rankings.html", "Rankings"), ("solvers.html", "Models"), ("compare.html", "Compare models"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("coupled.html", "1D/2D viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
         ("method.html", "Method"), ("get-started.html", "Command line")]
 LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 2 11 14 17 8 S27 2 33 8" fill="none" stroke-width="3" stroke-linecap="round"/>'
         '<path class="b" d="M1 18 H33" stroke-width="3" stroke-linecap="round"/></svg>')
@@ -509,12 +544,17 @@ def two_verdicts(card: dict) -> str:
     cv = a["converges"]["verdict"]
     if cv == "n/a":
         return ""
-    acc = '<span class="ok">✓ yes</span>' if a["accurate"] == "pass" else '<span class="no">✗ no</span>'
-    con = {"pass": '<span class="ok">✓ yes</span>', "fail": '<span class="no">✗ no</span>',
-           "inconclusive": '<span class="unsure">? not settled by these grids</span>',
-           "at_floor": '<span class="ok">at its own precision</span>'}[cv]
-    ver = ('<span class="ok">✓ verified</span>' if a.get("verified") else '<span class="muted">not verified</span>') if a["accurate"] == "pass" else ""
-    return f'<p class="two-verdicts small"><span>Accurate: {acc}</span><span>Converges: {con}</span>{f"<span>{ver}</span>" if ver else ""}</p>'
+    order = (a["converges"] or {}).get("order")
+    need = (card.get("convergence_result") or {}).get("min_observed_order")
+    if cv == "at_floor":
+        txt = "the error is already at the solver's own precision on every grid"
+    elif order is None:
+        txt = "not measurable from these grids"
+    else:
+        ci = (a["converges"] or {}).get("ci")
+        txt = (f"<b>{nice(order, 2)}</b>" + (f" (90 % range {nice(ci[0], 2)} to {nice(ci[1], 2)})" if ci else "")
+               + (f"; the method's expected rate is {nice(need, 2)} or more" if need else ""))
+    return f'<p class="two-verdicts small"><span>Rate the error shrinks on finer grids: {txt}</span></p>'
 
 
 def verdict(card: dict | None) -> str:
@@ -525,9 +565,7 @@ def verdict(card: dict | None) -> str:
 
 
 def badge(card: dict | None) -> str:
-    if card is None:
-        return '<span class="badge none">Not run</span>'
-    return VERDICT_BADGE[verdict(card)]
+    return score_pill(card)
 
 
 SOLVER_DOCS = {"hecras": "hecras.md", "hecras-em": "hecras.md", "hecras66": "hecras.md", "hecras66-em": "hecras.md", "openswmm-dw": "openswmm.md", "openswmm-fv": "openswmm.md",
@@ -545,15 +583,19 @@ def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
     """One model: every test it ran, with the checks and the notes."""
     s = SOLVER[key]
     mine = [(m, runs[m["test_id"]][key]) for m in manifests if key in (runs.get(m["test_id"]) or {})]
-    n_pass = sum(1 for _, c in mine if c.get("passed"))
+    ov = {r["key"]: r for r in ranking.overall(runs)}.get(key, {})
+    standing = (f'Ranked <b>#{ov["rank"]}</b> overall: wins <b>{ov["win_rate"] * 100:.0f} %</b> of head-to-head comparisons on the tests it shares with other models; '
+                f'median allowance used <b>{esc(ranking.short(ov["median_score"]))}</b> over <b>{ov["tests"]}</b> tests.' if ov.get("rank") else
+                f'Ran <b>{len(mine)}</b> test{"s" if len(mine) != 1 else ""} (fewer than {ranking.MIN_TESTS}, so not ranked overall).')
     versions = sorted({(c.get("solver") or {}).get("name", "") for _, c in mine})
     rows = []
     for m, c in mine:
         sid = sid_of(m["test_id"])
+        rr = next((r for r in ranking.rank_test(runs[m["test_id"]]) if r["key"] == key), {})
         checks = "; ".join(f'{SYM[ck["state"]]} {ck["label"]} {ck["value"]}' for ck in checks_for(m, c) if ck.get("gating", True))
-        note = NOTES.get((sid, key), "")
+        note = plain_note(NOTES.get((sid, key), ""))
         rows.append(f'<tr><td><a href="../tests/{sid}.html#m-{key}"><b>{esc(story(m)["name"])}</b></a><div class="muted small">{esc(sid)}</div></td>'
-                    f'<td>{badge(c)}</td><td class="small">{esc(checks)}{("<p class=note>" + esc(note) + "</p>") if note else ""}</td></tr>')
+                    f'<td>{score_pill(c, rr.get("rank"), rr.get("tie"))}<div class="muted small">of {len(runs[m["test_id"]])} models</div></td><td class="small">{esc(checks)}{("<p class=note>" + esc(note) + "</p>") if note else ""}</td></tr>')
     doc = SOLVER_DOCS.get(key)
     doc_link = f'<p><a href="{REPO_URL}/blob/master/docs/{doc}">How it is run, and what was found →</a></p>' if doc else ""
     body = f"""<div class="wrap">
@@ -561,11 +603,11 @@ def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
 <section class="page-head">
   <h1><span class="sw" style="background:{s['color']}"></span>{esc(s['name'])} <small class="muted">{esc(s['sub'])}</small></h1>
   <p class="lede">{esc(s['what'])}.</p>
-  <p class="muted">{esc(KIND_WORDS.get(s['kind'], ''))} Passes <b>{n_pass} of {len(mine)}</b> tests it ran. Score cards from: {esc(', '.join(versions))}.</p>
+  <p class="muted">{esc(KIND_WORDS.get(s['kind'], ''))} {standing} Score cards from: {esc(', '.join(versions))}.</p>
   {doc_link}
   <p><a href="../compare.html?a={esc(key)}">Compare {esc(s['name'])} with another model →</a></p>
 </section>
-<section class="section"><div class="table-scroll"><table class="data"><thead><tr><th>Test</th><th>Result</th><th>Checks that decide the result</th></tr></thead>
+<section class="section"><div class="table-scroll"><table class="data"><thead><tr><th>Test</th><th>Allowance used, rank</th><th>Checks</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table></div></section>
 </div>"""
     return layout(s["name"] + " " + s["sub"], body, "solvers.html", depth=1, description=f"Every benchmark result for {s['name']} ({s['sub']}).")
@@ -586,7 +628,9 @@ def compare_page(manifests: list[dict], runs: dict) -> str:
             sid = sid_of(m["test_id"])
             res = {}
             for k, c in runs[m["test_id"]].items():
-                res[k] = dict(p=verdict(c) == "pass", v=verdict(c), c=[[ck["label"], ck["value"], ck["state"]] for ck in checks_for(m, c) if ck.get("gating", True)],
+                sc = ranking.score(c)
+                res[k] = dict(s=sc if sc is None or sc < 1e300 else 1e300, l=ranking.label(sc), k=ranking.klass(sc),
+                              c=[[ck["label"], ck["value"], ck["state"]] for ck in checks_for(m, c) if ck.get("gating", True)],
                               n=NOTES.get((sid, k), ""))
             tests.append(dict(sid=sid, name=story(m)["name"], group=gname, r=res))
     data = dict(models=models, tests=tests)
@@ -594,7 +638,7 @@ def compare_page(manifests: list[dict], runs: dict) -> str:
     body = f"""<div class="wrap">
 <section class="page-head">
   <h1>Compare two models</h1>
-  <p class="lede">Pick two models to see, test by test, where they agree and where they part ways.</p>
+  <p class="lede">Pick two models to see, test by test, which gets closer to the right answer. Each result is the share of the test's error allowance it uses; within 10 % of each other counts as a tie.</p>
 </section>
 <div class="cmp-pick">
   <label>Model A<select id="cmp-a">{opts}</select></label>
@@ -613,16 +657,18 @@ var M={};D.models.forEach(function(m){M[m.key]=m;});
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 var q=new URLSearchParams(location.search);A.value=M[q.get('a')]?q.get('a'):(M['swmm524']?'swmm524':D.models[0].key);
 B.value=M[q.get('b')]?q.get('b'):(M['openswmm-fv']?'openswmm-fv':D.models[1].key);
-function cell(r,m){var dm=' data-m="'+esc(m)+'"';if(!r)return '<td class="muted"'+dm+'>not run</td>';var h='<td'+dm+'>'+({pass:'<span class="badge pass">✓ Passes</span>',fail:'<span class="badge fail">✗ Fails</span>',inconclusive:'<span class="badge unsure">? Inconclusive</span>'})[r.v]+'<ul class="cmp-checks">';
+function tie(x,y){if(x==null||y==null)return false;if(x<0.01&&y<0.01)return true;var h=Math.max(x,y);return h===0||Math.abs(x-y)<=0.1*h;}
+function cell(r,m){var dm=' data-m="'+esc(m)+'"';if(!r)return '<td class="muted"'+dm+'>not run</td>';var h='<td'+dm+'><span class="score '+r.k+'">'+esc(r.l)+'</span><ul class="cmp-checks">';
 r.c.forEach(function(c){h+='<li class="'+c[2]+'">'+({ok:'✓ ',no:'✗ ',unsure:'? '})[c[2]]+esc(c[0])+': '+esc(c[1])+'</li>';});return h+'</ul></td>';}
 function draw(){var a=A.value,b=B.value,both=[],onlyA=0,onlyB=0,s={bp:0,ap:0,bpo:0,bf:0};
 history.replaceState(null,'','?a='+encodeURIComponent(a)+'&b='+encodeURIComponent(b));
 document.getElementById('cmp-ha').textContent=M[a].full;document.getElementById('cmp-hb').textContent=M[b].full;
-D.tests.forEach(function(t){var ra=t.r[a],rb=t.r[b];if(ra&&rb){both.push(t);if(ra.p&&rb.p)s.bp++;else if(ra.p)s.ap++;else if(rb.p)s.bpo++;else s.bf++;}else if(ra)onlyA++;else if(rb)onlyB++;});
-both.sort(function(x,y){var dx=x.r[a].v!==x.r[b].v?0:1,dy=y.r[a].v!==y.r[b].v?0:1;return dx-dy;});
-var rows='';both.forEach(function(t){var diff=t.r[a].v!==t.r[b].v;rows+='<tr'+(diff?' class="cmp-diff"':'')+'><th scope="row"><a href="tests/'+esc(t.sid)+'.html">'+esc(t.name)+'</a><small>'+esc(t.sid)+' · '+esc(t.group)+'</small></th>'+cell(t.r[a],M[a].name)+cell(t.r[b],M[b].name)+'</tr>';});
+function who(t){var x=t.r[a].s,y=t.r[b].s;if(x==null||y==null||tie(x,y))return 0;return x<y?1:2;}
+D.tests.forEach(function(t){var ra=t.r[a],rb=t.r[b];if(ra&&rb){both.push(t);var w=who(t);if(w===1)s.ap++;else if(w===2)s.bpo++;else s.bp++;}else if(ra)onlyA++;else if(rb)onlyB++;});
+both.sort(function(x,y){return (who(x)?0:1)-(who(y)?0:1);});
+var rows='';both.forEach(function(t){var diff=who(t)!==0;rows+='<tr'+(diff?' class="cmp-diff"':'')+'><th scope="row"><a href="tests/'+esc(t.sid)+'.html">'+esc(t.name)+'</a><small>'+esc(t.sid)+' · '+esc(t.group)+'</small></th>'+cell(t.r[a],M[a].name)+cell(t.r[b],M[b].name)+'</tr>';});
 document.querySelector('#cmp-table tbody').innerHTML=rows||'<tr><td colspan="3">These two models have no test in common yet.</td></tr>';
-var n=both.length;document.getElementById('cmp-summary').innerHTML=n?('<div><b>'+n+'</b><span>tests both ran</span></div><div><b>'+s.bp+'</b><span>both pass</span></div><div class="hl"><b>'+s.ap+'</b><span>only '+esc(M[a].name)+' passes</span></div><div class="hl"><b>'+s.bpo+'</b><span>only '+esc(M[b].name)+' passes</span></div><div><b>'+s.bf+'</b><span>neither passes</span></div>'):'';
+var n=both.length;document.getElementById('cmp-summary').innerHTML=n?('<div><b>'+n+'</b><span>tests both ran</span></div><div class="hl"><b>'+s.ap+'</b><span>'+esc(M[a].name)+' closer</span></div><div class="hl"><b>'+s.bpo+'</b><span>'+esc(M[b].name)+' closer</span></div><div><b>'+s.bp+'</b><span>tied (within 10 %)</span></div>'):'';
 document.getElementById('cmp-only').textContent=(onlyA||onlyB)?('Not compared: '+onlyA+' test(s) only '+M[a].name+' ran, '+onlyB+' only '+M[b].name+' ran.'):'';}
 A.addEventListener('change',draw);B.addEventListener('change',draw);
 document.getElementById('cmp-swap').addEventListener('click',function(){var t=A.value;A.value=B.value;B.value=t;draw();});draw();})();
@@ -640,13 +686,17 @@ def solvers_index(manifests: list[dict], runs: dict) -> str:
         if not ks:
             continue
         lis = []
+        ov = {r["key"]: r for r in ranking.overall(runs)}
+        ks = sorted(ks, key=lambda k: (ov.get(k, {}).get("rank") or 999, -(ov.get(k, {}).get("tests") or 0)))
         for k in ks:
-            cards = [runs[m["test_id"]][k] for m in manifests if k in (runs.get(m["test_id"]) or {})]
+            o = ov.get(k, {})
+            stand = (f'#{o["rank"]} overall · wins {o["win_rate"] * 100:.0f} % head to head · {o["tests"]} tests' if o.get("rank")
+                     else f'{o.get("tests", 0)} test{"s" if o.get("tests", 0) != 1 else ""}, not ranked overall')
             lis.append(f'<li><a href="solvers/{k}.html"><span class="sw" style="background:{SOLVER[k]["color"]}"></span><b>{esc(SOLVER[k]["name"])}</b> '
-                       f'<span class="muted">{esc(SOLVER[k]["sub"])}</span></a> — passes {sum(1 for c in cards if c.get("passed"))} of {len(cards)}</li>')
+                       f'<span class="muted">{esc(SOLVER[k]["sub"])}</span></a> — {esc(stand)}</li>')
         out.append(f'<section class="section"><h2>{title}</h2><p class="muted">{esc(KIND_WORDS[kind])}</p><ul class="waitlist">{"".join(lis)}</ul></section>')
     body = f"""<div class="wrap"><section class="page-head"><h1>Models</h1>
-<p class="lede">Every model scored on the benchmark, with all of its results on one page. <a href="compare.html">Compare two models side by side →</a></p></section>{''.join(out)}</div>"""
+<p class="lede">Every model scored on the benchmark, with all of its results on one page. <a href="rankings.html">See the rankings →</a> · <a href="compare.html">Compare two models side by side →</a></p></section>{''.join(out)}</div>"""
     return layout("Models", body, "solvers.html", description="Every model scored on the benchmark.")
 
 
@@ -726,7 +776,7 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
     if fv.get("openswmm-fv", {}).get("passed") and not fv.get("swmm524", {"passed": True}).get("passed"):
         cards.insert(1, """<a class="finding" href="tests/A1F-011.html">
   <div class="num cool">SWMM 6</div>
-  <b>OpenSWMM 6's new routing passes where SWMM 5 fails</b>
+  <b>OpenSWMM 6's new routing gets the bore SWMM 5 misses</b>
   <p>On a dam break into shallow water, HydroCouple's finite-volume routing gets the bore right and converges; SWMM's classic dynamic wave, in both 5.2.4 and 6, does not.</p>
 </a>""")
     findings = "".join(cards[:4])
@@ -744,7 +794,7 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
     <p class="eyebrow">Open benchmarks for water models</p>
     <h1>Does your flood model get the water right?</h1>
     <p class="lede">Every test here has a known right answer. Run your model, compare, and get a result anyone can check.</p>
-    <div class="btns"><a class="btn primary" href="results.html">See how models score</a><a class="btn ghost" href="score.html">Score your model</a></div>
+    <div class="btns"><a class="btn primary" href="rankings.html">See how models rank</a><a class="btn ghost" href="score.html">Score your model</a></div>
   </div>
   <figure>
     {_ritter_hero()}
@@ -762,7 +812,7 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
 <section class="section">
   <h2>Start where you are</h2>
   <div class="grid">
-    <a class="card" href="results.html"><div class="kicker">I use flood or drainage models</div><h3>Compare models on the same tests</h3><p>See which models pass, which fail, and by how much — in plain numbers.</p></a>
+    <a class="card" href="results.html"><div class="kicker">I use flood or drainage models</div><h3>Compare models on the same tests</h3><p>See how close each model gets to the right answer, ranked test by test and overall, with run times.</p></a>
     <a class="card" href="score.html"><div class="kicker">I build a solver</div><h3>Score your code</h3><p>Download the inputs, run them, and check your results in the browser before you submit.</p></a>
     <a class="card" href="how-it-works.html"><div class="kicker">I review model results</div><h3>Check why a result can be trusted</h3><p>Fixed inputs, pinned software versions, every result reproducible.</p></a>
   </div>
@@ -815,10 +865,12 @@ def test_card(m: dict, runs: dict, up: str = "", status_text: str | None = None)
         score = f'<div class="tc-score">{esc(status_text)}</div>'
     elif scored:
         n = len(scored)
-        score = (f'<div class="tc-score"><div class="tc-bar" aria-hidden="true"><i class="p" style="width:{100 * n_ok / n:.1f}%"></i>'
-                 f'<i class="u" style="width:{100 * n_un / n:.1f}%"></i>'
-                 f'<i class="f" style="width:{100 * (n - n_ok - n_un) / n:.1f}%"></i></div>'
-                 f'<span>{n_ok} of {n} model{"s" if n != 1 else ""} pass{f" · {n_un} inconclusive" if n_un else ""}</span></div>')
+        rows = ranking.rank_test({k: by[k] for k in scored})
+        dots = "".join(f'<i class="{ranking.klass(r["score"])}" title="{esc(SOLVER[r["key"]]["name"])}: {esc(ranking.short(r["score"]))}"></i>' for r in rows)
+        best = rows[0] if rows and rows[0]["score"] is not None else None
+        lead = f' · best: {esc(SOLVER[best["key"]]["name"])} ({esc(ranking.short(best["score"]))})' if best else ""
+        score = (f'<div class="tc-score"><div class="tc-dots" aria-hidden="true">{dots}</div>'
+                 f'<span>{n} model{"s" if n != 1 else ""}{lead}</span></div>')
     else:
         score = '<div class="tc-score">Not run yet</div>'
     return (f'<a class="card test-card" href="{up}tests/{sid}.html" data-group="{st["group"]}">{tile_svg(sid)}'
@@ -900,12 +952,12 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
                     tds.append('<td><span class="notrun" aria-label="not run">—</span></td>')
                     continue
                 cid = f"{sid}|{k}"
-                v = verdict(c)
-                cells[cid] = dict(test=st["name"], sid=sid, solver=f'{SOLVER[k]["name"]} · {SOLVER[k]["sub"]}', verdict=v,
-                                  checks=checks_for(m, c), note=NOTES.get((sid, k), ""))
-                label = f'{st["name"]}, {SOLVER[k]["name"]} {SOLVER[k]["sub"]}: {VERDICT_WORD[v]}'
-                cls = {"pass": "pass", "fail": "fail"}.get(v, "unsure")
-                tds.append(f'<td><button type="button" class="cellbtn {cls}" data-cell="{esc(cid)}" aria-pressed="false" aria-label="{esc(label)}">{SYM[{"pass": "ok", "fail": "no"}.get(v, "unsure")]}</button></td>')
+                sc = ranking.score(c)
+                rk = next((r for r in ranking.rank_test(runs.get(m["test_id"]) or {}) if r["key"] == k), {})
+                cells[cid] = dict(test=st["name"], sid=sid, solver=f'{SOLVER[k]["name"]} · {SOLVER[k]["sub"]}', label=ranking.label(sc),
+                                  cls=ranking.klass(sc), rank=rk.get("rank"), checks=checks_for(m, c), note=plain_note(NOTES.get((sid, k), "")))
+                label = f'{st["name"]}, {SOLVER[k]["name"]} {SOLVER[k]["sub"]}: {ranking.label(sc)}'
+                tds.append(f'<td><button type="button" class="cellbtn {ranking.klass(sc)}" data-cell="{esc(cid)}" aria-pressed="false" aria-label="{esc(label)}">{esc(ranking.short(sc))}</button></td>')
             rows.append(f'<tr data-group="{gkey}"><th scope="row"><a href="tests/{sid}.html">{esc(st["name"])}</a><small>{esc(sid)}</small></th>{"".join(tds)}</tr>')
     filters = '<button type="button" class="pill" data-filter="all" aria-pressed="true">All tests</button>' + "".join(
         f'<button type="button" class="pill" data-filter="{k}" aria-pressed="false">{esc(v)}</button>' for k, v in GROUPS.items()
@@ -945,8 +997,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
     if subs:
         items = "".join(
             f'<li><b>{esc(SOLVER[k]["name"])}</b> <span class="muted">{esc(SOLVER[k]["sub"])}</span>: '
-            f'{sum(1 for m in shown if (runs.get(m["test_id"]) or {}).get(k, {}).get("passed"))} of '
-            f'{sum(1 for m in shown if k in (runs.get(m["test_id"]) or {}))} tests pass</li>' for k in subs)
+            f'{sum(1 for m in shown if k in (runs.get(m["test_id"]) or {}))} tests</li>' for k in subs)
         submitted = f"""<div class="card" style="flex:1 1 340px;min-width:0">
   <h2 style="font-size:22px">Submitted results</h2>
   <p class="muted">Run by the solver's developer or user and submitted as results files; the suite scores them with the same limits as every other run.</p>
@@ -963,7 +1014,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
 <div class="wrap">
 <section class="page-head">
   <h1>Tests and results</h1>
-  <p class="lede">Every model runs the same inputs against a known right answer. Click any result to see the numbers behind it.</p>
+  <p class="lede">Every model runs the same inputs against a known right answer. Each result shows how much of the test's error allowance it uses; lower is better. <a href="rankings.html">See the rankings →</a></p>
 </section>
 <div class="filters" role="group" aria-label="Filter tests">{filters}
   <div class="view-toggle" role="group" aria-label="View"><button type="button" data-view="cards" aria-pressed="true">Cards</button><button type="button" data-view="table" aria-pressed="false">Table</button></div>
@@ -986,10 +1037,10 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
 (function(){var data=JSON.parse(document.getElementById('cells').textContent),panel=document.getElementById('panel');
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function render(id){var c=data[id];if(!c)return;var h='<div class="kicker">Selected result</div><div class="title">'+esc(c.test)+'</div><div class="solver">'+esc(c.solver)+'</div>'+
-({pass:'<span class="badge pass">✓ Passes</span>',fail:'<span class="badge fail">✗ Fails</span>',inconclusive:'<span class="badge unsure">? Inconclusive</span>'})[c.verdict]+'<ul class="checks">';
+('<span class="score '+c.cls+'"><b class="rk">#'+(c.rank||'–')+'</b> '+esc(c.label)+'</span>')+'<ul class="checks">';
 c.checks.forEach(function(k){var sy={ok:'✓',no:'✗',unsure:'?',info:'·'}[k.state],al={ok:'met',no:'not met',unsure:'not settled',info:'reported only'}[k.state];h+='<li><span class="'+k.state+'" aria-label="'+al+'">'+sy+'</span><span><b>'+esc(k.label)+':</b> '+esc(k.value)+' <span class="muted">('+esc(k.limit)+')</span></span></li>';});
 h+='</ul>'+(c.note?'<p class="small">'+esc(c.note)+'</p>':'')+'<a href="tests/'+esc(c.sid)+'.html#m-'+esc(id.split('|')[1])+'" style="font-weight:600">Open the test →</a>'+
-'<div class="legend-mini"><span><b class="ok">✓</b> passes every check</span><span><b class="no">✗</b> fails at least one check</span><span><b class="unsure">?</b> rate not settled by these grids</span><span><b style="color:#A7B4BC">—</b> not run yet</span></div>';
+%LEGEND%;
 panel.innerHTML=h;var rc=panel.getBoundingClientRect();if(rc.top<60||rc.top>innerHeight-80)panel.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.cellbtn').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.cell===id?'true':'false');});}
 document.querySelectorAll('.cellbtn').forEach(function(b){b.addEventListener('click',function(){render(b.dataset.cell);try{history.replaceState(null,'','#cell='+encodeURIComponent(b.dataset.cell));}catch(e){}});});
 var first=document.querySelector('.cellbtn[data-cell="'+(%FIRST%)+'"]');if(first)first.setAttribute('aria-pressed','true');
@@ -1004,9 +1055,15 @@ var hc=decodeURIComponent(location.hash).match(/^#cell=(.+)$/);
 if(hc&&data[hc[1]]){saved='table';setTimeout(function(){render(hc[1]);var b=document.querySelector('.cellbtn[data-cell="'+hc[1]+'"]');if(b)b.scrollIntoView({block:'center'});},0);}
 view(saved==='table'?'table':'cards');
 document.querySelectorAll('[data-view]').forEach(function(b){b.addEventListener('click',function(){view(b.dataset.view);});});})();
-</script>""".replace("%FIRST%", json.dumps(first or ""))
+</script>""".replace("%FIRST%", json.dumps(first or "")).replace("%LEGEND%", json.dumps(SCORE_LEGEND))
     return layout("Tests and results", body, "results.html", scripts=script,
-                  description="Which flood, river, drainage and network models pass which tests, and by how much.")
+                  description="How close each flood, river, drainage and network model gets to the right answer on every test.")
+
+
+SCORE_LEGEND = ('<div class="legend-mini score-legend"><span>Share of the error allowance used:</span>'
+                '<span><i class="score s0">&lt;10 %</i></span><span><i class="score s1">10–50 %</i></span><span><i class="score s2">50–100 %</i></span>'
+                '<span><i class="score s3">1–2×</i></span><span><i class="score s4">2–10×</i></span><span><i class="score s5">&gt;10×</i></span>'
+                '<span><b style="color:#A7B4BC">—</b> not run</span></div>')
 
 
 def _panel_html(c: dict | None) -> str:
@@ -1015,12 +1072,9 @@ def _panel_html(c: dict | None) -> str:
     checks = "".join(f'<li><span class="{k["state"]}" aria-label="{ {"ok": "met", "no": "not met", "unsure": "not settled", "info": "reported only"}[k["state"]] }">{SYM[k["state"]]}</span>'
                      f'<span><b>{esc(k["label"])}:</b> {esc(k["value"])} <span class="muted">({esc(k["limit"])})</span></span></li>' for k in c["checks"])
     return (f'<div class="kicker">Selected result</div><div class="title">{esc(c["test"])}</div><div class="solver">{esc(c["solver"])}</div>'
-            f'{VERDICT_BADGE[c["verdict"]]}'
+            f'<span class="score {c["cls"]}"><b class="rk">#{c["rank"] or "–"}</b> {esc(c["label"])}</span>'
             f'<ul class="checks">{checks}</ul>' + (f'<p class="small">{esc(c["note"])}</p>' if c["note"] else "")
-            + f'<a href="tests/{esc(c["sid"])}.html" style="font-weight:600">Open the test →</a>'
-            '<div class="legend-mini"><span><b class="ok">✓</b> passes every check</span><span><b class="no">✗</b> fails at least one check</span>'
-            '<span><b class="unsure">?</b> rate not settled by these grids</span>'
-            '<span><b style="color:#A7B4BC">—</b> not run yet</span></div>')
+            + f'<a href="tests/{esc(c["sid"])}.html" style="font-weight:600">Open the test →</a>' + SCORE_LEGEND)
 
 
 def _need(m: dict) -> str:
@@ -1164,7 +1218,7 @@ def share_block(sid: str, k: str, card: dict) -> str:
     """A link to this result and a badge to embed it."""
     link = f"{SITE_URL}results.html#cell={sid}|{k}"
     badge = f"{SITE_URL}badges/{sid}/{k}.svg"
-    word = VERDICT_WORD[verdict(card)]
+    word = ranking.label(ranking.score(card))
     md = f"[![OpenHydro Bench {sid}: {word}]({badge})]({link})"
     html_ = f'<a href="{link}"><img src="{badge}" alt="OpenHydro Bench {sid}: {word}"></a>'
     return (f'<details class="share"><summary>Share or embed this result</summary>'
@@ -1330,7 +1384,9 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
 </section>"""
     # model cards
     mcards = []
-    for k in SOLVERS_ORDER(set(runs)):
+    order = ranking.rank_test(runs)
+    rk = {r["key"]: r for r in order}
+    for k in [r["key"] for r in order]:
         c = runs[k]
         s = SOLVER[k]
         checks = "".join(f'<div class="check{ {"ok": "", "no": " bad", "unsure": " unsure", "info": " info"}[ck["state"]] }"><div class="k">{esc(ck["label"])}</div>'
@@ -1339,10 +1395,11 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         note = NOTES.get((sid, k), "")
         name = s["name"] if not k.startswith("lisflood") else f'{s["name"]} {s["sub"].split("·")[-1].strip()}'
         mcards.append(f"""<article class="model-card" id="m-{k}">
-  <div class="top"><div><div class="name"><span class="sw" style="background:{s['color']}"></span>{esc(name)}</div><div class="what">{esc(s['what'])}</div></div>{badge(c)}</div>
+  <div class="top"><div><div class="name"><span class="sw" style="background:{s['color']}"></span>{esc(name)}</div><div class="what">{esc(s['what'])}</div></div>{score_pill(c, rk[k].get("rank"), rk[k].get("tie"))}</div>
   {two_verdicts(c)}
+  {run_line(c)}
   <div class="checks-grid">{checks}</div>
-  {f'<p class="note">{esc(note)}</p>' if note else ''}
+  {f'<p class="note">{esc(plain_note(note))}</p>' if note else ''}
   <p class="note small">Signed score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>
   {share_block(sid, k, c)}
   {run_block(sid, k, c) if m["track"] == "A" else ""}
@@ -1366,7 +1423,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     if mcards:
         models = f"""<section class="section" style="padding-bottom:0" id="models">
   <h2>How models did</h2>
-  <p class="muted">{esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
+  <p class="muted">In rank order: by the share of this test's error allowance each model uses (lower is better; results within 10 % of each other share a rank). {esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
   {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
   <div class="models">{''.join(mcards)}{not_yet}</div>
 </section>"""
@@ -1594,13 +1651,13 @@ def how_page(manifests: list[dict], runs: dict) -> str:
   <div class="grid how">
     <div class="card"><div class="label">01 — Same inputs</div><p>Every model gets identical terrain, flows and settings. Each file is fixed by a SHA-256 fingerprint, so nobody can quietly change it, and large files are fetched and checked against that fingerprint.</p></div>
     <div class="card"><div class="label">02 — A known right answer</div><p>Exact mathematical solutions (dam breaks, backwater, water hammer), laboratory and field measurements, or — for compatibility — the output of a pinned SWMM or EPANET release.</p></div>
-    <div class="card"><div class="label">03 — A result anyone can check</div><p>Pass or fail, with the number that decided it and the limit it was held to. Score cards are hashed and signed; every one shown here is re-run by CI on each change.</p></div>
+    <div class="card"><div class="label">03 — A result anyone can check</div><p>Every number measured, beside the limit it is compared with, the run time and the machine. Score cards are hashed and signed; every one shown here is re-run by CI on each change.</p></div>
   </div>
 </section>
 <section class="section tight">
-  <h2>What "passes" means</h2>
+  <h2>How results are scored and ranked</h2>
   <div class="grid">
-    <div class="card"><h3>Every check, not an average</h3><p>A model passes a test only if it meets every check: how close it gets to the answer, whether it conserves water, and — where there is a grid — whether it gets steadily more accurate as the grid gets finer.</p></div>
+    <div class="card"><h3>Measurements, not verdicts</h3><p>Each test sets an error allowance per check, with its reason. A result's score is the largest share of an allowance it uses: 34 % is well inside, 2.1× is twice the allowance. Models are listed in that order on every test; results within 10 % of each other share a rank. <a href="rankings.html">Overall rankings</a> count head-to-head wins on the tests two models share, so a model is never compared on tests it did not run.</p></div>
     <div class="card"><h3>Getting better on finer grids</h3><p>A model that is close by luck on one grid is not verified. Each test is run on four grids; the error must shrink at the rate the method promises (the "observed order", as in ASME V&amp;V 20).</p></div>
     <div class="card"><h3>Limits with reasons</h3><p>Every limit is written down with why it was chosen — a measurement uncertainty, a published accuracy, or the size of two grid cells. Open any test's technical details to read them.</p></div>
   </div>
@@ -1609,7 +1666,7 @@ def how_page(manifests: list[dict], runs: dict) -> str:
   <h2>Production software, run fairly</h2>
   <p>Production models are installed from their official sources by automated jobs and run as black boxes with their own default settings. Only the inputs, the run length, the boundaries and the output format are set. When a model fails, its card says so and why, and the run can be reproduced from the repository.</p>
   <div class="grid narrow">
-    <div class="card"><h3>HEC-RAS 6.6</h3><p>Installed silently on a Windows runner from HEC's release (installer fingerprint pinned), projects written as plain text, run headless with ras-commander.</p></div>
+    <div class="card"><h3>HEC-RAS 7.0 (and 6.6)</h3><p>Installed silently on a Windows runner from HEC's release (installer fingerprint pinned), projects written as plain text, run headless with ras-commander. 6.6 is kept as the previous release.</p></div>
     <div class="card"><h3>TELEMAC-2D 9.1</h3><p>openTELEMAC from conda-forge, finite-volume settings by default.</p></div>
     <div class="card"><h3>ANUGA, GeoClaw, LISFLOOD-FP</h3><p>Built from their official releases weekly; LISFLOOD-FP's three CPU solvers are scored separately.</p></div>
     <div class="card"><h3>SWMM and EPANET</h3><p>Pinned releases (SWMM 5.2.4, EPANET 2.2) define the compatibility answers; a second build of each checks the answer does not depend on the compiler.</p></div>

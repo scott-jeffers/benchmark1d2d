@@ -856,6 +856,7 @@ def score_case(
     verdict = judged["overall"]
     passed = verdict == "pass"
     claims = certification_claims(manifest, passed, judged["verified"])
+    run = run_record(results_path, refinement_results)
 
     return build_scorecard(
         test_id=manifest["test_id"],
@@ -875,7 +876,29 @@ def score_case(
         scoring_method=method_v2.METHOD,
         verdict=verdict,
         judgement=method_v2.judgement(judged),
+        run=run,
         timestamp=timestamp,
         private_key=private_key,
         key_id=key_id,
     )
+
+
+def run_record(results_path: str | Path, refinement_results=None) -> dict[str, Any] | None:
+    """Wall time per results file (as the runner recorded it) and the machine, or None when no time was recorded."""
+    import re
+
+    from benchmark1d2d.io.results import results_wall_seconds
+    from benchmark1d2d.machine import specs
+
+    files = [Path(p) for p in (refinement_results or [])] or [Path(results_path)]
+    levels = []
+    for p in files:
+        w = results_wall_seconds(p)
+        if w is None:
+            continue
+        m = re.search(r"_dx([0-9.eE+-]+)\.parquet$", p.name)
+        levels.append({"dx": float(m.group(1)) if m else None, "wall_seconds": round(w, 3)})
+    if not levels:
+        return None
+    finest = min(levels, key=lambda r: r["dx"] if r["dx"] is not None else float("inf"))
+    return {"wall_seconds": finest["wall_seconds"], "levels": levels, "machine": specs()}

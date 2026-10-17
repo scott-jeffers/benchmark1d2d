@@ -320,7 +320,7 @@ def main() -> int:
                 h, u = np.maximum(h[keep], 0.0), u[keep]
                 nan = np.full(len(x), np.nan)
                 cols = {"t": np.full(len(x), t_last), "x": x, "y": nan.copy(), "h": h, "u": u, "v": nan.copy(), "p": nan.copy(), "Q": h * u}
-                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols))
+                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0))
                 print(f"  {engine} {tid} dx={dx}: {time.perf_counter() - t0:.1f}s, t={t_last:g}")
             if len(paths) < 2:
                 continue

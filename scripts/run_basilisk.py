@@ -245,7 +245,7 @@ def main() -> int:
                 for dx in levels:
                     t0 = time.perf_counter()
                     cols = run_level(td / "case", lay, float(dx), float(levels[0]), t_end)
-                    paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols))
+                    paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0))
                     print(f"  {tid} dx={dx}: {time.perf_counter() - t0:.1f}s", flush=True)
             except Exception as exc:  # noqa: BLE001 - a run that fails is a finding
                 print(f"  {tid}: did not run: {str(exc)[-800:]}")

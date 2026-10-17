@@ -253,7 +253,7 @@ def run_refined(short: str, builder) -> dict:
         case, ft, pi = builder(m, dx)
         t0 = time.perf_counter()
         cols = run(case, ft, pi)
-        p = to_parquet(cols, OUT / f"{short}_dx{dx}.parquet")
+        p = to_parquet(cols, OUT / f"{short}_dx{dx}.parquet", wall_seconds=time.perf_counter() - t0)
         print(f"  {short} dx={dx}: {cols['steps']} steps in {time.perf_counter() - t0:.1f}s")
         paths.append(p)
     return score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY, solver=SOLVER)
@@ -262,9 +262,9 @@ def run_refined(short: str, builder) -> dict:
 # ── driver ──────────────────────────────────────────────────────────────────
 
 
-def to_parquet(cols, path: Path) -> Path:
+def to_parquet(cols, path: Path, wall_seconds: float | None = None) -> Path:
     cols = {k: v for k, v in cols.items() if k != "steps"}
-    return write_results_parquet(path, cols)
+    return write_results_parquet(path, cols, wall_seconds=wall_seconds)
 
 
 def run_thacker() -> dict:
@@ -274,7 +274,7 @@ def run_thacker() -> dict:
         case, ft, pi = build_thacker(m, dx)
         t0 = time.perf_counter()
         cols = run(case, ft, pi)
-        p = to_parquet(cols, OUT / f"A2A-001_thacker_dx{dx}.parquet")
+        p = to_parquet(cols, OUT / f"A2A-001_thacker_dx{dx}.parquet", wall_seconds=time.perf_counter() - t0)
         print(f"  A2A-001 dx={dx}: {cols['steps']} steps in {time.perf_counter() - t0:.1f}s")
         paths.append(p)
     card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY, solver=SOLVER)
@@ -294,7 +294,7 @@ def run_ea(prefix: str) -> dict:
     t0 = time.perf_counter()
     print(f"  {m['test_id']}: grid {case.grid.z.shape[1]}×{case.grid.z.shape[0]} ({int(case.grid.active.sum())} active cells)")
     cols = run(case, ft, pi, progress=True)
-    p = to_parquet(cols, OUT / f"{m['test_id']}.parquet")
+    p = to_parquet(cols, OUT / f"{m['test_id']}.parquet", wall_seconds=time.perf_counter() - t0)
     print(f"  {m['test_id']}: {cols['steps']} steps in {time.perf_counter() - t0:.0f}s")
     solver = dict(SOLVER)
     if dx:

@@ -43,6 +43,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -308,6 +309,7 @@ def main() -> int:
             print(f"  {tid} dx={dx}: wrote {len(built['x'])} cross sections to {folder.relative_to(REPO)}")
             if args.write_only:
                 continue
+            t0 = time.perf_counter()
             ws = read_steady_ws(run_plan(folder, ras_exe))
             missing = [r for r in built["rs"] if r not in ws]
             if missing:
@@ -316,7 +318,7 @@ def main() -> int:
             nan = np.full(len(h), np.nan)
             cols = {"t": np.full(len(h), float(m["simulation"]["t_end"])), "x": built["x"], "y": nan.copy(), "h": h,
                     "u": built["q_unit"] / h, "v": nan.copy(), "p": nan.copy(), "Q": np.full(len(h), built["q_unit"])}
-            paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols))
+            paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0))
         if args.write_only:
             continue
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)

@@ -166,6 +166,35 @@
         "accurate",
         "converges"
       ]
+    },
+    "run": {
+      "type": "object",
+      "description": "How long the run took and where: wall time on the finest grid (s), per grid level, and the machine (processor, cores, memory, OS, runner).",
+      "properties": {
+        "wall_seconds": {
+          "type": "number"
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "dx": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "wall_seconds": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "machine": {
+          "type": "object"
+        }
+      }
     }
   },
   "$defs": {

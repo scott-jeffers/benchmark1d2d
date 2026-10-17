@@ -1293,14 +1293,16 @@ def main() -> int:
         st = pages.story(m)
         try:
             og.og_image(DIST / "assets" / "og" / f"{sid}.png", sid, pages.GROUPS.get(st["group"], ""), st["name"], st["question"],
-                        sum(1 for c in by.values() if card_verdict(c) == "pass"), len(by),
-                        n_unsure=sum(1 for c in by.values() if card_verdict(c) == "inconclusive"))
+                        sum(1 for c in by.values() if (pages.ranking.score(c) or 9) <= 1.0), len(by))
         except Exception as exc:  # noqa: BLE001 - a preview image must not break the build
             print(f"WARN preview image for {sid}: {exc}", file=sys.stderr)
         for k, c in by.items():
             bp = DIST / "badges" / sid / f"{k}.svg"
             bp.parent.mkdir(parents=True, exist_ok=True)
-            bp.write_text(og.badge_svg(f"OpenHydro Bench {sid}", card_verdict(c)), encoding="utf-8")
+            sc = pages.ranking.score(c)
+            rk = next((r for r in pages.ranking.rank_test(by) if r["key"] == k), {})
+            right = (f"#{rk['rank']} of {len(by)} · " if rk.get("rank") else "") + pages.ranking.short(sc) + " of allowance"
+            bp.write_text(og.badge_svg(f"OpenHydro Bench {sid}", right, pages.ranking.klass(sc)), encoding="utf-8")
     try:
         og.og_image(DIST / "assets" / "og" / "home.png", "A1F-010", "Open benchmarks for water models",
                     "Does your flood model get the water right?", "Every test has a known right answer. Run your model, compare, and get a result anyone can check.",
@@ -1331,6 +1333,9 @@ def main() -> int:
     vindex = viewer.write_data(DIST, manifests, runs, fields_by, pages.SOLVER, pages.SOLVERS_ORDER, pages.verdict, pages.story)
     out_pages["viewer.html"] = viewer.viewer_page(pages.layout, vindex)
     out_pages["network.html"] = netresults.page(pages.layout, netindex)
+    import rankpage
+
+    out_pages["rankings.html"] = rankpage.page(pages.layout, rankpage.data(manifests, runs, pages.SOLVER, pages.story, pages.sid_of, pages.machine_info.summary))
     import coupledview
 
     cindex = coupledview.write_data(DIST, manifests, runs, pages.SOLVER, pages.verdict, pages.story)

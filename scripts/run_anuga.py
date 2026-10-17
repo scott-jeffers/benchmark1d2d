@@ -370,7 +370,7 @@ def main(argv: list[str]) -> int:
                     cols, dx_alt = ea(m, tid)
                 finally:
                     os.chdir(cwd)
-            p = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols)
+            p = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols, wall_seconds=time.perf_counter() - t0)
             sv = dict(solver)
             if dx_alt:
                 sv["name"] += f" at {dx_alt:g} m (spec alternative resolution)"
@@ -392,7 +392,7 @@ def main(argv: list[str]) -> int:
                     cols = CASES[tid](m, float(dx), tid)
                 finally:
                     os.chdir(cwd)
-            paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols))
+            paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0))
             print(f"  {tid} dx={dx}: {time.perf_counter() - t0:.1f}s")
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=KEY, solver=solver)
         (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")

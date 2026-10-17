@@ -402,7 +402,7 @@ def main() -> int:
             KEEP["test"] = tid
             if tid.startswith(EA_CASES):
                 t0 = time.perf_counter()
-                p = write_results_parquet(out / f"{m['test_id']}.parquet", ea(exe, sv, m, tid))
+                p = write_results_parquet(out / f"{m['test_id']}.parquet", ea(exe, sv, m, tid), wall_seconds=time.perf_counter() - t0)
                 print(f"  {sv} {tid}: {time.perf_counter() - t0:.1f}s", flush=True)
                 card = score_case(m, p, timestamp=TS, private_key=key, solver=solver)
                 (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
@@ -414,7 +414,7 @@ def main() -> int:
             for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
                 t0 = time.perf_counter()
                 cols = CASES[tid](exe, sv, m, float(dx), tid)
-                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols))
+                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0))
                 print(f"  {sv} {tid} dx={dx}: {time.perf_counter() - t0:.1f}s", flush=True)
             card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)
             (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
