@@ -94,6 +94,7 @@ jobs:
           name: coupled-scorecards
           path: |
             out/coupled/*/*.scorecard.json
+            out/coupled/*/*.replay.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
 

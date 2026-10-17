@@ -1331,6 +1331,11 @@ def main() -> int:
     vindex = viewer.write_data(DIST, manifests, runs, fields_by, pages.SOLVER, pages.SOLVERS_ORDER, pages.verdict, pages.story)
     out_pages["viewer.html"] = viewer.viewer_page(pages.layout, vindex)
     out_pages["network.html"] = netresults.page(pages.layout, netindex)
+    import coupledview
+
+    cindex = coupledview.write_data(DIST, manifests, runs, pages.SOLVER, pages.verdict, pages.story)
+    pages.COUPLEDVIEW = {t["sid"] for t in cindex}
+    out_pages["coupled.html"] = coupledview.page(pages.layout, cindex)
     out_pages["scoring-review.html"] = pages.review.review_page(pages.layout, manifests, runs, pages.SOLVER, pages.SOLVERS_ORDER)
     (DIST / "solvers").mkdir(exist_ok=True)
     for k in {k for v in runs.values() for k in v}:

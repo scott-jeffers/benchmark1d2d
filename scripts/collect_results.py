@@ -35,6 +35,7 @@ sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 FIXTURES = REPO / "site" / "fixtures"
 CURVES = FIXTURES / "curves"
 INPUTS = FIXTURES / "inputs"  # model files per test and model (scripts/export_inputs.py)
+REPLAY = FIXTURES / "replay"  # coupled runs replayed in the 1D/2D viewer (scripts/run_coupled_cases.py)
 NETRES = FIXTURES / "netres"  # per-element results for the network viewer (scripts/export_netresults.py)
 NEWS = FIXTURES / "news.jsonl"  # one line per collection that changed something: the site's "What's new" page  # chart extracts (scripts/export_curves.py), one per test and model
 PARITY = REPO / "test_catalog" / "track_b" / "parity"
@@ -252,6 +253,21 @@ def main() -> int:
                     dest = INPUTS / sid / f"{key}.zip"
                     if key and (not dest.is_file() or dest.read_bytes() != path.read_bytes()):
                         n_inputs += 1
+                        if not args.dry_run:
+                            dest.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copyfile(path, dest)
+                    continue
+                if path.name.endswith(".replay.json"):  # a coupled run, frame by frame, for the 1D/2D viewer
+                    try:
+                        rec = json.loads(path.read_text(encoding="utf-8"))
+                        sid, key = rec["test_id"].split("_")[0], rec["key"]
+                    except (ValueError, KeyError):
+                        continue
+                    if case_version(rec["test_id"]) not in (None, rec.get("case_version")):
+                        continue
+                    dest = REPLAY / sid / f"{key}.json"
+                    if not dest.is_file() or dest.read_bytes() != path.read_bytes():
+                        n_curves += 1
                         if not args.dry_run:
                             dest.parent.mkdir(parents=True, exist_ok=True)
                             shutil.copyfile(path, dest)

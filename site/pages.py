@@ -425,7 +425,7 @@ CASE_NOTES = {
 # ── layout ──────────────────────────────────────────────────────────────────
 
 NAV = [("results.html", "Tests &amp; results"), ("viewer.html", "Viewer"), ("network.html", "Networks"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
-FOOT = [("news.html", "What's new"), ("solvers.html", "Models"), ("compare.html", "Compare models"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
+FOOT = [("news.html", "What's new"), ("solvers.html", "Models"), ("compare.html", "Compare models"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("coupled.html", "1D/2D viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
         ("method.html", "Method"), ("get-started.html", "Command line")]
 LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 2 11 14 17 8 S27 2 33 8" fill="none" stroke-width="3" stroke-linecap="round"/>'
         '<path class="b" d="M1 18 H33" stroke-width="3" stroke-linecap="round"/></svg>')
@@ -1269,6 +1269,7 @@ def conv_chart(m: dict, runs: dict) -> str:
     return svg + f'<div class="keyrow">{"".join(legend)}</div>'
 
 
+COUPLEDVIEW: set = set()  # tests the 1D/2D viewer can replay (site/coupledview.py), set by the build
 NETVIEW: dict[str, dict] = {}  # sid -> the network viewer's entry (site/netresults.py), set by the build
 
 
@@ -1359,7 +1360,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     if mcards:
         models = f"""<section class="section" style="padding-bottom:0" id="models">
   <h2>How models did</h2>
-  <p class="muted">{esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" else ""}</p>
+  <p class="muted">{esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
   {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
   <div class="models">{''.join(mcards)}{not_yet}</div>
 </section>"""

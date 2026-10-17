@@ -236,10 +236,85 @@ class Network:
         return err
 
 
+# ── a replay for the 1D/2D viewer ───────────────────────────────────────────
+
+
+class Replay:
+    """What the coupled model did, frame by frame, for the site's 1D/2D viewer.
+
+    Each output time: the surface depth binned to a regular grid (at most 128
+    cells along the longer side), every manhole's surface level, head and
+    exchange, every node's head, every link's flow and depth, and the volume
+    accounts. Written next to the score card as ``<test>.replay.json``.
+    """
+
+    MAX_CELLS = 128
+
+    def __init__(self, dom, spec: dict, manholes: list, net):
+        s = spec["surface"]
+        lx, ly = s["x1"] - s["x0"], s["y1"] - s["y0"]
+        dx = max(float(s["cell_size"]), max(lx, ly) / self.MAX_CELLS)
+        self.nx, self.ny, self.dx = int(math.ceil(lx / dx - 1e-9)), int(math.ceil(ly / dx - 1e-9)), dx
+        self.x0, self.y0 = s["x0"], s["y0"]
+        cen = dom.centroid_coordinates + np.array([dom.geo_reference.xllcorner, dom.geo_reference.yllcorner])
+        i = np.clip(((cen[:, 0] - self.x0) / dx).astype(int), 0, self.nx - 1)
+        j = np.clip(((cen[:, 1] - self.y0) / dx).astype(int), 0, self.ny - 1)
+        self.bin = j * self.nx + i
+        self.area = dom.areas
+        self.wsum = np.bincount(self.bin, weights=self.area, minlength=self.nx * self.ny)
+        el = dom.quantities["elevation"].centroid_values
+        self.z = (np.bincount(self.bin, weights=el * self.area, minlength=self.nx * self.ny) / np.maximum(self.wsum, 1e-12))
+        self.dom, self.spec, self.manholes, self.net = dom, spec, manholes, net
+        self.t, self.h, self.vol = [], [], {k: [] for k in ("surface", "network", "inflow", "outflow")}
+        self.mh = {m.mh["id"]: {"eta": [], "H": [], "q": []} for m in manholes}
+        self.head = {n: [] for n in net.nodes}
+        self.flow = {l: [] for l in net.links}
+        self.depth = {l: [] for l in net.links}
+
+    def frame(self, t: float, exch: dict, boundary_out: float) -> None:
+        q = self.dom.quantities
+        h = np.maximum(q["stage"].centroid_values - q["elevation"].centroid_values, 0.0)
+        hb = np.bincount(self.bin, weights=h * self.area, minlength=self.nx * self.ny) / np.maximum(self.wsum, 1e-12)
+        self.t.append(round(float(t), 3))
+        self.h.append([round(float(v), 4) if v >= 1e-4 else 0 for v in hb])
+        for m in self.manholes:
+            k = m.mh["id"]
+            self.mh[k]["eta"].append(round(m.level(), 4))
+            self.mh[k]["H"].append(round(self.net.head(k), 4))
+            self.mh[k]["q"].append(round(float(exch.get(k, 0.0)), 5))
+        s, se = self.net.s, self.net.se
+        for n in self.net.nodes:
+            self.head[n].append(round(float(s.node_get_result(self.net.ix[n], se.NodeResult.HEAD)), 4))
+        for i, l in enumerate(self.net.links):
+            self.flow[l].append(round(float(s.link_get_result(i, se.LinkResult.FLOW)), 5))
+            self.depth[l].append(round(float(s.link_get_result(i, se.LinkResult.DEPTH)), 4))
+        self.vol["surface"].append(round(float(self.dom.get_water_volume()), 4))
+        self.vol["network"].append(round(self.net.volume(), 4))
+        self.vol["inflow"].append(round(self.net.inflow, 4))
+        self.vol["outflow"].append(round(self.net.outflow + boundary_out, 4))
+
+    def write(self, path: Path, m: dict, key: str, label: str) -> None:
+        net = self.spec["network"]
+        crest = {mh["id"]: mh["crest"] for mh in self.spec["manholes"]}
+        nodes = [{"id": j["id"], "kind": "manhole" if j["id"] in crest else "junction", "invert": j["invert"],
+                  "top": crest.get(j["id"], j["invert"] + j.get("max_depth", 0.0))} for j in net.get("junctions", [])]
+        nodes += [{"id": o["id"], "kind": "outfall", "invert": o["invert"], "top": o["invert"],
+                   "closed": bool(o.get("gated") and o.get("type") == "FIXED")} for o in net.get("outfalls", [])]
+        links = [{"id": c["id"], "from": c["from"], "to": c["to"], "length": c["length"], "D": c["D"],
+                  "in_offset": c.get("in_offset", 0.0), "out_offset": c.get("out_offset", 0.0)} for c in net.get("conduits", [])]
+        doc = {"test_id": m["test_id"], "case_version": m["case_version"], "key": key, "label": label,
+               "t": self.t, "surface": {"x0": self.x0, "y0": self.y0, "dx": self.dx, "nx": self.nx, "ny": self.ny,
+                                        "z": [round(float(v), 4) for v in self.z], "h": self.h},
+               "manholes": [{**{k: mh[k] for k in ("id", "x", "y", "crest")}, **self.mh[mh["id"]]} for mh in self.spec["manholes"]],
+               "network": {"nodes": nodes, "links": links, "head": self.head, "flow": self.flow, "depth": self.depth},
+               "volume": self.vol}
+        path.write_text(json.dumps(doc, separators=(",", ":")) + "\n", encoding="utf-8")
+
+
 # ── a run ───────────────────────────────────────────────────────────────────
 
 
-def run_case(m: dict) -> tuple[dict, dict]:
+def run_case(m: dict, replay_path: Path | None = None, label: str = "") -> tuple[dict, dict]:
     spec = json.loads((Path(m["_case_dir"]) / "inputs" / "coupling.json").read_text(encoding="utf-8"))
     dom = build_surface(spec)
     t_end, t_out = float(T_END or spec["duration_s"]), float(spec["output_interval_s"])
@@ -279,6 +354,9 @@ def run_case(m: dict) -> tuple[dict, dict]:
 
         keep.inputs("swmm-anuga", m["test_id"], Path(tdn), files=["net.inp"])
         record(0.0, net)
+        rp = Replay(dom, spec, manholes, net) if replay_path else None
+        if rp:
+            rp.frame(0.0, exch, 0.0)
         next_out = t_out
         for t in dom.evolve(yieldstep=1.0, finaltime=t_end):
             if t <= 0.0:
@@ -298,10 +376,14 @@ def run_case(m: dict) -> tuple[dict, dict]:
                 break
             if t + 1e-9 >= next_out:
                 record(t, net)
+                if rp:
+                    rp.frame(t, exch, boundary_out[0])
                 next_out += t_out
             if VERBOSE and (int(t) % 300 == 0 or t <= 30):
                 print(f"  t={t:g} eta={manholes[0].level():.4f} H={net.head(manholes[0].mh['id']):.4f} q={exch[manholes[0].mh['id']]:+.4f} "
                       f"surface={dom.get_water_volume():.2f} network={net.volume():.2f} out={net.outflow:.2f} dt={dom.timestep:.3g}", file=sys.stderr, flush=True)
+        if rp:
+            rp.write(replay_path, m, "swmm-anuga", label)
         totals = net.close()
     cols = {k: (np.asarray(v, dtype=float) if k not in ("element_id", "element_type") else v) for k, v in rows.items()}
     return cols, {"swmm_continuity_pct": totals}
@@ -329,7 +411,7 @@ def main() -> int:
     for tid in args.cases:
         m = load_manifest(tid, repo=REPO)
         t0 = time.perf_counter()
-        cols, info = run_case(m)
+        cols, info = run_case(m, OUT / f"{m['test_id'].split('_')[0]}.replay.json", sol["name"])
         res = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols)
         card = score_case(m, res, timestamp=TS, private_key=key, solver=sol)
         (OUT / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
