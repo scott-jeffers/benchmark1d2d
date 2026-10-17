@@ -256,7 +256,7 @@ jobs:
 
   probe:
     name: HEC-RAS 7.0.1 pipe-network probe (diagnostics)
-    if: (github.event_name == 'workflow_dispatch' && inputs.jobs == 'probe') || (github.event_name == 'push' && contains(join(github.event.commits.*.modified, ' '), 'probe_hecras7'))
+    if: (github.event_name == 'workflow_dispatch' && inputs.jobs == 'probe') || (github.event_name == 'push' && (contains(join(github.event.commits.*.modified, ' '), 'probe_hecras7') || contains(join(github.event.commits.*.added, ' '), 'probe_hecras7')))
     runs-on: windows-latest
     timeout-minutes: 90
     strategy:
@@ -275,7 +275,7 @@ jobs:
       - name: Python packages
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]" "ras-commander==${{ matrix.rc }}" h5py psutil pywin32 pillow pythonnet tifffile
+          python -m pip install -e ".[dev]" "ras-commander==${{ matrix.rc }}" h5py psutil pywin32 pillow pythonnet tifffile pefile shapely
       - uses: actions/cache@v4
         with:
           path: .cache/hecras

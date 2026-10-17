@@ -101,6 +101,45 @@ def reflect(ras_dir: Path) -> None:
     w("types.txt", "\n".join(out))
 
 
+def deps(ras_dir: Path) -> None:
+    """Which DLLs each compute engine imports, and whether Windows can find them (exit code 0xC0000135 is a missing DLL)."""
+    import os
+
+    import pefile
+
+    search = [ras_dir / "x64", ras_dir, Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32"] + [Path(d) for d in os.environ.get("PATH", "").split(";") if d]
+    out, seen = [], {}
+
+    def find(name: str):
+        for d in search:
+            if (d / name).is_file():
+                return d / name
+        return None
+
+    def walk(path: Path, depth: int) -> None:
+        try:
+            pe = pefile.PE(str(path), fast_load=True)
+            pe.parse_data_directories(directories=[pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_IMPORT"], pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT"]])
+        except Exception as exc:  # noqa: BLE001
+            out.append("  " * depth + f"(cannot read {path.name}: {exc})")
+            return
+        names = [e.dll.decode() for e in getattr(pe, "DIRECTORY_ENTRY_IMPORT", [])] + [e.dll.decode() + " (delay)" for e in getattr(pe, "DIRECTORY_ENTRY_DELAY_IMPORT", [])]
+        for n in names:
+            base = n.replace(" (delay)", "")
+            if base.lower().startswith(("api-ms-", "ext-ms-")):
+                continue
+            hit = find(base)
+            out.append("  " * depth + f"{n}: {hit if hit else 'MISSING'}")
+            if hit and base.lower() not in seen and depth < 3 and str(hit).lower().startswith(str(ras_dir).lower()):
+                seen[base.lower()] = 1
+                walk(hit, depth + 1)
+
+    for exe in ("x64/RasGeomPreprocess.exe", "x64/RasUnsteady.exe", "x64/RasSteady.exe"):
+        out.append(f"## {exe}")
+        walk(ras_dir / exe, 1)
+    w("deps.txt", "\n".join(out))
+
+
 def run(cmd: list[str], cwd: Path | None = None, timeout: float = 120) -> str:
     try:
         p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
@@ -208,7 +247,7 @@ def main() -> int:
     w("install.txt", "\n".join(str(p.relative_to(ras_dir)) for p in sorted(ras_dir.rglob("*")) if p.is_file()))
     rp = ras_dir / "RasProcess.exe"
     w("rasprocess.txt", "\n\n".join(run([str(rp), a]) if a else run([str(rp)]) for a in ("", "-?", "/?", "help")))
-    for step, fn in (("reflection", lambda: reflect(ras_dir)), ("davis", lambda: davis(ras_exe))):
+    for step, fn in (("deps", lambda: deps(ras_dir)), ("reflection", lambda: reflect(ras_dir)), ("davis", lambda: davis(ras_exe))):
         try:
             fn()
         except Exception:  # noqa: BLE001
