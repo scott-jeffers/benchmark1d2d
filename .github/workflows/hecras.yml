@@ -20,7 +20,6 @@ on:
       - scripts/run_hecras.py
       - scripts/run_hecras_2d.py
       - scripts/run_hecras_2d_cases.py
-      - scripts/probe_hecras7.py
       - .github/workflows/hecras.yml
       - test_catalog/track_a/1d_free_surface/**
       - test_catalog/track_a/2d_*/**
@@ -74,6 +73,9 @@ jobs:
           if ($sha -ne "${{ matrix.sha }}") { throw "HEC-RAS installer hash $sha does not match the pinned ${{ matrix.sha }}" }
           $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
           "installer exit code: $($p.ExitCode)"
+          # HEC-RAS 7's compute engines link HDF5 built against the Visual C++ 2010 runtime (MSVCR100.dll),
+          # which HEC's installer expects on the machine and the runner image does not have
+          if (-not (Test-Path "$env:SystemRoot\System32\msvcr100.dll")) { choco install vcredist2010 -y --no-progress | Select-Object -Last 3 }
           Get-ChildItem 'C:\Program Files (x86)\HEC', 'C:\Program Files\HEC' -Recurse -Filter Ras.exe -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
       - name: Run and score HEC-RAS
         timeout-minutes: 30
@@ -145,6 +147,9 @@ jobs:
           if ($sha -ne "${{ matrix.sha }}") { throw "HEC-RAS installer hash $sha does not match the pinned ${{ matrix.sha }}" }
           $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
           "installer exit code: $($p.ExitCode)"
+          # HEC-RAS 7's compute engines link HDF5 built against the Visual C++ 2010 runtime (MSVCR100.dll),
+          # which HEC's installer expects on the machine and the runner image does not have
+          if (-not (Test-Path "$env:SystemRoot\System32\msvcr100.dll")) { choco install vcredist2010 -y --no-progress | Select-Object -Last 3 }
           Get-ChildItem 'C:\Program Files (x86)\HEC', 'C:\Program Files\HEC' -Recurse -Filter Ras.exe -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
       - name: Run and score HEC-RAS 2D
         timeout-minutes: 50
@@ -225,6 +230,9 @@ jobs:
           if ($sha -ne "${{ matrix.sha }}") { throw "HEC-RAS installer hash $sha does not match the pinned ${{ matrix.sha }}" }
           $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
           "installer exit code: $($p.ExitCode)"
+          # HEC-RAS 7's compute engines link HDF5 built against the Visual C++ 2010 runtime (MSVCR100.dll),
+          # which HEC's installer expects on the machine and the runner image does not have
+          if (-not (Test-Path "$env:SystemRoot\System32\msvcr100.dll")) { choco install vcredist2010 -y --no-progress | Select-Object -Last 3 }
           Get-ChildItem 'C:\Program Files (x86)\HEC', 'C:\Program Files\HEC' -Recurse -Filter Ras.exe -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
       - name: Run and score HEC-RAS 2D (MacDonald 2D, EA tests)
         timeout-minutes: 270
@@ -256,7 +264,7 @@ jobs:
 
   probe:
     name: HEC-RAS 7.0.1 pipe-network probe (diagnostics)
-    if: (github.event_name == 'workflow_dispatch' && inputs.jobs == 'probe') || (github.event_name == 'push' && (contains(join(github.event.commits.*.modified, ' '), 'probe_hecras7') || contains(join(github.event.commits.*.added, ' '), 'probe_hecras7')))
+    if: (github.event_name == 'workflow_dispatch' && inputs.jobs == 'probe')
     runs-on: windows-latest
     timeout-minutes: 90
     strategy:
@@ -290,6 +298,9 @@ jobs:
           if ($sha -ne "${{ matrix.sha }}") { throw "HEC-RAS installer hash $sha does not match the pinned ${{ matrix.sha }}" }
           $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
           "installer exit code: $($p.ExitCode)"
+          # HEC-RAS 7's compute engines link HDF5 built against the Visual C++ 2010 runtime (MSVCR100.dll),
+          # which HEC's installer expects on the machine and the runner image does not have
+          if (-not (Test-Path "$env:SystemRoot\System32\msvcr100.dll")) { choco install vcredist2010 -y --no-progress | Select-Object -Last 3 }
           Get-ChildItem 'C:\Program Files (x86)\HEC', 'C:\Program Files\HEC' -Recurse -Filter Ras.exe -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
       - name: Probe
         timeout-minutes: 75
