@@ -47,7 +47,8 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO), str(REPO / "scripts")]
 
-OUT = REPO / "out" / "hecras2d"
+TAG = os.environ.get("HECRAS_TAG", "")  # "" for the current release, "66" for HEC-RAS 6.6 (kept as the previous release)
+OUT = REPO / "out" / (f"hecras{TAG}_2d" if TAG else "hecras2d")
 TS = "2024-01-01T00:00:00Z"
 G = 9.81
 AREA = "Strip"
@@ -279,7 +280,7 @@ def compute(folder: Path, ras_exe: Path, plan: str, timeout: float) -> Path | No
     from benchmark1d2d import keep
 
     tid, _, lvl = folder.name.partition("_dx")
-    keep.inputs("hecras-em" if folder.parent.name == "em" else "hecras", tid, folder, float(lvl) if lvl else None)
+    keep.inputs(f"hecras{TAG}-em" if folder.parent.name == "em" else f"hecras{TAG}", tid, folder, float(lvl) if lvl else None)
 
     ras = init_ras_project(folder, str(ras_exe))
     try:

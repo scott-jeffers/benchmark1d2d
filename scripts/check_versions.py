@@ -32,7 +32,7 @@ PINS = [
     ("openTELEMAC", "v9.1.1", "track-a.yml", ("conda", "opentelemac")),
     ("GeoClaw (Clawpack)", "v5.9.2", "open-solvers.yml", ("github-tags", "clawpack/clawpack")),
     ("LISFLOOD-FP", "8.3", "open-solvers.yml (Zenodo 13121119)", ("zenodo", "13121119")),
-    ("HEC-RAS 6.6 (hec-downloads release)", "1.0.33", "hecras.yml", ("github-release", "HydrologicEngineeringCenter/hec-downloads")),
+    ("HEC-RAS 7.0.1 (hec-downloads release)", "1.0.46", "hecras.yml", ("github-release", "HydrologicEngineeringCenter/hec-downloads")),
     ("Hydra CLI", "cli-v4.1.1", "scripts/fetch_hydra.py", ("github-tags-prefix", "neeraip/hydra", "cli-v")),
     ("HydroNet", "0d98ff5", "open-solvers.yml, slow-runs.yml", ("git-head", "https://github.com/psu-efd/HydroNet")),
     ("pyHMT2D", "57645ff", "open-solvers.yml, slow-runs.yml", ("git-head", "https://github.com/psu-efd/pyHMT2D")),

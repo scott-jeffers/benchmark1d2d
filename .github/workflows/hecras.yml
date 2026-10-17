@@ -2,11 +2,14 @@ name: HEC-RAS
 
 # HEC-RAS (USACE, public domain, Windows) installed silently from HEC's own
 # GitHub release and run headless through ras-commander. A finding, not a gate.
+# Every job runs on the current release (7.0.1) and on 6.6, kept as the
+# previous release so a change between versions shows (HECRAS_TAG "66" sends
+# 6.6's results to their own folders and model keys).
 on:
   workflow_dispatch:
     inputs:
       jobs:
-        description: "Which jobs to run: all, 1d, 2d, cases"
+        description: "Which jobs to run: all, 1d, 2d, cases, probe"
         default: all
       cases:
         description: "Cases for the boundary-line job (space separated; empty = all)"
@@ -17,6 +20,7 @@ on:
       - scripts/run_hecras.py
       - scripts/run_hecras_2d.py
       - scripts/run_hecras_2d_cases.py
+      - scripts/probe_hecras7.py
       - .github/workflows/hecras.yml
       - test_catalog/track_a/1d_free_surface/**
       - test_catalog/track_a/2d_*/**
@@ -24,15 +28,29 @@ on:
 
 env:
   BENCH_KEEP_INPUTS: out/inputs  # runners keep a copy of the model files they write (Run it yourself)
-  HECRAS_URL: https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.33/HEC-RAS_66_Setup.exe
-  HECRAS_SHA256: 42A370B17A43892B17BD941DD0DB5415B97CBAE6C9CDA38EB11544ECE74715EB
 
 jobs:
   hecras:
-    name: HEC-RAS 6.6 on the 1D cases (finding, not a gate)
+    name: HEC-RAS ${{ matrix.ras }} on the 1D cases (finding, not a gate)
     if: github.event_name != 'workflow_dispatch' || inputs.jobs == 'all' || inputs.jobs == '1d'
     runs-on: windows-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ras: "7.0.1"
+            tag: ""
+            rc: "0.106.1"
+            url: https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.46/HEC-RAS_701_Setup.exe
+            sha: 1FE76297076AA7A13E43191ECC76C3BA152FDC4BBD606FA2C349EEC7DB3CEE73
+          - ras: "6.6"
+            tag: "66"
+            rc: "0.105.0"
+            url: https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.33/HEC-RAS_66_Setup.exe
+            sha: 42A370B17A43892B17BD941DD0DB5415B97CBAE6C9CDA38EB11544ECE74715EB
+    env:
+      HECRAS_TAG: ${{ matrix.tag }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -41,19 +59,19 @@ jobs:
       - name: Python packages
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]" "ras-commander==0.105.0" h5py psutil pywin32 pillow
+          python -m pip install -e ".[dev]" "ras-commander==${{ matrix.rc }}" h5py psutil pywin32 pillow
       - uses: actions/cache@v4
         with:
           path: .cache/hecras
-          key: hecras-66-setup-v1
-      - name: Install HEC-RAS 6.6 silently
+          key: hecras-${{ matrix.ras }}-setup-v1
+      - name: Install HEC-RAS ${{ matrix.ras }} silently
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force .cache/hecras | Out-Null
-          $exe = ".cache/hecras/HEC-RAS_66_Setup.exe"
-          if (-not (Test-Path $exe)) { Invoke-WebRequest $env:HECRAS_URL -OutFile $exe }
+          $exe = ".cache/hecras/" + [IO.Path]::GetFileName("${{ matrix.url }}")
+          if (-not (Test-Path $exe)) { Invoke-WebRequest "${{ matrix.url }}" -OutFile $exe }
           $sha = (Get-FileHash $exe -Algorithm SHA256).Hash
-          if ($sha -ne $env:HECRAS_SHA256) { throw "HEC-RAS installer hash $sha does not match the pinned $env:HECRAS_SHA256" }
+          if ($sha -ne "${{ matrix.sha }}") { throw "HEC-RAS installer hash $sha does not match the pinned ${{ matrix.sha }}" }
           $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
           "installer exit code: $($p.ExitCode)"
           Get-ChildItem 'C:\Program Files (x86)\HEC', 'C:\Program Files\HEC' -Recurse -Filter Ras.exe -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
@@ -71,23 +89,39 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: hecras
+          name: hecras-${{ matrix.ras }}
           path: |
-            out/hecras/*.scorecard.json
-            out/hecras/*.parquet
-            out/hecras/work/**/*.txt
-            out/hecras/work/**/*.log
-            out/hecras/work/**/*.LOG
-            out/hecras/work/**/*.png
-            out/hecras/work/**/*.hdf
+            out/hecras*/*.scorecard.json
+            out/hecras*/*.parquet
+            out/hecras*/work/**/*.txt
+            out/hecras*/work/**/*.log
+            out/hecras*/work/**/*.LOG
+            out/hecras*/work/**/*.png
+            out/hecras*/work/**/*.hdf
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
 
   hecras-2d:
-    name: HEC-RAS 6.6 2D dam breaks (finding, not a gate)
+    name: HEC-RAS ${{ matrix.ras }} 2D dam breaks (finding, not a gate)
     if: github.event_name != 'workflow_dispatch' || inputs.jobs == 'all' || inputs.jobs == '2d'
     runs-on: windows-latest
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ras: "7.0.1"
+            tag: ""
+            rc: "0.106.1"
+            url: https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.46/HEC-RAS_701_Setup.exe
+            sha: 1FE76297076AA7A13E43191ECC76C3BA152FDC4BBD606FA2C349EEC7DB3CEE73
+          - ras: "6.6"
+            tag: "66"
+            rc: "0.105.0"
+            url: https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.33/HEC-RAS_66_Setup.exe
+            sha: 42A370B17A43892B17BD941DD0DB5415B97CBAE6C9CDA38EB11544ECE74715EB
+    env:
+      HECRAS_TAG: ${{ matrix.tag }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -96,21 +130,22 @@ jobs:
       - name: Python packages
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]" "ras-commander==0.105.0" h5py psutil pywin32 pillow pythonnet tifffile
+          python -m pip install -e ".[dev]" "ras-commander==${{ matrix.rc }}" h5py psutil pywin32 pillow pythonnet tifffile
       - uses: actions/cache@v4
         with:
           path: .cache/hecras
-          key: hecras-66-setup-v1
-      - name: Install HEC-RAS 6.6 silently
+          key: hecras-${{ matrix.ras }}-setup-v1
+      - name: Install HEC-RAS ${{ matrix.ras }} silently
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force .cache/hecras | Out-Null
-          $exe = ".cache/hecras/HEC-RAS_66_Setup.exe"
-          if (-not (Test-Path $exe)) { Invoke-WebRequest $env:HECRAS_URL -OutFile $exe }
+          $exe = ".cache/hecras/" + [IO.Path]::GetFileName("${{ matrix.url }}")
+          if (-not (Test-Path $exe)) { Invoke-WebRequest "${{ matrix.url }}" -OutFile $exe }
           $sha = (Get-FileHash $exe -Algorithm SHA256).Hash
-          if ($sha -ne $env:HECRAS_SHA256) { throw "HEC-RAS installer hash $sha does not match the pinned $env:HECRAS_SHA256" }
+          if ($sha -ne "${{ matrix.sha }}") { throw "HEC-RAS installer hash $sha does not match the pinned ${{ matrix.sha }}" }
           $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
           "installer exit code: $($p.ExitCode)"
+          Get-ChildItem 'C:\Program Files (x86)\HEC', 'C:\Program Files\HEC' -Recurse -Filter Ras.exe -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
       - name: Run and score HEC-RAS 2D
         timeout-minutes: 50
         run: python scripts/run_hecras_2d.py --accept-hec-terms
@@ -125,25 +160,25 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: hecras-2d
+          name: hecras-2d-${{ matrix.ras }}
           path: |
-            out/hecras2d/*/*.scorecard.json
-            out/hecras2d/*/*.parquet
-            out/hecras2d/work/**/*.txt
-            out/hecras2d/work/**/*.p0?
-            out/hecras2d/work/**/*.u0?
-            out/hecras2d/work/**/*.g01
-            out/hecras2d/work/**/*.prj
-            out/hecras2d/work/**/*.rasmap
-            out/hecras2d/work/**/*.log
-            out/hecras2d/work/**/*.bco*
-            out/hecras2d/work/**/*.x01
-            out/hecras2d/work/**/*.rst
+            out/hecras*2d/*/*.scorecard.json
+            out/hecras*2d/*/*.parquet
+            out/hecras*2d/work/**/*.txt
+            out/hecras*2d/work/**/*.p0?
+            out/hecras*2d/work/**/*.u0?
+            out/hecras*2d/work/**/*.g01
+            out/hecras*2d/work/**/*.prj
+            out/hecras*2d/work/**/*.rasmap
+            out/hecras*2d/work/**/*.log
+            out/hecras*2d/work/**/*.bco*
+            out/hecras*2d/work/**/*.x01
+            out/hecras*2d/work/**/*.rst
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
 
   hecras-2d-cases:
-    name: HEC-RAS 6.6 2D with boundary lines, ${{ matrix.eq }} (finding, not a gate)
+    name: HEC-RAS ${{ matrix.ras }} 2D with boundary lines, ${{ matrix.eq }} (finding, not a gate)
     if: github.event_name != 'workflow_dispatch' || inputs.jobs == 'all' || inputs.jobs == 'cases'
     runs-on: windows-latest
     timeout-minutes: 300
@@ -151,6 +186,20 @@ jobs:
       fail-fast: false
       matrix:
         eq: [elm, em]
+        ras: ["7.0.1", "6.6"]
+        include:
+          - ras: "7.0.1"
+            tag: ""
+            rc: "0.106.1"
+            url: https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.46/HEC-RAS_701_Setup.exe
+            sha: 1FE76297076AA7A13E43191ECC76C3BA152FDC4BBD606FA2C349EEC7DB3CEE73
+          - ras: "6.6"
+            tag: "66"
+            rc: "0.105.0"
+            url: https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.33/HEC-RAS_66_Setup.exe
+            sha: 42A370B17A43892B17BD941DD0DB5415B97CBAE6C9CDA38EB11544ECE74715EB
+    env:
+      HECRAS_TAG: ${{ matrix.tag }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -159,23 +208,24 @@ jobs:
       - name: Python packages
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]" "ras-commander==0.105.0" h5py psutil pywin32 pillow pythonnet tifffile
+          python -m pip install -e ".[dev]" "ras-commander==${{ matrix.rc }}" h5py psutil pywin32 pillow pythonnet tifffile
       - name: Fetch remote inputs (EA terrain, verified by SHA-256)
         run: python scripts/fetch_inputs.py
       - uses: actions/cache@v4
         with:
           path: .cache/hecras
-          key: hecras-66-setup-v1
-      - name: Install HEC-RAS 6.6 silently
+          key: hecras-${{ matrix.ras }}-setup-v1
+      - name: Install HEC-RAS ${{ matrix.ras }} silently
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force .cache/hecras | Out-Null
-          $exe = ".cache/hecras/HEC-RAS_66_Setup.exe"
-          if (-not (Test-Path $exe)) { Invoke-WebRequest $env:HECRAS_URL -OutFile $exe }
+          $exe = ".cache/hecras/" + [IO.Path]::GetFileName("${{ matrix.url }}")
+          if (-not (Test-Path $exe)) { Invoke-WebRequest "${{ matrix.url }}" -OutFile $exe }
           $sha = (Get-FileHash $exe -Algorithm SHA256).Hash
-          if ($sha -ne $env:HECRAS_SHA256) { throw "HEC-RAS installer hash $sha does not match the pinned $env:HECRAS_SHA256" }
+          if ($sha -ne "${{ matrix.sha }}") { throw "HEC-RAS installer hash $sha does not match the pinned ${{ matrix.sha }}" }
           $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
           "installer exit code: $($p.ExitCode)"
+          Get-ChildItem 'C:\Program Files (x86)\HEC', 'C:\Program Files\HEC' -Recurse -Filter Ras.exe -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
       - name: Run and score HEC-RAS 2D (MacDonald 2D, EA tests)
         timeout-minutes: 270
         shell: bash
@@ -191,15 +241,64 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: hecras-2d-cases-${{ matrix.eq }}
+          name: hecras-2d-cases-${{ matrix.ras }}-${{ matrix.eq }}
           path: |
-            out/hecras2d/*/*.scorecard.json
-            out/hecras2d/*/*.parquet
-            out/hecras2d/work/**/*.txt
-            out/hecras2d/work/**/*.p0?
-            out/hecras2d/work/**/*.u0?
-            out/hecras2d/work/**/*.g01
-            out/hecras2d/work/**/*.log
-            out/hecras2d/work/**/*.bco*
+            out/hecras*2d/*/*.scorecard.json
+            out/hecras*2d/*/*.parquet
+            out/hecras*2d/work/**/*.txt
+            out/hecras*2d/work/**/*.p0?
+            out/hecras*2d/work/**/*.u0?
+            out/hecras*2d/work/**/*.g01
+            out/hecras*2d/work/**/*.log
+            out/hecras*2d/work/**/*.bco*
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+
+  probe:
+    name: HEC-RAS 7.0.1 pipe-network probe (diagnostics)
+    if: (github.event_name == 'workflow_dispatch' && inputs.jobs == 'probe') || (github.event_name == 'push' && contains(join(github.event.commits.*.modified, ' '), 'probe_hecras7'))
+    runs-on: windows-latest
+    timeout-minutes: 90
+    strategy:
+      matrix:
+        include:
+          - ras: "7.0.1"
+            tag: ""
+            rc: "0.106.1"
+            url: https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.46/HEC-RAS_701_Setup.exe
+            sha: 1FE76297076AA7A13E43191ECC76C3BA152FDC4BBD606FA2C349EEC7DB3CEE73
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" "ras-commander==${{ matrix.rc }}" h5py psutil pywin32 pillow pythonnet tifffile
+      - uses: actions/cache@v4
+        with:
+          path: .cache/hecras
+          key: hecras-${{ matrix.ras }}-setup-v1
+      - name: Install HEC-RAS ${{ matrix.ras }} silently
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .cache/hecras | Out-Null
+          $exe = ".cache/hecras/" + [IO.Path]::GetFileName("${{ matrix.url }}")
+          if (-not (Test-Path $exe)) { Invoke-WebRequest "${{ matrix.url }}" -OutFile $exe }
+          $sha = (Get-FileHash $exe -Algorithm SHA256).Hash
+          if ($sha -ne "${{ matrix.sha }}") { throw "HEC-RAS installer hash $sha does not match the pinned ${{ matrix.sha }}" }
+          $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
+          "installer exit code: $($p.ExitCode)"
+          Get-ChildItem 'C:\Program Files (x86)\HEC', 'C:\Program Files\HEC' -Recurse -Filter Ras.exe -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+      - name: Probe
+        timeout-minutes: 75
+        run: python scripts/probe_hecras7.py --accept-hec-terms
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hecras7-probe
+          path: |
+            out/hecras7probe/*.txt
+            out/hecras7probe/davis/**/*.txt
+            out/hecras7probe/davis/**/*.log

@@ -58,6 +58,9 @@ ROUTES = [
     (r"^LISFLOOD-FP .*\bFV1\b", "lisflood/fv1"),
     (r"^LISFLOOD-FP .*\bDG2\b", "lisflood/dg2"),
     (r"^LISFLOOD-FP .*\bACC\b", "lisflood/acc"),
+    (r"^HEC-RAS 6\.6 .*2D SWE-ELM", "hecras66_2d/elm"),  # the previous release
+    (r"^HEC-RAS 6\.6 .*2D SWE-EM", "hecras66_2d/em"),
+    (r"^HEC-RAS 6\.6", "hecras66"),
     (r"^HEC-RAS .*2D SWE-ELM", "hecras2d/elm"),
     (r"^HEC-RAS .*2D SWE-EM", "hecras2d/em"),
     (r"^HEC-RAS", "hecras"),

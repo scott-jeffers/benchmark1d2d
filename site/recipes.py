@@ -21,8 +21,11 @@ LISFLOOD = ['# LISFLOOD-FP 8.3 source (Zenodo, MD5 abaa2e41b58f6c7df4443274bf130
             'cmake -S <lisflood>/source -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --target lisflood']
 GEOCLAW = ['git clone --depth 1 --branch v5.9.2 --recurse-submodules https://github.com/clawpack/clawpack',
            'conda create -n claw -c conda-forge clawpack=5.9.0 python=3.11 gfortran make pip pyarrow pandas']
-HECRAS = ['# Windows: HEC-RAS 6.6 from HEC (HEC-RAS_66_Setup.exe, SHA-256 42A370B1…4715EB), silent install /S /v/qn',
-          'python -m pip install -e ".[dev]" "ras-commander==0.105.0" h5py psutil pywin32 pillow pythonnet tifffile']
+HECRAS = ['# Windows: HEC-RAS 7.0.1 from HEC (HEC-RAS_701_Setup.exe, SHA-256 1FE76297…3CEE73), silent install /S /v/qn',
+          'python -m pip install -e ".[dev]" "ras-commander==0.106.1" h5py psutil pywin32 pillow pythonnet tifffile']
+HECRAS66 = ['# Windows: HEC-RAS 6.6 from HEC (HEC-RAS_66_Setup.exe, SHA-256 42A370B1…4715EB), silent install /S /v/qn',
+            'python -m pip install -e ".[dev]" "ras-commander==0.105.0" h5py psutil pywin32 pillow pythonnet tifffile',
+            'set HECRAS_TAG=66']
 HYDRONET = ['# HydroNet 0d98ff5 and pyHMT2D 57645ff (github.com/psu-efd), CPU PyTorch:',
             'python -m pip install torch --index-url https://download.pytorch.org/whl/cpu',
             'python -m pip install -e <HydroNet> && python -m pip install -e <pyHMT2D> --no-deps']
@@ -59,9 +62,9 @@ def recipe(key: str, sid: str) -> dict | None:
         sv = key.split("-", 1)[1]
         return dict(install=[*LISFLOOD, SUITE], run=[f"python scripts/run_lisflood.py --exe build/lisflood --solver {sv} {sid}"],
                     script="scripts/run_lisflood.py", workflow="open-solvers.yml", platform="Linux")
-    if key in ("hecras", "hecras-em"):
-        script, cmd = _hecras(sid, "em" if key == "hecras-em" else "elm")
-        return dict(install=HECRAS, run=[cmd], script=script, workflow="hecras.yml", platform="Windows")
+    if key in ("hecras", "hecras-em", "hecras66", "hecras66-em"):
+        script, cmd = _hecras(sid, "em" if key.endswith("-em") else "elm")
+        return dict(install=HECRAS66 if key.startswith("hecras66") else HECRAS, run=[cmd], script=script, workflow="hecras.yml", platform="Windows")
     if key in ("epanet22", "hydra-wds", "wntr") and sid.startswith("A1P"):
         flag = {"epanet22": "", "hydra-wds": ' --hydra-exe "$HYDRA"', "wntr": " --wntr"}[key]
         return dict(install=['python -m pip install -e ".[dev,engines]"', *(HYDRA if key == "hydra-wds" else [])],

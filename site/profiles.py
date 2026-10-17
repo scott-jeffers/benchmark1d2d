@@ -224,7 +224,7 @@ SOURCES = [
     ("lisflood-fv1", "out/lisflood/fv1"), ("lisflood-dg2", "out/lisflood/dg2"), ("lisflood-acc", "out/lisflood/acc"),
     ("swmm524", "out/swmm_track_a/swmm524"), ("openswmm-dw", "out/swmm_track_a/openswmm-dw"), ("openswmm-fv", "out/swmm_track_a/openswmm-fv"), ("hydra-uds", "out/swmm_track_a/hydra-uds"),
     ("hydronet-fvm", "out/hydronet/fvm"), ("hydronet-pinn", "out/hydronet/pinn"),
-    ("hecras", "out/hecras"), ("hecras", "out/hecras2d/elm"), ("hecras-em", "out/hecras2d/em"),
+    ("hecras", "out/hecras"), ("hecras", "out/hecras2d/elm"), ("hecras-em", "out/hecras2d/em"), ("hecras66", "out/hecras66"), ("hecras66", "out/hecras66_2d/elm"), ("hecras66-em", "out/hecras66_2d/em"),
 ]
 
 

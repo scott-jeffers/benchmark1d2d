@@ -45,10 +45,10 @@ SOLVERS: list[dict] = [
          what="Worked example that ships with the suite: first-order finite volume"),
     dict(key="epanet22", name="EPANET 2.2", sub="US EPA", kind="production", color="var(--cat-3)",
          what="EPA EPANET 2.2, the standard water-network solver"),
-    dict(key="hecras", name="HEC-RAS 6.6", sub="1D · 2D SWE-ELM", kind="production", color="#7C6A2E",
-         what="HEC-RAS 6.6 (US Army Corps of Engineers), built and run headless with its default settings; in 2D, its default full shallow-water option (SWE-ELM)"),
-    dict(key="hecras-em", name="HEC-RAS 6.6", sub="2D · SWE-EM", kind="production", color="#A0522D",
-         what="HEC-RAS 6.6 2D with its Eulerian shallow-water option (SWE-EM), which HEC recommends for dam breaks"),
+    dict(key="hecras", name="HEC-RAS 7.0", sub="1D · 2D SWE-ELM", kind="production", color="#7C6A2E",
+         what="HEC-RAS 7.0.1 (US Army Corps of Engineers), built and run headless with its default settings; in 2D, its default full shallow-water option (SWE-ELM)"),
+    dict(key="hecras-em", name="HEC-RAS 7.0", sub="2D · SWE-EM", kind="production", color="#A0522D",
+         what="HEC-RAS 7.0.1 2D with its Eulerian shallow-water option (SWE-EM), which HEC recommends for dam breaks"),
     dict(key="telemac", name="TELEMAC-2D", sub="openTELEMAC 9.1", kind="production", color="#D9622B",
          what="openTELEMAC-2D 9.1.1, run with its default finite-volume settings"),
     dict(key="anuga", name="ANUGA", sub="4.0.1", kind="production", color="#5E548E",
@@ -91,6 +91,10 @@ SOLVERS: list[dict] = [
          what="Basilisk (Popinet, basilisk.fr), its second-order well-balanced Saint-Venant solver on a uniform Cartesian grid with its defaults; Manning friction added as the usual semi-implicit term (it has none built in)"),
     dict(key="landlab", name="Landlab", sub="OverlandFlow", kind="research", color="#8A6D3B",
          what="Landlab 2.11 (CSDMS), its OverlandFlow component: the local-inertial 2D flood scheme of de Almeida et al. (2012), written independently in NumPy, with its defaults"),
+    dict(key="hecras66", name="HEC-RAS 6.6", sub="previous release", kind="compat", color="#B5A46A",
+         what="HEC-RAS 6.6, the release before 7.0, run the same way (1D, and 2D with its default SWE-ELM): kept so a change between versions shows"),
+    dict(key="hecras66-em", name="HEC-RAS 6.6", sub="previous release · 2D SWE-EM", kind="compat", color="#C98A6B",
+         what="HEC-RAS 6.6 2D with its Eulerian shallow-water option (SWE-EM), the release before 7.0"),
     dict(key="openswmm6", name="OpenSWMM 6", sub="vs SWMM 5.2.4", kind="compat", color="var(--cat-5)",
          what="OpenSWMM Engine v6 (HydroCouple's SWMM 6, pre-release), compared with SWMM 5.2.4"),
     dict(key="epanet20", name="EPANET 2.0", sub="vs EPANET 2.2", kind="compat", color="var(--cat-2)",
@@ -136,6 +140,8 @@ def solver_key(name: str) -> str | None:
     if "telemac" in n:
         return "telemac"
     if "hec-ras" in n:
+        if n.startswith("hec-ras 6.6"):
+            return "hecras66-em" if "swe-em" in n else "hecras66"
         return "hecras-em" if "swe-em" in n else "hecras"
     if n.startswith("anuga"):
         return "anuga"
@@ -367,11 +373,11 @@ def summary_line(m: dict, card: dict) -> str:
 # Findings worth a sentence on a model card: (short id, solver key) -> text
 NOTES = {
     ("A1F-010", "telemac"): "Passes: the front is 5.8 m behind the exact one (9.8 m allowed) and depths are within 1.4 mm on average. It is not verified: the error shrinks on finer grids at a rate of 0.69 (90 % range 0.64 to 0.73), all of it under the 0.8 required. The thin leading edge, 1 mm deep, lags further (39 m): it stays dry too long. HLLC and second-order settings did not change that.",
-    ("A1F-001", "hecras"): "HEC-RAS stores input elevations to the nearest 0.001 ft (0.3 mm), even in a metric project. The depth error therefore stops at about 0.1 mm on every grid, a hundredth of the limit, and cannot shrink with the grid. It passes; the convergence rate is reported but, at the solver's own precision, not judged, so it is verified.",
-    ("A1F-010", "hecras"): "The flood advances as a steep bore and its front is 97 m behind the exact one; the error does not fall on finer grids. HEC-RAS 2D was built and run with no GUI step; the dam-break step was carried in by a restart file.",
-    ("A1F-010", "hecras-em"): "SWE-EM, the option HEC recommends for dam breaks, gets 40 m closer than the default SWE-ELM (58 m behind) but does not converge.",
-    ("A1F-011", "hecras"): "The bore is in about the right place (depth error 5 mm), but the error does not fall on finer grids.",
-    ("A1F-011", "hecras-em"): "Error 8 mm, inside the limit, but it grows slightly on finer grids.",
+    ("A1F-001", "hecras66"): "HEC-RAS stores input elevations to the nearest 0.001 ft (0.3 mm), even in a metric project. The depth error therefore stops at about 0.1 mm on every grid, a hundredth of the limit, and cannot shrink with the grid. It passes; the convergence rate is reported but, at the solver's own precision, not judged, so it is verified.",
+    ("A1F-010", "hecras66"): "The flood advances as a steep bore and its front is 97 m behind the exact one; the error does not fall on finer grids. HEC-RAS 2D was built and run with no GUI step; the dam-break step was carried in by a restart file.",
+    ("A1F-010", "hecras66-em"): "SWE-EM, the option HEC recommends for dam breaks, gets 40 m closer than the default SWE-ELM (58 m behind) but does not converge.",
+    ("A1F-011", "hecras66"): "The bore is in about the right place (depth error 5 mm), but the error does not fall on finer grids.",
+    ("A1F-011", "hecras66-em"): "Error 8 mm, inside the limit, but it grows slightly on finer grids.",
     ("A1F-010", "swmm524"): "SWMM's dynamic-wave routing is built for sewer networks, not dam breaks: the front is 41 m behind and the error does not shrink on finer grids. One conduit near x = 1,126 m also spikes to a 9 m depth at the reporting time (the chart clips it); that is the engine's own output, not a plotting fault.",
     ("A1F-011", "swmm524"): "The bore smears and lags, and the stored water drifts 4 % above the exact volume: dynamic-wave routing is not built for moving shocks.",
     ("A1F-010", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver, including the 9 m one-conduit spike near x = 1,126 m.",
@@ -388,11 +394,11 @@ NOTES = {
     ("A2A-020", "telemac"): "Run with TELEMAC's HLLC scheme: its default kinetic scheme goes unstable with this supercritical inflow. The depth is right (1 cm) and converges, but the stored water is 0.15 % above exact (0.1 % allowed), as with ANUGA (0.13 % below).",
     ("A2A-010", "telemac"): "Passes: 0.13 mm from the exact water level, converging at first order. The inflow discharge and outlet level are listed in the order TELEMAC numbers its open boundaries.",
     ("A2C-EA2", "telemac"): "Run with a 1 s largest step, as for the other codes: with TELEMAC's step left to the 5-minute output interval, the dry start took long first steps that undersampled the inflow and lost 6 % of the water.",
-    ("A2A-010", "hecras"): "Very accurate (0.09 mm), but the error stops falling below about 0.1 mm on finer grids (0.54, 0.16, 0.12, 0.09 mm), so it passes but its convergence rate's range is wide (0.11 to 1.50): not verified. HEC-RAS stops iterating at its default water-surface tolerance (0.01), which is the likely floor.",
-    ("A2A-010", "hecras-em"): "As SWE-ELM: 0.06 mm, but the error levels off near 0.1 mm on finer grids (rate 1.02, 90 % range 0.43 to 1.60): passes, not verified.",
-    ("A2C-EA1", "hecras"): "Run on the EA's own 2 m DEM, which HEC-RAS uses as sub-grid terrain. The pond settles 1.3 cm above the sill (2 cm allowed).",
-    ("A2C-EA2", "hecras"): "HEC-RAS's own volume accounting reports 1.4 % more water stored than flowed in (98,576 m³ from 97,194 m³). Integrating its water levels over the 2 m DEM gives +0.76 %, also over the limit. Run on the EA's own 2 m DEM as sub-grid terrain.",
-    ("A2C-EA2", "hecras-em"): "As SWE-ELM: HEC-RAS's own accounting shows a 1.4 % volume error.",
+    ("A2A-010", "hecras66"): "Very accurate (0.09 mm), but the error stops falling below about 0.1 mm on finer grids (0.54, 0.16, 0.12, 0.09 mm), so it passes but its convergence rate's range is wide (0.11 to 1.50): not verified. HEC-RAS stops iterating at its default water-surface tolerance (0.01), which is the likely floor.",
+    ("A2A-010", "hecras66-em"): "As SWE-ELM: 0.06 mm, but the error levels off near 0.1 mm on finer grids (rate 1.02, 90 % range 0.43 to 1.60): passes, not verified.",
+    ("A2C-EA1", "hecras66"): "Run on the EA's own 2 m DEM, which HEC-RAS uses as sub-grid terrain. The pond settles 1.3 cm above the sill (2 cm allowed).",
+    ("A2C-EA2", "hecras66"): "HEC-RAS's own volume accounting reports 1.4 % more water stored than flowed in (98,576 m³ from 97,194 m³). Integrating its water levels over the 2 m DEM gives +0.76 %, also over the limit. Run on the EA's own 2 m DEM as sub-grid terrain.",
+    ("A2C-EA2", "hecras66-em"): "As SWE-ELM: HEC-RAS's own accounting shows a 1.4 % volume error.",
     ("A1F-010", "hydronet-fvm"): "The dam never breaks: no water crosses onto the dry bed. HydroNet's Roe residual uses a fixed 1 cm dry threshold and, at a face between a wet and a dry cell, the wet cell's own flux, so still water next to dry ground feels no net force. The same happens below a 1 cm downstream layer. Mass is conserved because nothing moves.",
     ("A1F-011", "hydronet-fvm"): "Into 10 cm of water the dam break runs normally: depth error 1.4 mm (passes) and mass 0.016 %, but the error falls at a rate of 0.70 (90 % range 0.68 to 0.72; minimum 0.8).",
     ("A1F-011", "hydronet-pinn"): "The trained network smears the bore and the rarefaction: average depth error 12.6 cm (1 cm allowed), 4.5 % of the water lost, and no improvement on finer grids. Trained with the recipe of HydroNet's own dam-break example, which on its own 20 m, 1 s case gives an RMS error of 6 cm on a 2 m dam (3 %); this case is 2 km over 30 s.",
@@ -524,7 +530,7 @@ def badge(card: dict | None) -> str:
     return VERDICT_BADGE[verdict(card)]
 
 
-SOLVER_DOCS = {"hecras": "hecras.md", "hecras-em": "hecras.md", "openswmm-dw": "openswmm.md", "openswmm-fv": "openswmm.md",
+SOLVER_DOCS = {"hecras": "hecras.md", "hecras-em": "hecras.md", "hecras66": "hecras.md", "hecras66-em": "hecras.md", "openswmm-dw": "openswmm.md", "openswmm-fv": "openswmm.md",
                "openswmm6": "openswmm.md", "hydra-uds": "hydra.md", "hydra-wds": "hydra.md", "hydronet-fvm": "hydronet.md",
                "hydronet-pinn": "hydronet.md", "swmm-anuga": "coupled.md",
                "openswmm-2d": "coupled.md", "openswmm-2d-x": "coupled.md"}
@@ -691,7 +697,7 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
   <b>The dam-break front splits the field</b>
   <p>In the classic dam break, {len(ok)} of {len(fronts)} production runs put the flood front within {nice(lim, 2)} m of the exact one after a minute ({esc(who)}: {nice(min(fronts[k] for k in ok), 2) if ok else '–'}–{nice(max(fronts[k] for k in ok), 2) if ok else '–'} m). The other {len(far)} are {nice(far[0], 2) if far else '–'}–{nice(far[-1], 3) if far else '–'} m behind.</p>
 </a>""")
-    if "hecras" in (runs.get("A1F-001_macdonald_m1_backwater") or {}):
+    if "hecras66" in (runs.get("A1F-001_macdonald_m1_backwater") or {}):
         cards.append("""<a class="finding" href="tests/A1F-001.html">
   <div class="num">0.001 ft</div>
   <b>HEC-RAS rounds its inputs</b>

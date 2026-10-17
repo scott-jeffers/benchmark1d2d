@@ -50,7 +50,8 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 
-OUT = REPO / "out" / "hecras"
+TAG = os.environ.get("HECRAS_TAG", "")  # "" for the current release, "66" for HEC-RAS 6.6 (kept as the previous release)
+OUT = REPO / "out" / f"hecras{TAG}"
 TS = "2024-01-01T00:00:00Z"
 RIVER, REACH = "Channel", "Main"
 WIDE = 100_000.0  # m, see module docstring
@@ -303,7 +304,7 @@ def main() -> int:
             built = CASES[tid](folder, float(dx))
             from benchmark1d2d import keep
 
-            keep.inputs("hecras", tid, folder, dx)
+            keep.inputs(f"hecras{TAG}", tid, folder, dx)
             print(f"  {tid} dx={dx}: wrote {len(built['x'])} cross sections to {folder.relative_to(REPO)}")
             if args.write_only:
                 continue

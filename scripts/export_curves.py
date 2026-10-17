@@ -41,7 +41,7 @@ SOURCES = [
     ("openswmm-fv", "out/swmm_track_a/openswmm-fv"), ("hydra-uds", "out/swmm_track_a/hydra-uds"),
     ("swmm515", "out/swmm_track_a/swmm515"), ("tsnet", "out/tsnet"), ("basilisk", "out/basilisk"), ("landlab", "out/landlab"), ("epanet22", "out/networks"),
     ("hydronet-fvm", "out/hydronet/fvm"), ("hydronet-pinn", "out/hydronet/pinn"),
-    ("hecras", "out/hecras"), ("hecras", "out/hecras2d/elm"), ("hecras-em", "out/hecras2d/em"),
+    ("hecras", "out/hecras"), ("hecras", "out/hecras2d/elm"), ("hecras-em", "out/hecras2d/em"), ("hecras66", "out/hecras66"), ("hecras66", "out/hecras66_2d/elm"), ("hecras66-em", "out/hecras66_2d/em"),
     ("swmm-anuga", "out/coupled/swmm-anuga"),
     ("openswmm-2d", "out/coupled/openswmm-2d"), ("openswmm-2d-x", "out/coupled/openswmm-2d-x"),
 ]
