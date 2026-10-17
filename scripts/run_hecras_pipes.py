@@ -287,13 +287,45 @@ def write_network(ghdf: Path, spec: dict) -> dict:
     return {"ids": ids, "pos": pos, "conduits": conduits, "outs": list(outs)}
 
 
-def preprocess(folder: Path, ras_exe: Path) -> None:
-    from ras_commander import init_ras_project
-    from ras_commander.geom.GeomPreprocessor import GeomPreprocessor
+def compiled(ghdf: Path) -> list[str]:
+    import h5py
 
-    ras = init_ras_project(folder, str(ras_exe))
-    r = GeomPreprocessor.run_geometry_preprocessor("01", ras_object=ras, max_wait=900)
-    log(f"    geometry preprocessor (pipe network): success={getattr(r, 'success', '?')} {getattr(r, 'error', '')}"[:800])
+    with h5py.File(ghdf, "r") as g:
+        return [k for k in g.get("Geometry/Pipe Networks", {}).keys() if k != "Attributes"]
+
+
+def compile_network(folder: Path, ras_exe: Path, ghdf: Path) -> None:
+    """Have HEC-RAS (RasMapperLib) build the network's computational cells and property tables from the layers."""
+    from ras_commander.geom.GeomMesh import _imports, _load_dlls
+
+    _load_dlls(str(ras_exe.parent))
+    import System  # type: ignore
+    from System.Collections.Generic import List  # type: ignore
+
+    ns = _imports()
+    geom = ns["RASGeometry"](str(ghdf))
+    pn = geom.PipeNetworks
+    steps = []
+    for label, call in (
+        ("reconcile network names", lambda: pn.ReconcileNetworksWithPipeLinkSystemNames()),
+        ("compute meshes from inputs", lambda: pn.ComputeMeshesFromInputs(List[System.Int32]([i for i in range(max(1, pn.FeatureCount()))]), False)),
+        ("compute out-of-date meshes", lambda: pn.ComputeOutOfDateMeshes(False)),
+        ("property tables", lambda: pn.EnsurePropertyTables(True, True, False, None)),
+        ("save", lambda: geom.Save()),
+    ):
+        try:
+            r = call()
+            steps.append(f"{label}: {r!r}")
+        except Exception as exc:  # noqa: BLE001 - diagnostics: which of HEC-RAS's steps works headless
+            steps.append(f"{label}: {type(exc).__name__}: {exc}"[:300])
+    log("    RasMapperLib pipe network: " + "; ".join(steps))
+    if not compiled(ghdf):
+        try:
+            ok = geom.CompleteForComputations(True, None)
+            geom.Save()
+            log(f"    CompleteForComputations: {ok!r}")
+        except Exception as exc:  # noqa: BLE001
+            log(f"    CompleteForComputations: {type(exc).__name__}: {exc}"[:300])
 
 
 # ── results ─────────────────────────────────────────────────────────────────
@@ -415,17 +447,20 @@ def run_case(m: dict, ras_exe: Path) -> tuple[dict, dict]:
     base.preprocess_and_associate(folder, ras_exe, terrain)
     ghdf = folder / f"{name}.g01.hdf"
     netinfo = write_network(ghdf, spec)
-    preprocess(folder, ras_exe)
-    import h5py
-
-    with h5py.File(ghdf, "r") as g:
-        log(f"    compiled pipe network: {list(g.get('Geometry/Pipe Networks', {}).keys())}")
+    compile_network(folder, ras_exe, ghdf)
+    log(f"    compiled pipe network: {compiled(ghdf)}")
     from benchmark1d2d import keep
 
     keep.inputs("hecras-pipes", m["test_id"], folder, None)
     t0 = time.perf_counter()
     hdf = compute(folder, ras_exe, "01", 4 * 3600)
     log(f"    run: {time.perf_counter() - t0:.0f} s")
+    log(base.messages(folder))
+    b01 = folder / f"{name}.b01"
+    if b01.is_file():
+        txt = b01.read_text(errors="replace")
+        i = txt.find("Stage and Flow Boundary")
+        log("    b01 boundaries: " + txt[i:i + 600].replace("\n", " | ") if i >= 0 else "    b01: no boundary section")
     if hdf is None:
         log(base.listing(folder))
         log(base.messages(folder))
