@@ -62,6 +62,10 @@ def recipe(key: str, sid: str) -> dict | None:
         sv = key.split("-", 1)[1]
         return dict(install=[*LISFLOOD, SUITE], run=[f"python scripts/run_lisflood.py --exe build/lisflood --solver {sv} {sid}"],
                     script="scripts/run_lisflood.py", workflow="open-solvers.yml", platform="Linux")
+    if key == "hecras-pipes":
+        return dict(install=HECRAS, run=[f"python scripts/run_hecras_pipes.py {sid} --accept-hec-terms"], script="scripts/run_hecras_pipes.py",
+                    workflow="hecras.yml", platform="Windows",
+                    note="The pipe network (nodes, conduits, top inlets) is written into the geometry HDF; HEC-RAS's preprocessor builds its cells.")
     if key in ("hecras", "hecras-em", "hecras66", "hecras66-em"):
         script, cmd = _hecras(sid, "em" if key.endswith("-em") else "elm")
         return dict(install=HECRAS66 if key.startswith("hecras66") else HECRAS, run=[cmd], script=script, workflow="hecras.yml", platform="Windows")

@@ -92,6 +92,8 @@ SOLVERS: list[dict] = [
          what="Basilisk (Popinet, basilisk.fr), its second-order well-balanced Saint-Venant solver on a uniform Cartesian grid with its defaults; Manning friction added as the usual semi-implicit term (it has none built in)"),
     dict(key="landlab", name="Landlab", sub="OverlandFlow", kind="research", color="#8A6D3B",
          what="Landlab 2.11 (CSDMS), its OverlandFlow component: the local-inertial 2D flood scheme of de Almeida et al. (2012), written independently in NumPy, with its defaults"),
+    dict(key="hecras-pipes", name="HEC-RAS 7.0", sub="pipe networks · 1D/2D", kind="production", color="#5C4B1E",
+         what="HEC-RAS 7.0.1 with its own storm-drain pipe networks: nodes, conduits and top inlets joined to a 2D SWE-ELM surface, HEC-RAS's defaults; the network is written into the geometry file headless and built by HEC-RAS's preprocessor"),
     dict(key="hecras66", name="HEC-RAS 6.6", sub="previous release", kind="compat", color="#B5A46A",
          what="HEC-RAS 6.6, the release before 7.0, run the same way (1D, and 2D with its default SWE-ELM): kept so a change between versions shows"),
     dict(key="hecras66-em", name="HEC-RAS 6.6", sub="previous release · 2D SWE-EM", kind="compat", color="#C98A6B",
@@ -104,7 +106,7 @@ SOLVERS: list[dict] = [
 SOLVER = {s["key"]: s for s in SOLVERS}
 PRODUCTION_2D = ["hecras", "hecras-em", "telemac", "anuga", "geoclaw", "lisflood-fv1", "lisflood-dg2", "lisflood-acc"]
 NOT_YET = ["TUFLOW", "MIKE 21", "Iber", "BASEMENT", "Delft3D FM"]
-NOT_YET_COUPLED = ["TUFLOW", "InfoWorks ICM", "MIKE+", "HEC-RAS 6.6 (pipe networks)", "PCSWMM 2D", "Flood Modeller"]
+NOT_YET_COUPLED = ["TUFLOW", "InfoWorks ICM", "MIKE+", "PCSWMM 2D", "Flood Modeller"]
 NOT_YET_DRAINAGE = ["InfoWorks ICM", "MIKE+ (MOUSE)", "PCSWMM", "XPSWMM", "Flood Modeller", "HEC-RAS"]
 
 
@@ -163,6 +165,8 @@ def solver_key(name: str) -> str | None:
         return "swmm515"
     if "telemac" in n:
         return "telemac"
+    if "hec-ras" in n and "pipe network" in n:
+        return "hecras-pipes"
     if "hec-ras" in n:
         if n.startswith("hec-ras 6.6"):
             return "hecras66-em" if "swe-em" in n else "hecras66"

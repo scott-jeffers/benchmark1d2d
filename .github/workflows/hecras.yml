@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       jobs:
-        description: "Which jobs to run: all, 1d, 2d, cases, probe"
+        description: "Which jobs to run: all, 1d, 2d, cases, pipes, probe"
         default: all
       cases:
         description: "Cases for the boundary-line job (space separated; empty = all)"
@@ -20,6 +20,8 @@ on:
       - scripts/run_hecras.py
       - scripts/run_hecras_2d.py
       - scripts/run_hecras_2d_cases.py
+      - scripts/run_hecras_pipes.py
+      - test_catalog/track_a/coupled_1d2d/**
       - .github/workflows/hecras.yml
       - test_catalog/track_a/1d_free_surface/**
       - test_catalog/track_a/2d_*/**
@@ -260,6 +262,68 @@ jobs:
             out/hecras*2d/work/**/*.log
             out/hecras*2d/work/**/*.bco*
             out/curves/**/*.curve.json
+            out/inputs_zip/*.inputs.zip
+
+  hecras-pipes:
+    name: HEC-RAS ${{ matrix.ras }} pipe networks on the 1D/2D tests (finding, not a gate)
+    if: github.event_name != 'workflow_dispatch' || inputs.jobs == 'all' || inputs.jobs == 'pipes'
+    runs-on: windows-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ras: "7.0.1"
+            rc: "0.106.1"
+            url: https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.46/HEC-RAS_701_Setup.exe
+            sha: 1FE76297076AA7A13E43191ECC76C3BA152FDC4BBD606FA2C349EEC7DB3CEE73
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" "ras-commander==${{ matrix.rc }}" h5py psutil pywin32 pillow pythonnet tifffile shapely
+      - uses: actions/cache@v4
+        with:
+          path: .cache/hecras
+          key: hecras-${{ matrix.ras }}-setup-v1
+      - name: Install HEC-RAS ${{ matrix.ras }} silently
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .cache/hecras | Out-Null
+          $exe = ".cache/hecras/" + [IO.Path]::GetFileName("${{ matrix.url }}")
+          if (-not (Test-Path $exe)) { Invoke-WebRequest "${{ matrix.url }}" -OutFile $exe }
+          $sha = (Get-FileHash $exe -Algorithm SHA256).Hash
+          if ($sha -ne "${{ matrix.sha }}") { throw "HEC-RAS installer hash $sha does not match the pinned ${{ matrix.sha }}" }
+          $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
+          "installer exit code: $($p.ExitCode)"
+          # HEC-RAS 7's compute engines link HDF5 built against the Visual C++ 2010 runtime (MSVCR100.dll),
+          # which HEC's installer expects on the machine and the runner image does not have
+          if (-not (Test-Path "$env:SystemRoot\System32\msvcr100.dll")) { choco install vcredist2010 -y --no-progress | Select-Object -Last 3 }
+          Get-ChildItem 'C:\Program Files (x86)\HEC', 'C:\Program Files\HEC' -Recurse -Filter Ras.exe -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+      - name: Run and score the coupling cases
+        timeout-minutes: 100
+        run: python scripts/run_hecras_pipes.py --accept-hec-terms
+      - name: Zip the kept model files (site/fixtures/inputs via the result collector)
+        if: always()
+        shell: bash
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hecras-pipes
+          path: |
+            out/coupled/hecras-pipes/*.scorecard.json
+            out/coupled/hecras-pipes/*.parquet
+            out/coupled/hecras-pipes/work/**/*.u01
+            out/coupled/hecras-pipes/work/**/*.p01
+            out/coupled/hecras-pipes/work/**/*.g01
+            out/coupled/hecras-pipes/work/**/*.b01
+            out/coupled/hecras-pipes/work/**/*.log
+            out/coupled/hecras-pipes/work/**/*.txt
             out/inputs_zip/*.inputs.zip
 
   probe:
