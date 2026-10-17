@@ -366,12 +366,14 @@ def write_network(ghdf: Path, spec: dict) -> dict:
                         ("Terrain Elevation", "<f4"), ("Terrain Elevation Override", "<f4"), ("Depth", "<f4"),
                         ("Top Inlet Type", "S16"), ("Top Inlet Elevation", "<f4"), ("Side Inlet Type", "S16"),
                         ("Side Inlet Elevation", "<f4"), ("Total Connection Count", "<i4")])
+    # a node with a boundary (the inflow, the outfall) is HEC-RAS's "External" node, which has no storage
+    bc_nodes = {f["node"] for f in net.get("inflows", [])} | set(outs)
     rows = []
     for i in ids:
         inv = float((juncs.get(i) or outs.get(i))["invert"])
         top = float(crest[i]["crest"]) if i in crest else inv + float((juncs.get(i) or {}).get("max_depth", 1.0))
         rows.append((i, NET, ntype(i), nstatus(i), f"{n_up[i]}:{n_dn[i]}", inv,
-                     SWMM_NODE_AREA, top, np.nan, top - inv,
+                     0.0 if i in bc_nodes else SWMM_NODE_AREA, top, np.nan, top - inv,
                      "Manhole" if i in crest else "", float(crest[i]["crest"]) if i in crest else np.nan, "", np.nan, n_up[i] + n_dn[i]))
     nodes = np.array(rows, dtype=node_dt)
     pts = np.array([[pos[i][0] + X0, pos[i][1] + Y0] for i in ids], float)
@@ -528,6 +530,31 @@ def compile_network(folder: Path, ras_exe: Path, ghdf: Path) -> None:
         log(f"    geometry preprocessor (force=False): {type(exc).__name__}: {exc}"[:600])
 
 
+def event_dump(hdf: Path) -> None:
+    """Diagnostics: the boundaries as HEC-RAS wrote them into the plan (groups, datasets and attributes)."""
+    import h5py
+
+    try:
+        with h5py.File(hdf, "r") as f:
+            if "Event Conditions" not in f:
+                log("    event conditions: none")
+                return
+
+            def visit(name, obj):
+                kind = "D" if isinstance(obj, h5py.Dataset) else "G"
+                extra = f" {obj.shape} {obj.dtype}" if kind == "D" else ""
+                log(f"    EC {kind} {name}{extra} {{{', '.join(f'{k}={str(v)[:60]}' for k, v in obj.attrs.items())}}}"[:400])
+                if kind == "D" and obj.size and obj.size < 12:
+                    log(f"       = {obj[()]!r}"[:300])
+
+            f["Event Conditions"].visititems(visit)
+            pp = "Plan Data/Plan Information"
+            if pp in f:
+                log("    plan info: " + ", ".join(f"{k}={str(v)[:40]}" for k, v in f[pp].attrs.items())[:800])
+    except Exception as exc:  # noqa: BLE001
+        log(f"    event conditions: {type(exc).__name__}: {exc}")
+
+
 # ── results ─────────────────────────────────────────────────────────────────
 
 
@@ -665,6 +692,7 @@ def run_case(m: dict, ras_exe: Path) -> tuple[dict, dict]:
         log(base.listing(folder))
         log(base.messages(folder))
         raise RuntimeError("no results")
+    event_dump(hdf)
     r = read_run(hdf, ghdf)
     log("    " + r["messages"][-1500:].replace("\n", "\n    "))
     log("    HEC-RAS volume accounting:\n      " + "\n      ".join(r["accounting"][:10]))
