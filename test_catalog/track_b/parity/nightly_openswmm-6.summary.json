@@ -11,10 +11,10 @@
     "candidate_error": 1
   },
   "within_pct": {
-    "1": 379,
-    "2": 396,
-    "5": 425
+    "1": 381,
+    "2": 397,
+    "5": 426
   },
-  "median_worst_pct": 0.01093530763196953,
+  "median_worst_pct": 0.01013737086069581,
   "metrics": "peak_depth = worst node, relative peak depth; volume = worst link, relative integral of |Q|"
 }
