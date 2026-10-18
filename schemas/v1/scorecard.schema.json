@@ -169,7 +169,7 @@
     },
     "run": {
       "type": "object",
-      "description": "How long the run took and where: wall time on the finest grid (s), per grid level, and the machine (processor, cores, memory, OS, runner).",
+      "description": "How long the run took and where: wall time on the finest grid (s), per grid level, the machine (processor, cores, memory, OS, runner), and the engine's own report on the scored run (unconverged steps, continuity errors, whether it flags the run).",
       "properties": {
         "wall_seconds": {
           "type": "number"
@@ -187,12 +187,19 @@
               },
               "wall_seconds": {
                 "type": "number"
+              },
+              "engine": {
+                "type": "object"
               }
             }
           }
         },
         "machine": {
           "type": "object"
+        },
+        "engine": {
+          "type": "object",
+          "description": "The engine's own report on the scored run (benchmark1d2d.engine_report)."
         }
       }
     }

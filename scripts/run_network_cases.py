@@ -32,14 +32,14 @@ warnings.filterwarnings("ignore", message="Changing the headloss formula")
 REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
+from benchmark1d2d.signing import private_key as signing_key  # noqa: E402
 
 from benchmark1d2d.catalog import load_manifest  # noqa: E402
 from benchmark1d2d.io.results import write_results_parquet  # noqa: E402
 from benchmark1d2d.scoring.scorer import score_case  # noqa: E402
 
 OUT = REPO / "out" / "networks"
-KEY = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
+KEY = signing_key()  # BENCH_SIGNING_KEY, else the public development key
 TS = "2024-01-01T00:00:00Z"
 # EPANET's built-in water viscosity (1.1e-5 ft²/s); [OPTIONS] VISCOSITY is relative to it.
 EPANET_NU = 1.1e-5 * 0.3048**2

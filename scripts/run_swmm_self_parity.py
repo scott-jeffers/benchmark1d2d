@@ -30,7 +30,7 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO / "runner" / "python"))
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
+from benchmark1d2d.signing import private_key as signing_key  # noqa: E402
 
 from benchmark1d2d.adapters.swmm5 import adapt_out_to_parquet  # noqa: E402
 from benchmark1d2d.catalog import load_manifest  # noqa: E402
@@ -65,7 +65,7 @@ def main() -> int:
             raise SystemExit(f"PIN MISMATCH {name}")
     print(f"pin OK: official SWMM {pin['version']} binaries")
     OUT.mkdir(parents=True, exist_ok=True)
-    key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))
+    key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     ok = True
     for tid, opts in CASES.items():
         m = load_manifest(tid, repo=_REPO)

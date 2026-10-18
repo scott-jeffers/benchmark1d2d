@@ -66,6 +66,10 @@ SOLVERS: list[dict] = [
          what="EPA SWMM 5.2.4 with dynamic-wave routing; on the channel tests, the channel is written as one conduit per grid cell"),
     dict(key="openswmm-dw", name="OpenSWMM 6", sub="dynamic wave", kind="production", color="#2E8B8B",
          what="OpenSWMM Engine v6 (HydroCouple's SWMM 6, pre-release) with dynamic-wave routing"),
+    dict(key="swmm524-converged", name="EPA SWMM 5.2.4", sub="dynamic wave · converged iteration", kind="production", color="#A98BC8",
+         what="EPA SWMM 5.2.4 as above with its dynamic-wave iteration allowed to converge: HEAD_TOLERANCE 0.00001 m and MAX_TRIALS 20 instead of the harness's 0.0005 m and 8 (review finding F1). Both runs are published: the engine as the harness sets it, and with its iteration converged"),
+    dict(key="openswmm-dw-converged", name="OpenSWMM 6", sub="dynamic wave · converged iteration", kind="production", color="#6FBDBD",
+         what="OpenSWMM Engine v6 dynamic wave with HEAD_TOLERANCE 0.00001 m and MAX_TRIALS 20 (review finding F1)"),
     dict(key="openswmm-fv", name="OpenSWMM 6", sub="finite volume", kind="production", color="#C2185B",
          what="OpenSWMM Engine v6 with its new explicit finite-volume routing (FLOW_ROUTING FV): one cell per conduit on the channel tests, its default cells per pipe on the drainage networks"),
     dict(key="hydra-uds", name="Hydra", sub="urban drainage", kind="production", color="#1F6F8B",
@@ -125,13 +129,34 @@ def score_pill(card: dict | None, rank: int | None = None, tie: bool = False) ->
             f'{rk}{esc(ranking.label(sc))}</span>')
 
 
-def run_line(card: dict) -> str:
-    """How long the run took, and on what."""
-    r = card.get("run") or {}
-    if r.get("wall_seconds") is None:
+def engine_line(card: dict) -> str:
+    """What the engine said about its own run (SWMM's report: unconverged steps, continuity errors)."""
+    rep = (card.get("run") or {}).get("engine") or {}
+    if not rep:
         return ""
+    bits = []
+    if rep.get("steps_not_converging_pct") is not None:
+        bits.append(f'{nice(rep["steps_not_converging_pct"], 3)} % of routing steps not converging')
+    if rep.get("routing_continuity_pct") is not None:
+        bits.append(f'flow-routing continuity error {rep["routing_continuity_pct"]:+.2f} %')
+    if rep.get("runoff_continuity_pct") is not None:
+        bits.append(f'runoff continuity {rep["runoff_continuity_pct"]:+.2f} %')
+    if not bits:
+        return ""
+    if rep.get("flagged"):
+        return (f'<p class="small engine-flag"><b>Not ranked: the engine flags this run.</b> Its own report: {esc("; ".join(bits))} '
+                f'(a run is flagged above 10 % unconverged steps or a 10 % continuity error). The numbers are shown, not ranked.</p>')
+    return f'<p class="small muted engine-line">Engine report on the scored run: {esc("; ".join(bits))}.</p>'
+
+
+def run_line(card: dict) -> str:
+    """How long the run took, and on what, and the engine's own report on it."""
+    r = card.get("run") or {}
+    out = engine_line(card)
+    if r.get("wall_seconds") is None:
+        return out
     return (f'<p class="small run-time">Run time, finest grid: <b>{esc(ranking.fmt_time(r["wall_seconds"]))}</b>'
-            f' <span class="muted">· {esc(machine_info.summary(r.get("machine")))}</span></p>')
+            f' <span class="muted">· {esc(machine_info.summary(r.get("machine")))}</span></p>') + out
 
 
 def solver_key(name: str) -> str | None:
@@ -151,13 +176,13 @@ def solver_key(name: str) -> str | None:
     if n.startswith("openswmm engine v6 1d/2d"):
         return "openswmm-2d-x" if "four triangles" in n else "openswmm-2d"
     if n.startswith("openswmm engine v6 dynamic wave"):
-        return "openswmm-dw"
+        return "openswmm-dw-converged" if "converged iteration" in n else "openswmm-dw"
     if n.startswith("openswmm engine v6 finite volume"):
         return "openswmm-fv"
     if n.startswith("openswmm engine"):
         return "openswmm6"
     if n.startswith("epa swmm 5.2.4") and "official" not in n:
-        return "swmm524"
+        return "swmm524-converged" if "converged iteration" in n else "swmm524"
     if "epanet 2.2" in n:
         return "epanet22"
     if "epanet 2.0" in n:
@@ -652,7 +677,7 @@ def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
     rows = []
     for m, c in mine:
         sid = sid_of(m["test_id"])
-        rr = next((r for r in ranking.rank_test(runs[m["test_id"]]) if r["key"] == key), {})
+        rr = next((r for r in ranking.rank_test(runs[m["test_id"]], hold=HOLD) if r["key"] == key), {})
         checks = "; ".join(f'{SYM[ck["state"]]} {ck["label"]} {ck["value"]}' for ck in checks_for(m, c) if ck.get("gating", True))
         note = plain_note(NOTES.get((sid, key), ""))
         rows.append(f'<tr><td><a href="../tests/{sid}.html#m-{key}"><b>{esc(story(m)["name"])}</b></a><div class="muted small">{esc(sid)}</div></td>'
@@ -923,7 +948,7 @@ def test_card(m: dict, runs: dict, up: str = "", status_text: str | None = None)
         score = f'<div class="tc-score">{esc(status_text)}</div>'
     elif scored:
         n = len(scored)
-        rows = ranking.rank_test({k: by[k] for k in scored})
+        rows = ranking.rank_test({k: by[k] for k in scored}, hold=HOLD)
         # a small leaderboard: every model on the test (up to six), with its difference
         shown_rows = rows[:6]
         lis = "".join(
@@ -1015,7 +1040,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
                     continue
                 cid = f"{sid}|{k}"
                 sc = ranking.score(c)
-                rk = next((r for r in ranking.rank_test(runs.get(m["test_id"]) or {}) if r["key"] == k), {})
+                rk = next((r for r in ranking.rank_test(runs.get(m["test_id"]) or {}, hold=HOLD) if r["key"] == k), {})
                 cells[cid] = dict(test=st["name"], sid=sid, solver=f'{SOLVER[k]["name"]} · {SOLVER[k]["sub"]}', label=ranking.label(sc),
                                   cls=ranking.klass(sc), rank=rk.get("rank"), checks=checks_for(m, c), note=plain_note(NOTES.get((sid, k), "")))
                 label = f'{st["name"]}, {SOLVER[k]["name"]} {SOLVER[k]["sub"]}: {ranking.label(sc)}'
@@ -1271,8 +1296,9 @@ def run_block(sid: str, k: str, card: dict, up: str = "../") -> str:
             f'runs on {esc(r["platform"])} · produced by <a href="{REPO_URL}/blob/master/{esc(r["script"])}">{esc(r["script"])}</a> '
             f'in <a href="{REPO_URL}/blob/master/.github/workflows/{esc(r["workflow"])}">{esc(r["workflow"])}</a>.</p>'
             f'<pre class="code"><code>{esc(steps)}</code></pre>{files}{note}'
-            f'<p class="small">The test itself (inputs, exact answer, limits): <a href="{up}data/cases/{esc(sid)}.zip" download>{esc(sid)}.zip</a>. '
-            f'The score card above is signed; check it with <code>benchmark1d2d verify-card</code>.</p></details>')
+            f'<p class="small">The test itself (inputs, exact answer, checks): <a href="{up}data/cases/{esc(sid)}.zip" download>{esc(sid)}.zip</a>. '
+            f'Check the score card with <code>benchmark1d2d verify-card</code>: its signature by the suite\'s public development key '
+            f'shows the card has not changed since it was written, not who wrote it.</p></details>')
 
 
 def share_block(sid: str, k: str, card: dict) -> str:
@@ -1445,7 +1471,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
 </section>"""
     # model cards
     mcards = []
-    order = ranking.rank_test(runs)
+    order = ranking.rank_test(runs, hold=HOLD)
     rk = {r["key"]: r for r in order}
     for k in [r["key"] for r in order]:
         c = runs[k]
@@ -1461,7 +1487,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
   {run_line(c)}
   <div class="checks-grid">{checks}</div>
   {f'<p class="note">{esc(plain_note(note))}</p>' if note else ''}
-  <p class="note small">Signed score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>
+  <p class="note small">Score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>
   {share_block(sid, k, c)}
   {run_block(sid, k, c) if m["track"] == "A" else ""}
 </article>""")
@@ -1493,7 +1519,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         tb_rows.append(f'<tr><td class="num lb-rank">{(str(r["rank"]) + ("=" if r.get("tie") else "")) if r.get("rank") else "–"}</td>'
                        f'<td><a href="#m-{esc(r["key"])}"><span class="sw" style="background:{esc(s_["color"])}"></span><b>{esc(s_["name"])}</b> <span class="lb-sub">{esc(s_["sub"])}</span></a></td>'
                        f'<td class="num"><span class="lb-cell {ranking.klass(r["score"])}">{esc(ranking.short(r["score"]))}</span></td>'
-                       f'<td class="tb-why">{esc(why)}</td><td class="num">{esc(ranking.fmt_time((c.get("run") or {}).get("wall_seconds")))}</td></tr>')
+                       f'<td class="tb-why">{esc(why)}{(" · <b>not ranked: " + esc(r["flag"] if HOLD(r["key"]) else "the engine flags this run") + "</b>") if r.get("flag") else ""}</td><td class="num">{esc(ranking.fmt_time((c.get("run") or {}).get("wall_seconds")))}</td></tr>')
     tboard = ('<div class="table-scroll"><table class="tb"><thead><tr><th class="num">Rank</th><th>Model</th><th class="num">Difference</th>'
               '<th>Largest difference in</th><th class="num">Run time</th></tr></thead><tbody>' + "".join(tb_rows) + "</tbody></table></div>") if len(tb_rows) > 1 else ""
     if mcards:
@@ -1774,6 +1800,13 @@ def how_page(manifests: list[dict], runs: dict) -> str:
 def redirect(to: str) -> str:
     return (f'<!doctype html><html lang="en"><meta charset="utf-8"><title>Moved</title><meta http-equiv="refresh" content="0; url={esc(to)}">'
             f'<link rel="canonical" href="{esc(to)}"><p>This page moved to <a href="{esc(to)}">{esc(to)}</a>.</p>')
+
+
+def HOLD(key: str) -> str | None:  # noqa: N802 - a constant-like rule
+    """Results shown but not ranked: submissions until a second party reproduces them (review F4)."""
+    if SOLVER.get(key, {}).get("kind") == "submitted":
+        return "a submitted result is not ranked until someone else reproduces it"
+    return None
 
 
 # Who makes each model and how it is licensed (the leaderboard's organisation and licence columns)

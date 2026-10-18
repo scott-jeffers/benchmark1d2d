@@ -954,7 +954,7 @@ def write_replay(path: Path, m: dict, spec: dict, netinfo: dict, r: dict, t, pix
 
 
 def main() -> int:
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from benchmark1d2d.signing import private_key as signing_key
 
     from benchmark1d2d.catalog import load_manifest
     from benchmark1d2d.io.results import write_results_parquet
@@ -968,7 +968,7 @@ def main() -> int:
     ras_exe = find_ras_exe()
     if args.accept_hec_terms:
         accept_terms(ras_exe)
-    key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))
+    key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     ver = ras_exe.parent.name
     sol = {"name": f"HEC-RAS {ver} pipe networks 1D/2D", "version": ver,
            "adapter": "hecras pipe network written into the geometry HDF (nodes, conduits, top inlets), 2D SWE-ELM surface, defaults"}

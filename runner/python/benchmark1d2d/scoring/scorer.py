@@ -884,21 +884,35 @@ def score_case(
 
 
 def run_record(results_path: str | Path, refinement_results=None) -> dict[str, Any] | None:
-    """Wall time per results file (as the runner recorded it) and the machine, or None when no time was recorded."""
+    """Wall time per results file (as the runner recorded it), the engine's own report on each run
+    (unconverged steps, continuity errors) and the machine; None when the runner recorded neither."""
     import re
 
-    from benchmark1d2d.io.results import results_wall_seconds
+    from benchmark1d2d.io.results import results_engine_report, results_wall_seconds
     from benchmark1d2d.machine import specs
 
     files = [Path(p) for p in (refinement_results or [])] or [Path(results_path)]
     levels = []
     for p in files:
         w = results_wall_seconds(p)
-        if w is None:
+        rep = results_engine_report(p)
+        if w is None and rep is None:
             continue
         m = re.search(r"_dx([0-9.eE+-]+)\.parquet$", p.name)
-        levels.append({"dx": float(m.group(1)) if m else None, "wall_seconds": round(w, 3)})
+        lv = {"dx": float(m.group(1)) if m else None}
+        if w is not None:
+            lv["wall_seconds"] = round(w, 3)
+        if rep is not None:
+            lv["engine"] = rep
+        levels.append(lv)
     if not levels:
         return None
-    finest = min(levels, key=lambda r: r["dx"] if r["dx"] is not None else float("inf"))
-    return {"wall_seconds": finest["wall_seconds"], "levels": levels, "machine": specs()}
+    scored = Path(results_path).name
+    finest = next((lv for lv, p in zip(levels, files) if p.name == scored), None) or \
+        min(levels, key=lambda r: r["dx"] if r["dx"] is not None else float("inf"))
+    out = {"levels": levels, "machine": specs()}
+    if finest.get("wall_seconds") is not None:
+        out["wall_seconds"] = finest["wall_seconds"]
+    if finest.get("engine") is not None:
+        out["engine"] = finest["engine"]  # the engine's report on the scored run
+    return out

@@ -393,7 +393,7 @@ def main() -> int:
     import argparse
 
     import anuga
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from benchmark1d2d.signing import private_key as signing_key
     from swmm.toolkit import solver
 
     from benchmark1d2d.catalog import load_manifest
@@ -403,7 +403,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("cases", nargs="*", default=CASES)
     args = ap.parse_args()
-    key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
+    key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     ver = f"SWMM {solver.swmm_version_info()} + ANUGA {anuga.__version__}"
     sol = {"name": f"SWMM–ANUGA coupled ({ver})", "version": ver,
            "adapter": "suite coupler: explicit 1 s weir/orifice exchange (Chen et al. 2007), levelling-limited"}

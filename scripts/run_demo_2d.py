@@ -25,7 +25,7 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO), str(REPO / "examples" / "demo_solver")]
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
+from benchmark1d2d.signing import private_key as signing_key  # noqa: E402
 
 from benchmark1d2d.catalog import load_manifest  # noqa: E402
 from benchmark1d2d.io.results import write_results_parquet  # noqa: E402
@@ -34,7 +34,7 @@ from swe2d import WALL_Z, Case, Grid, run  # noqa: E402
 
 OUT = REPO / "out" / "demo_2d"
 SOLVER = {"name": "demo-swe2d (first-order FV, HLL + hydrostatic reconstruction)", "version": "0.1.0", "adapter": "generic_parquet"}
-KEY = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))
+KEY = signing_key()  # BENCH_SIGNING_KEY, else the public development key
 TS = "2024-01-01T00:00:00Z"
 
 

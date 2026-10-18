@@ -1,19 +1,17 @@
 """Scores and rankings: how far each result is from the right answer, and where models stand.
 
-The suite reports measurements, not verdicts (docs/methodology/ranking.md):
+The suite reports measurements, not verdicts (docs/methodology/ranking.md, scoring method 3.0):
 
-* **Percent difference** (a result's score): every check's error as a
-  percentage of the quantity it is an error in (site/difference.py), the
-  largest over a test's judged checks. 0.4 = 0.4 % off; lower is better.
-  There is no limit and no pass or fail.
+* **Percent difference** (a result's score): each check's error as a percentage
+  of the quantity it is an error in (site/difference.py), the largest over a
+  test's accuracy checks. Lower is better. No limit, no pass or fail.
 * **Rank within a test**: by percent difference. Two results tie when they are
-  within 10 % of each other or both under 0.01 % (the solvers' own
-  precision). A rank is 1 + the number of results clearly ahead.
-* **Overall, two measures**: the *win rate* over head-to-head comparisons on
-  the tests both models ran (a tie is half a win; HELM's method), and the
-  *typical error against the field*: on each test, the model's difference over
-  the median model's, geometric mean over its tests (SPEC's geometric mean,
-  PMP's median-relative error). Models need ``MIN_TESTS`` tests to be ranked overall.
+  within 10 % of each other or both under 0.01 %. A run its own engine flags
+  (unconverged, mass balance failed) is shown, not ranked.
+* **The OpenHydro rating** (the leaderboard): a Bradley–Terry fit of the
+  head-to-head results on shared tests, each test weighted equally, on the
+  Elo scale with a 95 % bootstrap interval, physics groups only, rated within
+  the largest group of models linked by shared tests; rank by LMArena's rule.
 """
 
 from __future__ import annotations
@@ -60,6 +58,13 @@ def group_of(test_id: str) -> str:
 def score(card: dict | None) -> float | None:
     """Percent difference from the right answer: the largest over the test's judged checks (None when none applies)."""
     return difference.result(card)
+
+
+def flagged(card: dict | None) -> str | None:
+    """Why the engine itself flags this run (it did not converge, its mass balance failed), or None.
+    A flagged run is shown with its numbers but not ranked (review F1)."""
+    rep = ((card or {}).get("run") or {}).get("engine") or {}
+    return rep.get("flag_reason") if rep.get("flagged") else None
 
 
 def _num(s: float) -> str:
@@ -116,67 +121,19 @@ def tied(a: float, b: float) -> bool:
     return hi == 0 or abs(a - b) <= TIE_REL * hi
 
 
-def rank_test(by: dict[str, dict], keep=None) -> list[dict]:
-    """Rows sorted best first: key, score, rank (1 + clearly better), tie flag. ``keep`` filters keys."""
-    rows = [{"key": k, "score": score(c)} for k, c in by.items() if keep is None or keep(k)]
-    scored = sorted([r for r in rows if r["score"] is not None], key=lambda r: r["score"])
+def rank_test(by: dict[str, dict], keep=None, hold=None) -> list[dict]:
+    """Rows sorted best first: key, score, rank (1 + clearly better), tie flag. ``keep`` filters keys;
+    ``hold(key)`` gives a reason to show a result unranked (a submission not yet reproduced)."""
+    rows = [{"key": k, "score": score(c), "flag": flagged(c) or (hold(k) if hold else None)}
+            for k, c in by.items() if keep is None or keep(k)]
+    sid = next(iter(by.values()), {}).get("test_id", "").split("_")[0] if by else ""
+    scored = sorted([r for r in rows if r["score"] is not None and not r["flag"]], key=lambda r: r["score"])
     for r in scored:
-        r["rank"] = 1 + sum(1 for o in scored if o["score"] < r["score"] and not tied(o["score"], r["score"]))
+        r["rank"] = 1 + sum(1 for o in scored if o["score"] < r["score"] and not tied_on(sid, o["score"], r["score"]))
     for r in scored:
         r["tie"] = sum(1 for o in scored if o["rank"] == r["rank"]) > 1
-    return scored + [dict(r, rank=None, tie=False) for r in rows if r["score"] is None]
-
-
-def overall(runs: dict[str, dict[str, dict]], keep=None, group: str | None = None) -> list[dict]:
-    """Per model: tests, win rate, typical error vs the field, median percent difference, median run time, rank.
-
-    ``runs``: test_id -> model key -> card. ``keep(key)`` filters models (e.g. production only);
-    ``group`` limits to one test group.
-    """
-    per = defaultdict(lambda: {"tests": 0, "wins": 0.0, "comps": 0, "rel": [], "scores": [], "times": []})
-    for tid, by in runs.items():
-        if group and group_of(tid) != group:
-            continue
-        rows = [r for r in rank_test(by, keep) if r["score"] is not None]
-        if not rows:
-            continue
-        med = statistics.median([r["score"] for r in rows if math.isfinite(r["score"])] or [1.0])
-        for r in rows:
-            p = per[r["key"]]
-            p["tests"] += 1
-            p["scores"].append(r["score"])
-            if math.isfinite(r["score"]):  # errors under the solvers' precision count as that precision
-                p["rel"].append(max(r["score"], TIE_FLOOR) / max(med, TIE_FLOOR))
-            elif not math.isfinite(r["score"]):
-                p["rel"].append(1e6)
-            w = ((by[r["key"]].get("run") or {}).get("wall_seconds"))
-            if w is not None:
-                p["times"].append(float(w))
-            for o in rows:
-                if o is r:
-                    continue
-                p["comps"] += 1
-                if tied(r["score"], o["score"]):
-                    p["wins"] += 0.5
-                elif r["score"] < o["score"]:
-                    p["wins"] += 1
-    out = []
-    for k, p in per.items():
-        out.append({
-            "key": k, "tests": p["tests"], "comparisons": p["comps"],
-            "win_rate": p["wins"] / p["comps"] if p["comps"] else None,
-            "vs_field": math.exp(sum(math.log(v) for v in p["rel"]) / len(p["rel"])) if p["rel"] else None,
-            "median_score": statistics.median(p["scores"]) if p["scores"] else None,
-            "median_time": statistics.median(p["times"]) if p["times"] else None,
-            "timed": len(p["times"]),
-        })
-    ranked = sorted([r for r in out if r["tests"] >= MIN_TESTS and r["win_rate"] is not None], key=lambda r: (-r["win_rate"], r["vs_field"] or 1e9))
-    for i, r in enumerate(ranked):
-        r["rank"] = 1 + sum(1 for o in ranked if o["win_rate"] > r["win_rate"] + 0.02)
-    rest = sorted([r for r in out if r not in ranked], key=lambda r: (-(r["win_rate"] or 0), -r["tests"]))
-    for r in rest:
-        r["rank"] = None
-    return ranked + rest
+    rest = sorted([r for r in rows if r["score"] is not None and r["flag"]], key=lambda r: r["score"])
+    return scored + [dict(r, rank=None, tie=False) for r in rest] + [dict(r, rank=None, tie=False) for r in rows if r["score"] is None]
 
 
 def fmt_time(s: float | None) -> str:
@@ -193,15 +150,29 @@ def fmt_time(s: float | None) -> str:
 
 # ── the rating: Bradley–Terry from head-to-head results, as LMArena rates chat models ──────────────
 # Every test two models both ran is a match between them: the closer one wins, a tie (within 10 %,
-# or both under 0.01 %) is half a win each. A Bradley–Terry fit turns all the matches into one
-# strength per model, shown on the Elo scale (1000 = the average model, +400 = ten times the odds of
-# winning). Its 95 % interval comes from re-drawing the tests with replacement (bootstrap) and
-# refitting. As on LMArena, a model's rank is 1 + the number of models whose whole interval lies
-# above its own. ``static/rankings.js`` repeats this exactly (same random numbers, same arithmetic).
+# or both under 0.01 %, or both inside the test's measured noise floor) is half a win each. Each test
+# counts the same: its matches share one unit of weight, however many models ran it (review F2: by
+# pair counting, the two dam breaks run by 16 models carried a third of the rating). A Bradley–Terry
+# fit of the weighted matches gives one strength per model, shown on the Elo scale (1000 = the
+# average model, +400 = ten times the odds of being closer). Its 95 % interval comes from re-drawing
+# the tests with replacement and refitting. As on LMArena, a model's rank is 1 + the number of models
+# whose whole interval lies above its own. Only models connected through shared tests to the
+# largest group are rated together (review F8); the rest are listed unrated. ``static/rankings.js``
+# repeats this exactly (same random numbers, same arithmetic).
 
 BOOT = 200          # bootstrap draws
 BOOT_SEED = 20261017
-PRIOR = 0.5         # each model also plays one virtual draw against an average model (keeps zero-win models finite)
+PRIOR = 0.05        # each model also plays a twentieth of a test as a draw against an average model
+# The physics rating: Track A groups only. Parity with a reference engine (Track B) can only show a
+# model is different, not wrong (README), and the Bellinge field test compares engines inside their
+# own build-to-build noise (review F3, F10); both keep their own boards.
+RATED_GROUPS = ("1d", "2d", "drainage", "water", "coupled")
+NOISE_FLOOR: dict[str, float] = {}  # test short id -> percent difference two builds of the reference engine show (build.py)
+
+
+def set_noise_floors(floors: dict[str, float]) -> None:
+    NOISE_FLOOR.clear()
+    NOISE_FLOOR.update({k: float(v) for k, v in floors.items() if v is not None})
 
 
 def _mulberry32(seed: int):
@@ -218,31 +189,39 @@ def _mulberry32(seed: int):
     return nxt
 
 
-def _fit(keys: list[str], tests: list[list[tuple[str, float]]], pick: list[int]) -> list[float]:
-    """Bradley–Terry strengths (Hunter's MM algorithm) from the tests at indices ``pick``; Elo-scale ratings."""
+def tied_on(sid: str, a: float, b: float) -> bool:
+    """A draw on test ``sid``: ``tied``, or both inside the test's noise floor."""
+    f = NOISE_FLOOR.get(sid)
+    return tied(a, b) or (f is not None and a <= f and b <= f)
+
+
+def _fit(keys: list[str], tests: list[tuple[str, list[tuple[str, float]]]], pick: list[int]) -> list[float]:
+    """Bradley–Terry strengths (Hunter's MM algorithm) from the tests at indices ``pick``, each test's
+    matches sharing one unit of weight; Elo-scale ratings."""
     n = len(keys)
     idx = {k: i for i, k in enumerate(keys)}
     wins = [PRIOR] * n
     games: dict[tuple[int, int], float] = {}
     for ti in pick:
-        rows = tests[ti]
+        sid, rows = tests[ti]
+        w = 2.0 / (len(rows) * (len(rows) - 1))
         for a in range(len(rows)):
             ka, sa = rows[a]
             for b in range(a + 1, len(rows)):
                 kb, sb = rows[b]
                 i, j = idx[ka], idx[kb]
-                if tied(sa, sb):
-                    wins[i] += 0.5
-                    wins[j] += 0.5
+                if tied_on(sid, sa, sb):
+                    wins[i] += 0.5 * w
+                    wins[j] += 0.5 * w
                 elif sa < sb:
-                    wins[i] += 1.0
+                    wins[i] += w
                 else:
-                    wins[j] += 1.0
+                    wins[j] += w
                 key = (i, j) if i < j else (j, i)
-                games[key] = games.get(key, 0.0) + 1.0
+                games[key] = games.get(key, 0.0) + w
     p = [1.0] * n
     pairs = sorted(games.items())
-    for _ in range(100):
+    for _ in range(200):
         den = [2 * PRIOR / (pi + 1.0) for pi in p]  # the virtual draw against strength 1
         for (i, j), g in pairs:
             s = g / (p[i] + p[j])
@@ -258,50 +237,85 @@ def _fit(keys: list[str], tests: list[list[tuple[str, float]]], pick: list[int])
     return [1000.0 + 400.0 * math.log10(x) for x in p]
 
 
+def _component(keys: list[str], tests: list[tuple[str, list]]) -> set[str]:
+    """The largest set of models linked through shared tests (most models; then most tests; then name)."""
+    parent = {k: k for k in keys}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    for _, rows in tests:
+        for r in rows[1:]:
+            a, b = find(rows[0][0]), find(r[0])
+            if a != b:
+                parent[max(a, b)] = min(a, b)
+    comps: dict[str, set] = defaultdict(set)
+    for k in keys:
+        comps[find(k)].add(k)
+
+    def size(c):
+        return (len(c), sum(1 for _, rows in tests if any(r[0] in c for r in rows)), "".join(sorted(c)))
+    return max(comps.values(), key=size) if comps else set()
+
+
 def rating_board(runs: dict[str, dict[str, dict]], keep=None, group: str | None = None) -> list[dict]:
     """The leaderboard: per model its rating, 95 % interval, rank (LMArena's rule), tests, per-group median
-    difference, median run time. ``runs``: test_id -> model key -> card."""
+    difference, median run time. ``runs``: test_id -> model key -> card. Without ``group``, the physics
+    groups (``RATED_GROUPS``) only."""
     tests, keys_set, times, by_group = [], set(), defaultdict(list), defaultdict(lambda: defaultdict(list))
     for tid in sorted(runs):
-        if group and group_of(tid) != group:
+        g = group_of(tid)
+        if (group and g != group) or (not group and g not in RATED_GROUPS):
             continue
         rows = []
         for k in sorted(runs[tid]):
             if keep is not None and not keep(k):
                 continue
             s = score(runs[tid][k])
-            if s is None:
+            if s is None or flagged(runs[tid][k]):
                 continue
             s = s if math.isfinite(s) else 1e12
             rows.append((k, s))
             keys_set.add(k)
-            by_group[k][group_of(tid)].append(s)
+            by_group[k][g].append(s)
             w = (runs[tid][k].get("run") or {}).get("wall_seconds")
             if w is not None:
                 times[k].append(float(w))
         if len(rows) >= 2:
-            tests.append(rows)
-    keys = sorted(keys_set)
-    if not keys:
+            tests.append((tid.split("_")[0], rows))
+    keys_all = sorted(keys_set)
+    if not keys_all:
         return []
-    n_tests = {k: sum(1 for t in tests if any(r[0] == k for r in t)) for k in keys}
-    point = _fit(keys, tests, list(range(len(tests))))
+    main = _component(keys_all, tests)
+    keys = sorted(main)
+    mtests = [t for t in tests if t[1][0][0] in main]
+    n_tests = {k: sum(1 for _, rows in tests if any(r[0] == k for r in rows)) for k in keys_all}
+    point = _fit(keys, mtests, list(range(len(mtests)))) if keys else []
     rnd = _mulberry32(BOOT_SEED)
     draws = []
-    for _ in range(BOOT):
-        pick = [int(rnd() * len(tests)) for _ in range(len(tests))]
-        draws.append(_fit(keys, tests, pick))
+    for _ in range(BOOT if keys else 0):
+        pick = [int(rnd() * len(mtests)) for _ in range(len(mtests))]
+        draws.append(_fit(keys, mtests, pick))
     out = []
-    for i, k in enumerate(keys):
-        col = sorted(d[i] for d in draws)
-        lo, hi = col[int(0.025 * (BOOT - 1))], col[int(math.ceil(0.975 * (BOOT - 1)))]
-        out.append({"key": k, "rating": point[i], "lo": lo, "hi": hi, "tests": n_tests[k],
-                    "groups": {g: statistics.median(v) for g, v in by_group[k].items()},
-                    "median_score": statistics.median([s for v in by_group[k].values() for s in v]),
-                    "median_time": statistics.median(times[k]) if times[k] else None, "timed": len(times[k])})
+    for k in keys_all:
+        r = {"key": k, "tests": n_tests[k], "groups": {g: statistics.median(v) for g, v in by_group[k].items()},
+             "median_score": statistics.median([s for v in by_group[k].values() for s in v]),
+             "median_time": statistics.median(times[k]) if times[k] else None, "timed": len(times[k]),
+             "connected": k in main, "rating": None, "lo": None, "hi": None}
+        if k in main:
+            i = keys.index(k)
+            col = sorted(d[i] for d in draws)
+            r.update(rating=point[i], lo=col[int(0.025 * (BOOT - 1))], hi=col[int(math.ceil(0.975 * (BOOT - 1)))])
+        out.append(r)
     for r in out:
-        r["rank"] = 1 + sum(1 for o in out if o["lo"] > r["hi"])
-        r["ranked"] = r["tests"] >= MIN_TESTS
-    # ranked models first, by rank (LMArena's order), then rating; a model with no head-to-head result has no rating
-    out.sort(key=lambda r: (not r["ranked"], r["rank"] if r["ranked"] else 0, -r["rating"] if r["tests"] else 1e9))
+        r["ranked"] = r["connected"] and r["tests"] >= MIN_TESTS
+    ranked = [r for r in out if r["ranked"]]
+    for r in out:
+        r["rank"] = 1 + sum(1 for o in ranked if o["lo"] > r["hi"]) if r["ranked"] else None
+    for r in ranked:
+        r["tie"] = sum(1 for o in ranked if o["rank"] == r["rank"]) > 1
+    # ranked models first, by rank (LMArena's order), then rating; unranked ones by their tests
+    out.sort(key=lambda r: (not r["ranked"], r["rank"] or 0, -(r["rating"] or -1e9) if r["ranked"] else -r["tests"]))
     return out

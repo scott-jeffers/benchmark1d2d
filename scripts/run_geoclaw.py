@@ -250,7 +250,7 @@ def main() -> int:
     ap.add_argument("--claw", type=Path, default=Path(os.environ.get("CLAW", "")), help="Clawpack source tree (with geoclaw/src)")
     args = ap.parse_args()
 
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from benchmark1d2d.signing import private_key as signing_key
 
     from benchmark1d2d.catalog import load_manifest
     from benchmark1d2d.io.results import write_results_parquet
@@ -268,7 +268,7 @@ def main() -> int:
         pass
     exe = build(claw)
     solver = {"name": f"GeoClaw {ver}", "version": ver, "adapter": "geoclaw (uniform grid, stock example settings)"}
-    key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
+    key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     for tid in args.cases:
         m = load_manifest(tid, repo=REPO)
         paths = []

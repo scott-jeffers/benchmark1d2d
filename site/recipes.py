@@ -85,8 +85,10 @@ def recipe(key: str, sid: str) -> dict | None:
         return dict(install=[SUITE, *TSNET], run=["python scripts/run_tsnet.py --tsnet-python .venv-tsnet/bin/python"],
                     script="scripts/run_tsnet.py", workflow="track-a.yml", platform="Linux")
     if key in ("swmm524", "openswmm-dw", "openswmm-fv", "hydra-uds") and sid == "A1F-100":
-        extra = {"swmm524": [], "openswmm-dw": OPENSWMM, "openswmm-fv": OPENSWMM, "hydra-uds": HYDRA, "swmm515": SWMM51}[key]
-        flags = {"swmm524": "", "openswmm-dw": " --openswmm-python .venv-openswmm/bin/python",
+        extra = {"swmm524": [], "openswmm-dw": OPENSWMM, "openswmm-fv": OPENSWMM, "hydra-uds": HYDRA, "swmm515": SWMM51,
+                 "swmm524-converged": [], "openswmm-dw-converged": OPENSWMM}[key]
+        flags = {"swmm524": "", "swmm524-converged": "", "openswmm-dw-converged": " --openswmm-python .venv-openswmm/bin/python",
+                 "openswmm-dw": " --openswmm-python .venv-openswmm/bin/python",
                  "openswmm-fv": " --openswmm-python .venv-openswmm/bin/python", "hydra-uds": ' --hydra-exe "$HYDRA"',
                  "swmm515": " --swmm51-python .venv-swmm51/bin/python"}[key]
         return dict(install=['python -m pip install -e ".[dev,engines]"', *extra],
@@ -96,7 +98,7 @@ def recipe(key: str, sid: str) -> dict | None:
                     note=("The model files below are the published model with each storm's dates set. The rain-gauge file they "
                           "read (rg_bellinge_Jun2010_Aug2021.dat, 28 MB) is too large to include; the fetch step downloads it with "
                           "the model from DTU Data."))
-    if key in ("swmm524", "openswmm-dw", "openswmm-fv", "hydra-uds", "swmm515") and not sid.startswith("B-"):
+    if key in ("swmm524", "openswmm-dw", "openswmm-fv", "hydra-uds", "swmm515", "swmm524-converged", "openswmm-dw-converged") and not sid.startswith("B-"):
         drainage = sid.startswith("A1D")
         script = "scripts/run_drainage_cases.py" if drainage else "scripts/run_swmm_track_a.py"
         extra = {"swmm524": [], "openswmm-dw": OPENSWMM, "openswmm-fv": OPENSWMM, "hydra-uds": HYDRA, "swmm515": SWMM51}[key]

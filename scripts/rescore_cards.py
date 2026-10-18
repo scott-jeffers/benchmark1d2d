@@ -34,12 +34,12 @@ def main() -> int:
                     help="fixture directories, matched to dirs by position, to receive the new cards")
     args = ap.parse_args()
 
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from benchmark1d2d.signing import private_key as signing_key
 
     from benchmark1d2d.catalog import load_manifest
     from benchmark1d2d.scoring.scorer import score_case
 
-    key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
+    key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     m = load_manifest(args.case, repo=REPO)
     tid = m["test_id"]
     for k, d in enumerate(args.dirs):

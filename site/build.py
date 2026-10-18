@@ -1194,6 +1194,8 @@ def main() -> int:
         c = json.loads(p.read_text(encoding="utf-8"))
         c["_path"] = p
         evidence[c["test_id"]] = [c]  # later (fresh CI output) wins
+    # each parity test's noise floor: the percent difference two builds of the reference engine itself show (review F3)
+    pages.ranking.set_noise_floors({pages.sid_of(t): pages.ranking.score(lst[0]) for t, lst in evidence.items() if lst})
     parity = load_parity()
     names = {pages.sid_of(m["test_id"]): pages.story(m)["name"] for m in manifests}
     checkable = checkdata.build(manifests, result_dirs, DIST / "data" / "check", names)  # before the downloads: they carry its sheets
@@ -1305,7 +1307,7 @@ def main() -> int:
             bp = DIST / "badges" / sid / f"{k}.svg"
             bp.parent.mkdir(parents=True, exist_ok=True)
             sc = pages.ranking.score(c)
-            rk = next((r for r in pages.ranking.rank_test(by) if r["key"] == k), {})
+            rk = next((r for r in pages.ranking.rank_test(by, hold=pages.HOLD) if r["key"] == k), {})
             right = (f"#{rk['rank']} of {len(by)} · " if rk.get("rank") else "") + pages.ranking.label(sc)
             bp.write_text(og.badge_svg(f"OpenHydro Bench {sid}", right, pages.ranking.klass(sc)), encoding="utf-8")
     try:
@@ -1342,7 +1344,8 @@ def main() -> int:
 
     rk_data = rankpage.data(manifests, runs, pages.SOLVER, pages.story, pages.sid_of, pages.machine_info.summary, pages.model_meta)
     lb_rows = rankpage.board(runs, pages.SOLVER)
-    out_pages["rankings.html"] = rankpage.page(pages.layout, rk_data, lb_rows, pages.SOLVER, pages.model_meta)
+    group_rows = {g: rankpage.board(runs, pages.SOLVER, group=g) for g, _ in pages.ranking.GROUPS}
+    out_pages["rankings.html"] = rankpage.page(pages.layout, rk_data, lb_rows, pages.SOLVER, pages.model_meta, group_rows)
     lb_json, lb_csv = rankpage.exports(rk_data["updated"], lb_rows, pages.SOLVER, pages.model_meta)
     (DIST / "data").mkdir(exist_ok=True)
     (DIST / "data" / "leaderboard.json").write_text(lb_json, encoding="utf-8")

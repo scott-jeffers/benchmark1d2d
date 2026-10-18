@@ -194,7 +194,7 @@ def main() -> int:
     import argparse
     import importlib.metadata as md
 
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from benchmark1d2d.signing import private_key as signing_key
 
     from benchmark1d2d.catalog import load_manifest
     from benchmark1d2d.io.results import write_results_parquet
@@ -204,7 +204,7 @@ def main() -> int:
     ap.add_argument("cases", nargs="*", default=list(CASES))
     args = ap.parse_args()
     warnings.filterwarnings("ignore")
-    key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
+    key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     ver = md.version("landlab")
     solver = {"name": f"Landlab {ver} OverlandFlow", "version": ver,
               "adapter": "landlab.components.OverlandFlow (local inertial, defaults; a node per cell centre)"}

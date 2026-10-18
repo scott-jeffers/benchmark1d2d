@@ -87,7 +87,16 @@ ENGINES = {
     "openswmm-fv": dict(label="OpenSWMM Engine v6 finite volume", routing="FV"),
     "hydra-uds": dict(label="Hydra urban drainage", routing="DYNWAVE"),
     "swmm515": dict(label="EPA SWMM 5.1.15", routing="DYNWAVE"),
+    # The same engines with the dynamic-wave iteration converged (review F1): HEAD_TOLERANCE 0.00001 m and
+    # MAX_TRIALS 20 instead of the harness's 0.0005 m and 8. With the harness settings SWMM 5.2.4 reports
+    # 98.6 % of steps unconverged on the 5 cm bump grid; these settings let both numbers be published:
+    # the engine as configured by default, and with its iteration converged.
+    "swmm524-converged": dict(label="EPA SWMM 5.2.4 converged iteration", routing="DYNWAVE", base="swmm524",
+                              options={"HEAD_TOLERANCE": "0.00001", "MAX_TRIALS": "20"}),
+    "openswmm-dw-converged": dict(label="OpenSWMM Engine v6 dynamic wave converged iteration", routing="DYNWAVE", base="openswmm-dw",
+                                  options={"HEAD_TOLERANCE": "0.00001", "MAX_TRIALS": "20"}),
 }
+OPTION_OVERRIDES: dict[str, str] = {}  # set per engine in main(): the engine's options replacing the harness's
 
 
 def _hms(seconds: float) -> str:
@@ -109,6 +118,8 @@ def write_inp(path: Path, faces: np.ndarray, z: np.ndarray, depth0: np.ndarray, 
             f"ROUTING_STEP {routing_step:g}", "VARIABLE_STEP 0.75", "MINIMUM_STEP 0.001", "ALLOW_PONDING NO", "INERTIAL_DAMPING PARTIAL",
             "NORMAL_FLOW_LIMITED BOTH", "FORCE_MAIN_EQUATION H-W", "MAX_TRIALS 8", "HEAD_TOLERANCE 0.0005",
             "SYS_FLOW_TOL 5", "LAT_FLOW_TOL 5", "THREADS 1", *extra]
+    for k, v in OPTION_OVERRIDES.items():
+        opts = [o for o in opts if o.split()[0] != k] + [f"{k} {v}"]
     if routing == "FV":
         opts += ["FV_MIN_CELLS 1"]
     lines = opts + ["", "[JUNCTIONS]", ";;Name Elev MaxDepth InitDepth SurDepth Aponded"]
@@ -145,6 +156,7 @@ _RUN524 = (
 
 
 HYDRA_EXE: str | None = None  # --hydra-exe
+swmm_report = None  # benchmark1d2d.engine_report.swmm_report, imported in main()
 SWMM51_PYTHON: str | None = None  # --swmm51-python: a Python with swmm-toolkit 0.10.0 (EPA SWMM 5.1.15)
 
 
@@ -278,21 +290,26 @@ def main() -> int:
     ap.add_argument("--swmm51-python", help="Python with swmm-toolkit==0.10.0 (EPA SWMM 5.1.15)")
     args = ap.parse_args()
 
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from benchmark1d2d.signing import private_key as signing_key
 
     from benchmark1d2d.catalog import load_manifest
     from benchmark1d2d.io.results import write_results_parquet
     from benchmark1d2d.scoring.scorer import score_case
+    global swmm_report
+    from benchmark1d2d.engine_report import swmm_report
 
-    key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
+    key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     global HYDRA_EXE, SWMM51_PYTHON
     HYDRA_EXE = args.hydra_exe
     SWMM51_PYTHON = args.swmm51_python
     engines = [e for e in args.engines
-               if e == "swmm524" or (e == "hydra-uds" and args.hydra_exe) or (e.startswith("openswmm") and args.openswmm_python)
+               if e.startswith("swmm524") or (e == "hydra-uds" and args.hydra_exe) or (e.startswith("openswmm") and args.openswmm_python)
                or (e == "swmm515" and args.swmm51_python)]
     failed = 0
     for engine in engines:
+        OPTION_OVERRIDES.clear()
+        OPTION_OVERRIDES.update(ENGINES[engine].get("options", {}))
+        base = ENGINES[engine].get("base", engine)
         out = OUT / engine
         out.mkdir(parents=True, exist_ok=True)
         for tid in args.cases:
@@ -309,8 +326,9 @@ def main() -> int:
 
                     kept.inputs(engine, tid, td, dx, files=["m.inp"])
                     try:
-                        o, version = run_engine(engine, inp, td, args.openswmm_python)
+                        o, version = run_engine(base, inp, td, args.openswmm_python)
                         h, u, t_last = read_links(o, links, t_end)
+                        rep = swmm_report(td / "m.rpt")
                     except Exception as exc:  # noqa: BLE001 - an engine that cannot run a case is a finding
                         print(f"  {engine} {tid} dx={dx}: did not run: {str(exc)[-600:]}")
                         failed += 1
@@ -320,13 +338,18 @@ def main() -> int:
                 h, u = np.maximum(h[keep], 0.0), u[keep]
                 nan = np.full(len(x), np.nan)
                 cols = {"t": np.full(len(x), t_last), "x": x, "y": nan.copy(), "h": h, "u": u, "v": nan.copy(), "p": nan.copy(), "Q": h * u}
-                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0))
-                print(f"  {engine} {tid} dx={dx}: {time.perf_counter() - t0:.1f}s, t={t_last:g}")
+                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0,
+                                                   engine_report=rep))
+                print(f"  {engine} {tid} dx={dx}: {time.perf_counter() - t0:.1f}s, t={t_last:g}"
+                      + (f"; engine report: {rep.get('steps_not_converging_pct')} % unconverged, continuity {rep.get('routing_continuity_pct')} %"
+                         + (" (FLAGGED)" if rep.get("flagged") else "") if rep else ""))
             if len(paths) < 2:
                 continue
             ver = version.replace("openswmm", "").strip()
-            solver = {"name": f"{ENGINES[engine]['label']}" + (f" ({ver})" if engine not in ("swmm524", "swmm515") else ""), "version": ver,
-                      "adapter": f"swmm ({ENGINES[engine]['routing']} routing, conduit per grid cell)"}
+            settings = ", ".join(f"{k} {v}" for k, v in ENGINES[engine].get("options", {}).items())
+            solver = {"name": f"{ENGINES[engine]['label']}" + (f" ({ver})" if base not in ("swmm524", "swmm515") else ""), "version": ver,
+                      "adapter": f"swmm ({ENGINES[engine]['routing']} routing, conduit per grid cell"
+                                 + (f"; {settings}" if settings else "; harness settings MAX_TRIALS 8, HEAD_TOLERANCE 0.0005 m") + ")"}
             card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)
             (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
             print(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']})")

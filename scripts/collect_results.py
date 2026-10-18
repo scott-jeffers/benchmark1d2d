@@ -67,6 +67,8 @@ ROUTES = [
     (r"^HEC-RAS", "hecras"),
     (r"^HydroNet FVM-PINN", "hydronet/pinn"),
     (r"^HydroNet finite volume", "hydronet/fvm"),
+    (r"^EPA SWMM 5\.2\.4 converged iteration", "swmm_track_a/swmm524-converged"),
+    (r"^OpenSWMM Engine v6 dynamic wave converged iteration", "swmm_track_a/openswmm-dw-converged"),
     (r"^EPA SWMM 5\.2\.4$", "swmm_track_a/swmm524"),
     (r"^EPA SWMM 5\.1\.15$", "swmm_track_a/swmm515"),
     (r"^TSNet", "tsnet"),
@@ -132,16 +134,17 @@ def route(card: dict) -> str | None:
 
 
 def verify(card: dict) -> bool:
-    """Content hash and the suite's public development-key signature."""
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-
+    """Content hash and a signature by the CI key (BENCH_SIGNING_PUBKEY) or the public development key."""
     from benchmark1d2d.scoring.scorecard import verify_scorecard
+    from benchmark1d2d.signing import public_keys
 
-    pub = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32)).public_key()
-    try:
-        return bool(verify_scorecard(card, pub))
-    except Exception:  # noqa: BLE001
-        return False
+    for pub in public_keys():
+        try:
+            if verify_scorecard(card, pub):
+                return True
+        except Exception:  # noqa: BLE001
+            continue
+    return False
 
 
 _VERSIONS: dict[str, str | None] = {}

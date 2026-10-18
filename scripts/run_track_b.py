@@ -35,14 +35,14 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO), str(REPO / "scripts")]
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
+from benchmark1d2d.signing import private_key as signing_key  # noqa: E402
 
 from benchmark1d2d.adapters import swmm5  # noqa: E402
 from benchmark1d2d.catalog import load_manifest  # noqa: E402
 from benchmark1d2d.scoring.scorer import score_case  # noqa: E402
 
 OUT = REPO / "out" / "track_b"
-KEY = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))
+KEY = signing_key()  # BENCH_SIGNING_KEY, else the public development key
 TS = "2024-01-01T00:00:00Z"
 
 _RUN51 = (

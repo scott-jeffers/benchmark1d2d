@@ -32,15 +32,20 @@ def validate_results_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 WALL_KEY = b"benchmark1d2d.wall_seconds"
+ENGINE_KEY = b"benchmark1d2d.engine_report"
 
 
-def write_results_parquet(path: str | Path, columns: Mapping[str, Any], wall_seconds: float | None = None) -> Path:
+def write_results_parquet(path: str | Path, columns: Mapping[str, Any], wall_seconds: float | None = None,
+                          engine_report: dict | None = None) -> Path:
     """Write results Parquet from a mapping of column name → array-like.
 
     ``wall_seconds``: how long the run that produced these results took (the
     runner writing the model, the engine running, its results read back). It is
     kept in the file's metadata and carried into the score card with the machine
     it ran on.
+
+    ``engine_report``: what the engine said about its own run (``benchmark1d2d.engine_report``:
+    unconverged steps, continuity errors), kept in the metadata and carried into the card.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -78,6 +83,12 @@ def write_results_parquet(path: str | Path, columns: Mapping[str, Any], wall_sec
         meta = dict(table.schema.metadata or {})
         meta[WALL_KEY] = f"{float(wall_seconds):.3f}".encode()
         table = table.replace_schema_metadata(meta)
+    if engine_report:
+        import json as _json
+
+        meta = dict(table.schema.metadata or {})
+        meta[ENGINE_KEY] = _json.dumps(engine_report, sort_keys=True).encode()
+        table = table.replace_schema_metadata(meta)
     pq.write_table(table, path)
     return path
 
@@ -90,6 +101,19 @@ def results_wall_seconds(path: str | Path) -> float | None:
         meta = pq.read_schema(path).metadata or {}
         v = meta.get(WALL_KEY)
         return float(v) if v is not None else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def results_engine_report(path: str | Path) -> dict | None:
+    """The engine's own report on the run a results file carries, if any."""
+    try:
+        import json as _json
+
+        import pyarrow.parquet as pq
+
+        v = (pq.read_schema(path).metadata or {}).get(ENGINE_KEY)
+        return _json.loads(v) if v else None
     except Exception:  # noqa: BLE001
         return None
 

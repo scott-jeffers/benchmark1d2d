@@ -44,23 +44,24 @@
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
   }
-  function fit(keys, tests, pick) {
+  function tiedOn(sid, a, b) { var f = R.noise[sid]; return tied(a, b) || (f !== undefined && a <= f && b <= f); }
+  function fit(keys, tests, pick) {  // each test's matches share one unit of weight (site/ranking.py: _fit)
     var n = keys.length, idx = {}, wins = [], games = {}, i, j;
     keys.forEach(function (k, q) { idx[k] = q; wins.push(R.prior); });
     pick.forEach(function (ti) {
-      var rows = tests[ti];
+      var sid = tests[ti][0], rows = tests[ti][1], w = 2 / (rows.length * (rows.length - 1));
       for (var a = 0; a < rows.length; a++) for (var b = a + 1; b < rows.length; b++) {
         i = idx[rows[a][0]]; j = idx[rows[b][0]];
         var sa = rows[a][1], sb = rows[b][1];
-        if (tied(sa, sb)) { wins[i] += 0.5; wins[j] += 0.5; } else if (sa < sb) wins[i] += 1; else wins[j] += 1;
+        if (tiedOn(sid, sa, sb)) { wins[i] += 0.5 * w; wins[j] += 0.5 * w; } else if (sa < sb) wins[i] += w; else wins[j] += w;
         var key = i < j ? i * 100000 + j : j * 100000 + i;
-        games[key] = (games[key] || 0) + 1;
+        games[key] = (games[key] || 0) + w;
       }
     });
     var pairs = Object.keys(games).map(Number).sort(function (x, y) { return x - y; })
       .map(function (k) { return [Math.floor(k / 100000), k % 100000, games[k]]; });
     var p = []; for (i = 0; i < n; i++) p.push(1);
-    for (var it = 0; it < 100; it++) {
+    for (var it = 0; it < 200; it++) {
       var den = p.map(function (pi) { return 2 * R.prior / (pi + 1); });
       pairs.forEach(function (q) { var s = q[2] / (p[q[0]] + p[q[1]]); den[q[0]] += s; den[q[1]] += s; });
       var nw = [], lg = 0;
@@ -73,12 +74,34 @@
     }
     return p.map(function (x) { return 1000 + 400 * Math.log10(x); });
   }
+  function component(keys, tests) {  // the largest set of models linked by shared tests (site/ranking.py: _component)
+    var parent = {};
+    keys.forEach(function (k) { parent[k] = k; });
+    function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+    tests.forEach(function (t) {
+      var rows = t[1];
+      for (var q = 1; q < rows.length; q++) {
+        var a = find(rows[0][0]), b = find(rows[q][0]);
+        if (a !== b) { if (a < b) parent[b] = a; else parent[a] = b; }
+      }
+    });
+    var comps = {};
+    keys.forEach(function (k) { var r = find(k); (comps[r] = comps[r] || []).push(k); });
+    var best = null, bs = null;
+    Object.keys(comps).forEach(function (r) {
+      var c = comps[r].slice().sort(), nt = tests.filter(function (t) { return t[1].some(function (x) { return c.indexOf(x[0]) >= 0; }); }).length;
+      var sc = [c.length, nt, c.join("")];
+      if (!bs || sc[0] > bs[0] || (sc[0] === bs[0] && (sc[1] > bs[1] || (sc[1] === bs[1] && sc[2] > bs[2])))) { best = c; bs = sc; }
+    });
+    return best || [];
+  }
   function shown(k) { var m = D.models[k]; return !!(m && kinds[m.kind]); }
   function board() {
     var bt = {}, keysSet = {}, times = {}, byG = {};
     D.results.forEach(function (r) {
       var t = D.tests[TORDER[r[0]]];
-      if (!t || (group && t.group !== group) || !shown(r[1]) || r[2] === null) return;
+      if (!t || r[2] === null || r[5] || !shown(r[1])) return;  // r[5]: the engine flags the run
+      if (group ? t.group !== group : R.rated_groups.indexOf(t.group) < 0) return;  // overall: physics groups only
       (bt[r[0]] = bt[r[0]] || []).push([r[1], r[2]]);
       keysSet[r[1]] = 1;
       var gg = (byG[r[1]] = byG[r[1]] || {});
@@ -86,27 +109,39 @@
       if (r[3] !== null && r[3] !== undefined) (times[r[1]] = times[r[1]] || []).push(r[3]);
     });
     var tests = Object.keys(bt).sort(function (a, b) { return TORDER[a] - TORDER[b]; })
-      .map(function (sid) { return bt[sid].sort(function (x, y) { return x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0; }); })
-      .filter(function (rows) { return rows.length >= 2; });
-    var keys = Object.keys(keysSet).sort();
-    if (!keys.length) return [];
-    var all = []; for (var q = 0; q < tests.length; q++) all.push(q);
-    var point = fit(keys, tests, all), rnd = mulberry32(R.seed), draws = [];
-    for (var b = 0; b < R.boot; b++) {
-      var pick = []; for (var z = 0; z < tests.length; z++) pick.push(Math.floor(rnd() * tests.length));
-      draws.push(fit(keys, tests, pick));
+      .map(function (sid) { return [sid, bt[sid].sort(function (x, y) { return x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0; })]; })
+      .filter(function (t) { return t[1].length >= 2; });
+    var keysAll = Object.keys(keysSet).sort();
+    if (!keysAll.length) return [];
+    var keys = component(keysAll, tests), inMain = {};
+    keys.forEach(function (k) { inMain[k] = 1; });
+    var mtests = tests.filter(function (t) { return inMain[t[1][0][0]]; });
+    var all = []; for (var q = 0; q < mtests.length; q++) all.push(q);
+    var point = keys.length ? fit(keys, mtests, all) : [], rnd = mulberry32(R.seed), draws = [];
+    for (var b = 0; b < (keys.length ? R.boot : 0); b++) {
+      var pick = []; for (var z = 0; z < mtests.length; z++) pick.push(Math.floor(rnd() * mtests.length));
+      draws.push(fit(keys, mtests, pick));
     }
-    var out = keys.map(function (k, i) {
-      var col = draws.map(function (d) { return d[i]; }).sort(function (x, y) { return x - y; });
+    var out = keysAll.map(function (k) {
       var g = byG[k] || {}, allS = [], gm = {};
       Object.keys(g).forEach(function (x) { gm[x] = median(g[x]); allS = allS.concat(g[x]); });
-      return { key: k, rating: point[i], lo: col[Math.floor(0.025 * (R.boot - 1))], hi: col[Math.ceil(0.975 * (R.boot - 1))],
-               tests: tests.filter(function (t) { return t.some(function (r) { return r[0] === k; }); }).length,
-               groups: gm, med: median(allS), time: median(times[k] || []), timed: (times[k] || []).length };
+      var r = { key: k, tests: tests.filter(function (t) { return t[1].some(function (x) { return x[0] === k; }); }).length,
+                groups: gm, med: median(allS), time: median(times[k] || []), timed: (times[k] || []).length,
+                connected: !!inMain[k], rating: null, lo: null, hi: null };
+      if (inMain[k]) {
+        var i = keys.indexOf(k), col = draws.map(function (d) { return d[i]; }).sort(function (x, y) { return x - y; });
+        r.rating = point[i]; r.lo = col[Math.floor(0.025 * (R.boot - 1))]; r.hi = col[Math.ceil(0.975 * (R.boot - 1))];
+      }
+      return r;
     });
-    out.forEach(function (r) { r.rank = 1 + out.filter(function (o) { return o.lo > r.hi; }).length; r.ranked = r.tests >= R.min_tests; });
-    out.sort(function (a, b) {  // ranked first, by rank, then rating (site/ranking.py)
-      return (a.ranked === b.ranked ? 0 : a.ranked ? -1 : 1) || (a.ranked ? a.rank - b.rank : 0) || ((b.tests ? b.rating : -1e9) - (a.tests ? a.rating : -1e9));
+    out.forEach(function (r) { r.ranked = r.connected && r.tests >= R.min_tests; });
+    var ranked = out.filter(function (r) { return r.ranked; });
+    out.forEach(function (r) { r.rank = r.ranked ? 1 + ranked.filter(function (o) { return o.lo > r.hi; }).length : null; });
+    ranked.forEach(function (r) { r.tie = ranked.filter(function (o) { return o.rank === r.rank; }).length > 1; });
+    out.sort(function (a, b) {  // ranked first, by rank, then rating; unranked by tests (site/ranking.py)
+      if (a.ranked !== b.ranked) return a.ranked ? -1 : 1;
+      if (a.ranked) return (a.rank - b.rank) || (b.rating - a.rating);
+      return b.tests - a.tests;
     });
     return out;
   }
@@ -122,7 +157,7 @@
     var base = (Math.floor(lo / 50) - 1) * 50, span = Math.max(hi - base, 1);
     box.innerHTML = rr.map(function (r) {
       var m = D.models[r.key], w = 100 * (r.rating - base) / span, a = 100 * (r.lo - base) / span, b = 100 * (r.hi - base) / span;
-      return '<li><a class="rc-name" href="solvers/' + esc(r.key) + '.html"><span class="rc-rank">' + r.rank + '</span><span class="sw" style="background:' + esc(m.color) + '"></span><b>' + esc(m.name) + '</b> <span class="lb-sub">' + esc(m.sub) + "</span></a>" +
+      return '<li><a class="rc-name" href="solvers/' + esc(r.key) + '.html"><span class="rc-rank">' + r.rank + (r.tie ? "=" : "") + '</span><span class="sw" style="background:' + esc(m.color) + '"></span><b>' + esc(m.name) + '</b> <span class="lb-sub">' + esc(m.sub) + "</span></a>" +
         '<span class="rc-track" title="' + Math.round(r.rating) + " (95 % interval " + Math.round(r.lo) + " to " + Math.round(r.hi) + ')">' +
         '<i class="rc-ci" style="left:' + a.toFixed(2) + "%;width:" + Math.max(b - a, 0.6).toFixed(2) + '%"></i><i class="rc-dot" style="left:' + w.toFixed(2) + '%"></i></span><span class="rc-val">' + Math.round(r.rating) + "</span></li>";
     }).join("");
@@ -132,8 +167,8 @@
   function groupsShown() { return D.groups.filter(function (g) { return D.tests.some(function (t) { return t.group === g[0] && (!group || t.group === group); }); }); }
   function sorted(rows) {
     var v = function (r) {
-      if (sortKey === "rating") return r.rating;
-      if (sortKey === "rank") return r.ranked ? r.rank : 1e9 + (r.tests ? -r.rating : 0);
+      if (sortKey === "rating") return r.ranked ? r.rating : -Infinity;
+      if (sortKey === "rank") return r.ranked ? r.rank : 1e9 - r.tests;
       if (sortKey === "tests") return r.tests;
       if (sortKey === "time") return r.time === null ? Infinity : r.time;
       if (sortKey === "name") return D.models[r.key].name + " " + D.models[r.key].sub;
@@ -161,10 +196,11 @@
     var shownRows = sorted(rows).filter(function (r) { return match(r.key); });
     shownRows.forEach(function (r) {
       var m = D.models[r.key];
-      h += "<tr" + (r.ranked ? "" : ' class="lb-unranked"') + '><td class="num lb-rank">' + (r.ranked ? r.rank : "–") + "</td>" +
+      var why = r.ranked ? "" : !r.connected ? "no test shared with the rated models" : "fewer than " + R.min_tests + " tests";
+      h += "<tr" + (r.ranked ? "" : ' class="lb-unranked"') + '><td class="num lb-rank">' + (r.ranked ? r.rank + (r.tie ? "=" : "") : "–") + "</td>" +
         '<td class="lb-model"><a href="solvers/' + esc(r.key) + '.html"><span class="sw" style="background:' + esc(m.color) + '"></span><b>' + esc(m.name) + '</b> <span class="lb-sub">' + esc(m.sub) + "</span></a>" +
         '<div class="lb-org">' + esc(m.org || "") + "</div></td>" +
-        '<td class="num lb-rating">' + (r.tests ? Math.round(r.rating) : "–") + '</td><td class="num lb-ci">' + (r.tests ? Math.round(r.lo) + "–" + Math.round(r.hi) : "–") + "</td>" +
+        '<td class="num lb-rating">' + (r.ranked ? Math.round(r.rating) : "–") + '</td><td class="num lb-ci">' + (r.ranked ? Math.round(r.lo) + "–" + Math.round(r.hi) : '<span class="lb-why">' + esc(why) + "</span>") + "</td>" +
         '<td class="num">' + r.tests + "</td>" +
         gs.map(function (g) { var x = r.groups[g[0]]; return x === undefined ? '<td class="num lb-none">–</td>' : '<td class="num"><span class="lb-cell ' + klass(x) + '">' + short(x) + "</span></td>"; }).join("") +
         '<td class="num">' + time(r.time) + (r.timed && r.timed < r.tests ? '<div class="lb-org">' + r.timed + " of " + r.tests + " timed</div>" : "") + "</td>" +
@@ -181,8 +217,9 @@
       });
     });
     var nr = rows.filter(function (r) { return r.ranked; }).length, nt = D.tests.filter(function (x) { return !group || x.group === group; }).length;
-    $("lb-note").textContent = nr + " model" + (nr === 1 ? "" : "s") + " ranked on " + nt + " test" + (nt === 1 ? "" : "s") + (group ? " in " + GNAME[group] : "") +
-      ". Select a column heading to sort. Group columns are the median percent difference from the right answer on that group's tests; models with fewer than " + R.min_tests + " tests are listed without a rank.";
+    $("lb-note").textContent = nr + " model" + (nr === 1 ? "" : "s") + " ranked on " + nt + " test" + (nt === 1 ? "" : "s") +
+      (group ? " in " + GNAME[group] : " in the physics groups (" + R.rated_groups.map(function (g) { return GNAME[g]; }).join(", ") + ")") +
+      ", each test weighted equally. Rank is 1 + the number of models whose whole 95 % interval lies above the model's own, so a model can rank behind one it out-rates when its interval is wider; = marks a shared rank. Select a column heading to sort.";
   }
 
   // ── accuracy against run time ─────────────────────────────────────────────
@@ -240,6 +277,7 @@
       cols.forEach(function (x) {
         var q = res[x.sid + "|" + r.key];
         if (!q || q[2] === null) { h += '<td class="rk-none"></td>'; return; }
+        if (q[5]) { h += '<td class="rk-flag"><a href="tests/' + esc(x.sid) + ".html#m-" + esc(r.key) + '" title="' + esc(x.name + " · " + m.name + " " + m.sub + ": not ranked, the engine flags this run (" + q[5] + ")") + '">⚑</a></td>'; return; }
         h += '<td class="' + klass(q[2]) + '"><a href="tests/' + esc(x.sid) + ".html#m-" + esc(r.key) + '" title="' + esc(x.name + " · " + m.name + " " + m.sub + ": " + short(q[2]) + " off") + '">' + short(q[2]) + "</a></td>";
       });
       h += "</tr>";
@@ -254,6 +292,12 @@
     redraw();
     try { history.replaceState(null, "", group ? "#" + group : location.pathname); } catch (e) { /* file:// */ }
   }
+  document.querySelectorAll(".lb-gcard").forEach(function (c) {
+    c.addEventListener("click", function () {
+      var t = document.querySelector('.lb-tab[data-g="' + c.getAttribute("data-g") + '"]');
+      if (t) { t.click(); t.scrollIntoView({ block: "start", behavior: "smooth" }); }
+    });
+  });
   document.querySelectorAll(".lb-tab").forEach(function (b) {
     b.addEventListener("click", function () {
       group = b.getAttribute("data-g");

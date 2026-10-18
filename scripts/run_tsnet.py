@@ -106,7 +106,7 @@ def run(m: dict, dx: float, td: Path, tsnet_python: str) -> dict:
 
 
 def main() -> int:
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from benchmark1d2d.signing import private_key as signing_key
     from benchmark1d2d.catalog import load_manifest
     from benchmark1d2d.io.results import write_results_parquet
     from benchmark1d2d.scoring.scorer import score_case
@@ -116,7 +116,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--tsnet-python", required=True, help="a Python with tsnet==0.3.1 and numpy<2")
     args = ap.parse_args()
-    key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
+    key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     m = load_manifest("A1P-020", repo=REPO)
     OUT.mkdir(parents=True, exist_ok=True)
     import subprocess

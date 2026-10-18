@@ -170,13 +170,13 @@ def main() -> int:
     ap.add_argument("--swmm51-python", help="Python with swmm-toolkit==0.10.0 (EPA SWMM 5.1.15)")
     args = ap.parse_args()
 
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from benchmark1d2d.signing import private_key as signing_key
 
     from benchmark1d2d.catalog import load_manifest
     from benchmark1d2d.io.results import write_results_parquet
     from benchmark1d2d.scoring.scorer import score_case
 
-    key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
+    key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     run_swmm_track_a.HYDRA_EXE = args.hydra_exe
     run_swmm_track_a.SWMM51_PYTHON = args.swmm51_python
     engines = [e for e in args.engines
@@ -199,10 +199,14 @@ def main() -> int:
                     o, version = run_engine(engine, td / "m.inp", td, args.openswmm_python)
                     t, r = read_final(o)
                     series = read_series(o)
+                    from benchmark1d2d.engine_report import swmm_report
+
+                    rep = swmm_report(td / "m.rpt")
                 except Exception as exc:  # noqa: BLE001 - an engine that cannot run a case is a finding
                     print(f"  {engine} {tid}: did not run: {str(exc)[-600:]}")
                     continue
-            res = write_results_parquet(out / f"{m['test_id']}.parquet", to_columns(t, r), wall_seconds=time.perf_counter() - t0)
+            res = write_results_parquet(out / f"{m['test_id']}.parquet", to_columns(t, r), wall_seconds=time.perf_counter() - t0,
+                                        engine_report=rep)
             if series:  # time series of small networks, for the site's charts
                 (out / f"{m['test_id']}.series.json").write_text(json.dumps(series, separators=(",", ":")) + "\n", encoding="utf-8")
             ver = version.replace("openswmm", "").strip()

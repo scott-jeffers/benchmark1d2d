@@ -281,7 +281,7 @@ def main() -> int:
     ap.add_argument("--write-only", action="store_true", help="write the HEC-RAS projects and stop")
     args = ap.parse_args()
 
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from benchmark1d2d.signing import private_key as signing_key
 
     from benchmark1d2d.catalog import load_manifest
     from benchmark1d2d.io.results import write_results_parquet
@@ -295,7 +295,7 @@ def main() -> int:
             accept_terms(ras_exe)
     version = ras_exe.parent.name if ras_exe else "unknown"
     solver = {"name": f"HEC-RAS {version}", "version": version, "adapter": "hecras (text project, ras-commander, plan HDF)"}
-    key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
+    key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     OUT.mkdir(parents=True, exist_ok=True)
     for tid in args.cases:
         m = load_manifest(tid, repo=REPO)

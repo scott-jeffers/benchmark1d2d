@@ -66,7 +66,7 @@ def columns(m: dict, rec: dict) -> dict:
 
 
 def main() -> int:
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from benchmark1d2d.signing import private_key as signing_key
 
     from benchmark1d2d.catalog import load_manifest
     from benchmark1d2d.io.results import write_results_parquet
@@ -77,7 +77,7 @@ def main() -> int:
     ap.add_argument("--openswmm-python", required=True, help="a Python with the openswmm wheel")
     ap.add_argument("--mesh", nargs="*", default=list(MESHES), choices=list(MESHES))
     args = ap.parse_args()
-    key = Ed25519PrivateKey.from_private_bytes(bytes([5] * 32))  # public development key
+    key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     child = REPO / "scripts" / "openswmm_coupled_model.py"
     for mesh in args.mesh:
         model_key, what = MESHES[mesh]
