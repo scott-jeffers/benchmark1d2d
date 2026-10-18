@@ -31,7 +31,5 @@
               "peak_level": [0.35, "m", "the 0.35 m plateau depth"]},
   "A12-010": {"street_depth": [0.07768, "m", "the 77.7 mm normal depth"]},
   "A12-011": {"final_level": [0.05, "m", "the 5 cm crest depth"]},
-  "A12-012": {"surface_empty": [180.0, "m³", "the 180 m³ storm"]},
-  "B-EPANET-001": {"peak_timing": [86400.0, "s", "the 24 h simulation"]},
-  "B-RTC-001": {"peak_timing": [129600.0, "s", "the 36 h simulation"]}
+  "A12-012": {"surface_empty": [180.0, "m³", "the 180 m³ storm"]}
 }

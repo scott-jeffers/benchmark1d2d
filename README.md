@@ -30,14 +30,16 @@
 
 > **Track A results can prove a solver wrong. Track B results can only prove it different from the reference engine.** Every badge and table keeps the two apart.
 
-### Certification levels
+### Scores, not certificates
 
-- **Verified (A-V):** passes all analytical tests **and** shows the design order of accuracy.
-- **Conserves (A-C):** passes the objective checks of a code inter-comparison case (mass balance, settled levels) where no exact or measured answer exists.
-- **Validated (A-L / A-F):** meets lab / field criteria within stated measurement uncertainty.
-- **Parity (B-x%):** matches the reference engine within the stated tolerance band.
-
-A solver may hold any combination; the score card shows each separately.
+There are no pass marks. Every check is reported as a percent difference from
+the right answer (Track A) or from the reference engine (Track B); a result's
+score on a test is its largest accuracy difference, with mass error, timing
+(in seconds) and NSE shown beside it, and the error on every grid. Models are
+ranked on each test and rated head to head on the tests they share
+([scoring method 3.0](docs/methodology/scoring_v3.md)). Track A and Track B
+stay separate: a parity score says how far a solver is from SWMM or EPANET,
+not whether either is right.
 
 ## Quickstart
 
@@ -82,21 +84,21 @@ per node and link, never by row order.
 
 ## Test catalog
 
-27 cases across eight components; the [site](https://scott-jeffers.github.io/benchmark1d2d/catalog.html)
-shows each one with its reference, tolerances and latest score. Highlights:
+39 cases across eight components; the [site](https://scott-jeffers.github.io/benchmark1d2d/catalog.html)
+shows each one with its reference, checks and latest scores. Highlights:
 
-| ID | Physics | Ground truth | Gating checks |
+| ID | Physics | Ground truth | Scored on (convergence rate reported beside) |
 |---|---|---|---|
-| A1F-010 / 011 | 1D dam break, dry and wet bed | Ritter (1892), Stoker (1957) | front position or L1(h); observed order ≥ 0.8 |
-| A1F-001 | 1D steady backwater | MacDonald et al. (1997) manufactured bed | L1(h); observed order ≥ 0.8 |
-| A1F-020 | Stationary hydraulic jump | Bélanger sequent depths | L1(h), no drift; observed order ≥ 0.8 |
-| A1P-001 | Single pipe, Colebrook friction | Darcy–Weisbach, Colebrook–White | head loss within 1 % |
+| A1F-010 / 011 | 1D dam break, dry and wet bed | Ritter (1892), Stoker (1957) | front position or L1(h) |
+| A1F-001 | 1D steady backwater | MacDonald et al. (1997) manufactured bed | L1(h) |
+| A1F-020 | Stationary hydraulic jump | Bélanger sequent depths | L1(h), no drift |
+| A1P-001 | Single pipe, Colebrook friction | Darcy–Weisbach, Colebrook–White | head loss |
 | A1P-010 | Two-loop pipe network | Todini–Pilati solve to 1e-12 m | nodal head, link flow |
-| A1P-020 | Instant valve closure | Joukowsky (1900) | peak pressure, exact storage balance; observed order ≥ 0.4 |
-| A1P-030 | Tracer advection–dispersion | Ogata & Banks (1961) | relative L1(c), mass; observed order ≥ 1.6 |
-| A2A-001 | 2D bowl with moving shoreline | Thacker (1981), corrected in v0.3 | L1(h), mass; observed order ≥ 0.8 |
-| A2A-010 | 2D steady channel with friction | MacDonald construction on a 2D grid | L1(h), mass; observed order ≥ 0.8 |
-| A2A-020 | Oblique hydraulic jump | Exact shallow-water jump conditions | L1(h), mass; observed order ≥ 0.8 |
+| A1P-020 | Instant valve closure | Joukowsky (1900) | peak pressure, exact storage balance |
+| A1P-030 | Tracer advection–dispersion | Ogata & Banks (1961) | relative L1(c), mass |
+| A2A-001 | 2D bowl with moving shoreline | Thacker (1981), corrected in v0.3 | L1(h), mass |
+| A2A-010 | 2D steady channel with friction | MacDonald construction on a 2D grid | L1(h), mass |
+| A2A-020 | Oblique hydraulic jump | Exact shallow-water jump conditions | L1(h), mass |
 | A2C-EA1…EA5 | EA 2D inter-comparison tests | Settled pond level, mass conservation | from the official EA archive, fetched by hash |
 | B-EXTRAN-001, B-RTC-001 | Sewer routing, control rules | EPA SWMM 5.2.4 | peak, volume, timing at every element |
 | B-EPANET-001 | Water distribution (Net1) | EPANET 2.2 | peak pressure, volume at every element |
@@ -116,12 +118,12 @@ Container and WASM modes are supported by the exec layer (stubs in v0.1).
 
 ## Promoting a case
 
-Only `frozen` cases count toward certification. A case moves from `draft` to
+Only `frozen` cases have fixed inputs and answers. A case moves from `draft` to
 `candidate` to `frozen` by meeting the rules in
 [`docs/methodology/promotion.md`](docs/methodology/promotion.md): verified
-licence, available inputs and reference, a justified tolerance for every
-criterion, a passing published run with convergence evidence, two independent
-codes passing (for parity cases, a second build of the reference engine), and a
+licence, available inputs and reference, a stated reason and scale for every
+check, a published run with convergence evidence, two independent
+codes scored (for parity cases, a second build of the reference engine), and a
 recorded maintainer review. Seven of the eight rules are computed; each case
 page shows its checklist.
 

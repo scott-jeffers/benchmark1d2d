@@ -36,7 +36,9 @@ sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 
 SUBMISSIONS = REPO / "submissions"
 OUT = REPO / "out" / "submitted"
-TS = "2024-01-01T00:00:00Z"  # deterministic cards; the submission's own date is in submission.json
+from benchmark1d2d.clock import run_timestamp  # noqa: E402
+
+TS = run_timestamp()  # when this run happened (BENCH_TIMESTAMP pins it)
 
 
 def _key():

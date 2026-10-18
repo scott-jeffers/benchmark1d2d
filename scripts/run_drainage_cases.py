@@ -39,7 +39,9 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO), str(REPO / "scripts")]
 
 OUT = REPO / "out" / "swmm_track_a"  # same engines and score-card folders as the open-channel cases
-TS = "2024-01-01T00:00:00Z"
+from benchmark1d2d.clock import run_timestamp  # noqa: E402
+
+TS = run_timestamp()  # when this run happened (BENCH_TIMESTAMP pins it)
 CASES = ["A1D-001", "A1D-002", "A1D-003", "A1D-004", "A1D-005"]
 
 

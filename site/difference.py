@@ -9,9 +9,20 @@ of the quantity it is an error in, from ``test_catalog/difference_scales.json``:
 * anything else: |error| ÷ the scale named for that check × 100 (a depth error
   over the exact mean depth, a front error over the distance the front travels).
 
-A result's difference on a test is the largest over its judged checks (the
-ones the catalogue marks informational are shown, not counted). There is no
-limit and no verdict: results are ranked on this number (site/ranking.py).
+Checks are of four kinds (review F7: a mass error and a timing error are not
+the same thing as a depth error, and should not be folded into one number):
+
+* accuracy - how far the answer is from the right one (depth, velocity, peak, front);
+* conservation - global mass, continuity and storage balance errors, in %;
+* timing - arrival and peak-time errors, in seconds, never turned into a percent;
+* skill - an NSE, reported as the NSE.
+
+A result's score on a test is the largest percent difference over its judged
+accuracy checks (the ones the catalogue marks informational are shown, not
+counted). A test with no accuracy check is scored on its skill check as
+100 x (1 - NSE), then on its conservation checks. Conservation and timing are
+reported beside the score, in their own columns. There is no limit and no
+verdict: results are ranked on the score (site/ranking.py).
 """
 
 from __future__ import annotations
@@ -20,6 +31,12 @@ import json
 import math
 from functools import lru_cache
 from pathlib import Path
+
+# The scoring method, frozen (review F5): any change to how a result's score is computed bumps this, and
+# docs/methodology/scoring_v3.md says what each version did. Printed in every page's footer.
+METHOD_VERSION = "3.0"
+METHOD_DATE = "18 October 2026"
+METHOD_DOC = "docs/methodology/scoring_v3.md"
 
 SCALES_FILE = Path(__file__).resolve().parents[1] / "test_catalog" / "difference_scales.json"
 
@@ -36,6 +53,22 @@ def sid_of(test_id: str) -> str:
 def scale_for(test_id: str, check_id: str) -> tuple[float, str, str] | None:
     s = scales().get(sid_of(test_id), {}).get(check_id)
     return (float(s[0]), s[1], s[2]) if s else None
+
+
+CONSERVATION = ("global_mass_error", "continuity_error", "storage_balance_error")
+TIMING = ("timing_error", "arrival_time_error")
+KINDS = ("accuracy", "conservation", "timing", "skill")
+
+
+def kind(r: dict) -> str:
+    m = r.get("metric") or ""
+    if m in CONSERVATION:
+        return "conservation"
+    if m in TIMING or r.get("id", "").endswith("timing"):
+        return "timing"
+    if m == "NSE" or (r.get("threshold") or {}).get("op") == ">=":
+        return "skill"
+    return "accuracy"
 
 
 def percent(test_id: str, r: dict) -> float | None:
@@ -55,6 +88,8 @@ def percent(test_id: str, r: dict) -> float | None:
         return max(0.0, 100.0 * (1.0 - obs))
     if units == "%":
         return abs(obs)
+    if kind(r) == "timing":  # seconds stay seconds
+        return None
     s = scale_for(test_id, r["id"])
     if s is None or s[0] == 0:
         return None
@@ -76,27 +111,52 @@ def counted(r: dict) -> bool:
     return bool(r.get("gating", True))
 
 
+def _scored(card: dict) -> list[tuple[dict, float]]:
+    """The judged checks the score is taken over, with their percents: accuracy, else skill, else conservation."""
+    tid = card.get("test_id", "")
+    by: dict[str, list] = {}
+    for r in card.get("criteria_results", []):
+        if counted(r):
+            v = percent(tid, r)
+            if v is not None:
+                by.setdefault(kind(r), []).append((r, v))
+    for k in ("accuracy", "skill", "conservation"):
+        if by.get(k):
+            return by[k]
+    return []
+
+
 def result(card: dict | None) -> float | None:
-    """A result's difference on its test: the largest percent difference over its judged checks."""
+    """A result's score on its test: the largest percent difference over its judged accuracy checks."""
     if not card:
         return None
-    tid = card.get("test_id", "")
-    vals = [percent(tid, r) for r in card.get("criteria_results", []) if counted(r)]
-    vals = [v for v in vals if v is not None]
+    vals = [v for _, v in _scored(card)]
     return max(vals) if vals else None
 
 
 def worst_check(card: dict) -> dict | None:
-    """The check that sets the result's difference."""
-    tid = card.get("test_id", "")
-    best, val = None, -1.0
-    for r in card.get("criteria_results", []):
-        if not counted(r):
+    """The check that sets the result's score."""
+    sc = _scored(card)
+    return max(sc, key=lambda x: x[1])[0] if sc else None
+
+
+def side(card: dict | None) -> dict:
+    """What is reported beside the score: the largest conservation error (%), the largest timing error (s),
+    the lowest NSE. Each None when the test has no such check."""
+    out = {"conservation": None, "timing": None, "nse": None}
+    for r in (card or {}).get("criteria_results", []):
+        try:
+            v = float(r.get("observed"))
+        except (TypeError, ValueError):
             continue
-        v = percent(tid, r)
-        if v is not None and v > val:
-            best, val = r, v
-    return best
+        k = kind(r)
+        if k == "conservation":
+            out["conservation"] = max(out["conservation"] or 0.0, abs(v))
+        elif k == "timing":
+            out["timing"] = max(out["timing"] or 0.0, abs(v))
+        elif k == "skill":
+            out["nse"] = v if out["nse"] is None else min(out["nse"], v)
+    return out
 
 
 def missing() -> list[tuple[str, str]]:
@@ -107,7 +167,7 @@ def missing() -> list[tuple[str, str]]:
         d = json.loads(m.read_text(encoding="utf-8"))
         for c in (d.get("scoring") or {}).get("criteria", []):
             thr = c.get("threshold") or {}
-            if thr.get("op") == ">=" or (thr.get("units") or "").strip() == "%" or c.get("metric") == "NSE":
+            if thr.get("op") == ">=" or (thr.get("units") or "").strip() == "%" or kind(c) in ("skill", "timing"):
                 continue
             if scale_for(d["test_id"], c["id"]) is None:
                 out.append((sid_of(d["test_id"]), c["id"]))

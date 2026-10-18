@@ -152,7 +152,8 @@ def engine_line(card: dict) -> str:
 def run_line(card: dict) -> str:
     """How long the run took, and on what, and the engine's own report on it."""
     r = card.get("run") or {}
-    out = engine_line(card)
+    ad = (card.get("solver") or {}).get("adapter") or ""
+    out = (f'<p class="small muted settings-line"><b>Settings:</b> {esc(ad)}</p>' if ad and ad not in ("generic_parquet",) else "") + engine_line(card)
     if r.get("wall_seconds") is None:
         return out
     return (f'<p class="small run-time">Run time, finest grid: <b>{esc(ranking.fmt_time(r["wall_seconds"]))}</b>'
@@ -383,36 +384,9 @@ def check_limit(c: dict) -> str:
     return {"abs<=": f"allowed: {v}", "<=": f"allowed: {v}", ">=": f"needed: at least {v}"}.get(op, f"{op} {v}")
 
 
-_VERDICT_LEAD = re.compile(r"^(Passes|Fails)(?: overall)?(?:[:;,.]\s*|\s+(?=\())")
-
-
-# pass/fail and allowance wording inside a finding, rewritten as measurements (the notes predate the switch)
-_VERDICT_WORDS = [
-    (re.compile(r";\s*[^;()]*\ballowed\)"), ")"),          # "(0.56 %; 0.5 % allowed)" -> "(0.56 %)"
-    (re.compile(r"\s*\([^()]*\ballowed\)"), ""),             # "(9.8 m allowed)"
-    (re.compile(r",?\s*a hundredth of the limit"), ""),
-    (re.compile(r",?\s*(?:also )?(?:inside|over|within) the limit"), ""),
-    (re.compile(r"\s*It passes\."), ""),
-    (re.compile(r"It passes; the"), "The"),
-    (re.compile(r"\s*\(passes\)"), ""),
-    (re.compile(r":\s*passes, not verified"), ""),
-    (re.compile(r",? so it passes but"), ", but"),
-    (re.compile(r" and fails;"), ";"),
-    (re.compile(r"where dynamic wave fails:"), "unlike dynamic wave:"),
-    (re.compile(r"The balance passes \("), "The balance closes ("),
-    (re.compile(r"\bpasses all four bump tests"), "stays close on all four bump tests"),
-    (re.compile(r"\bwhich every production code failed by"), "which every production code missed by"),
-]
-
-
 def plain_note(text: str) -> str:
-    """A finding as a measurement: no pass/fail opener ('Passes: the front is…' -> 'The front is…'), no allowances."""
-    t = _VERDICT_LEAD.sub("", text or "", count=1)
-    for pat, rep in _VERDICT_WORDS:
-        t = pat.sub(rep, t)
-    if t.startswith("(") and ")" in t:
-        t = t[1:t.index(")")] + t[t.index(")") + 1:]
-    return t[:1].upper() + t[1:] if t else t
+    """A finding as written (the notes are measurements; scoring method 3.0 has no verdicts)."""
+    return text or ""
 
 
 def _margin_span(ck: dict) -> str:
@@ -434,10 +408,19 @@ def checks_for(m: dict, card: dict) -> list[dict]:
         pct = difference.percent(tid, {**r, "threshold": d["threshold"], "metric": d.get("metric", r.get("metric"))})
         of = difference.of_what(tid, {**r, "threshold": d["threshold"], "metric": d.get("metric", r.get("metric"))})
         already_pct = (d["threshold"].get("units") or "").strip() == "%" and d["threshold"].get("op") != ">="
-        diff = "" if already_pct else (f"{ranking.short(pct)} {of}".strip() if pct is not None else "")
+        k = difference.kind({**r, "metric": d.get("metric", r.get("metric")), "threshold": d["threshold"]})
+        scored = gating and k == "accuracy" or (gating and r is (difference.worst_check(card) or {}))
+        if k == "accuracy":
+            diff = "" if already_pct else (f"{ranking.short(pct)} {of}".strip() if pct is not None else "")
+        elif k == "skill":
+            diff = "skill score (1 is perfect)" + (f" · scored as {ranking.short(pct)} {of}" if scored and pct is not None else "")
+        elif k == "conservation":
+            diff = "conservation, reported beside the score" if not scored else ""
+        else:
+            diff = "timing, reported beside the score, in seconds"
         out.append(dict(label=check_label(d), value=check_value(d, r.get("observed")),
                         limit=diff if gating else ("reported, not counted" + (f" · {diff}" if diff else "")),
-                        pct=pct, state="m" if gating else "info", gating=gating))
+                        pct=pct if scored else None, state="m" if scored else "info", gating=gating, kind=k))
     conv = card.get("convergence_result") or {}
     if conv.get("errors"):
         cv = (card.get("_judged") or method_v2.assess(card))["converges"]
@@ -447,6 +430,12 @@ def checks_for(m: dict, card: dict) -> list[dict]:
         note = f"the scheme's design order is {nice(expect, 1)}" if expect else "how fast the error shrinks"
         if cv.get("verdict") == "at_floor":
             note = "already at the solver's own precision"
+        sp, er = conv.get("spacings") or [], conv.get("errors") or []
+        if len(sp) == len(er) and sp:
+            sdx = (card.get("run") or {}).get("scored_dx", min(sp))
+            per = " · ".join(f"{nice(x, 3)} m: {nice(e, 3)}" for x, e in sorted(zip(sp, er), reverse=True))
+            out.append(dict(label=f"Error by grid ({conv.get('norm', '')} {conv.get('variable', '')})".replace(" )", ")"), value=per,
+                            limit=f"reported, not counted · the checks above are scored on the {nice(sdx, 3)} m grid", pct=None, state="info", gating=False, kind="grid"))
         out.append(dict(label="Improves with finer grids", value=value, limit=f"reported, not counted · {note}", pct=None, state="info", gating=False))
     return out
 
@@ -461,62 +450,62 @@ def summary_line(m: dict, card: dict) -> str:
 
 # Findings worth a sentence on a model card: (short id, solver key) -> text
 NOTES = {
-    ("A1F-010", "telemac"): "Passes: the front is 5.8 m behind the exact one (9.8 m allowed) and depths are within 1.4 mm on average. It is not verified: the error shrinks on finer grids at a rate of 0.69 (90 % range 0.64 to 0.73), all of it under the 0.8 required. The thin leading edge, 1 mm deep, lags further (39 m): it stays dry too long. HLLC and second-order settings did not change that.",
-    ("A1F-001", "hecras66"): "HEC-RAS stores input elevations to the nearest 0.001 ft (0.3 mm), even in a metric project. The depth error therefore stops at about 0.1 mm on every grid, a hundredth of the limit, and cannot shrink with the grid. It passes; the convergence rate is reported but, at the solver's own precision, not judged, so it is verified.",
+    ("A1F-010", "telemac"): "The front is 5.8 m behind the exact one and depths are within 1.4 mm on average. The error shrinks on finer grids at a rate of 0.69 (90 % range 0.64 to 0.73), below the scheme's design order of 1. The thin leading edge, 1 mm deep, lags further (39 m): it stays dry too long. HLLC and second-order settings did not change that.",
+    ("A1F-001", "hecras66"): "HEC-RAS stores input elevations to the nearest 0.001 ft (0.3 mm), even in a metric project. The depth error therefore stops at about 0.1 mm on every grid and cannot shrink with the grid, so its convergence rate says nothing about the scheme.",
     ("A1F-010", "hecras66"): "The flood advances as a steep bore and its front is 97 m behind the exact one; the error does not fall on finer grids. HEC-RAS 2D was built and run with no GUI step; the dam-break step was carried in by a restart file.",
     ("A1F-010", "hecras66-em"): "SWE-EM, the option HEC recommends for dam breaks, gets 40 m closer than the default SWE-ELM (58 m behind) but does not converge.",
     ("A1F-011", "hecras66"): "The bore is in about the right place (depth error 5 mm), but the error does not fall on finer grids.",
-    ("A1F-011", "hecras66-em"): "Error 8 mm, inside the limit, but it grows slightly on finer grids.",
+    ("A1F-011", "hecras66-em"): "Error 8 mm, but it grows slightly on finer grids.",
     ("A1F-010", "swmm524"): "SWMM's dynamic-wave routing is built for sewer networks, not dam breaks: the front is 41 m behind and the error does not shrink on finer grids. One conduit near x = 1,126 m also spikes to a 9 m depth at the reporting time (the chart clips it); that is the engine's own output, not a plotting fault.",
     ("A1F-011", "swmm524"): "The bore smears and lags, and the stored water drifts 4 % above the exact volume: dynamic-wave routing is not built for moving shocks.",
     ("A1F-010", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver, including the 9 m one-conduit spike near x = 1,126 m.",
     ("A1F-011", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4: OpenSWMM 6 keeps the original dynamic-wave solver.",
     ("A1F-001", "openswmm-dw"): "Identical, number for number, to EPA SWMM 5.2.4.",
-    ("A1F-011", "openswmm-fv"): "OpenSWMM 6's new finite-volume routing is 1 mm from the exact answer where SWMM's dynamic wave is 37 mm off. It passes. Its convergence rate is 0.87, but its 90 % range (0.79 to 0.95) dips just below the 0.8 required, so on these four grids it is not yet verified.",
-    ("A1F-010", "openswmm-fv"): "Passes, where dynamic wave fails: 3.3 m behind instead of 41 m, and it conserves water. It is not verified: the error shrinks at a rate of 0.66 (90 % range 0.54 to 0.77), under the 0.8 required.",
-    ("A1F-001", "openswmm-fv"): "Passes: 0.4 mm. Not verified: its convergence rate fitted through the four grids is 0.79, with a 90 % range of 0.73 to 0.85 that includes the 0.8 required, so these grids cannot settle whether it converges. Dynamic wave reaches 1.8.",
+    ("A1F-011", "openswmm-fv"): "OpenSWMM 6's new finite-volume routing is 1 mm from the exact answer where SWMM's dynamic wave is 37 mm off. Its convergence rate is 0.87 (90 % range 0.79 to 0.95), close to the design order of 1.",
+    ("A1F-010", "openswmm-fv"): "3.3 m behind the exact front, where dynamic wave is 41 m behind, and it conserves water. The error shrinks at a rate of 0.66 (90 % range 0.54 to 0.77), below the design order of 1.",
+    ("A1F-001", "openswmm-fv"): "0.4 mm off. Its convergence rate fitted through the four grids is 0.79 (90 % range 0.73 to 0.85); dynamic wave reaches 1.8.",
     ("B-RTC-001", "openswmm6"): "Pumps switch the same 74 times, but one node peaks 50 % higher than in SWMM 5.2.4, at a different time; worth a look by the OpenSWMM developers.",
     ("A1F-010", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it is not expected to get a dam break right; it is shown because it is what most LISFLOOD-FP users run.",
     ("A1F-011", "lisflood-acc"): "The local-inertia scheme leaves out the advection term, so it cannot form the right bore; it is shown because it is what most LISFLOOD-FP users run.",
-    ("A2C-EA1", "lisflood-acc"): "The pond settles 5 mm above the sill (2 cm allowed). The stored volume is 2.7 % above the figure integrated on the EA's 2 m DEM; that check does not gate, because a 10 m grid samples the ground differently.",
+    ("A2C-EA1", "lisflood-acc"): "The pond settles 5 mm above the sill. The stored volume is 2.7 % above the figure integrated on the EA's 2 m DEM; that check does not gate, because a 10 m grid samples the ground differently.",
     ("A2C-EA4", "lisflood-fv1"): "Run at the specification's 5 m grid (the demo solver uses the allowed 10 m alternative). The inflow enters as LISFLOOD-FP point sources on the cells the inflow line crosses.",
-    ("A2A-020", "telemac"): "Run with TELEMAC's HLLC scheme: its default kinetic scheme goes unstable with this supercritical inflow. The depth is right (1 cm) and converges, but the stored water is 0.15 % above exact (0.1 % allowed), as with ANUGA (0.13 % below).",
-    ("A2A-010", "telemac"): "Passes: 0.13 mm from the exact water level, converging at first order. The inflow discharge and outlet level are listed in the order TELEMAC numbers its open boundaries.",
+    ("A2A-020", "telemac"): "Run with TELEMAC's HLLC scheme: its default kinetic scheme goes unstable with this supercritical inflow. The depth is right (1 cm) and converges, but the stored water is 0.15 % above exact, as with ANUGA (0.13 % below).",
+    ("A2A-010", "telemac"): "0.13 mm from the exact water level, converging at first order. The inflow discharge and outlet level are listed in the order TELEMAC numbers its open boundaries.",
     ("A2C-EA2", "telemac"): "Run with a 1 s largest step, as for the other codes: with TELEMAC's step left to the 5-minute output interval, the dry start took long first steps that undersampled the inflow and lost 6 % of the water.",
-    ("A2A-010", "hecras66"): "Very accurate (0.09 mm), but the error stops falling below about 0.1 mm on finer grids (0.54, 0.16, 0.12, 0.09 mm), so it passes but its convergence rate's range is wide (0.11 to 1.50): not verified. HEC-RAS stops iterating at its default water-surface tolerance (0.01), which is the likely floor.",
-    ("A2A-010", "hecras66-em"): "As SWE-ELM: 0.06 mm, but the error levels off near 0.1 mm on finer grids (rate 1.02, 90 % range 0.43 to 1.60): passes, not verified.",
-    ("A2C-EA1", "hecras66"): "Run on the EA's own 2 m DEM, which HEC-RAS uses as sub-grid terrain. The pond settles 1.3 cm above the sill (2 cm allowed).",
-    ("A2C-EA2", "hecras66"): "HEC-RAS's own volume accounting reports 1.4 % more water stored than flowed in (98,576 m³ from 97,194 m³). Integrating its water levels over the 2 m DEM gives +0.76 %, also over the limit. Run on the EA's own 2 m DEM as sub-grid terrain.",
+    ("A2A-010", "hecras66"): "Very accurate (0.09 mm), but the error stops falling below about 0.1 mm on finer grids (0.54, 0.16, 0.12, 0.09 mm), so its convergence rate's range is wide (0.11 to 1.50). HEC-RAS stops iterating at its default water-surface tolerance (0.01), which is the likely floor.",
+    ("A2A-010", "hecras66-em"): "As SWE-ELM: 0.06 mm, but the error levels off near 0.1 mm on finer grids (rate 1.02, 90 % range 0.43 to 1.60).",
+    ("A2C-EA1", "hecras66"): "Run on the EA's own 2 m DEM, which HEC-RAS uses as sub-grid terrain. The pond settles 1.3 cm above the sill.",
+    ("A2C-EA2", "hecras66"): "HEC-RAS's own volume accounting reports 1.4 % more water stored than flowed in (98,576 m³ from 97,194 m³). Integrating its water levels over the 2 m DEM gives +0.76 %. Run on the EA's own 2 m DEM as sub-grid terrain.",
     ("A2C-EA2", "hecras66-em"): "As SWE-ELM: HEC-RAS's own accounting shows a 1.4 % volume error.",
     ("A1F-010", "hydronet-fvm"): "The dam never breaks: no water crosses onto the dry bed. HydroNet's Roe residual uses a fixed 1 cm dry threshold and, at a face between a wet and a dry cell, the wet cell's own flux, so still water next to dry ground feels no net force. The same happens below a 1 cm downstream layer. Mass is conserved because nothing moves.",
-    ("A1F-011", "hydronet-fvm"): "Into 10 cm of water the dam break runs normally: depth error 1.4 mm (passes) and mass 0.016 %, but the error falls at a rate of 0.70 (90 % range 0.68 to 0.72; minimum 0.8).",
-    ("A1F-011", "hydronet-pinn"): "The trained network smears the bore and the rarefaction: average depth error 12.6 cm (1 cm allowed), 4.5 % of the water lost, and no improvement on finer grids. Trained with the recipe of HydroNet's own dam-break example, which on its own 20 m, 1 s case gives an RMS error of 6 cm on a 2 m dam (3 %); this case is 2 km over 30 s.",
+    ("A1F-011", "hydronet-fvm"): "Into 10 cm of water the dam break runs normally: depth error 1.4 mm and mass 0.016 %, but the error falls at a rate of 0.70 (90 % range 0.68 to 0.72; minimum 0.8).",
+    ("A1F-011", "hydronet-pinn"): "The trained network smears the bore and the rarefaction: average depth error 12.6 cm, 4.5 % of the water lost, and no improvement on finer grids. Trained with the recipe of HydroNet's own dam-break example, which on its own 20 m, 1 s case gives an RMS error of 6 cm on a 2 m dam (3 %); this case is 2 km over 30 s.",
     ("A1D-001", "openswmm-fv"): "Accurate mid-line (under 2 mm), but up to 1.4 cm too deep in the pipes next to the normal-depth outfalls and 7 mm too deep in the first pipes below the inflows. EPA SWMM 5.2.4 holds normal depth to 0.3 mm everywhere.",
     ("A1D-002", "openswmm-fv"): "The pipes are surcharged and the finite-volume routing overestimates the friction loss: the hydraulic grade line falls 1.42 m over the five pipes instead of 1.19 m (19 % more), so the upstream manholes stand up to 28 cm too high. Dynamic wave in the same engine is 0.4 mm from exact.",
     ("A1D-001", "hydra-uds"): "Exact to rounding (0.0005 mm): Hydra computes the circular section exactly, where the SWMM engines interpolate a 51-entry table (0.27 mm off).",
-    ("A1D-005", "openswmm-fv"): "Passes (3.7 mm). With one cell per pipe (FV_MIN_CELLS 1, as on the channel tests) it is 2.2 cm off and fails; the default subdivides each pipe.",
-    ("A1F-041", "anuga"): "Passes, within 0.7 mm with the SWASHES downstream condition (0.66 m held while the outflow is subcritical); not verified only because three grids leave its convergence rate's range wide (0.69 to 1.14). With a free (transmissive) outflow instead, ANUGA settled on a fully subcritical state 1.06 m deep, 0.39 m off.",
+    ("A1D-005", "openswmm-fv"): "3.7 mm. With one cell per pipe (FV_MIN_CELLS 1, as on the channel tests) it is 2.2 cm off; the default subdivides each pipe.",
+    ("A1F-041", "anuga"): "Within 0.7 mm with the SWASHES downstream condition (0.66 m held while the outflow is subcritical); three grids leave its convergence rate's range wide (0.69 to 1.14). With a free (transmissive) outflow instead, ANUGA settled on a fully subcritical state 1.06 m deep, 0.39 m off.",
     ("A1F-043", "anuga"): "Nothing moves (velocities 1e-14 m/s). The worst depth difference, 1.7 mm, is in the cells cut by the shoreline, where a cell-mean depth on the sloping bump differs from the exact depth at the cell centre; that check is informational.",
-    ("A12-010", "swmm-anuga"): "The street carries exactly what the manhole releases (0.5 m³/s, depth 0.1 mm from exact), but 5 m³ of the 885 m³ is missing at the end (0.56 %; 0.5 % allowed). The coupler moves water exactly; the loss is SWMM's own continuity error (0.50 % in its report), made as the dead-end pipe filled and surcharged.",
-    ("A12-011", "swmm-anuga"): "Passes. While the pipe runs full, SWMM's reported pipe and manhole volumes exceed its own balance by up to 3.1 m³ (1.2 %), which disappears as the pipe empties: its end-of-run continuity error is 0.000 %.",
-    ("A12-012", "swmm-anuga"): "Passes: 180.05 m³ out of 180 m³ in. As in A12-011, SWMM's reported storage is off by up to 2.4 m³ while surcharged, and back to balance once the pipes drain.",
-    ("A12-010", "openswmm-2d"): "Passes, with OpenSWMM's own coupling and defaults: the manhole passes 0.503 m³/s onto the street (0.5 exact), the street runs 0.6 mm from normal depth, and the water balances to 0.01 m³ of 900 m³.",
-    ("A12-010", "openswmm-2d-x"): "Same exchange and balance as on the two-triangle mesh, but with each square cut into four triangles the street runs 85.7 mm deep instead of 77.7 mm (3 mm allowed). The same model on the simpler two-triangle mesh is 0.6 mm off: the sheet flow depends on how the grid is triangulated.",
+    ("A12-010", "swmm-anuga"): "The street carries exactly what the manhole releases (0.5 m³/s, depth 0.1 mm from exact), but 5 m³ of the 885 m³ is missing at the end (0.56 %). The coupler moves water exactly; the loss is SWMM's own continuity error (0.50 % in its report), made as the dead-end pipe filled and surcharged.",
+    ("A12-011", "swmm-anuga"): "While the pipe runs full, SWMM's reported pipe and manhole volumes exceed its own balance by up to 3.1 m³ (1.2 %), which disappears as the pipe empties: its end-of-run continuity error is 0.000 %.",
+    ("A12-012", "swmm-anuga"): "180.05 m³ out of 180 m³ in. As in A12-011, SWMM's reported storage is off by up to 2.4 m³ while surcharged, and back to balance once the pipes drain.",
+    ("A12-010", "openswmm-2d"): "With OpenSWMM's own coupling and defaults: the manhole passes 0.503 m³/s onto the street (0.5 exact), the street runs 0.6 mm from normal depth, and the water balances to 0.01 m³ of 900 m³.",
+    ("A12-010", "openswmm-2d-x"): "Same exchange and balance as on the two-triangle mesh, but with each square cut into four triangles the street runs 85.7 mm deep instead of 77.7 mm. The same model on the simpler two-triangle mesh is 0.6 mm off: the sheet flow depends on how the grid is triangulated.",
     ("A12-011", "openswmm-2d"): "The yard drains 12 mm below the 5 cm gully crest, so 4 % too much leaves by the outfall. OpenSWMM's exchange is meant to close at the crest, and a still pond 1 cm below it does not drain, but here it kept draining at 0.035–0.045 m³/s for about ten minutes while both the surface and the manhole head were below the crest. The 1.5 m³ missing from the balance is the network's own continuity error (0.62 % in its report).",
-    ("A12-011", "openswmm-2d-x"): "As on the two-triangle mesh: the yard drains 14 mm below the crest and 5 % too much leaves by the outfall; the exchange keeps running below the crest while the yard drains. The balance passes (0.31 % short, the network's own continuity error).",
-    ("A12-012", "openswmm-2d"): "Passes: 110 m³ surges onto the surface and drains back; 179.6 of the 180 m³ leaves by the outfall and 0.4 m³ stays on the slope. The balance closes to 0.03 m³.",
-    ("A12-012", "openswmm-2d-x"): "Passes, as on the two-triangle mesh: 179.6 m³ out, 0.4 m³ left on the slope, balance within 0.03 m³.",
-    ("A12-010", "hecras-pipes"): "The manhole passes exactly 0.5 m³/s onto the street, but the street runs 83.6 mm deep where normal depth is 77.7 mm (3 mm allowed). The suite's balance (2D cells, the pipe cells' volume tables, the outflow line) is 4.3 m³ short of 900 m³ (0.48 %); HEC-RAS's own report closes to 0.017 %.",
-    ("A12-011", "hecras-pipes"): "The yard drains to 58 mm, 8 mm above the 5 cm gully crest, and 221.3 of the 225 m³ leaves by the outfall (1.6 % short). The balance gains 3.7 m³ (1.4 %; 0.5 % allowed); HEC-RAS's own report shows 0.88 %.",
+    ("A12-011", "openswmm-2d-x"): "As on the two-triangle mesh: the yard drains 14 mm below the crest and 5 % too much leaves by the outfall; the exchange keeps running below the crest while the yard drains. The balance closes (0.31 % short, the network's own continuity error).",
+    ("A12-012", "openswmm-2d"): "110 m³ surges onto the surface and drains back; 179.6 of the 180 m³ leaves by the outfall and 0.4 m³ stays on the slope. The balance closes to 0.03 m³.",
+    ("A12-012", "openswmm-2d-x"): "As on the two-triangle mesh: 179.6 m³ out, 0.4 m³ left on the slope, balance within 0.03 m³.",
+    ("A12-010", "hecras-pipes"): "The manhole passes exactly 0.5 m³/s onto the street, but the street runs 83.6 mm deep where normal depth is 77.7 mm. The suite's balance (2D cells, the pipe cells' volume tables, the outflow line) is 4.3 m³ short of 900 m³ (0.48 %); HEC-RAS's own report closes to 0.017 %.",
+    ("A12-011", "hecras-pipes"): "The yard drains to 58 mm, 8 mm above the 5 cm gully crest, and 221.3 of the 225 m³ leaves by the outfall (1.6 % short). The balance gains 3.7 m³ (1.4 %); HEC-RAS's own report shows 0.88 %.",
     ("A12-012", "hecras-pipes"): "The surge goes onto the slope and drains back: 182.3 m³ leaves by the outfall for 180 m³ in, 0.7 m³ stays on the surface. The balance gains 2.5 m³ (1.4 %); HEC-RAS's own report shows 1.9 %. The pipe network runs on its own Courant-controlled step: on the 2D step alone (up to 8.6 s) its solution went unstable after 15 minutes.",
     ("A1F-010", "hydronet-pinn"): "The trained network spreads 0.3–0.4 m of water over the whole dry channel downstream, so its front is 713 m ahead of the exact one; it gains 3.3 % of the water, and the error grows on finer grids. Its own finite-volume engine, by contrast, never starts the flow.",
 }
 CASE_NOTES = {
-    "A1F-040": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing passes all four bump tests.",
-    "A1F-041": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing passes all four bump tests.",
-    "A1F-042": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing passes all four bump tests.",
+    "A1F-040": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing stays close on all four bump tests.",
+    "A1F-041": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing stays close on all four bump tests.",
+    "A1F-042": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing stays close on all four bump tests.",
     "A1F-043": "Every code that ran keeps the lake still except Hydra (currents up to 0.12 m/s). The SWMM engines needed a routing step matched to the grid: SWMM's variable step follows the flow velocity, so in still water it stays at the routing step, and with a 1 s step on 20 cm conduits a lake on a 0.4 % slope starts sloshing at 1.3 m/s.",
-    "A1F-010": "Since version 2 the front is measured by volume: the point beyond which the last 5 % of the released water lies. Version 1 used the 1 mm depth contour, which every production code failed by 12 to 211 m: on the thin tip a millimetre of depth moves that contour about 10 m, and production codes treat water shallower than about 1 mm as dry. The 1 mm edge is still reported, but no longer decides the result.",
+    "A1F-010": "Since version 2 the front is measured by volume: the point beyond which the last 5 % of the released water lies. Version 1 used the 1 mm depth contour, which every production code missed by 12 to 211 m: on the thin tip a millimetre of depth moves that contour about 10 m, and production codes treat water shallower than about 1 mm as dry. The 1 mm edge is still reported, but no longer decides the result.",
 }
 
 
@@ -577,7 +566,7 @@ def layout(title: str, body: str, active: str, depth: int = 0, description: str 
 </main>
 <footer class="site-foot">
   <div class="wrap">
-    <span>{SITE_NAME} · open source (Apache-2.0) · data under each test's own <a href="{BLOB}DATA_LICENSES.md">licence</a> · built {built}</span>
+    <span>{SITE_NAME} · open source (Apache-2.0) · data under each test's own <a href="{BLOB}DATA_LICENSES.md">licence</a> · <a href="{BLOB}{difference.METHOD_DOC}">Scoring method {difference.METHOD_VERSION}</a> ({difference.METHOD_DATE}) · built {built}</span>
     <nav aria-label="More">{foot}<a href="{REPO_URL}">Source on GitHub</a></nav>
   </div>
 </footer>
@@ -637,7 +626,7 @@ SOLVER_DOCS = {"hecras": "hecras.md", "hecras-em": "hecras.md", "hecras66": "hec
                "openswmm6": "openswmm.md", "hydra-uds": "hydra.md", "hydra-wds": "hydra.md", "hydronet-fvm": "hydronet.md",
                "hydronet-pinn": "hydronet.md", "swmm-anuga": "coupled.md",
                "openswmm-2d": "coupled.md", "openswmm-2d-x": "coupled.md"}
-KIND_WORDS = {"production": "Production software, run by the suite as a black box with its own default settings.",
+KIND_WORDS = {"production": "Production software, installed from its official source and run by the suite with its defaults, except the settings each card names.",
               "research": "Research code, run with the settings of its own examples.",
               "suite": "A worked example that ships with the suite.",
               "compat": "Scored for compatibility with the current release, not for physics.",
@@ -1116,7 +1105,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
   </table>
 </div>
 </div>
-<p class="small" style="margin-top:14px;max-width:90ch">The demo solvers are simple worked examples that ship with the suite. {esc(prod_list)} are production software, each run as a black box with its own default settings. HydroNet is a research code (physics-informed machine learning), scored with the settings of its own examples. SWMM 5.1.15 and EPANET 2.0 are scored for compatibility with the current releases, not for physics. Columns marked <i>submitted by …</i> were run by others and scored here.</p>
+<p class="small" style="margin-top:14px;max-width:90ch">The demo solvers are simple worked examples that ship with the suite. {esc(prod_list)} are production software, each run with its defaults except the settings named on its score cards (time-step limits, output points, the converged SWMM variants' iteration tolerance). HydroNet is a research code (physics-informed machine learning), scored with the settings of its own examples. SWMM 5.1.15 and EPANET 2.0 are scored for compatibility with the current releases, not for physics. Columns marked <i>submitted by …</i> were run by others and scored here.</p>
 <section class="section" style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">{corpus}{wait}{submitted}</section>
 </div>
 {json_script("cells", cells)}"""
@@ -1183,7 +1172,7 @@ def _tags(m: dict) -> str:
              "exact_states": ("Exact answer known", "blue"), "pinned_engine": ("Compared with a pinned engine", "blue")}.get(kind, (kind, ""))
     dim = m["physics"]["dimensionality"]
     flow = m["physics"]["flow_type"].replace("_", " ")
-    status = {"frozen": "Frozen: counts toward certification", "candidate": "Candidate", "draft": "Draft: needs data"}.get(m["status"], m["status"])
+    status = {"frozen": "Frozen: inputs and answer fixed", "candidate": "Candidate", "draft": "Draft: needs data"}.get(m["status"], m["status"])
     return (f'<span class="tag {first[1]}">{esc(first[0])}</span><span class="tag">{esc(dim)} · {esc(flow)}</span>'
             f'<span class="tag">{esc(status)}</span>')
 
@@ -1487,12 +1476,12 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
   {run_line(c)}
   <div class="checks-grid">{checks}</div>
   {f'<p class="note">{esc(plain_note(note))}</p>' if note else ''}
-  <p class="note small">Score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>
+  <p class="note small">Scored with method {difference.METHOD_VERSION} · Score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>
   {share_block(sid, k, c)}
   {run_block(sid, k, c) if m["track"] == "A" else ""}
 </article>""")
     levels = (m["simulation"].get("mesh_refinement") or {}).get("levels") or []
-    grid_txt = (f"Each model runs the same inputs on {len(levels)} grids, from {nice(max(levels), 3)} m down to {nice(min(levels), 3)} m cells."
+    grid_txt = (f"Each model runs the same inputs on {len(levels)} grids, from {nice(max(levels), 3)} m down to {nice(min(levels), 3)} m cells; the checks are scored on the {nice(min(levels), 3)} m grid, and each card lists the error on every grid."
                 if len(levels) > 1 else "Each model runs the same inputs.")
     case_note = plain_note(CASE_NOTES.get(sid, "")) or None
     not_yet = ""
@@ -1508,6 +1497,17 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         not_yet = (f'<div class="notyet"><div><b>Not run yet:</b> {esc(", ".join(missing))}</div>'
                    f'<a href="../score.html#{sid}" style="font-weight:600">Run it and add yours →</a></div>')
     tb_rows = []
+    sides = {r["key"]: difference.side(runs[r["key"]]) for r in order}
+    has_c = any(v["conservation"] is not None for v in sides.values())
+    has_t = any(v["timing"] is not None for v in sides.values())
+    has_n = any(v["nse"] is not None for v in sides.values())
+
+    def side_cells(k: str) -> str:
+        v = sides[k]
+        nse = "–" if v["nse"] is None else f'{v["nse"]:.3f}'
+        return ((f'<td class="num">{"–" if v["conservation"] is None else esc(ranking.short(v["conservation"]))}</td>' if has_c else "")
+                + (f'<td class="num">{"–" if v["timing"] is None else esc(nice(v["timing"], 3)) + " s"}</td>' if has_t else "")
+                + (f'<td class="num">{nse}</td>' if has_n else ""))
     for r in order:
         c = runs[r["key"]]
         s_ = SOLVER[r["key"]]
@@ -1519,13 +1519,15 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         tb_rows.append(f'<tr><td class="num lb-rank">{(str(r["rank"]) + ("=" if r.get("tie") else "")) if r.get("rank") else "–"}</td>'
                        f'<td><a href="#m-{esc(r["key"])}"><span class="sw" style="background:{esc(s_["color"])}"></span><b>{esc(s_["name"])}</b> <span class="lb-sub">{esc(s_["sub"])}</span></a></td>'
                        f'<td class="num"><span class="lb-cell {ranking.klass(r["score"])}">{esc(ranking.short(r["score"]))}</span></td>'
-                       f'<td class="tb-why">{esc(why)}{(" · <b>not ranked: " + esc(r["flag"] if HOLD(r["key"]) else "the engine flags this run") + "</b>") if r.get("flag") else ""}</td><td class="num">{esc(ranking.fmt_time((c.get("run") or {}).get("wall_seconds")))}</td></tr>')
+                       f'<td class="tb-why">{esc(why)}{(" · <b>not ranked: " + esc(r["flag"] if HOLD(r["key"]) else "the engine flags this run") + "</b>") if r.get("flag") else ""}</td>{side_cells(r["key"])}<td class="num">{esc(ranking.fmt_time((c.get("run") or {}).get("wall_seconds")))}</td></tr>')
     tboard = ('<div class="table-scroll"><table class="tb"><thead><tr><th class="num">Rank</th><th>Model</th><th class="num">Difference</th>'
-              '<th>Largest difference in</th><th class="num">Run time</th></tr></thead><tbody>' + "".join(tb_rows) + "</tbody></table></div>") if len(tb_rows) > 1 else ""
+              '<th>Largest difference in</th>' + ('<th class="num" title="Largest mass, continuity or storage balance error">Mass error</th>' if has_c else '')
+              + ('<th class="num" title="Largest arrival or peak-time error">Timing</th>' if has_t else '')
+              + ('<th class="num" title="Lowest Nash-Sutcliffe efficiency (1 is perfect)">NSE</th>' if has_n else '') + '<th class="num">Run time</th></tr></thead><tbody>' + "".join(tb_rows) + "</tbody></table></div>") if len(tb_rows) > 1 else ""
     if mcards:
         models = f"""<section class="section" style="padding-bottom:0" id="models">
   <h2>How models did</h2>
-  <p class="muted">In rank order: by each model's percent difference from the right answer, the largest over the test's checks (lower is better; results within 10 % of each other share a rank). {esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
+  <p class="muted">In rank order: by each model's percent difference from the right answer, the largest over the test's accuracy checks (lower is better; results within 10 % of each other share a rank). Mass error, timing and NSE are shown beside it, not folded in. {esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
   {tboard}
   {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
   <div class="models">{''.join(mcards)}{not_yet}</div>
@@ -1539,7 +1541,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     items = checklist(m, cards_for)
     nxt = next_stage(m, cards_for)
     if m["status"] == "frozen":
-        status_txt = "<b>Frozen.</b> Inputs, answer and limits are fixed; results count toward certification."
+        status_txt = "<b>Frozen.</b> Inputs, answer and checks are fixed; a change makes a new test version."
     elif nxt["next"]:
         need = [b["label"].lower() for b in nxt["blockers"]]
         status_txt = (f"<b>{esc(m['status'].capitalize())}.</b> " + (f"To become {esc(nxt['next'])} it needs: {esc('; '.join(need))}." if need else
@@ -1602,7 +1604,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     <h3>Reference</h3><p>{ref_desc}</p>{states}
     {legacy}
     <h3>Promotion checklist</h3>
-    <p class="small">Only frozen tests count toward certification. This list is computed from the manifest and the published score cards; the rules are in the <a href="../method.html">method</a>.</p>
+    <p class="small">Only frozen tests have fixed inputs and answers. This list is computed from the manifest and the published score cards; the rules are in the <a href="../method.html">method</a>.</p>
     {H.checklist_html(items)}
     <h3>Inputs</h3>{H.inputs_table(m)}
     {f'<h3>About this test</h3><div class="prose">{readme_html}</div>' if readme_html else ''}
@@ -1754,20 +1756,20 @@ def how_page(manifests: list[dict], runs: dict) -> str:
   <div class="grid how">
     <div class="card"><div class="label">01 — Same inputs</div><p>Every model gets identical terrain, flows and settings. Each file is fixed by a SHA-256 fingerprint, so nobody can quietly change it, and large files are fetched and checked against that fingerprint.</p></div>
     <div class="card"><div class="label">02 — A known right answer</div><p>Exact mathematical solutions (dam breaks, backwater, water hammer), laboratory and field measurements, or — for compatibility — the output of a pinned SWMM or EPANET release.</p></div>
-    <div class="card"><div class="label">03 — A result anyone can check</div><p>Every number measured, beside the limit it is compared with, the run time and the machine. Score cards are hashed and signed; every one shown here is re-run by CI on each change.</p></div>
+    <div class="card"><div class="label">03 — A result anyone can check</div><p>Every number measured, as a percent difference from the right answer, with the run time, the machine and the engine's own report. Score cards are hashed and signed (with the suite's public development key: the signature shows a card has not changed, not who wrote it); every one shown here is re-run by CI on each change.</p></div>
   </div>
 </section>
 <section class="section tight">
   <h2>How results are scored and ranked</h2>
   <div class="grid">
-    <div class="card"><h3>Measurements, not verdicts</h3><p>Each check's error is given as a percentage of the quantity it is an error in (a depth error over the exact mean depth, a front error over the distance the front travels; mass errors are already percentages). A result's score is its largest percent difference over the test's checks; there is no limit and no pass or fail. Models are listed in that order on every test; results within 10 % of each other share a rank. <a href="rankings.html">Overall rankings</a> count head-to-head wins on the tests two models share, so a model is never compared on tests it did not run.</p></div>
-    <div class="card"><h3>Getting better on finer grids</h3><p>A model that is close by luck on one grid is not verified. Each test is run on four grids; the error must shrink at the rate the method promises (the "observed order", as in ASME V&amp;V 20).</p></div>
-    <div class="card"><h3>Limits with reasons</h3><p>Every limit is written down with why it was chosen — a measurement uncertainty, a published accuracy, or the size of two grid cells. Open any test's technical details to read them.</p></div>
+    <div class="card"><h3>Measurements, not verdicts</h3><p>Each check's error is given as a percentage of the quantity it is an error in (a depth error over the exact mean depth, a front error over the distance the front travels; mass errors are already percentages). A result's score is its largest percent difference over the test's accuracy checks; there is no limit and no pass or fail. Models are listed in that order on every test; results within 10 % of each other share a rank. <a href="rankings.html">Overall rankings</a> count head-to-head wins on the tests two models share, so a model is never compared on tests it did not run.</p></div>
+    <div class="card"><h3>Getting better on finer grids</h3><p>Each test is run on up to four grids and scored on the finest. Every card lists the error on each grid and the rate it shrinks at (the "observed order", as in ASME V&amp;V 20), beside the scheme's design order. The rate is reported, not counted in the score.</p></div>
+    <div class="card"><h3>Each check has a reason</h3><p>Every check is written down with why it was chosen and what its percentage is of (the exact mean depth, the distance a front travels). Mass errors, timing errors (in seconds) and NSEs are shown in their own columns, not folded into the score. Open any test's technical details to read them.</p></div>
   </div>
 </section>
 <section class="section tight">
   <h2>Production software, run fairly</h2>
-  <p>Production models are installed from their official sources by automated jobs and run as black boxes with their own default settings. Only the inputs, the run length, the boundaries and the output format are set. When a model fails, its card says so and why, and the run can be reproduced from the repository.</p>
+  <p>Production models are installed from their official sources by automated jobs and run with their defaults. The inputs, the run length, the boundaries and the output format are set for every model; any other setting the suite changes (a time-step limit, a minimum surface area, an iteration tolerance) is named on each result under "Settings". When a model fails, its card says so and why, and the run can be reproduced from the repository.</p>
   <div class="grid narrow">
     <div class="card"><h3>HEC-RAS 7.0 (and 6.6)</h3><p>Installed silently on a Windows runner from HEC's release (installer fingerprint pinned), projects written as plain text, run headless with ras-commander. 6.6 is kept as the previous release.</p></div>
     <div class="card"><h3>TELEMAC-2D 9.1</h3><p>openTELEMAC from conda-forge, finite-volume settings by default.</p></div>
@@ -1780,7 +1782,7 @@ def how_page(manifests: list[dict], runs: dict) -> str:
   <div class="grid narrow">
     <div class="card"><h3>Draft · {by_status['draft']}</h3><p>Defined, but waiting on data or a verified answer.</p></div>
     <div class="card"><h3>Candidate · {by_status['candidate']}</h3><p>Inputs, answer and limits published, and at least one model scored.</p></div>
-    <div class="card"><h3>Frozen · {by_status['frozen']}</h3><p>Reviewed, passed by independent models, and fixed: only frozen tests count toward certification.</p></div>
+    <div class="card"><h3>Frozen · {by_status['frozen']}</h3><p>Reviewed, run by independent models, and fixed: a change to a frozen test makes a new version.</p></div>
   </div>
   <p class="muted" style="margin-top:16px">{n} tests in all. The rules for each step are in the <a href="method.html">method</a>.</p>
 </section>

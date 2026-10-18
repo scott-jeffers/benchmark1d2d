@@ -30,6 +30,7 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO / "runner" / "python"))
 
+from benchmark1d2d.clock import run_timestamp  # noqa: E402
 from benchmark1d2d.signing import private_key as signing_key  # noqa: E402
 
 from benchmark1d2d.adapters.swmm5 import adapt_out_to_parquet  # noqa: E402
@@ -79,7 +80,7 @@ def main() -> int:
             outs.append(out)
         identical = _sha256(outs[0]) == _sha256(outs[1])
         pq = adapt_out_to_parquet(outs[0], OUT / f"{tid}.official.parquet")
-        card = score_case(m, pq, timestamp="2024-01-01T00:00:00Z", private_key=key,
+        card = score_case(m, pq, timestamp=run_timestamp(), private_key=key,
                           solver={"name": f"EPA SWMM {pin['version']} official win64", "version": pin["version"], "adapter": "swmm5"})
         (OUT / f"{tid}.cross_build.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
         role = "gating" if opts["gating"] else f"informative — {opts['reason']}"

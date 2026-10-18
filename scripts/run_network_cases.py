@@ -32,6 +32,7 @@ warnings.filterwarnings("ignore", message="Changing the headloss formula")
 REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 
+from benchmark1d2d.clock import run_timestamp  # noqa: E402
 from benchmark1d2d.signing import private_key as signing_key  # noqa: E402
 
 from benchmark1d2d.catalog import load_manifest  # noqa: E402
@@ -40,7 +41,7 @@ from benchmark1d2d.scoring.scorer import score_case  # noqa: E402
 
 OUT = REPO / "out" / "networks"
 KEY = signing_key()  # BENCH_SIGNING_KEY, else the public development key
-TS = "2024-01-01T00:00:00Z"
+TS = run_timestamp()  # when this run happened (BENCH_TIMESTAMP pins it)
 # EPANET's built-in water viscosity (1.1e-5 ft²/s); [OPTIONS] VISCOSITY is relative to it.
 EPANET_NU = 1.1e-5 * 0.3048**2
 SOLVER = {"name": "EPA EPANET 2.2", "version": "2.2", "adapter": "epanet (WNTR 1.5.0, libepanet22)"}

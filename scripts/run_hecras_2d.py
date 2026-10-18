@@ -49,7 +49,9 @@ sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO), str(REPO / "scripts"
 
 TAG = os.environ.get("HECRAS_TAG", "")  # "" for the current release, "66" for HEC-RAS 6.6 (kept as the previous release)
 OUT = REPO / "out" / (f"hecras{TAG}_2d" if TAG else "hecras2d")
-TS = "2024-01-01T00:00:00Z"
+from benchmark1d2d.clock import run_timestamp  # noqa: E402
+
+TS = run_timestamp()  # when this run happened (BENCH_TIMESTAMP pins it)
 G = 9.81
 AREA = "Strip"
 # Projected coordinates (UTM 18N, metres); the case's x/y are offsets from here.

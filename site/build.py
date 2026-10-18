@@ -587,11 +587,17 @@ def fig_convergence(card: dict) -> str:
 # ── pages ───────────────────────────────────────────────────────────────────
 
 
+KIND_WORD = {"accuracy": "in the score", "conservation": "conservation, beside the score",
+             "timing": "timing, beside the score", "skill": "skill score, beside the score"}
+KIND_OF = {"timing": "not a percentage: reported in seconds", "skill": "not a percentage: reported as the NSE (1 is perfect)"}
+
+
 def criteria_table(m: dict, card: dict | None) -> str:
     import difference
     import ranking
     res = {r["id"]: r for r in (card or {}).get("criteria_results", [])}
     rows = []
+    has_acc = any(difference.kind(c) == "accuracy" and c.get("gating", True) for c in m["scoring"]["criteria"])
     for c in m["scoring"]["criteria"]:
         thr = c["threshold"]
         r = res.get(c["id"])
@@ -600,12 +606,13 @@ def criteria_table(m: dict, card: dict | None) -> str:
         else:
             obs = r.get("observed")
             pc = difference.percent(m["test_id"], {**r, "threshold": thr, "metric": c["metric"]})
+            if difference.kind(c) != "accuracy" and (has_acc or difference.kind(c) == "timing"):
+                pc = None  # reported in its own column on the test page, not as the score
             got = f'<td class="num">{fmt(obs) if obs is not None else "n/a"} {esc(thr.get("units", ""))}</td><td class="num">{esc(ranking.short(pc)) if pc is not None else "–"}</td>'
         rows.append(
             f"<tr><td><b>{esc(c['id'])}</b><div class=muted>{esc(c['metric'])} of {esc(c.get('variable', ''))}"
-            f"{' · counted' if c.get('gating') else ' · reported, not counted'}</div></td>"
-            f'<td>{esc(difference.of_what(m["test_id"], {"id": c["id"], "threshold": thr, "metric": c["metric"]}) or "already a percentage")}'
-            f'<div class=muted>former limit: {esc(thr["op"].replace("abs<=", "|x| ≤").replace("<=", "≤").replace(">=", "≥"))} {fmt(thr["value"])} {esc(thr.get("units", ""))}</div></td>'
+            f"{' · ' + (KIND_WORD[difference.kind(c)] if has_acc or difference.kind(c) == 'timing' else 'in the score') if c.get('gating', True) else ' · reported, not counted'}</div></td>"
+            f'<td>{esc(KIND_OF.get(difference.kind(c)) or difference.of_what(m["test_id"], {"id": c["id"], "threshold": thr, "metric": c["metric"]}) or "already a percentage")}</td>'
             f"{got}<td class=rationale>{esc(c.get('rationale', ''))}</td></tr>"
         )
     conv = m["scoring"].get("convergence")
@@ -628,7 +635,7 @@ def criteria_table(m: dict, card: dict | None) -> str:
         )
     return (
         '<div class="table-scroll"><table class="data criteria"><thead><tr><th>Check</th><th>Difference measured as a percentage of</th>'
-        "<th class=num>Latest</th><th class=num>Difference</th><th>Why this check (written with its former limit)</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>"
+        "<th class=num>Latest</th><th class=num>Difference</th><th>Why this check</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>"
     )
 
 

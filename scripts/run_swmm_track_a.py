@@ -6,8 +6,9 @@ chain of rectangular open conduits, one per grid cell: nodes sit on the cell
 faces, conduit *i* spans cell *i*, and the conduit's depth and velocity are
 reported at the cell centre — the same points every other solver reports on.
 
-Engines (each run with its own defaults; only the time-step limits below are
-set so that a run can follow a 1 s wave on a 1.25 m grid):
+Engines (each run with its own defaults except the settings listed under
+"Settings beyond the defaults" below, which every score card's adapter line
+also names):
 
 * ``swmm524``      EPA SWMM 5.2.4 (``swmm-toolkit`` 0.17.0), dynamic wave
 * ``openswmm-dw``  OpenSWMM Engine v6 (HydroCouple), dynamic wave
@@ -39,8 +40,14 @@ A1F-040–043 SWASHES bump channel (frictionless, n = 0.0001): steady flow
         conduits, and a lake at rest starts to slosh (1.3 m/s on a 0.4 %
         slope with a 1 s step; 0.00007 m/s with 0.05 s).
 
-A1F-020 (stationary jump) is not run: SWMM cannot hold both the depth and
-the discharge of a supercritical inflow at its upstream boundary.
+A1F-020 (stationary jump): flat frictionless channel, the supercritical
+        discharge entering upstream as an inflow, the sequent depth held at
+        the outfall, and the two states either side of x = 50 m to start.
+        SWMM cannot hold the upstream depth as well as the discharge, so the
+        supercritical depth is whatever its inflow node produces.
+
+The ``*-converged`` variants (review F1) run the same engine with a tighter
+iteration: ``HEAD_TOLERANCE 0.00001`` m and ``MAX_TRIALS 20``.
 
 Settings beyond the defaults: ``ROUTING_STEP 1`` s with the default
 variable step (``VARIABLE_STEP 0.75``) and ``MINIMUM_STEP 0.001`` s — SWMM's
@@ -57,6 +64,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -69,7 +77,9 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 
 OUT = REPO / "out" / "swmm_track_a"
-TS = "2024-01-01T00:00:00Z"
+from benchmark1d2d.clock import run_timestamp  # noqa: E402
+
+TS = run_timestamp()  # when this run happened (BENCH_TIMESTAMP pins it)
 W_DAMBREAK = 10.0
 W_WIDE = 100_000.0
 # SWASHES bump: on 5 cm conduits a node's own plan area (0.5 m² at 10 m wide) is below
@@ -151,8 +161,13 @@ _RUN524 = (
     "from swmm.toolkit import solver\n"
     "os.chdir(os.path.dirname(os.path.abspath(sys.argv[1])))\n"
     "solver.swmm_run(sys.argv[1], sys.argv[2], sys.argv[3])\n"
-    "print(solver.swmm_version_info())\n"
+    "v = solver.swmm_version_info()\n"
+    "v = '.'.join(str(int(v))[i:j].lstrip('0') or '0' for i, j in ((0, 1), (1, 2), (2, 5))) if str(v).isdigit() else str(v)\n"
+    "print('\\nBENCH_SWMM_VERSION=' + v)\n"
 )
+# The version from the engine's own API, on a line of its own: SWMM 5.1 writes its progress to stdout without a
+# newline, so the last word of stdout used to read "data5.1.15" (review F11).
+_VERSION_LINE = re.compile(r"^BENCH_SWMM_VERSION=(\S+)$", re.M)
 
 
 HYDRA_EXE: str | None = None  # --hydra-exe
@@ -167,7 +182,8 @@ def run_engine(engine: str, inp: Path, td: Path, openswmm_python: str | None) ->
         p = subprocess.run([py, "-c", _RUN524, str(inp), str(rpt), str(out)], capture_output=True, text=True)
         if p.returncode != 0 or not out.is_file() or out.stat().st_size == 0:
             raise RuntimeError((p.stdout + p.stderr)[-800:] + (rpt.read_text(errors="replace")[-1500:] if rpt.is_file() else ""))
-        return out, p.stdout.strip().split()[-1]
+        mv = _VERSION_LINE.search(p.stdout)
+        return out, mv.group(1) if mv else "unknown"
     if engine == "hydra-uds":
         from benchmark1d2d.adapters import hydra
 

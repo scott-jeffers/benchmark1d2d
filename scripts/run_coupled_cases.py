@@ -57,7 +57,9 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO), str(REPO / "scripts")]
 
 OUT = REPO / "out" / "coupled" / "swmm-anuga"
-TS = "2024-01-01T00:00:00Z"
+from benchmark1d2d.clock import run_timestamp  # noqa: E402
+
+TS = run_timestamp()  # when this run happened (BENCH_TIMESTAMP pins it)
 G = 9.81
 CASES = ["A12-010", "A12-011", "A12-012"]
 import os  # noqa: E402

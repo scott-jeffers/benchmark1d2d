@@ -53,7 +53,9 @@ sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 
 TAG = os.environ.get("HECRAS_TAG", "")  # "" for the current release, "66" for HEC-RAS 6.6 (kept as the previous release)
 OUT = REPO / "out" / f"hecras{TAG}"
-TS = "2024-01-01T00:00:00Z"
+from benchmark1d2d.clock import run_timestamp  # noqa: E402
+
+TS = run_timestamp()  # when this run happened (BENCH_TIMESTAMP pins it)
 RIVER, REACH = "Channel", "Main"
 WIDE = 100_000.0  # m, see module docstring
 

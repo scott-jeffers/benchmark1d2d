@@ -463,8 +463,17 @@ def _parity_metric(metric: str, variable: str, sim: pd.DataFrame, ref: pd.DataFr
     return parity_from_series(metric, _element_series(sim, variable), _element_series(ref, variable), variable)
 
 
-def parity_from_series(metric: str, s_series: dict, r_series: dict, variable: str = "") -> tuple[float, str]:
-    """``_parity_metric`` on ``{element: (t, values)}`` maps (elements in name order)."""
+# The smallest peak a relative peak difference is taken against, for depths (review F6: at nearly dry
+# nodes a millimetre's difference read as 86,877 %): 1 cm, or 0.03 ft in a US-unit model.
+DEPTH_FLOOR_SI = 0.01
+DEPTH_FLOOR_US = 0.03
+
+
+def parity_from_series(metric: str, s_series: dict, r_series: dict, variable: str = "", abs_floor: float | None = None) -> tuple[float, str]:
+    """``_parity_metric`` on ``{element: (t, values)}`` maps (elements in name order). ``abs_floor``: the
+    smallest reference peak a relative peak is divided by (default for depths: 1 cm)."""
+    if abs_floor is None and metric == "relative_peak" and variable in ("h", "depth"):
+        abs_floor = DEPTH_FLOOR_SI
     if not r_series:
         raise ReferenceUnavailable(f"reference has no {variable!r} series")
     missing = sorted(set(r_series) - set(s_series))
@@ -474,7 +483,7 @@ def parity_from_series(metric: str, s_series: dict, r_series: dict, variable: st
     if metric == "relative_peak":
         ref_pk = {e: float(np.max(np.abs(v))) for e, (_, v) in r_series.items()}
         sim_pk = {e: float(np.max(np.abs(s_series[e][1]))) for e in r_series}
-        floor = 0.01 * max(ref_pk.values()) or 1e-12
+        floor = max(0.01 * max(ref_pk.values()), abs_floor or 0.0) or 1e-12
         errs = {e: (sim_pk[e] - ref_pk[e]) / max(ref_pk[e], floor) for e in r_series}
         unit = "%"
         scale = 100.0
@@ -911,6 +920,8 @@ def run_record(results_path: str | Path, refinement_results=None) -> dict[str, A
     finest = next((lv for lv, p in zip(levels, files) if p.name == scored), None) or \
         min(levels, key=lambda r: r["dx"] if r["dx"] is not None else float("inf"))
     out = {"levels": levels, "machine": specs()}
+    if finest.get("dx") is not None:
+        out["scored_dx"] = finest["dx"]  # the grid the checks were scored on (review F7)
     if finest.get("wall_seconds") is not None:
         out["wall_seconds"] = finest["wall_seconds"]
     if finest.get("engine") is not None:

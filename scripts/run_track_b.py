@@ -35,6 +35,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO), str(REPO / "scripts")]
 
+from benchmark1d2d.clock import run_timestamp  # noqa: E402
 from benchmark1d2d.signing import private_key as signing_key  # noqa: E402
 
 from benchmark1d2d.adapters import swmm5  # noqa: E402
@@ -43,7 +44,7 @@ from benchmark1d2d.scoring.scorer import score_case  # noqa: E402
 
 OUT = REPO / "out" / "track_b"
 KEY = signing_key()  # BENCH_SIGNING_KEY, else the public development key
-TS = "2024-01-01T00:00:00Z"
+TS = run_timestamp()  # when this run happened (BENCH_TIMESTAMP pins it)
 
 _RUN51 = (
     "import os, sys\n"

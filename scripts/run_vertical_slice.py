@@ -19,6 +19,7 @@ sys.path.insert(0, str(_REPO / "examples" / "demo_solver"))
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from benchmark1d2d.clock import run_timestamp  # noqa: E402
 from benchmark1d2d.catalog import load_manifest
 from benchmark1d2d.scoring.scorer import score_case
 from solve import run_case
@@ -45,7 +46,7 @@ def main() -> int:
     out_dir = _REPO / "out" / "vertical_slice"
     out_dir.mkdir(parents=True, exist_ok=True)
     key = Ed25519PrivateKey.from_private_bytes(bytes([9] * 32))
-    timestamp = "2024-01-01T00:00:00Z"
+    timestamp = run_timestamp()
     results = []
 
     for test_id, case in CASES:

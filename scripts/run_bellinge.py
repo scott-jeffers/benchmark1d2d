@@ -45,7 +45,9 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO / "scripts")]
 
 OUT = REPO / "out" / "swmm_track_a"  # with the other SWMM Track A results, so the chart export finds them
-TS = "2026-01-01T00:00:00Z"
+from benchmark1d2d.clock import run_timestamp  # noqa: E402
+
+TS = run_timestamp()  # when this run happened (BENCH_TIMESTAMP pins it)
 TEST = "A1F-100"
 ENGINES = {
     "swmm524": {"label": "EPA SWMM 5.2.4", "engine": "toolkit", "routing": None},
