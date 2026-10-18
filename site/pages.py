@@ -13,7 +13,7 @@ import json
 import re
 import math
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 import numpy as np
@@ -141,11 +141,22 @@ def engine_line(card: dict) -> str:
         bits.append(f'flow-routing continuity error {rep["routing_continuity_pct"]:+.2f} %')
     if rep.get("runoff_continuity_pct") is not None:
         bits.append(f'runoff continuity {rep["runoff_continuity_pct"]:+.2f} %')
+    if rep.get("engine_report") == "hecras-hdf":  # HEC-RAS's own record of the run (review F11)
+        if rep.get("file_version"):
+            bits.append(f'written by {rep["file_version"]}')
+        if rep.get("solution"):
+            bits.append(str(rep["solution"]))
+        if rep.get("computation_time_total"):
+            bits.append(f'compute time {rep["computation_time_total"]}')
+        if rep.get("volume_error_pct") is not None:
+            bits.append(f'volume accounting error {rep["volume_error_pct"]:+.3g} %')
+        if rep.get("executable_sha256"):
+            bits.append(f'{PureWindowsPath(str(rep.get("executable", "Ras.exe"))).name} SHA-256 {rep["executable_sha256"][:12]}…')
     if not bits:
         return ""
     if rep.get("flagged"):
         return (f'<p class="small engine-flag"><b>Not ranked: the engine flags this run.</b> Its own report: {esc("; ".join(bits))} '
-                f'(a run is flagged above 10 % unconverged steps or a 10 % continuity error). The numbers are shown, not ranked.</p>')
+                f'(a run is flagged above 10 % unconverged steps or a 10 % continuity or volume error). The numbers are shown, not ranked.</p>')
     return f'<p class="small muted engine-line">Engine report on the scored run: {esc("; ".join(bits))}.</p>'
 
 
@@ -501,6 +512,7 @@ NOTES = {
     ("A1F-010", "hydronet-pinn"): "The trained network spreads 0.3–0.4 m of water over the whole dry channel downstream, so its front is 713 m ahead of the exact one; it gains 3.3 % of the water, and the error grows on finer grids. Its own finite-volume engine, by contrast, never starts the flow.",
 }
 CASE_NOTES = {
+    "A1F-100": "This is a validation of the published Bellinge model against its gauges, not a comparison of engines: the SWMM-family engines run the same model file and land within each other's build noise (two builds of EPA SWMM 5.2.4 from the same source differ by more than 5 cm in peak depth at 75 of the model's 1,020 nodes, as Bob Dickinson measured with his Bellinge Explorer, 17 October 2026). Field data is kept off the overall rating.",
     "A1F-040": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing stays close on all four bump tests.",
     "A1F-041": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing stays close on all four bump tests.",
     "A1F-042": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing stays close on all four bump tests.",

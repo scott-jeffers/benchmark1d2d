@@ -980,7 +980,11 @@ def main() -> int:
         try:
             t0 = time.perf_counter()
             cols, _ = run_case(m, ras_exe)
-            res = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols, wall_seconds=time.perf_counter() - t0)
+            from benchmark1d2d.engine_report import hecras_report
+
+            plan = next(iter(sorted((OUT / "work" / m["test_id"].split("_")[0]).glob("*.p01.hdf"))), None)
+            res = write_results_parquet(OUT / f"{m['test_id']}.parquet", cols, wall_seconds=time.perf_counter() - t0,
+                                        engine_report=hecras_report(plan, ras_exe))
         except Exception:  # noqa: BLE001 - a case HEC-RAS cannot run is a finding
             traceback.print_exc()
             failed += 1

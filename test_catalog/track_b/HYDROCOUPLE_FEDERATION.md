@@ -13,6 +13,27 @@ this suite records tags, provenance, and tier membership.
 - Provenance schema: `harness/schemas/provenance.schema.yaml`
 - Metadata schema: `harness/schemas/metadata.schema.yaml`
 
+## Lineage
+
+The HydroCouple corpus is the **1729 SWMM5 models** library before its repairs:
+its collection and model names match
+[SWMMEnablement/1729-SWMM5-Models](https://github.com/SWMMEnablement/1729-SWMM5-Models)
+(compiled during the February 2026 Fixathon, Unlicense). Robert E. Dickinson's
+[SWMMBobSWMM6/1729-SWMM5-Models-2030](https://github.com/SWMMBobSWMM6/1729-SWMM5-Models-2030)
+(Unlicense, about 3,800 models; commit `70b8f6e`, 24 August 2026) works through
+the input-error chains this census stops on (ERROR 209, 205, 211, 317, 361),
+restores shared rainfall files under `DataFiles/` with a path manifest, and
+adds a summary per model. Many ERROR 317 models need client rainfall that was
+never published, and ERROR 235 was not repaired, so some models stay out of
+both libraries' runs.
+
+Planned (review F9): rebuild the census from the -2030 library at a pinned
+commit, keep the HydroCouple tiers as they are until the two are reconciled,
+and add XL models to the release tier with the longer timeout
+(`corpus_parity.py --xl-timeout`, 1,800 s by default). Every run works on a
+scratch copy of the model's folder: 124 models carry `[FILES] SAVE`, which
+used to overwrite files next to the input.
+
 ## Tag vocabulary (mirrored)
 
 See [`hydrocouple_tags.yaml`](hydrocouple_tags.yaml) — a verbatim mirror of
@@ -56,7 +77,7 @@ corpus layout). Engine runs through HydroCouple harness remain upstream work.
 `scripts/corpus_census.py` runs every model on the pinned engine. Of 1,396 models, 941 run
 cleanly, 296 stop with input errors (mostly older-version syntax: ERROR 205, 207, 209, 211, 235;
 32 reference rainfall files that are not in the repository, ERROR 317), 157 exceed the 60 s
-limit, and 2 fail in the engine or harness. Of the 941 that run, 98 report continuity errors
+limit (all 78 XL models fail: 42 input errors, 35 timeouts, 1 engine error), and 2 fail in the engine or harness. Of the 941 that run, 98 report continuity errors
 beyond ±5 % and are excluded from tiers, because a non-conserving reference cannot anchor
 parity. These lists are worth sending upstream; the index (`corpus_index.parquet`, `status`,
 `error_codes`, `continuity_*`) has every row.

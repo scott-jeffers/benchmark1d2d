@@ -249,6 +249,10 @@ def summarise_change(old: dict | None, new: dict) -> str | None:
 
     if rb.get("wall_seconds") is not None and (ra.get("wall_seconds") is None or kind(ra) != kind(rb)):
         return f"run time recorded ({rb['wall_seconds']:.3g} s)"
+    if rb.get("engine") and not ra.get("engine"):  # the engine's own report on its run (review F1, F11)
+        return "engine report recorded" + (" (flagged)" if rb["engine"].get("flagged") else "")
+    if rb.get("scored_dx") is not None and ra.get("scored_dx") is None:
+        return "scored grid recorded"
     return None
 
 

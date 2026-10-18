@@ -517,6 +517,7 @@ def main() -> int:
     from benchmark1d2d.signing import private_key as signing_key
 
     from benchmark1d2d.catalog import load_manifest
+    from benchmark1d2d.engine_report import hecras_report
     from benchmark1d2d.io.results import write_results_parquet
     from benchmark1d2d.scoring.scorer import score_case
 
@@ -549,7 +550,9 @@ def main() -> int:
                     traceback.print_exc()
                     failed += 1
                     break
-                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0))
+                plan = next(iter(sorted((OUT / "work" / eq / f"{tid}_dx{dx:g}").glob("*.p01.hdf"))), None)
+                paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0,
+                                                   engine_report=hecras_report(plan, ras_exe)))
                 log(f"  {label} {tid} dx={dx}: {time.perf_counter() - t0:.0f}s")
             if len(paths) < len(levels) or len(paths) < 2:
                 continue

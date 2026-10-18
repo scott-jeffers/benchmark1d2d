@@ -502,6 +502,13 @@ def main() -> int:
     version = ras_exe.parent.name
     key = signing_key()  # BENCH_SIGNING_KEY, else the public development key
     failed = 0
+    from benchmark1d2d.engine_report import hecras_report
+
+    def newest_plan(eq: str):
+        """The plan HDF HEC-RAS just wrote (the work folders are named per case and grid)."""
+        hdfs = list((OUT / "work" / eq).rglob("*.p01.hdf"))
+        return max(hdfs, key=lambda q: q.stat().st_mtime) if hdfs else None
+
     for eq in args.equations:
         label = EQUATIONS[eq][1]
         solver = {"name": f"HEC-RAS {version} 2D {label}", "version": version,
@@ -514,7 +521,9 @@ def main() -> int:
             try:
                 if tid.startswith(EA_CASES):
                     log(f"  {label} {tid}")
-                    p = write_results_parquet(out / f"{m['test_id']}.parquet", ea(m, tid, eq, ras_exe), wall_seconds=time.perf_counter() - t0)
+                    cols = ea(m, tid, eq, ras_exe)
+                    p = write_results_parquet(out / f"{m['test_id']}.parquet", cols, wall_seconds=time.perf_counter() - t0,
+                                              engine_report=hecras_report(newest_plan(eq), ras_exe))
                     card = score_case(m, p, timestamp=TS, private_key=key, solver=solver)
                 else:
                     levels = sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True)
@@ -524,8 +533,10 @@ def main() -> int:
                     for dx in levels:
                         log(f"  {label} {tid} dx={dx}")
                         t1 = time.perf_counter()
-                        paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", macdonald_2d(m, float(dx), eq, ras_exe),
-                                                           wall_seconds=time.perf_counter() - t1))
+                        cols = macdonald_2d(m, float(dx), eq, ras_exe)
+                        paths.append(write_results_parquet(out / f"{m['test_id']}_dx{dx:g}.parquet", cols,
+                                                           wall_seconds=time.perf_counter() - t1,
+                                                           engine_report=hecras_report(newest_plan(eq), ras_exe)))
                     if len(paths) < 2:
                         continue
                     card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)

@@ -46,7 +46,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "runner" / "python"))
 
 from benchmark1d2d.adapters.swmm5 import read_out  # noqa: E402
-from benchmark1d2d.scoring.scorer import parity_from_series  # noqa: E402
+from benchmark1d2d.scoring.scorer import DEPTH_FLOOR_SI, DEPTH_FLOOR_US, parity_from_series  # noqa: E402
 
 TIER_DIR = REPO / "test_catalog" / "track_b"
 TOLERANCES_PCT = (1.0, 2.0, 5.0)
@@ -56,8 +56,13 @@ _RUN = (
     "from swmm.toolkit import solver\n"
     "os.chdir(os.path.dirname(os.path.abspath(sys.argv[1])))\n"
     "solver.swmm_run(sys.argv[1], sys.argv[2], sys.argv[3])\n"
-    "print(solver.swmm_version_info())\n"
+    "v = solver.swmm_version_info()\n"
+    "v = '.'.join(str(int(v))[i:j].lstrip('0') or '0' for i, j in ((0, 1), (1, 2), (2, 5))) if str(v).isdigit() else str(v)\n"
+    "print('\\nBENCH_SWMM_VERSION=' + v)\n"
 )
+# The engine's version from its API on a line of its own (SWMM 5.1 writes progress text to stdout with no newline).
+_VERSION_LINE = re.compile(rb"^BENCH_SWMM_VERSION=(\S+)$", re.M)
+INDEX = TIER_DIR / "corpus_index.parquet"
 
 
 def _run(python: str, inp: Path, td: Path, tag: str, timeout: float, engine: str = "toolkit") -> tuple[Path, float, str]:
@@ -77,7 +82,18 @@ def _run(python: str, inp: Path, td: Path, tag: str, timeout: float, engine: str
     if proc.returncode != 0 or not out.is_file() or out.stat().st_size == 0:
         tail = (proc.stdout + proc.stderr).decode("latin-1", "replace").strip().splitlines()
         raise RuntimeError(tail[-1][:200] if tail else f"exit {proc.returncode}")
-    return out, round(time.perf_counter() - t0, 3), proc.stdout.decode("latin-1").split()[-1].split("data")[-1]
+    mv = _VERSION_LINE.search(proc.stdout)
+    return out, round(time.perf_counter() - t0, 3), mv.group(1).decode() if mv else "unknown"
+
+
+def scratch_copy(inp: Path, td: Path, tag: str) -> Path:
+    """The model's folder copied into ``td`` (review F9: [FILES] SAVE in 124 corpus models writes next to
+    the input, so running in place overwrote committed files). Each engine gets its own copy."""
+    import shutil
+
+    folder = td / f"{tag}_model"
+    shutil.copytree(inp.parent, folder)
+    return folder / inp.name
 
 
 def _series(data: dict, kind: str) -> dict[str, tuple[np.ndarray, np.ndarray]]:
@@ -97,11 +113,7 @@ def _series(data: dict, kind: str) -> dict[str, tuple[np.ndarray, np.ndarray]]:
 def with_routing(inp: Path, routing: str, td: Path) -> tuple[Path, str]:
     """A copy of the model's folder in ``td`` (relative file paths keep working; the corpus is never written)
     with FLOW_ROUTING set; returns the copied model and its original routing."""
-    import shutil
-
-    folder = td / "cand_model"
-    shutil.copytree(inp.parent, folder)
-    inp = folder / inp.name
+    inp = scratch_copy(inp, td, "cand")
     text = inp.read_text(encoding="latin-1")
     m = re.search(r"(?im)^\s*FLOW_ROUTING\s+(\S+)", text)
     original = m.group(1).upper() if m else "KINWAVE"
@@ -114,16 +126,18 @@ def with_routing(inp: Path, routing: str, td: Path) -> tuple[Path, str]:
 
 
 def score_model(model_id: str, corpus: Path, cand_python: str, timeout: float, engine: str = "toolkit",
-                routing: str | None = None) -> dict:
+                routing: str | None = None, units: str = "SI") -> dict:
     inp = (corpus / model_id / "model.inp").resolve()
     row: dict = {"model_id": model_id, "status": "scored"}
     with tempfile.TemporaryDirectory() as tdn:
         td = Path(tdn)
-        cand_inp = inp
         if routing:
             cand_inp, row["original_routing"] = with_routing(inp, routing, td)
+        else:
+            cand_inp = scratch_copy(inp, td, "cand")
+        ref_inp = scratch_copy(inp, td, "ref")
         try:
-            ref_out, row["ref_runtime_s"], _ = _run(sys.executable, inp, td, "ref", timeout)
+            ref_out, row["ref_runtime_s"], _ = _run(sys.executable, ref_inp, td, "ref", timeout)
         except Exception as exc:  # noqa: BLE001 — record and continue
             return {**row, "status": "reference_error", "detail": str(exc)[:200]}
         try:
@@ -140,7 +154,8 @@ def score_model(model_id: str, corpus: Path, cand_python: str, timeout: float, e
             row["n_nodes"], row["n_links"] = len(ref["nodes"]), len(ref["links"])
             if row["n_nodes"]:
                 row["peak_depth_pct"], row["peak_depth_detail"] = parity_from_series(
-                    "relative_peak", _series(cand, "nodes"), _series(ref, "nodes"), "h")
+                    "relative_peak", _series(cand, "nodes"), _series(ref, "nodes"), "h",
+                    abs_floor=DEPTH_FLOOR_US if units == "US" else DEPTH_FLOOR_SI)
             if row["n_links"]:
                 row["volume_pct"], row["volume_detail"] = parity_from_series(
                     "relative_volume", _series(cand, "links"), _series(ref, "links"), "Q")
@@ -167,6 +182,7 @@ def main() -> int:
     ap.add_argument("--label", default="self", help="short name for the candidate, used in file names")
     ap.add_argument("--out", type=Path, default=REPO / "out" / "corpus_parity")
     ap.add_argument("--timeout", type=float, default=120.0)
+    ap.add_argument("--xl-timeout", type=float, default=1800.0, help="timeout for the corpus index's XL models (review F9: all 78 timed out or failed at 120 s)")
     ap.add_argument("--workers", type=int, default=2)
     ap.add_argument("--limit", type=int)
     ap.add_argument("--expect-identical", action="store_true", help="fail unless every scored model differs by exactly 0 (harness self-check)")
@@ -180,7 +196,13 @@ def main() -> int:
     print(f"{args.tier} tier: {len(models)} models; reference {sel['engine']} {sel['engine_version']}; candidate {args.label}")
     rows = []
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futs = {pool.submit(score_model, m, args.corpus, args.candidate_python, args.timeout, args.candidate_engine, args.candidate_routing): m for m in models}
+        info = {}
+        if INDEX.is_file():
+            ix = pd.read_parquet(INDEX, columns=["model_id", "size_class", "units"])
+            info = {r.model_id: (r.size_class, r.units) for r in ix.itertuples()}
+        futs = {pool.submit(score_model, m, args.corpus, args.candidate_python,
+                            args.xl_timeout if info.get(m, ("", ""))[0] == "XL" else args.timeout,
+                            args.candidate_engine, args.candidate_routing, info.get(m, ("", "SI"))[1] or "SI"): m for m in models}
         for i, fut in enumerate(as_completed(futs), 1):
             r = fut.result()
             rows.append(r)

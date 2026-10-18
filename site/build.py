@@ -894,7 +894,7 @@ def corpus_page(index: pd.DataFrame | None, census: pd.DataFrame | None, parity:
     body = f"""
 <header class="page-head">
   <h1>Track B corpus</h1>
-  <p class="lede">{len(index):,} EPA SWMM models from <a href="https://github.com/HydroCouple/openswmm.engine.benchmarks/tree/{commit}">HydroCouple openswmm.engine.benchmarks</a> at commit <code>{commit[:12]}</code>, each run on the pinned EPA SWMM {esc(str(census['engine_version'].iloc[0]))} engine. Models are not copied here: the index records each file's URL at that commit and its SHA-256.</p>
+  <p class="lede">{len(index):,} EPA SWMM models from <a href="https://github.com/HydroCouple/openswmm.engine.benchmarks/tree/{commit}">HydroCouple openswmm.engine.benchmarks</a> at commit <code>{commit[:12]}</code>, each run on the pinned EPA SWMM {esc(str(census['engine_version'].iloc[0]))} engine. Models are not copied here: the index records each file's URL at that commit and its SHA-256. The HydroCouple corpus is the <a href="https://github.com/SWMMEnablement/1729-SWMM5-Models">1729 SWMM5 models</a> library before its repairs; R. E. Dickinson's <a href="https://github.com/SWMMBobSWMM6/1729-SWMM5-Models-2030">1729-SWMM5-Models-2030</a> fixes many of the input errors counted below, and a census from it is planned.</p>
 </header>
 <ul class="toc" aria-label="On this page"><li><a href="#census">Does it run?</a></li><li><a href="#tiers">Tiers</a></li><li><a href="#parity">Parity results</a></li><li><a href="#coverage">Coverage</a></li><li><a href="#continuity">Continuity</a></li><li><a href="#data">Data</a></li></ul>
 <section id="census"><h2>Does each model run on the reference engine?</h2>{bars}

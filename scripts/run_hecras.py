@@ -286,6 +286,7 @@ def main() -> int:
     from benchmark1d2d.signing import private_key as signing_key
 
     from benchmark1d2d.catalog import load_manifest
+    from benchmark1d2d.engine_report import hecras_report
     from benchmark1d2d.io.results import write_results_parquet
     from benchmark1d2d.scoring.scorer import score_case
 
@@ -312,7 +313,9 @@ def main() -> int:
             if args.write_only:
                 continue
             t0 = time.perf_counter()
-            ws = read_steady_ws(run_plan(folder, ras_exe))
+            hdf = run_plan(folder, ras_exe)
+            ws = read_steady_ws(hdf)
+            rep = hecras_report(hdf, ras_exe)
             missing = [r for r in built["rs"] if r not in ws]
             if missing:
                 raise RuntimeError(f"results lack stations {missing[:5]}; have {list(ws)[:5]}")
@@ -320,7 +323,7 @@ def main() -> int:
             nan = np.full(len(h), np.nan)
             cols = {"t": np.full(len(h), float(m["simulation"]["t_end"])), "x": built["x"], "y": nan.copy(), "h": h,
                     "u": built["q_unit"] / h, "v": nan.copy(), "p": nan.copy(), "Q": np.full(len(h), built["q_unit"])}
-            paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0))
+            paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0, engine_report=rep))
         if args.write_only:
             continue
         card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)

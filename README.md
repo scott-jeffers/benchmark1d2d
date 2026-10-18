@@ -167,7 +167,7 @@ do not drop those citations when you publish a score.
 - [HydroCouple / openswmm.engine.benchmarks](https://github.com/HydroCouple/openswmm.engine.benchmarks) — Track B federates this corpus
 - [SWASHES](https://www.idpoisson.fr/swashes/) — shallow-water analytic solutions
 - Environment Agency 2D benchmarks (Néelz & Pender)
-- [1729-SWMM5-Models](https://github.com/SWMMEnablement/1729-SWMM5-Models)
+- [1729-SWMM5-Models](https://github.com/SWMMEnablement/1729-SWMM5-Models) — the library the HydroCouple corpus was built from; repaired and extended by R. E. Dickinson as [1729-SWMM5-Models-2030](https://github.com/SWMMBobSWMM6/1729-SWMM5-Models-2030)
 
 ## License
 

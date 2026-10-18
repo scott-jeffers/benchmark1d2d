@@ -4,6 +4,7 @@ Every test in this suite is meant to be checkable by someone who did not
 write it. Before a case is **frozen** (counted towards certification) it
 needs a recorded review. This folder is what a reviewer needs.
 
+* [`engine_issues.md`](engine_issues.md) — two engine findings from the October 2026 review (OpenSWMM 6 on 5 cm conduits; SWMM's NORMAL_FLOW_LIMITED SLOPE), rerun here and drafted as issues, not yet sent.
 * [`packet.md`](packet.md) — every candidate case: its exact answer and
   source, each check with its limit and the stated reason, which models pass
   and fail, and what still blocks freezing. It is generated from the catalog
