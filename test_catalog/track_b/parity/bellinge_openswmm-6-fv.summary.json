@@ -13,7 +13,7 @@
     "2": 0,
     "5": 0
   },
-  "median_worst_pct": 86876.9383688362,
+  "median_worst_pct": 123559.8668895778,
   "metrics": "peak_depth = worst node, relative peak depth; volume = worst link, relative integral of |Q|",
   "candidate_routing": "FV"
 }
