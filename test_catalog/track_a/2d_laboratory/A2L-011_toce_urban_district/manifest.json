@@ -11,6 +11,16 @@
     "flood_waves",
     "urban_surface"
   ],
+  "data_card": {
+    "measured": "Water depths in a physical model of the Toce valley with a simplified urban district, during a flash-flood hydrograph (Testa et al. 2007).",
+    "method": "Laboratory gauges in the Toce physical model (ENEL-CRIS).",
+    "uncertainty": "Not yet stated: the value in reference.uncertainty is a placeholder until the published gauge or survey error is recorded.",
+    "known_issues": [
+      "CADAM/IMPACT redistribution terms not confirmed."
+    ],
+    "exercises": "A flood wave through a valley and around blocks of buildings, with wetting and drying.",
+    "cannot_tell": "As for any gauge set: a match at the gauges does not show the flow between them is right."
+  },
   "title": "Toce urban district",
   "description": "Flash-flood experiment in a simplified urban district (CADAM / IMPACT).",
   "physics": {

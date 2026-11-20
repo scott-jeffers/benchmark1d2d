@@ -1,0 +1,119 @@
+{
+  "schema_version": "1.2.0",
+  "test_id": "A2L-030_liege_urban_district",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_class": "validation_lab",
+  "evidence": "validation",
+  "capabilities": [
+    "urban_surface",
+    "inundation"
+  ],
+  "data_card": {
+    "measured": "Flow depths at the inlets and discharges at the outlets for a junction, a bifurcation and a district model, plus 2D surface velocities for eight urban-form layouts of the district model.",
+    "method": "Laboratory measurements at the University of Liège, as described in the data descriptor; surface velocities by image velocimetry.",
+    "uncertainty": "To be taken from the data descriptor.",
+    "known_issues": [
+      "The repository licence is still to be confirmed."
+    ],
+    "exercises": "Flow partition between streets at crossroads and the effect of urban form on depths and outlet discharges.",
+    "cannot_tell": "A steady laboratory flow at small scale: it does not test the unsteady arrival of a flood, and scale effects (surface tension, laminar regions) are possible in shallow streets."
+  },
+  "title": "Laboratory urban district, University of Liège",
+  "description": "Steady urban flooding in a laboratory street network with three inlets, three outlets and three- and four-branch crossroads, with eight urban-form layouts (Li et al. 2022).",
+  "physics": {
+    "dimensionality": "2D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "shallow_water_2d"
+    ],
+    "phenomena": [
+      "urban_flood",
+      "street_network",
+      "discharge_partition"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Li, X.",
+          "Erpicum, S.",
+          "Mignot, E.",
+          "Archambeau, P.",
+          "Pirotton, M.",
+          "Dewals, B."
+        ],
+        "year": 2022,
+        "title": "Laboratory modelling of urban flooding",
+        "report_number": "Scientific Data 9:159",
+        "doi": "10.1038/s41597-022-01282-w"
+      }
+    ],
+    "license": "TBD-confirm",
+    "adaptation_notes": "Draft: the data repository and licence named in the data descriptor are to be confirmed; geometry and boundary conditions follow the paper."
+  },
+  "inputs": [
+    {
+      "path": "inputs/geometry.json",
+      "role": "terrain",
+      "format": "json",
+      "pending": {
+        "reason": "Street-network geometry, layouts and boundary conditions from the data descriptor's repository.",
+        "obtain_from": "Data repository cited in Li et al. (2022), Sci. Data"
+      }
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/measurements.parquet",
+    "availability": "pending_license",
+    "include_measurement_uncertainty": true,
+    "uncertainty": {
+      "type": "relative",
+      "value": 0.05,
+      "units": "1",
+      "notes": "Placeholder: replace with the measurement uncertainty stated in the data descriptor."
+    }
+  },
+  "simulation": {
+    "t_end": 600.0,
+    "output_interval": 10.0,
+    "required_outputs": [
+      "h",
+      "u",
+      "v",
+      "Q"
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "outlet_partition",
+        "metric": "relative_volume",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 2.5,
+          "units": "%"
+        },
+        "gating": true,
+        "rationale": "Share of the inflow leaving by each outlet within 2.5 percentage points. Provisional, written before any run; to be set from the stated measurement uncertainty."
+      },
+      {
+        "id": "inlet_depth",
+        "metric": "Linf",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.005,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Upstream depth at each inlet within 5 mm. Provisional, to be set from the stated gauge accuracy."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}

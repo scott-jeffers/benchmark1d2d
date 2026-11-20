@@ -9,6 +9,16 @@
   "capabilities": [
     "coupled_exchange"
   ],
+  "data_card": {
+    "measured": "Pressure, flow rate and depth in the University of Sheffield facility linking a 4 m × 8.2 m floodplain to a pipe network through a manhole, for a range of flows and manhole-lid configurations.",
+    "method": "Laboratory facility instrumentation described in the CoUDlabs data report (Zenodo 10683906).",
+    "uncertainty": "To be taken from the data report before promotion.",
+    "known_issues": [
+      "The open dataset (CoUDlabs, 2024) studies manhole-lid effects on surcharge; the case must be built from that dataset, not from the 2017 paper's figures."
+    ],
+    "exercises": "Water leaving a surcharged sewer through a manhole onto a surface and spreading: the exchange flow and the head loss at the manhole.",
+    "cannot_tell": "The exchange coefficient is partly a calibration choice; a match shows the coupling can be tuned to the rig, not that it transfers to other manhole geometries."
+  },
   "title": "Rubinato manhole exchange",
   "description": "Laboratory sewer/surface exchange through a manhole; validate 1D–2D coupling exchange equations (Rubinato et al. 2017).",
   "physics": {
@@ -39,10 +49,19 @@
         "year": 2017,
         "title": "Experimental calibration and validation of sewer/surface flow exchange equations in steady and unsteady flow conditions",
         "doi": "10.1016/j.jhydrol.2017.06.024"
+      },
+      {
+        "authors": [
+          "Rubinato, M.",
+          "Shucksmith, J."
+        ],
+        "year": 2024,
+        "title": "CoUDlabs_WP8_T811_UOS_001: Investigating geometrical effects on hydraulic energy losses during sewer to surface flow interactions during urban floods (dataset)",
+        "doi": "10.5281/zenodo.10683906"
       }
     ],
-    "license": "TBD-confirm",
-    "adaptation_notes": "Draft: exchange hydrographs to be digitized from publication / obtained from authors."
+    "license": "CC-BY-4.0",
+    "adaptation_notes": "Open data now available: CoUDlabs dataset on Zenodo (record 10683906, CC BY 4.0: combination.xlsx, raw_data.zip, data report). The case is to be rebuilt from it."
   },
   "inputs": [
     {
@@ -50,8 +69,8 @@
       "role": "coupling",
       "format": "json",
       "pending": {
-        "reason": "Manhole/surface exchange rig geometry and measured exchange flows from Rubinato et al. (2017); request data from the University of Sheffield authors.",
-        "obtain_from": "University of Sheffield (Shucksmith group)"
+        "reason": "Build the rig geometry and the steady exchange cases from the CoUDlabs dataset (Zenodo 10683906, CC BY 4.0): raw_data.zip and combination.xlsx.",
+        "obtain_from": "https://zenodo.org/records/10683906"
       }
     }
   ],
@@ -65,7 +84,7 @@
       "notes": "Draft placeholder uncertainty; replace with published gauge error."
     },
     "include_measurement_uncertainty": true,
-    "availability": "request_from_authors"
+    "availability": "open_to_convert"
   },
   "simulation": {
     "t_end": 300.0,

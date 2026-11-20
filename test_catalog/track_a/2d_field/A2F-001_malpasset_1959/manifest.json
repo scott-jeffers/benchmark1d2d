@@ -11,6 +11,17 @@
     "flood_waves",
     "inundation"
   ],
+  "data_card": {
+    "measured": "Maximum water levels surveyed after the 1959 Malpasset dam failure, and arrival times and maximum levels at 9 points in the 1:400 physical model built in 1964.",
+    "method": "Post-event survey of high-water marks; physical-model gauges.",
+    "uncertainty": "Not yet stated: the value in reference.uncertainty is a placeholder until the published gauge or survey error is recorded.",
+    "known_issues": [
+      "The original topography is CADAM/EDF data with unconfirmed redistribution terms.",
+      "The physical model, not the field event, provides the arrival times."
+    ],
+    "exercises": "A dam-break wave over steep, irregular, dry terrain: wetting and drying, shock capturing and the flood's arrival time.",
+    "cannot_tell": "High-water marks are maxima: they say nothing about how the level rose and fell. Breach timing and topography uncertainty limit how close any model can get."
+  },
   "title": "Malpasset 1959 dam failure",
   "description": "Historical Malpasset dam-break (1959, France); 2D shallow-water field validation against surveyed high-water marks (CADAM).",
   "physics": {

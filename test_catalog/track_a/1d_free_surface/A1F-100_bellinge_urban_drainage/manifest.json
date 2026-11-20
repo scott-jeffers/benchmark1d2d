@@ -12,6 +12,65 @@
     "controls",
     "drainage_networks"
   ],
+  "data_card": {
+    "measured": "Water levels at seven level meters in the Bellinge combined sewer (Odense, Denmark) through eight storms between 2011 and 2019, read at one minute.",
+    "method": "Utility level meters (DTU Data item 2, CC BY 4.0); each meter reads no lower than its own floor.",
+    "uncertainty": "Provisional ±0.02 m level-meter accuracy (reference.uncertainty); the published model is uncalibrated (Pedersen et al. 2021, §4).",
+    "known_issues": [
+      "The model is the published, uncalibrated SWMM model run unchanged.",
+      "Rain-gauge data (item 3a) are CC BY-NC and not used; the model's own rain-gauge file drives the runs.",
+      "Basin and pump-sump meters are dominated by controls the model may not reproduce."
+    ],
+    "exercises": "Network routing under real storms with basins, pumps, weirs and control rules.",
+    "cannot_tell": "With the model run unchanged, the miss against the meters mostly measures the model and its data; the engines agree with each other far better than with the meters."
+  },
+  "validation_design": {
+    "mode": "engine",
+    "declared": "2026-11-20",
+    "events": [
+      {
+        "id": "2011-06-30",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2011-08-26",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2012-06-29",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2013-08-12",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2014-06-24",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2014-08-17",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2015-07-25",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2019-10-11",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      }
+    ],
+    "holdout_policy": "Engine validation scores every storm because nothing is tuned. A practice-validation round on the same data will use the four storms of 2011–2013 for calibration and score the four of 2014–2019; that split is fixed here, before any practice-validation run."
+  },
   "title": "Bellinge combined sewer system (Odense, Denmark) — field validation",
   "description": "1.7 km² mainly combined urban drainage system in Bellinge, Odense, with a published EPA SWMM model and years of level-meter records. A candidate runs the published model, unchanged except for its run dates, on eight storms (2011-2019) and is judged against the measured water levels at seven level meters.",
   "physics": {

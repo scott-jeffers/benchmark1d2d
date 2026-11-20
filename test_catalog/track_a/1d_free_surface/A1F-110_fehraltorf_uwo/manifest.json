@@ -1,0 +1,166 @@
+{
+  "schema_version": "1.2.0",
+  "test_id": "A1F-110_fehraltorf_uwo",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_class": "validation_field",
+  "evidence": "validation",
+  "capabilities": [
+    "drainage_networks",
+    "pipe_hydraulics"
+  ],
+  "data_card": {
+    "measured": "Rainfall from 14 sources, 70 hydraulic sensors (35 ultrasonic level sensors, flow meters and conductivity-based CSO detectors) in the Fehraltorf combined sewer, 2019–2021.",
+    "method": "Eawag Urban Water Observatory: wireless sensor network with quality-controlled annual databases.",
+    "uncertainty": "Sensor accuracy and quality flags are documented in the dataset; to be recorded when the reference is built.",
+    "known_issues": [
+      "The SWMM base model does not include the network changes of August 2020.",
+      "swisstopo geodata keep their own attribution terms."
+    ],
+    "exercises": "Combined-sewer routing, surcharge and CSO operation under real storms, at a sensor density far above usual practice.",
+    "cannot_tell": "As for Bellinge: run unchanged, the published model mostly measures the model. The 2020 network change means post-August-2020 storms test a model that no longer matches the network."
+  },
+  "validation_design": {
+    "mode": "practice",
+    "declared": "2026-11-20",
+    "events": [
+      {
+        "id": "2019",
+        "role": "calibration"
+      },
+      {
+        "id": "2020-01-to-07",
+        "role": "scored",
+        "notes": "Before the August 2020 network change."
+      },
+      {
+        "id": "2022-onward",
+        "role": "held_back",
+        "notes": "Not in the published dataset; to be requested from Eawag for a blind round."
+      }
+    ],
+    "holdout_policy": "Calibrate on 2019, score on January–July 2020. A blind round needs records after 2021, which are not published; those would be requested from Eawag and released only when the round closes."
+  },
+  "title": "Fehraltorf Urban Water Observatory (Switzerland)",
+  "description": "Combined-sewer levels and flows from a dense sensor network (35 level sensors, flow meters and CSO detectors), 2019–2021, with the published EPA SWMM base model.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "mixed",
+    "governing_equations": [
+      "saint_venant_dynamic"
+    ],
+    "phenomena": [
+      "network_routing",
+      "combined_sewer_overflow",
+      "surcharge"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Blumensaat, F.",
+          "Bloem, S.",
+          "Ebi, C.",
+          "Disch, A.",
+          "Förster, C.",
+          "Maurer, M.",
+          "Rodriguez, M.",
+          "Rieckermann, J."
+        ],
+        "year": 2026,
+        "title": "The UWO dataset – long-term observations from a full-scale field laboratory to better understand urban hydrology at small spatio-temporal scales",
+        "report_number": "Earth Syst. Sci. Data 18, 5187–5208",
+        "doi": "10.5194/essd-18-5187-2026"
+      },
+      {
+        "authors": [
+          "Blumensaat, F.",
+          "et al."
+        ],
+        "year": 2024,
+        "title": "UWO dataset",
+        "doi": "10.25678/000C5K"
+      }
+    ],
+    "license": "CC0-1.0",
+    "adaptation_notes": "Draft: storms to be selected from 2019–2021; the base SWMM model (package B) and the level and flow series to be extracted. swisstopo geodata keep their own attribution terms."
+  },
+  "inputs": [
+    {
+      "path": "inputs/model.inp",
+      "role": "model",
+      "format": "inp",
+      "pending": {
+        "reason": "EPA SWMM base model from UWO package B, and the storms' rainfall.",
+        "obtain_from": "https://doi.org/10.25678/000C5K"
+      }
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/levels.parquet",
+    "availability": "open_to_convert",
+    "include_measurement_uncertainty": true,
+    "uncertainty": {
+      "type": "absolute",
+      "value": 0.02,
+      "units": "m",
+      "notes": "Placeholder: replace with the sensor accuracy and quality flags documented in the dataset."
+    }
+  },
+  "simulation": {
+    "t_end": 172800.0,
+    "output_interval": 60.0,
+    "required_outputs": [
+      "h",
+      "Q"
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "level_nse",
+        "metric": "NSE",
+        "variable": "wse",
+        "aggregate": "median",
+        "threshold": {
+          "op": ">=",
+          "value": 0.5,
+          "units": "1"
+        },
+        "gating": true,
+        "rationale": "Moriasi et al. (2007) 'satisfactory' band for the median sensor record, as for Bellinge (A1F-100); set before any run.",
+        "significance": {
+          "op": ">=",
+          "value": 0.5,
+          "units": "1",
+          "source": "Moriasi et al. (2007), Model evaluation guidelines for systematic quantification of accuracy in watershed simulations, Trans. ASABE 50(3)",
+          "basis": "Lower bound of the 'satisfactory' band for NSE."
+        }
+      },
+      {
+        "id": "peak_level",
+        "metric": "peak_error",
+        "variable": "wse",
+        "aggregate": "median",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "The ±0.1 m depth criterion for verifying sewer models against measurements, as for Bellinge; set before any run.",
+        "significance": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "m",
+          "source": "WaPUG (2002) Code of Practice for the Hydraulic Modelling of Sewer Systems; CIWEM UDG (2017) Code of Practice for the Hydraulic Modelling of Urban Drainage Systems",
+          "basis": "Depth criterion for verifying a sewer model against measured event levels."
+        }
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}

@@ -27,6 +27,26 @@ from the inputs, such as conservation in a closed domain and settled pond
 levels. Parity with EPA SWMM 5.2.4 or EPANET 2.2 is comparison evidence: it
 shows a code is *different* from the reference, never that either is right.
 
+### Validation cases: data cards and declared designs
+
+Every validation case carries a `data_card`, and the schema requires one. It
+records:
+
+- what was measured, and how
+- the observations' own uncertainty
+- known issues with the data
+- what a model must get right to match it
+- what a match or a miss *cannot* show
+
+A validation case may also declare a `validation_design` before any run:
+
+- **Mode.** `engine` runs a fixed, published model unchanged. `practice` has each team build its own model from the raw data.
+- **Event roles.** Each event is `calibration` (a team may tune against it), `scored` (nobody may) or `held_back` (released only when a round closes).
+
+Once results are published, the design does not change. Where the data are
+public, the holdout is a rule that each submission declares. A true blind
+round needs data that has not been published.
+
 ## 2. Capabilities
 
 Every case also lists the capability groups it gives evidence on

@@ -9,6 +9,16 @@
   "capabilities": [
     "transients"
   ],
+  "data_card": {
+    "measured": "Pressure traces at the valve and along a laboratory pipeline after valve closure, with vapour cavities forming and collapsing (Bergant & Simpson 1999).",
+    "method": "Pressure transducers on a laboratory pipeline rig, as described in the paper; the data are to be obtained from the authors.",
+    "uncertainty": "Not yet stated: the value in reference.uncertainty is a placeholder until the published gauge or survey error is recorded.",
+    "known_issues": [
+      "Journal-only data: no open licence found yet."
+    ],
+    "exercises": "Wave speed, friction damping of the pressure wave, and the column-separation model (cavity formation and the secondary peaks when cavities collapse).",
+    "cannot_tell": "Matching the first Joukowsky peak shows the wave speed is right, not that the cavity model is; only the timing and size of the later peaks test that."
+  },
   "title": "Bergant slow valve closure with column separation",
   "description": "Laboratory water-hammer with slow valve closure producing column separation and cavity collapse; compare pressure traces to published gauge data.",
   "physics": {

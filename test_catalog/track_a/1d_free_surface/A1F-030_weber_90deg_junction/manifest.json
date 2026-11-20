@@ -9,6 +9,16 @@
   "capabilities": [
     "steady_open_channel"
   ],
+  "data_card": {
+    "measured": "Water-surface elevations and velocities around a 90° open-channel junction in a laboratory flume, for several discharge ratios (Weber et al. 2001).",
+    "method": "Laboratory point gauges and velocity probes, as described in the paper; the data are to be obtained from the authors.",
+    "uncertainty": "Not yet stated: the value in reference.uncertainty is a placeholder until the published gauge or survey error is recorded.",
+    "known_issues": [
+      "Journal-only data: no open licence found yet."
+    ],
+    "exercises": "Combining flow at a junction: the depth rise upstream of the junction, the separation zone and the contraction in the combined branch.",
+    "cannot_tell": "A 1D model can match the upstream depths while missing the separation zone entirely; a match on depths says nothing about velocities across the channel."
+  },
   "title": "Weber 90° open-channel junction",
   "description": "Laboratory combining junction at 90°; compare depths and velocities to Weber, Schumate & Mawer (2001) measurements.",
   "physics": {

@@ -1,0 +1,129 @@
+{
+  "schema_version": "1.2.0",
+  "test_id": "A2F-020_ellicott_city_2016",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_class": "validation_field",
+  "evidence": "validation",
+  "capabilities": [
+    "urban_surface",
+    "flood_waves"
+  ],
+  "data_card": {
+    "measured": "USGS indirect peak-discharge measurements on Hudson, Tiber and New Cut Branches, and high-water marks, for the floods of 30 July 2016 and 27 May 2018.",
+    "method": "Post-flood USGS surveys: indirect (slope-area or similar) discharge measurements and flagged high-water marks; UAS survey of the district in 2018.",
+    "uncertainty": "Indirect discharge measurements are typically uncertain by tens of percent; to be taken from the USGS computations.",
+    "known_issues": [
+      "Debris, vehicles and building damage changed the flow paths during the event."
+    ],
+    "exercises": "Steep urban flash flooding: supercritical street flow, flow around buildings and rapid rise.",
+    "cannot_tell": "With rainfall-runoff upstream as an input, a miss may be in the hydrology rather than the hydraulics; debris is outside what any shallow-water model represents."
+  },
+  "validation_design": {
+    "mode": "practice",
+    "declared": "2026-11-20",
+    "events": [
+      {
+        "id": "2016-07-30",
+        "role": "calibration"
+      },
+      {
+        "id": "2018-05-27",
+        "role": "scored",
+        "notes": "The second flood, scored with the set-up calibrated on the first."
+      }
+    ],
+    "holdout_policy": "A set-up calibrated on 2016 is scored on 2018 unchanged, apart from the event's own inflow."
+  },
+  "title": "Ellicott City, Maryland, 30 July 2016 flash flood",
+  "description": "Urban flash flood down steep streets, against USGS indirect peak-discharge measurements and high-water marks on the three streams through the historic district.",
+  "physics": {
+    "dimensionality": "2D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "shallow_water_2d"
+    ],
+    "phenomena": [
+      "urban_flood",
+      "flash_flood",
+      "high_water_marks"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "U.S. Geological Survey"
+        ],
+        "year": 2021,
+        "title": "Storms and floods of July 30, 2016, and May 27, 2018, in Ellicott City, Howard County, Maryland",
+        "report_number": "USGS Fact Sheet 2021-3025",
+        "doi": "10.3133/fs20213025"
+      }
+    ],
+    "license": "TBD-confirm",
+    "adaptation_notes": "Draft: high-water marks, indirect discharge sections, terrain and rainfall to be assembled; the 2018 flood gives a second event."
+  },
+  "inputs": [
+    {
+      "path": "inputs/terrain.tif",
+      "role": "terrain",
+      "format": "tif",
+      "pending": {
+        "reason": "Terrain with buildings for the historic district, and the inflow or rainfall for the event.",
+        "obtain_from": "USGS; Howard County, Maryland"
+      }
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/high_water_marks.csv",
+    "availability": "request_from_authors",
+    "include_measurement_uncertainty": true,
+    "uncertainty": {
+      "type": "absolute",
+      "value": 0.1,
+      "units": "m",
+      "notes": "Placeholder: replace with each mark's surveyed accuracy or quality rating from the data release."
+    }
+  },
+  "simulation": {
+    "t_end": 14400.0,
+    "output_interval": 60.0,
+    "required_outputs": [
+      "h",
+      "u",
+      "v"
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "hwm",
+        "metric": "L2",
+        "variable": "wse",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.3,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Peak water surface at surveyed marks within 0.3 m. Provisional, written before any run; to be replaced by the marks' quality ratings."
+      },
+      {
+        "id": "peak_q",
+        "metric": "relative_peak",
+        "variable": "Q",
+        "threshold": {
+          "op": "abs<=",
+          "value": 25.0,
+          "units": "%"
+        },
+        "gating": false,
+        "rationale": "Peak discharge on each stream against the USGS indirect measurement; reported, not counted, since the indirect measurement's own uncertainty is large."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}

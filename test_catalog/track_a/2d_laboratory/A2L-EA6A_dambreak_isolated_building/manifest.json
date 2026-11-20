@@ -11,6 +11,16 @@
     "flood_waves",
     "urban_surface"
   ],
+  "data_card": {
+    "measured": "Water levels at gauges in the UCL laboratory dam break past an isolated building (Soares-Frazão & Zech 2002), as adopted by the Environment Agency (Test 6A).",
+    "method": "Laboratory gauges; the DEM and gauge locations come from the EA archive, the measurements are still to be obtained.",
+    "uncertainty": "Provisional 5 mm (reference.uncertainty), to be replaced by the gauge accuracy stated by the experimenters.",
+    "known_issues": [
+      "The EA archive holds the inputs but not the measured series."
+    ],
+    "exercises": "A dam-break wave hitting an obstacle: the jump in front of the building and the wake behind it.",
+    "cannot_tell": "At 0.1 m model resolution the wake is barely resolved; a miss behind the building can be the grid rather than the code."
+  },
   "title": "EA Test 6A — dam break past an isolated building (laboratory scale)",
   "description": "UCL laboratory dam break through a 1 m gate against a single idealised building (Soares-Frazão & Zech 2002, IMPACT), as adopted by the Environment Agency. Tests hydraulic jumps and the wake behind an obstacle against gauge measurements.",
   "physics": {

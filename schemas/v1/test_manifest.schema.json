@@ -157,6 +157,12 @@
           "type": "string"
         }
       }
+    },
+    "data_card": {
+      "$ref": "#/$defs/data_card"
+    },
+    "validation_design": {
+      "$ref": "#/$defs/validation_design"
     }
   },
   "allOf": [
@@ -398,6 +404,23 @@
             }
           }
         }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence": {
+            "const": "validation"
+          }
+        },
+        "required": [
+          "evidence"
+        ]
+      },
+      "then": {
+        "required": [
+          "data_card"
+        ]
       }
     }
   ],
@@ -725,9 +748,10 @@
             "available",
             "to_digitise",
             "request_from_authors",
-            "pending_license"
+            "pending_license",
+            "open_to_convert"
           ],
-          "description": "State of the measured reference data."
+          "description": "State of the measured reference data. open_to_convert: published under an open licence, still to be converted into the reference file."
         },
         "probe_map": {
           "type": "object",
@@ -1370,6 +1394,105 @@
               }
             }
           }
+        }
+      }
+    },
+    "data_card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "measured",
+        "method",
+        "uncertainty",
+        "exercises",
+        "cannot_tell"
+      ],
+      "description": "Evidence protocol 4.0: what a validation case's observations are, how far they can be trusted, and what they can and cannot show.",
+      "properties": {
+        "measured": {
+          "type": "string",
+          "description": "What was measured, where and when."
+        },
+        "method": {
+          "type": "string",
+          "description": "How: instruments, survey, sampling interval."
+        },
+        "uncertainty": {
+          "type": "string",
+          "description": "The observations' own error, with its source."
+        },
+        "known_issues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Gaps, inconsistencies, changes to the site."
+        },
+        "exercises": {
+          "type": "string",
+          "description": "The processes a model must get right to match the observations."
+        },
+        "cannot_tell": {
+          "type": "string",
+          "description": "What a match or a miss does not show."
+        }
+      }
+    },
+    "validation_design": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "declared",
+        "events"
+      ],
+      "description": "Evidence protocol 4.0: how a validation case is run and scored, declared before any run.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "engine",
+            "practice"
+          ],
+          "description": "engine: a fixed, published model is run unchanged (isolates the engine; mostly measures the model). practice: each team builds its own model from the raw data (tests code, modeller and workflow)."
+        },
+        "declared": {
+          "type": "string",
+          "format": "date",
+          "description": "When the split was fixed; it may not change after results are published."
+        },
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "role"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "calibration",
+                  "scored",
+                  "held_back"
+                ],
+                "description": "calibration: a team may tune against it. scored: results are reported on it and nobody may tune against it. held_back: not published until a round closes."
+              },
+              "notes": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "holdout_policy": {
+          "type": "string",
+          "description": "How the scored and held-back events are kept out of calibration."
         }
       }
     }

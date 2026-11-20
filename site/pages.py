@@ -459,6 +459,33 @@ def _margin_span(ck: dict) -> str:
     return f' · <span class="mg">{esc(t)}</span>' if t else ""
 
 
+ROLE_WORDS = {"calibration": "calibration: a team may tune against it", "scored": "scored: nobody may tune against it",
+              "held_back": "held back: released only when a round closes"}
+
+
+def data_card_html(m: dict) -> str:
+    """A validation case's data card and declared design (evidence protocol 4.0)."""
+    dc = m.get("data_card")
+    if not dc:
+        return ""
+    issues = "".join(f"<li>{esc(i)}</li>" for i in dc.get("known_issues") or [])
+    vd = m.get("validation_design") or {}
+    design = ""
+    if vd:
+        mode = {"engine": "Engine validation: a fixed, published model is run unchanged. It isolates the engine but mostly measures the model.",
+                "practice": "Practice validation: each team builds its own model from the raw data. It tests the code, the modeller and the workflow together."}[vd["mode"]]
+        evs = "".join(f'<li><b>{esc(e["id"])}</b> — {esc(ROLE_WORDS[e["role"]])}{(". " + esc(e["notes"])) if e.get("notes") else ""}</li>' for e in vd["events"])
+        design = (f'<div class="card"><h2>How it is scored</h2><p>{esc(mode)}</p><ul>{evs}</ul>'
+                  f'{("<p class=small>" + esc(vd["holdout_policy"]) + "</p>") if vd.get("holdout_policy") else ""}'
+                  f'<p class="small muted">Declared {esc(vd["declared"])}, before any run; it does not change once results are published.</p></div>')
+    return (f'<section class="story grid"><div class="card"><h2>The observations</h2>'
+            f'<p><b>What was measured.</b> {esc(dc["measured"])}</p><p><b>How.</b> {esc(dc["method"])}</p>'
+            f'<p><b>Their own uncertainty.</b> {esc(dc["uncertainty"])}</p>'
+            f'{("<p><b>Known issues.</b></p><ul>" + issues + "</ul>") if issues else ""}</div>'
+            f'<div class="card"><h2>What it can and cannot show</h2><p><b>A model must get right:</b> {esc(dc["exercises"])}</p>'
+            f'<p><b>What a match or a miss does not show:</b> {esc(dc["cannot_tell"])}</p></div>{design}</section>')
+
+
 def significance_note(d: dict, observed) -> str:
     """'within / beyond the engineering-significance value (source)' when the check carries one (protocol 4.0)."""
     sg = d.get("significance")
@@ -1677,7 +1704,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
            f'<dt>Results</dt><dd>{result_line} · <a href="#models">see them ↓</a></dd>'
            f'<dt>Must</dt><dd>{esc(st["must"][0])}</dd></dl>'
            f'<span class="small">Sketch, not to scale.</span></figcaption></figure>') if not hero_chart else ""
-    body = f'<div class="wrap">{head}{art}{model_file_card(m)}{figure}{story_cards}{netsec}{models}{split}{tech}</div>{chart_data}'
+    body = f'<div class="wrap">{head}{art}{model_file_card(m)}{figure}{story_cards}{data_card_html(m)}{netsec}{models}{split}{tech}</div>{chart_data}'
     scripts = '<script src="../static/chart.js" defer></script>' if chart_html else ""
     return layout(st["name"], body, "results.html", depth=1, description=st["question"], scripts=scripts, math=True,
                   og_image=f"assets/og/{sid}.png", path=f"tests/{sid}.html")

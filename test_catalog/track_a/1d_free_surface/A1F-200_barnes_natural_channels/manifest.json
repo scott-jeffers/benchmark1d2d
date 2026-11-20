@@ -1,0 +1,115 @@
+{
+  "schema_version": "1.2.0",
+  "test_id": "A1F-200_barnes_natural_channels",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_class": "validation_field",
+  "evidence": "validation",
+  "capabilities": [
+    "steady_open_channel"
+  ],
+  "data_card": {
+    "measured": "For 50 natural stream reaches: surveyed cross sections, the water surface from high-water marks of a known flood, the peak discharge, and the Manning's n computed from them, with colour photographs.",
+    "method": "USGS indirect-discharge surveys (slope-area reaches) after floods between the 1940s and 1960s.",
+    "uncertainty": "Not yet recorded per reach: high-water marks carry survey and interpretation error, and the peak discharge comes from the same survey.",
+    "known_issues": [
+      "n was computed from the same water surface, so a model given Barnes' n is partly given the answer."
+    ],
+    "exercises": "Steady backwater through irregular natural cross sections with friction, expansions and contractions.",
+    "cannot_tell": "Run with Barnes' own n, a match mainly checks the model's conveyance and loss calculations against the USGS slope-area method; run with n picked from the photographs, it tests the modeller's roughness choice."
+  },
+  "validation_design": {
+    "mode": "practice",
+    "declared": "2026-11-20",
+    "events": [
+      {
+        "id": "n-given",
+        "role": "scored",
+        "notes": "Barnes' computed n supplied: tests the conveyance and loss method."
+      },
+      {
+        "id": "n-chosen",
+        "role": "scored",
+        "notes": "Only the photographs and descriptions supplied: tests roughness selection, the everyday standard-of-care question."
+      }
+    ],
+    "holdout_policy": "The two variants are scored separately and never combined."
+  },
+  "title": "Natural channels with verified roughness (Barnes 1967)",
+  "description": "Steady 1D water-surface profiles in surveyed natural reaches with measured peak discharge and computed Manning's n (USGS Water-Supply Paper 1849).",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "saint_venant_steady"
+    ],
+    "phenomena": [
+      "backwater",
+      "friction",
+      "natural_channel"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Barnes, H. H., Jr."
+        ],
+        "year": 1967,
+        "title": "Roughness characteristics of natural channels",
+        "report_number": "USGS Water-Supply Paper 1849",
+        "doi": "10.3133/wsp1849"
+      }
+    ],
+    "license": "public-domain-USGS",
+    "adaptation_notes": "Draft: cross sections, reach lengths, peak discharges and surveyed water surfaces to be transcribed from the 50 reach sheets of WSP 1849. Steady flow: each reach is run to steady state at its peak discharge; t_end is a ceiling."
+  },
+  "inputs": [
+    {
+      "path": "inputs/reaches.json",
+      "role": "case_parameters",
+      "format": "json",
+      "pending": {
+        "reason": "Transcribe each reach's cross sections, reach lengths and peak discharge from USGS WSP 1849 (public domain).",
+        "obtain_from": "https://pubs.usgs.gov/publication/wsp1849"
+      }
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/water_surface.csv",
+    "availability": "to_digitise",
+    "include_measurement_uncertainty": true,
+    "uncertainty": {
+      "type": "absolute",
+      "value": 0.1,
+      "units": "m",
+      "notes": "Placeholder: replace with each mark's surveyed accuracy or quality rating from the data release."
+    }
+  },
+  "simulation": {
+    "t_end": 7200.0,
+    "output_interval": 600.0,
+    "required_outputs": [
+      "h"
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "wse",
+        "metric": "L2",
+        "variable": "wse",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.15,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Water surface at the surveyed sections within 0.15 m. Provisional, written before any run; to be replaced by the surveyed high-water mark accuracy per reach."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}
