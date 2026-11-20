@@ -1,0 +1,538 @@
+{
+ "model": "swmm524",
+ "engine": "EPA SWMM 5.2.4 (swmm-toolkit 0.17.0)",
+ "date": "2026-11-20",
+ "script": "scripts/sensitivity_swmm.py",
+ "variants": {
+  "published": "As published (the harness's settings)",
+  "default-iteration": "SWMM's own iteration defaults: HEAD_TOLERANCE 0.0015 m, MAX_TRIALS 8",
+  "converged-iteration": "Iteration converged: HEAD_TOLERANCE 0.00001 m, MAX_TRIALS 20",
+  "normal-flow-froude": "NORMAL_FLOW_LIMITED FROUDE",
+  "normal-flow-slope": "NORMAL_FLOW_LIMITED SLOPE",
+  "damping-none": "INERTIAL_DAMPING NONE",
+  "damping-full": "INERTIAL_DAMPING FULL",
+  "variable-step-0.5": "VARIABLE_STEP 0.5 (smaller time steps)"
+ },
+ "tests": {
+  "A1F-010": {
+   "low": 6.384295614370156,
+   "low_variant": "converged-iteration",
+   "high": 32.272983156603296,
+   "high_variant": "damping-none",
+   "published": 10.967764187325049,
+   "variants": {
+    "published": {
+     "completed": true,
+     "percent_difference": 10.967764187325049,
+     "observed_order": -0.0393834583026772,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.19
+    },
+    "default-iteration": {
+     "completed": true,
+     "percent_difference": 7.482003382463692,
+     "observed_order": -0.6369069991169797,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 1.68
+    },
+    "converged-iteration": {
+     "completed": true,
+     "percent_difference": 6.384295614370156,
+     "observed_order": -0.324228202901436,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.25
+    },
+    "normal-flow-froude": {
+     "completed": true,
+     "percent_difference": 10.967764187325049,
+     "observed_order": -0.02897208966070669,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.19
+    },
+    "normal-flow-slope": {
+     "completed": true,
+     "percent_difference": 10.90734121700681,
+     "observed_order": 0.01640091897573448,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.13
+    },
+    "damping-none": {
+     "completed": true,
+     "percent_difference": 32.272983156603296,
+     "observed_order": -0.0006053164849897652,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 1.55
+    },
+    "damping-full": {
+     "completed": true,
+     "percent_difference": 21.582486219950017,
+     "observed_order": -0.3173932522171359,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.48
+    },
+    "variable-step-0.5": {
+     "completed": true,
+     "percent_difference": 27.509538055795097,
+     "observed_order": -0.15410254313655908,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.43
+    }
+   }
+  },
+  "A1F-011": {
+   "low": 2.571311463615164,
+   "low_variant": "variable-step-0.5",
+   "high": 7.151948232937265,
+   "high_variant": "default-iteration",
+   "published": 6.700318894555737,
+   "variants": {
+    "published": {
+     "completed": true,
+     "percent_difference": 6.700318894555737,
+     "observed_order": 0.40370292950772135,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 1.41
+    },
+    "default-iteration": {
+     "completed": true,
+     "percent_difference": 7.151948232937265,
+     "observed_order": 1.1060500924062455,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 1.18
+    },
+    "converged-iteration": {
+     "completed": true,
+     "percent_difference": 4.3081760844204515,
+     "observed_order": 0.7015539024879867,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.15
+    },
+    "normal-flow-froude": {
+     "completed": true,
+     "percent_difference": 6.953573334234615,
+     "observed_order": 0.3769405363016727,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 1.45
+    },
+    "normal-flow-slope": {
+     "completed": true,
+     "percent_difference": 6.700318894555737,
+     "observed_order": 0.40370292950772135,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 1.41
+    },
+    "damping-none": {
+     "completed": true,
+     "percent_difference": 3.19517484990412,
+     "observed_order": 0.7899509509024064,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 5.71
+    },
+    "damping-full": {
+     "completed": true,
+     "percent_difference": 6.804398423852005,
+     "observed_order": 0.6373396861884502,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 1.33
+    },
+    "variable-step-0.5": {
+     "completed": true,
+     "percent_difference": 2.571311463615164,
+     "observed_order": -0.019041078779538145,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.28
+    }
+   }
+  },
+  "A1F-001": {
+   "low": 0.002152325911370469,
+   "low_variant": "normal-flow-froude",
+   "high": 0.10601547073455046,
+   "high_variant": "damping-full",
+   "published": 0.0024047658264260245,
+   "variants": {
+    "published": {
+     "completed": true,
+     "percent_difference": 0.0024047658264260245,
+     "observed_order": 1.736701791334475,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 1.08
+    },
+    "default-iteration": {
+     "completed": true,
+     "percent_difference": 0.0024025597104167704,
+     "observed_order": 1.7387249092373467,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.14
+    },
+    "converged-iteration": {
+     "completed": true,
+     "percent_difference": 0.0024164549485646077,
+     "observed_order": 1.732175236000807,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 5.5
+    },
+    "normal-flow-froude": {
+     "completed": true,
+     "percent_difference": 0.002152325911370469,
+     "observed_order": 1.8143895124819147,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.0
+    },
+    "normal-flow-slope": {
+     "completed": true,
+     "percent_difference": 0.0024047658264260245,
+     "observed_order": 1.736701791334475,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 1.08
+    },
+    "damping-none": {
+     "completed": true,
+     "percent_difference": 0.0024047658264260245,
+     "observed_order": 1.736701791334475,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 1.08
+    },
+    "damping-full": {
+     "completed": true,
+     "percent_difference": 0.10601547073455046,
+     "observed_order": 0.038969453083640485,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.81
+    },
+    "variable-step-0.5": {
+     "completed": true,
+     "percent_difference": 0.0024052088073425845,
+     "observed_order": 1.7365689244438995,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.6
+    }
+   }
+  },
+  "A1F-020": {
+   "low": 43.612452226366706,
+   "low_variant": "converged-iteration",
+   "high": 1200.5427612882804,
+   "high_variant": "damping-none",
+   "published": 101.79504359481007,
+   "variants": {
+    "published": {
+     "completed": true,
+     "percent_difference": 101.79504359481007,
+     "observed_order": 0.18794025656363078,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 57.96
+    },
+    "default-iteration": {
+     "completed": true,
+     "percent_difference": 78.24481606618473,
+     "observed_order": 0.23119050483729386,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 25.58
+    },
+    "converged-iteration": {
+     "completed": true,
+     "percent_difference": 43.612452226366706,
+     "observed_order": -0.14441971302796597,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 3.78
+    },
+    "normal-flow-froude": {
+     "completed": true,
+     "percent_difference": 46.76286877913987,
+     "observed_order": 0.7490562440589396,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 58.17
+    },
+    "normal-flow-slope": {
+     "completed": true,
+     "percent_difference": 74.52038714718704,
+     "observed_order": 0.4225566210234452,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 55.05
+    },
+    "damping-none": {
+     "completed": true,
+     "percent_difference": 1200.5427612882804,
+     "observed_order": 1.6503013269546,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 33.73
+    },
+    "damping-full": {
+     "completed": true,
+     "percent_difference": 104.10579157909189,
+     "observed_order": -0.008437699421406255,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 27.64
+    },
+    "variable-step-0.5": {
+     "completed": true,
+     "percent_difference": 74.82471563998229,
+     "observed_order": 0.27313485243883656,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 45.67
+    }
+   }
+  },
+  "A1F-040": {
+   "low": 0.07831327791559148,
+   "low_variant": "converged-iteration",
+   "high": 10212.583495118652,
+   "high_variant": "damping-none",
+   "published": 174.46551333320446,
+   "variants": {
+    "published": {
+     "completed": true,
+     "percent_difference": 174.46551333320446,
+     "observed_order": -3.7446270499574386,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 98.64
+    },
+    "default-iteration": {
+     "completed": true,
+     "percent_difference": 171.1641343704688,
+     "observed_order": -0.46932654810286545,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 94.96
+    },
+    "converged-iteration": {
+     "completed": true,
+     "percent_difference": 0.07831327791559148,
+     "observed_order": 0.014565919223630427,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.24
+    },
+    "normal-flow-froude": {
+     "completed": true,
+     "percent_difference": 151.07492561027794,
+     "observed_order": -3.6022684772216134,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 98.32
+    },
+    "normal-flow-slope": {
+     "completed": true,
+     "percent_difference": 177.0107320009785,
+     "observed_order": -3.826639157579549,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 98.56
+    },
+    "damping-none": {
+     "completed": true,
+     "percent_difference": 10212.583495118652,
+     "observed_order": -2.261745470558762,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 53.87
+    },
+    "damping-full": {
+     "completed": true,
+     "percent_difference": 159.00970937573967,
+     "observed_order": -0.7835612616237415,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 95.89
+    },
+    "variable-step-0.5": {
+     "completed": true,
+     "percent_difference": 186.83074457078646,
+     "observed_order": -0.31118575044749464,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 99.01
+    }
+   }
+  },
+  "A1F-041": {
+   "low": 100.97775563294776,
+   "low_variant": "damping-full",
+   "high": 61654.53914706964,
+   "high_variant": "damping-none",
+   "published": 188.95502145777917,
+   "variants": {
+    "published": {
+     "completed": true,
+     "percent_difference": 188.95502145777917,
+     "observed_order": -0.1688699152612767,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 84.45
+    },
+    "default-iteration": {
+     "completed": true,
+     "percent_difference": 173.02072369644927,
+     "observed_order": -0.38062943853734105,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 62.06
+    },
+    "converged-iteration": {
+     "completed": true,
+     "percent_difference": 148.41970781128407,
+     "observed_order": -0.20788701773174506,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 40.83
+    },
+    "normal-flow-froude": {
+     "completed": true,
+     "percent_difference": 322.3514463096236,
+     "observed_order": -0.4859927610991404,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 85.38
+    },
+    "normal-flow-slope": {
+     "completed": true,
+     "percent_difference": 157.6680666306617,
+     "observed_order": -0.03827276993599044,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 86.81
+    },
+    "damping-none": {
+     "completed": true,
+     "percent_difference": 61654.53914706964,
+     "observed_order": -0.0235798940007425,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 37.07
+    },
+    "damping-full": {
+     "completed": true,
+     "percent_difference": 100.97775563294776,
+     "observed_order": -0.29125046887438877,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 80.15
+    },
+    "variable-step-0.5": {
+     "completed": true,
+     "percent_difference": 199.33313447751135,
+     "observed_order": -0.05606205671716791,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 94.7
+    }
+   }
+  },
+  "A1F-042": {
+   "low": 122.53793686586101,
+   "low_variant": "converged-iteration",
+   "high": 213084.6075836459,
+   "high_variant": "damping-none",
+   "published": 321.51461684175933,
+   "variants": {
+    "published": {
+     "completed": true,
+     "percent_difference": 321.51461684175933,
+     "observed_order": -0.5597984448058252,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 52.05
+    },
+    "default-iteration": {
+     "completed": true,
+     "percent_difference": 320.5533980631176,
+     "observed_order": -0.5841670704727058,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 14.84
+    },
+    "converged-iteration": {
+     "completed": true,
+     "percent_difference": 122.53793686586101,
+     "observed_order": 0.0932759257640267,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 23.06
+    },
+    "normal-flow-froude": {
+     "completed": true,
+     "percent_difference": 308.4565810726182,
+     "observed_order": -0.4937277482423996,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 52.34
+    },
+    "normal-flow-slope": {
+     "completed": true,
+     "percent_difference": 241.83866862533003,
+     "observed_order": -0.6105557034517284,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 53.97
+    },
+    "damping-none": {
+     "completed": true,
+     "percent_difference": 213084.6075836459,
+     "observed_order": -0.012536456962416516,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 41.67
+    },
+    "damping-full": {
+     "completed": true,
+     "percent_difference": 199.75727980401598,
+     "observed_order": -0.3420086233950381,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 46.88
+    },
+    "variable-step-0.5": {
+     "completed": true,
+     "percent_difference": 248.3206619756978,
+     "observed_order": -0.37998492845231574,
+     "engine_flagged": true,
+     "steps_not_converging_pct": 45.36
+    }
+   }
+  },
+  "A1F-043": {
+   "low": 0.024982930806543957,
+   "low_variant": "damping-full",
+   "high": 0.047462459128013404,
+   "high_variant": "published",
+   "published": 0.047462459128013404,
+   "variants": {
+    "published": {
+     "completed": true,
+     "percent_difference": 0.047462459128013404,
+     "observed_order": null,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.0
+    },
+    "default-iteration": {
+     "completed": true,
+     "percent_difference": 0.047462459128013404,
+     "observed_order": null,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.0
+    },
+    "converged-iteration": {
+     "completed": true,
+     "percent_difference": 0.047462459128013404,
+     "observed_order": null,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.0
+    },
+    "normal-flow-froude": {
+     "completed": true,
+     "percent_difference": 0.047462459128013404,
+     "observed_order": null,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.0
+    },
+    "normal-flow-slope": {
+     "completed": true,
+     "percent_difference": 0.047462459128013404,
+     "observed_order": null,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.0
+    },
+    "damping-none": {
+     "completed": true,
+     "percent_difference": 0.047462459128013404,
+     "observed_order": null,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.0
+    },
+    "damping-full": {
+     "completed": true,
+     "percent_difference": 0.024982930806543957,
+     "observed_order": null,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.0
+    },
+    "variable-step-0.5": {
+     "completed": true,
+     "percent_difference": 0.047462459128013404,
+     "observed_order": null,
+     "engine_flagged": false,
+     "steps_not_converging_pct": 0.0
+    }
+   }
+  }
+ }
+}
