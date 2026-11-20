@@ -6,9 +6,99 @@
     "version": "17.0.0 (CLI 4.1.1)",
     "pin": "hydra-cli-4.1.1 SHA-256 bffb9859…3591d"
   },
-  "tier": "T0",
+  "tier": "T2",
   "set_by": "suite",
   "script": "scripts/run_track_b.py, scripts/run_drainage_cases.py",
-  "changed_from_default": [],
-  "defaults_audit": "pending"
+  "changed_from_default": [
+    {
+      "setting": "HEAD_TOLERANCE",
+      "value": 0.0005,
+      "default": 0.001524,
+      "reason": "The harness writes 0.0005 m on every case, tighter than SWMM's default (0.005 ft, 0.0015 m); the converged variants tighten it to 0.00001 m (review finding F1).",
+      "source": "Default from USEPA/Stormwater-Management-Model v5.2.4: src/solver/project.c setDefaults(), src/solver/dynwave.c",
+      "cases": [
+        "A1D-001",
+        "A1D-002",
+        "A1D-003",
+        "A1D-004",
+        "A1D-005",
+        "A1F-001",
+        "A1F-010",
+        "A1F-011",
+        "A1F-020",
+        "A1F-040",
+        "A1F-041",
+        "A1F-042",
+        "A1F-043"
+      ],
+      "required_by_case": false,
+      "selects_method": false
+    },
+    {
+      "setting": "MINIMUM_STEP",
+      "value": "0.001 (A1F-001, A1F-010, A1F-011, A1F-020, A1F-040, A1F-041, A1F-042, A1F-043); 0.01 (A1D-001, A1D-002, A1D-003, A1D-004, A1D-005)",
+      "default": 0.5,
+      "reason": "SWMM's default 0.5 s minimum step would exceed the Courant limit on the finer grids (run_swmm_track_a.py, run_drainage_cases.py).",
+      "source": "Default from USEPA/Stormwater-Management-Model v5.2.4: src/solver/project.c setDefaults(), src/solver/dynwave.c",
+      "cases": [
+        "A1D-001",
+        "A1D-002",
+        "A1D-003",
+        "A1D-004",
+        "A1D-005",
+        "A1F-001",
+        "A1F-010",
+        "A1F-011",
+        "A1F-020",
+        "A1F-040",
+        "A1F-041",
+        "A1F-042",
+        "A1F-043"
+      ],
+      "required_by_case": true,
+      "selects_method": false
+    },
+    {
+      "setting": "MIN_SURFAREA",
+      "value": 0.001,
+      "default": 1.16742,
+      "reason": "On 5 cm conduits SWMM's default minimum nodal area (1.17 m²) exceeds a node's own plan area and would add storage (bump channels only; run_swmm_track_a.py).",
+      "source": "Default from USEPA/Stormwater-Management-Model v5.2.4: src/solver/project.c setDefaults(), src/solver/dynwave.c",
+      "cases": [
+        "A1F-020",
+        "A1F-040",
+        "A1F-041",
+        "A1F-042",
+        "A1F-043"
+      ],
+      "required_by_case": true,
+      "selects_method": false
+    },
+    {
+      "setting": "ROUTING_STEP",
+      "value": "0.0025 (A1F-040, A1F-041, A1F-042, A1F-043); 0.005 (A1F-040, A1F-041, A1F-042, A1F-043); 0.01 (A1F-040, A1F-041, A1F-042, A1F-043); 0.0125 (A1F-020); 0.025 (A1F-020); 0.05 (A1F-020); 0.1 (A1F-020); 1 (A1D-001, A1D-002, A1D-003, A1D-004, A1D-005, A1F-001, A1F-010, A1F-011)",
+      "default": 20.0,
+      "reason": "The conduits are as short as the case's grid cells (down to 5 cm): the step is 1 s on the dam breaks and drainage cases and dx/20 on the bump channels, where SWMM's velocity-based variable step would otherwise stay far above the gravity-wave limit and a lake at rest sloshes (run_swmm_track_a.py).",
+      "source": "Default from USEPA/Stormwater-Management-Model v5.2.4: src/solver/project.c setDefaults(), src/solver/dynwave.c",
+      "cases": [
+        "A1D-001",
+        "A1D-002",
+        "A1D-003",
+        "A1D-004",
+        "A1D-005",
+        "A1F-001",
+        "A1F-010",
+        "A1F-011",
+        "A1F-020",
+        "A1F-040",
+        "A1F-041",
+        "A1F-042",
+        "A1F-043"
+      ],
+      "required_by_case": true,
+      "selects_method": false
+    }
+  ],
+  "defaults_audit": "automatic",
+  "notes": "Tier T2: the suite's harness tightens the iteration beyond the engine's default (see changed settings), so these are expert set-ups chosen by the suite, not out-of-the-box runs."
 }

@@ -66,6 +66,8 @@ SOLVERS: list[dict] = [
          what="EPA SWMM 5.2.4 with dynamic-wave routing; on the channel tests, the channel is written as one conduit per grid cell"),
     dict(key="openswmm-dw", name="OpenSWMM 6", sub="dynamic wave", kind="production", color="#2E8B8B",
          what="OpenSWMM Engine v6 (HydroCouple's SWMM 6, pre-release) with dynamic-wave routing"),
+    dict(key="swmm524-defaults", name="EPA SWMM 5.2.4", sub="dynamic wave · out of the box", kind="production", color="#5B3A80",
+         what="EPA SWMM 5.2.4 with dynamic-wave routing and SWMM's own iteration defaults (head tolerance 0.0015 m, 8 trials). The only settings changed are those the case's short conduits make unavoidable: the routing and minimum time steps, and the minimum nodal area on the bump channels"),
     dict(key="swmm524-converged", name="EPA SWMM 5.2.4", sub="dynamic wave · converged iteration", kind="production", color="#A98BC8",
          what="EPA SWMM 5.2.4 as above with its dynamic-wave iteration allowed to converge: HEAD_TOLERANCE 0.00001 m and MAX_TRIALS 20 instead of the harness's 0.0005 m and 8 (review finding F1). Both runs are published: the engine as the harness sets it, and with its iteration converged"),
     dict(key="openswmm-dw-converged", name="OpenSWMM 6", sub="dynamic wave · converged iteration", kind="production", color="#6FBDBD",
@@ -149,7 +151,9 @@ def config_block(key: str, depth: int = 1) -> str:
     name, what = config_records.TIERS[t]
     rows = "".join(
         f'<tr><td>{esc(ch["setting"])}</td><td>{esc(ch["value"])}</td><td>{esc("" if ch.get("default") is None else ch["default"])}</td>'
-        f'<td>{esc(ch["reason"])}{(" <span class=muted>(" + esc(ch["source"]) + ")</span>") if ch.get("source") else ""}</td></tr>'
+        f'<td>{("<b>Required by the case.</b> " if ch.get("required_by_case") else "<b>Selects the method tested.</b> " if ch.get("selects_method") else "")}'
+        f'{esc(ch["reason"])}{(" <span class=muted>(" + esc(ch["source"]) + ")</span>") if ch.get("source") else ""}'
+        f'{("<div class=\"muted small\">Tests: " + esc(", ".join(ch["cases"])) + "</div>") if ch.get("cases") else ""}</td></tr>'
         for ch in rec["changed_from_default"])
     table = (f'<div class="table-scroll"><table class="data"><thead><tr><th>Setting</th><th>Value</th><th>Default</th><th>Why</th></tr></thead>'
              f'<tbody>{rows}</tbody></table></div>') if rows else '<p class="small">No setting is listed as changed from the engine\'s default.</p>'
@@ -239,7 +243,7 @@ def solver_key(name: str) -> str | None:
     if n.startswith("openswmm engine"):
         return "openswmm6"
     if n.startswith("epa swmm 5.2.4") and "official" not in n:
-        return "swmm524-converged" if "converged iteration" in n else "swmm524"
+        return "swmm524-converged" if "converged iteration" in n else ("swmm524-defaults" if "own iteration defaults" in n else "swmm524")
     if "epanet 2.2" in n:
         return "epanet22"
     if "epanet 2.0" in n:

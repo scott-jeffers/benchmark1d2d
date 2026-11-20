@@ -68,6 +68,7 @@ ROUTES = [
     (r"^HydroNet FVM-PINN", "hydronet/pinn"),
     (r"^HydroNet finite volume", "hydronet/fvm"),
     (r"^EPA SWMM 5\.2\.4 converged iteration", "swmm_track_a/swmm524-converged"),
+    (r"^EPA SWMM 5\.2\.4 own iteration defaults", "swmm_track_a/swmm524-defaults"),
     (r"^OpenSWMM Engine v6 dynamic wave converged iteration", "swmm_track_a/openswmm-dw-converged"),
     (r"^EPA SWMM 5\.2\.4$", "swmm_track_a/swmm524"),
     (r"^EPA SWMM 5\.1\.15$", "swmm_track_a/swmm515"),

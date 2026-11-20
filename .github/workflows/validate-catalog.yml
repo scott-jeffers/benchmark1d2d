@@ -18,6 +18,10 @@ jobs:
       # No placeholder hashes are allowed any more: every input is real, fetched by hash, or explicitly pending (draft only).
       - name: Validate catalog
         run: python tools/validate_catalog.py --self-test
+      # Evidence protocol 4.0: each configuration's settings-changed-from-default list is computed from the
+      # model files the runners kept; a record that no longer matches them fails here.
+      - name: Configuration records match their model files
+        run: python scripts/audit_configurations.py --check
 
   fetched-inputs:
     name: Fetch remote inputs and verify hashes

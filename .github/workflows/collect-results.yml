@@ -38,12 +38,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/collect_results.py --repo "${{ github.repository }}" --summary out/collect_results.md
+      - name: Recompute each configuration's settings changed from default (from the model files just collected)
+        run: python scripts/audit_configurations.py
       - name: Commit, rebuild the site, report pass/fail changes
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cat out/collect_results.md >> "$GITHUB_STEP_SUMMARY"
-          git add site/fixtures test_catalog/track_b/parity  # includes parity/history.csv
+          git add site/fixtures test_catalog/track_b/parity configurations  # includes parity/history.csv
           if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
           git -c user.name="benchmark1d2d-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "Collect CI results (${{ github.event.workflow_run.name || 'manual' }})" -m "$(head -c 60000 out/collect_results.md)"
