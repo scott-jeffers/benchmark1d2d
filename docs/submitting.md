@@ -65,6 +65,10 @@ example):
 {
   "schema_version": "1.0.0",
   "solver": {"name": "Your solver", "version": "2025.1.2", "options": "scheme, wet/dry depth, time-step control"},
+  "tier": "T2",
+  "changed_from_default": [
+    {"setting": "theta", "value": 0.6, "default": 1.0, "reason": "less numerical damping for a dam break"}
+  ],
   "submitted_by": "Your organisation",
   "date": "2026-10-15",
   "results_licence": "CC-BY-4.0",
@@ -74,6 +78,15 @@ example):
   ]
 }
 ```
+
+`tier` and `changed_from_default` say how the model was set up (evidence
+protocol 4.0). A submission is T2 (expert) unless it declares T1, in which case
+every change must cite the developer's own guidance in a `source` field. List
+every setting you changed from the engine's default. The site shows the list
+beside your results, and anyone can rerun them from it. Results files that the
+suite's CI has not reproduced are shown labelled as such. To have CI produce
+the results itself, also add an adapter and a configuration record in
+`configurations/`.
 
 List grid files coarsest first: the last one is scored and all of them are used
 for the convergence rate. The **Submissions** check scores the folder and posts

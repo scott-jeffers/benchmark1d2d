@@ -1,11 +1,11 @@
 # How tolerances are set
 
-> **Scoring method 2.1 (16 October 2026)** decides every verdict: a result
-> passes when every check is within its limit, each check shows its share of
-> the limit, and the convergence rate, fitted through every grid with its
-> 90 % range, decides the separate *verified* label. See [scoring method 2](scoring_v2.md) and the
-> [page that shows every result both ways](https://scott-jeffers.github.io/benchmark1d2d/scoring-review.html).
-> The limits below are unchanged, except A1F-010's front (9.8 m since v3.0.0).
+> **Protocol 4.0.** Limits are not verdicts. Each check's limit stays in its
+> manifest and every score card as the record of what the check was first
+> written against, and its rationale is shown on the test page. Results are
+> reported as measurements ([evidence.md](evidence.md)). Per-check
+> engineering-significance values, each with a citation, will replace the
+> limits as the reference a result is read against.
 
 Every scoring criterion carries a `rationale` string. That string appears on
 the public test page. A threshold is never a bare number.

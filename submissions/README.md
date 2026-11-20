@@ -8,7 +8,8 @@ site shows them labelled *submitted by …*.
 Each submission is a folder `submissions/<slug>/` holding:
 
 * `submission.json` — who ran which solver version, on which cases, with
-  which options (schema: `schemas/v1/submission.schema.json`);
+  which options, its configuration tier and every setting changed from the
+  engine's default (schema: `schemas/v1/submission.schema.json`);
 * the results files it lists, in the results contract
   (`schemas/v1/results.schema.json`): Parquet, or CSV with the same columns.
 

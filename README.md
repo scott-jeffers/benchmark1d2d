@@ -1,9 +1,8 @@
 # Benchmark1d2d — Open V&V Benchmarks for Hydraulic Solvers
 
-[![Track A](https://img.shields.io/badge/Track%20A-verification-0A7-blue)](#the-two-tracks)
-[![Track B](https://img.shields.io/badge/Track%20B-parity-6B4-purple)](#the-two-tracks)
+[![protocol](https://img.shields.io/badge/protocol-4.0%20evidence-0A7-blue)](docs/methodology/evidence.md)
 [![catalog](https://img.shields.io/badge/catalog-v0.3.0-lightgrey)](CHANGELOG.md)
-[![schema](https://img.shields.io/badge/schema-v1.1.0-green)](schemas/v1/)
+[![schema](https://img.shields.io/badge/schema-v1.2.0-green)](schemas/v1/)
 [![DOI](https://img.shields.io/badge/DOI-pending-lightgrey)](CITATION.cff)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
@@ -18,35 +17,58 @@
 - Vendor validation reports are not reproducible by third parties.
 - New solver classes (GPU, WASM, ML surrogates) need the same yardstick as SWMM.
 
-## The two tracks
+## What it reports: evidence, not standings
 
-| | Track A — Physics & Verification | Track B — Industry Parity |
-|---|---|---|
-| Question | Does it solve the equations correctly? | Does it behave like SWMM 5.2.4 / EPANET 2.2? |
-| Ground truth | Exact solutions; lab & field measurements | Pinned reference-engine output |
-| Can prove | The solver is **wrong** | The solver **differs** |
-| Metrics | L1/L2/L∞, observed order, mass error, NSE, arrival time | ±% peak, volume, timing; continuity error |
-| Example | Thacker bowl, Ritter dam break, EA Test 1–5 | HydroCouple corpus, EXTRAN cases, RTC rules, EPANET Net1 |
+The suite answers one question: *what evidence is there that this tool, set up
+this way, gets this kind of flow right?* There is no leaderboard, no rating
+and no rank, and no number is combined across tests
+([evidence protocol 4.0](docs/methodology/evidence.md),
+[ADR-0004](docs/adr/ADR-0004-evidence-not-rankings.md)).
 
-> **Track A results can prove a solver wrong. Track B results can only prove it different from the reference engine.** Every badge and table keeps the two apart.
+**Three kinds of evidence, never averaged together.** Every case states its kind:
 
-### Scores, not certificates
+| | Verification | Validation | Comparison |
+|---|---|---|---|
+| The truth | Exact or manufactured solution | Measurement, with its uncertainty | Nothing independent: a pinned reference engine, or states that follow from the inputs |
+| A difference means | The code, or its numerics as configured, is wrong | Something is wrong: code, set-up, data or equations | Only that two codes differ |
+| Examples | Ritter, Stoker, Thacker, MacDonald, Joukowsky, Todini, SWASHES | Bellinge sewer levels, EA Test 6A | SWMM 5.2.4 / EPANET 2.2 parity, EA Tests 1–5 |
 
-There are no pass marks. Every check is reported as a percent difference from
-the right answer (Track A) or from the reference engine (Track B); a result's
-score on a test is its largest accuracy difference, with mass error, timing
-(in seconds) and NSE shown beside it, and the error on every grid. Models are
-ranked on each test and rated head to head on the tests they share
-([scoring method 3.0](docs/methodology/scoring_v3.md)). Track A and Track B
-stay separate: a parity score says how far a solver is from SWMM or EPANET,
-not whether either is right.
+**Capabilities.** Each case also names the practice-facing capabilities it
+bears on, such as wetting and drying, shocks and jumps, surcharged pipes or
+sewer–surface exchange. Each model's **evidence profile** is a grid of
+capability × kind of evidence, with every result and its percent difference.
+Capabilities with no evidence are shown as such.
+
+**How each model was set up.** Every model has a configuration record in
+[`configurations/`](configurations/) (schema
+[`configuration.schema.json`](schemas/v1/configuration.schema.json)). The
+record gives the engine pin, the tier, and every setting changed from the
+engine's default, with the reason:
+
+- **T0 · Out of the box:** the engine's defaults plus only what the case defines.
+- **T1 · Documented guidance:** only changes the developer's own guidance recommends, each with its source.
+- **T2 · Expert:** any setting, chosen by a named person or group.
+
+Results are always shown with their tier. Think a better set-up exists?
+Submit it: CI reruns it, and if it does better across its capability group it
+becomes the T2 shown.
+
+**The measures of one result** are unchanged from scoring method 3.0 §1–2:
+
+- each check as a percent difference from the right answer, and in its own units
+- mass error, timing and NSE beside it, never folded in
+- the error on every grid and the observed convergence rate
+
+**Runs itself.** CI runs, scores and publishes with no manual step and no
+embargo. People add cases, data, adapters and configurations; three decisions
+stay with people ([GOVERNANCE.md](GOVERNANCE.md)).
 
 ## Quickstart
 
 ```bash
 python -m pip install -e ".[dev,engines,site]"   # engines: EPA SWMM 5.2.4 + EPANET 2.2 for Track B
 python scripts/fetch_inputs.py                    # DEMs and other large inputs, verified by SHA-256
-benchmark1d2d catalog list --track A
+benchmark1d2d catalog list
 benchmark1d2d engines
 benchmark1d2d run A1F-010 --solver examples/demo_solver/solve.py --adapter generic_parquet
 benchmark1d2d score A1F-010 --results out/A1F-010.parquet

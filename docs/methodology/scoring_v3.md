@@ -5,9 +5,11 @@ its footer and on each result. A change to anything below is a new version,
 listed in the change log at the end, and the site is rebuilt under it; old
 score cards keep their measured values, which do not depend on the method.
 
-The full explanation, with the reasons, is [ranking.md](ranking.md). The code
-is `site/difference.py` (the score) and `site/ranking.py` (ranks and the
-rating), with a browser twin in `site/static/rankings.js`.
+> **Protocol 4.0 (20 November 2026)** keeps §1–2 below as the measures of a
+> result and retires §3–4 (ranks on a test and the OpenHydro rating). See
+> [evidence.md](evidence.md).
+
+The code is `site/difference.py` (the measures) and `site/measures.py`.
 
 ## 1. A check's value
 
@@ -34,30 +36,9 @@ conservation error. Scored on the finest grid (`run.scored_dx`).
 
 Bands, for colour only: under 0.1, 1, 3, 10, 30 %, and over 30 %.
 
-## 3. Rank on a test
+## 3–4. Ranks and the rating (retired)
 
-Sorted by score. Two results tie when they differ by less than 10 % of the
-larger, or both are under 0.01 %; on a parity test, also when both are within
-the difference between two builds of the reference engine (its noise floor). Rank = 1 + the
-number of results clearly better.
-
-Not ranked (shown): a run the engine flags (over 10 % of routing steps not
-converging, or a continuity error over 10 %), and submitted results not yet
-re-run by a maintainer.
-
-## 4. The OpenHydro rating
-
-| Setting | Value |
-| --- | --- |
-| model | Bradley–Terry, Hunter's MM algorithm, Elo scale (1000 = geometric mean strength, 400 points = 10× odds) |
-| a match | every pair of models on a test both ran; tie as in §3 = half a win each |
-| weight | 2 / (n(n − 1)) per match on a test with n models (each test counts once) |
-| prior | 0.05 of a test drawn against an average model |
-| groups rated overall | 1D channels, 2D surface, drainage, water networks, coupled 1D/2D |
-| field | the largest set of models connected by shared tests |
-| minimum | 5 tests |
-| interval | 95 %, 200 bootstrap redraws of the tests, mulberry32 seed 20261017 |
-| rank | 1 + the number of models whose interval lies wholly above |
+Retired by [evidence protocol 4.0](evidence.md): results are no longer ranked on a test or rated across tests. The retired rules are in this file's git history.
 
 ## Change log
 
