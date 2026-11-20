@@ -15,6 +15,19 @@ Suite releases are independent of schema semver (`schemas/v1`).
     - **Promotion rules.** Promotion no longer reads a card's `passed` field. Rule 5 is a published run. For verification cases, rule 7 is two independent codes converging at the expected order.
     - **Automation charter** in `GOVERNANCE.md`. CI publishes without approval or embargo, and three decisions stay with people.
     - **CLI.** `benchmark1d2d catalog list` shows each case's kind of evidence and takes `--evidence`.
+- **Automatic defaults audit.** Each engine's defaults are copied from its own source at the pinned tag (EPA SWMM 5.2.4 and 5.1.15, EPANET 2.2), in `benchmark1d2d.defaults`. `scripts/audit_configurations.py` computes every audited record's settings-changed-from-default list from the kept model files.
+    - CI checks the records against the model files, and recomputes them when results are collected.
+    - The audit found two set-up choices that were never documented. The SWMM harness writes `HEAD_TOLERANCE 0.0005 m` on every test, tighter than SWMM's 0.0015 m default. The network runs converge EPANET to 1e-6. Those configurations are therefore T2, not T0.
+    - T0 changes must now be `required_by_case` or `selects_method`.
+- **First true out-of-the-box SWMM run.** The new `swmm524-defaults` configuration is EPA SWMM 5.2.4 with its own iteration defaults, with score cards and model files on the 8 channel tests.
+- **Sensitivity envelopes.** `scripts/sensitivity_swmm.py` and the monthly `sensitivity.yml` rerun EPA SWMM 5.2.4 with one numerical option changed at a time. Each test page shows the range.
+- **Engineering-significance values.** A check can carry a `significance` value from a cited external source, and the site reports whether each result meets it. Bellinge has the first two; `docs/methodology/significance.md` lists those wanted.
+- **Validation category.**
+    - `data_card` is now required for every validation case, and written for all of them.
+    - `validation_design` declares the mode (engine or practice) and each event's role (calibration, scored or held back) before any run. Bellinge's practice split is fixed.
+    - A12-001 is unblocked: the Sheffield data are CC BY 4.0 on Zenodo.
+    - New drafts: A1F-200 Barnes (1967) natural channels, A1F-110 Fehraltorf UWO, A2F-010 North Carolina 2016 high-water marks, A2F-020 Ellicott City 2016/2018, A2L-030 Liège urban district.
+- **Governance drafts** (`docs/submission/`): an EWRI task committee proposal, a steering group charter and a conflict-of-interest form.
 - **Pages build fixed.** It had failed since 18 November.
     - `wntr` 1.5.0 imports `six` without declaring it; `six` is now in the `engines` extra.
     - Recipes for the `*-converged` SWMM engines raised `KeyError`.
