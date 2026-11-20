@@ -129,7 +129,7 @@ BADGE_COLOURS = {"s0": "#1A7F4B", "s1": "#3E8E5B", "s2": "#8A8420", "s3": "#A963
 
 
 def badge_svg(label: str, right: str, klass: str = "sn") -> str:
-    """A shields-style badge: label on the left, the result's score (percent difference, rank) on the right."""
+    """A shields-style badge: label on the left, the result's configuration tier and percent difference on the right."""
     lw, rw = 7 * len(label) + 14, 7 * len(right) + 14
     col = BADGE_COLOURS.get(klass, BADGE_COLOURS["sn"])
     w = lw + rw

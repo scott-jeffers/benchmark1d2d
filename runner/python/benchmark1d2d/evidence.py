@@ -26,17 +26,20 @@ from __future__ import annotations
 EVIDENCE = {
     "verification": {
         "name": "Verification",
+        "short": "exact solution",
         "truth": "an exact or manufactured solution",
         "a_miss_means": "the code, or its numerics as configured, is wrong",
     },
     "validation": {
         "name": "Validation",
+        "short": "measurement",
         "truth": "a measurement, with its uncertainty",
         "a_miss_means": "something is wrong: the code, the set-up, the data or the equations",
     },
     "comparison": {
         "name": "Comparison",
-        "truth": "none independent: a pinned reference engine, or states that follow from the inputs",
+        "short": "another code",
+        "truth": "another code (a pinned reference engine), or states that follow from the inputs; nothing independent",
         "a_miss_means": "only that two codes differ",
     },
 }

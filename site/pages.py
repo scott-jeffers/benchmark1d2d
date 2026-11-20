@@ -114,19 +114,64 @@ NOT_YET_COUPLED = ["TUFLOW", "InfoWorks ICM", "MIKE+", "PCSWMM 2D", "Flood Model
 NOT_YET_DRAINAGE = ["InfoWorks ICM", "MIKE+ (MOUSE)", "PCSWMM", "XPSWMM", "Flood Modeller", "HEC-RAS"]
 
 
-import ranking  # noqa: E402  (scores and rankings: site/ranking.py)
+import measures  # noqa: E402  (per-result measures: site/measures.py)
 import difference  # noqa: E402  (percent differences: site/difference.py)
 import machine_info  # noqa: E402
+from benchmark1d2d import configuration as config_records  # noqa: E402
+from benchmark1d2d import evidence as evidence_kinds  # noqa: E402
+
+# How each model was set up (configurations/<key>.json): tier and settings changed from default.
+CONFIG: dict[str, dict] = config_records.load()
 
 
-def score_pill(card: dict | None, rank: int | None = None, tie: bool = False) -> str:
-    """A result's score: its percent difference from the right answer (lower is better), with its rank."""
+def plural(n: int, word: str) -> str:
+    return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+def tier_of(key: str) -> str | None:
+    return (CONFIG.get(key) or {}).get("tier")
+
+
+def tier_badge(key: str) -> str:
+    t = tier_of(key)
+    if not t:
+        return ""
+    name, what = config_records.TIERS[t]
+    return f'<span class="tier tier-{t.lower()}" title="{esc(what)}">{esc(t)} · {esc(name)}</span>'
+
+
+def config_block(key: str, depth: int = 1) -> str:
+    """The model's configuration: tier, who set it, and every setting changed from the engine's default."""
+    rec = CONFIG.get(key)
+    if not rec:
+        return ""
+    t = rec["tier"]
+    name, what = config_records.TIERS[t]
+    rows = "".join(
+        f'<tr><td>{esc(ch["setting"])}</td><td>{esc(ch["value"])}</td><td>{esc("" if ch.get("default") is None else ch["default"])}</td>'
+        f'<td>{esc(ch["reason"])}{(" <span class=muted>(" + esc(ch["source"]) + ")</span>") if ch.get("source") else ""}</td></tr>'
+        for ch in rec["changed_from_default"])
+    table = (f'<div class="table-scroll"><table class="data"><thead><tr><th>Setting</th><th>Value</th><th>Default</th><th>Why</th></tr></thead>'
+             f'<tbody>{rows}</tbody></table></div>') if rows else '<p class="small">No setting is listed as changed from the engine\'s default.</p>'
+    up = "../" * depth
+    src = f'{BLOB}configurations/{esc(key)}.json'
+    return (f'<section class="section config"><h2>How it was set up</h2>'
+            f'<p>{tier_badge(key)} <span class="muted">{esc(what)} Set by: {esc(rec["set_by"])}. '
+            f'Engine: {esc(rec["engine"]["name"])} {esc(rec["engine"]["version"])}'
+            f'{(" (" + esc(rec["engine"]["pin"]) + ")") if rec["engine"].get("pin") else ""}.</span></p>'
+            f'<h3>Settings changed from the engine\'s default</h3>{table}'
+            f'<p class="small muted">{esc(config_records.AUDIT[rec["defaults_audit"]])} '
+            f'{esc(rec.get("notes", ""))} <a href="{src}">Configuration record</a> · '
+            f'<a href="{up}score.html">Think a better set-up exists? Submit it: CI reruns it and, if it does better across the whole group of tests, it becomes the T2 shown.</a></p></section>')
+
+
+def score_pill(card: dict | None) -> str:
+    """A result's measure: its largest percent difference from the right answer over the test's accuracy checks."""
     if card is None:
         return '<span class="score sn">Not run</span>'
-    sc = ranking.score(card)
-    rk = f'<b class="rk">#{rank}{"=" if tie else ""}</b> ' if rank else ""
-    return (f'<span class="score {ranking.klass(sc)}" title="Largest percent difference from the right answer over the test’s checks: lower is better">'
-            f'{rk}{esc(ranking.label(sc))}</span>')
+    sc = measures.score(card)
+    return (f'<span class="score {measures.klass(sc)}" title="Largest percent difference from the right answer over the test’s accuracy checks">'
+            f'{esc(measures.label(sc))}</span>')
 
 
 def engine_line(card: dict) -> str:
@@ -155,8 +200,8 @@ def engine_line(card: dict) -> str:
     if not bits:
         return ""
     if rep.get("flagged"):
-        return (f'<p class="small engine-flag"><b>Not ranked: the engine flags this run.</b> Its own report: {esc("; ".join(bits))} '
-                f'(a run is flagged above 10 % unconverged steps or a 10 % continuity or volume error). The numbers are shown, not ranked.</p>')
+        return (f'<p class="small engine-flag"><b>The engine flags this run.</b> Its own report: {esc("; ".join(bits))} '
+                f'(a run is flagged above 10 % unconverged steps or a 10 % continuity or volume error). The numbers are shown as measured.</p>')
     return f'<p class="small muted engine-line">Engine report on the scored run: {esc("; ".join(bits))}.</p>'
 
 
@@ -167,7 +212,7 @@ def run_line(card: dict) -> str:
     out = (f'<p class="small muted settings-line"><b>Settings:</b> {esc(ad)}</p>' if ad and ad not in ("generic_parquet",) else "") + engine_line(card)
     if r.get("wall_seconds") is None:
         return out
-    return (f'<p class="small run-time">Run time, finest grid: <b>{esc(ranking.fmt_time(r["wall_seconds"]))}</b>'
+    return (f'<p class="small run-time">Run time, finest grid: <b>{esc(measures.fmt_time(r["wall_seconds"]))}</b>'
             f' <span class="muted">· {esc(machine_info.summary(r.get("machine")))}</span></p>') + out
 
 
@@ -242,6 +287,9 @@ def register_submitted(solver: dict) -> str:
                            "scored by the suite with the same scorer as every other run"))
         SOLVERS.append(entry)
         SOLVER[key] = entry
+        CONFIG[key] = config_records.for_submission(
+            {"solver": solver, "submitted_by": solver.get("submitted_by"), "tier": solver.get("tier"),
+             "changed_from_default": solver.get("changed_from_default")}, key)
     return key
 
 
@@ -422,9 +470,9 @@ def checks_for(m: dict, card: dict) -> list[dict]:
         k = difference.kind({**r, "metric": d.get("metric", r.get("metric")), "threshold": d["threshold"]})
         scored = gating and k == "accuracy" or (gating and r is (difference.worst_check(card) or {}))
         if k == "accuracy":
-            diff = "" if already_pct else (f"{ranking.short(pct)} {of}".strip() if pct is not None else "")
+            diff = "" if already_pct else (f"{measures.short(pct)} {of}".strip() if pct is not None else "")
         elif k == "skill":
-            diff = "skill score (1 is perfect)" + (f" · scored as {ranking.short(pct)} {of}" if scored and pct is not None else "")
+            diff = "skill score (1 is perfect)" + (f" · scored as {measures.short(pct)} {of}" if scored and pct is not None else "")
         elif k == "conservation":
             diff = "conservation, reported beside the score" if not scored else ""
         else:
@@ -512,7 +560,7 @@ NOTES = {
     ("A1F-010", "hydronet-pinn"): "The trained network spreads 0.3–0.4 m of water over the whole dry channel downstream, so its front is 713 m ahead of the exact one; it gains 3.3 % of the water, and the error grows on finer grids. Its own finite-volume engine, by contrast, never starts the flow.",
 }
 CASE_NOTES = {
-    "A1F-100": "This is a validation of the published Bellinge model against its gauges, not a comparison of engines: the SWMM-family engines run the same model file and land within each other's build noise (two builds of EPA SWMM 5.2.4 from the same source differ by more than 5 cm in peak depth at 75 of the model's 1,020 nodes, as Bob Dickinson measured with his Bellinge Explorer, 17 October 2026). Field data is kept off the overall rating.",
+    "A1F-100": "This is a validation of the published Bellinge model against its gauges, not a comparison of engines: the SWMM-family engines run the same model file and land within each other's build noise (two builds of EPA SWMM 5.2.4 from the same source differ by more than 5 cm in peak depth at 75 of the model's 1,020 nodes, as Bob Dickinson measured with his Bellinge Explorer, 17 October 2026).",
     "A1F-040": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing stays close on all four bump tests.",
     "A1F-041": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing stays close on all four bump tests.",
     "A1F-042": "The SWMM dynamic-wave engines (EPA SWMM 5.2.4, OpenSWMM v6 dynamic wave and Hydra) never settle on this frictionless channel with 10 and 5 cm conduits, even with a 0.0025 s routing step: depths swing by more than a metre. On 20 cm conduits SWMM 5.2.4 is within 8 mm on the subcritical case. OpenSWMM v6's finite-volume routing stays close on all four bump tests.",
@@ -523,8 +571,8 @@ CASE_NOTES = {
 
 # ── layout ──────────────────────────────────────────────────────────────────
 
-NAV = [("rankings.html", "Leaderboard"), ("results.html", "Tests &amp; results"), ("viewer.html", "Viewer"), ("network.html", "Networks"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
-FOOT = [("news.html", "What's new"), ("rankings.html", "Leaderboard"), ("solvers.html", "Models"), ("compare.html", "Compare models"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("coupled.html", "1D/2D viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
+NAV = [("profiles.html", "Evidence"), ("results.html", "Tests &amp; results"), ("viewer.html", "Viewer"), ("network.html", "Networks"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
+FOOT = [("news.html", "What's new"), ("profiles.html", "Evidence profiles"), ("solvers.html", "Models"), ("compare.html", "Side by side"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("coupled.html", "1D/2D viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
         ("method.html", "Method"), ("get-started.html", "Command line")]
 LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 2 11 14 17 8 S27 2 33 8" fill="none" stroke-width="3" stroke-linecap="round"/>'
         '<path class="b" d="M1 18 H33" stroke-width="3" stroke-linecap="round"/></svg>')
@@ -619,8 +667,8 @@ def score_tag(card: dict | None) -> dict | None:
     """A result's percent difference for the viewers: label, colour band and value."""
     if not card:
         return None
-    sc = ranking.score(card)
-    return {"l": ranking.short(sc), "k": ranking.klass(sc), "s": sc if sc is not None and sc < 1e300 else None}
+    sc = measures.score(card)
+    return {"l": measures.short(sc), "k": measures.klass(sc), "s": sc if sc is not None and sc < 1e300 else None}
 
 
 def verdict(card: dict | None) -> str:
@@ -645,44 +693,19 @@ KIND_WORDS = {"production": "Production software, installed from its official so
               "submitted": "Run by others and submitted as results files; scored by the suite with the same scorer as every other run."}
 
 
-_BOARD: dict = {}
-
-
-def leaderboard(runs: dict) -> dict:
-    """The default leaderboard (rankpage.board), by model key; computed once per build."""
-    if id(runs) not in _BOARD:
-        import rankpage
-        _BOARD.clear()
-        _BOARD[id(runs)] = {r["key"]: r for r in rankpage.board(runs, SOLVER)}
-    return _BOARD[id(runs)]
-
-
-def standing_text(o: dict, html: bool = True) -> str | None:
-    if not o or not o.get("ranked"):
-        return None
-    b = (lambda x: f"<b>{x}</b>") if html else (lambda x: x)
-    return (f'Rank {b("#" + str(o["rank"]))} on the leaderboard, OpenHydro rating {b(format(o["rating"], ".0f"))} '
-            f'(95 % interval {o["lo"]:.0f} to {o["hi"]:.0f}) over {b(o["tests"])} tests; median difference {b(esc(ranking.short(o["median_score"])))}.')
-
-
 def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
     """One model: every test it ran, with the checks and the notes."""
     s = SOLVER[key]
     mine = [(m, runs[m["test_id"]][key]) for m in manifests if key in (runs.get(m["test_id"]) or {})]
-    ov = leaderboard(runs).get(key, {})
-    standing = standing_text(ov) or (
-        f'Ran <b>{len(mine)}</b> test{"s" if len(mine) != 1 else ""}; '
-        + (f"fewer than {ranking.MIN_TESTS} with other models, so not ranked on the leaderboard." if s["kind"] not in ("suite", "compat")
-           else "worked examples and previous releases are shown beside the leaderboard, not ranked on it."))
+    standing = f'Ran <b>{len(mine)}</b> test{"s" if len(mine) != 1 else ""}. <a href="../profiles.html#p-{esc(key)}">Its evidence profile →</a>'
     versions = sorted({(c.get("solver") or {}).get("name", "") for _, c in mine})
     rows = []
     for m, c in mine:
         sid = sid_of(m["test_id"])
-        rr = next((r for r in ranking.rank_test(runs[m["test_id"]], hold=HOLD) if r["key"] == key), {})
         checks = "; ".join(f'{SYM[ck["state"]]} {ck["label"]} {ck["value"]}' for ck in checks_for(m, c) if ck.get("gating", True))
         note = plain_note(NOTES.get((sid, key), ""))
         rows.append(f'<tr><td><a href="../tests/{sid}.html#m-{key}"><b>{esc(story(m)["name"])}</b></a><div class="muted small">{esc(sid)}</div></td>'
-                    f'<td>{score_pill(c, rr.get("rank"), rr.get("tie"))}<div class="muted small">of {len(runs[m["test_id"]])} models</div></td><td class="small">{esc(checks)}{("<p class=note>" + esc(note) + "</p>") if note else ""}</td></tr>')
+                    f'<td>{score_pill(c)}<div class="muted small">{esc(evidence_kinds.EVIDENCE[evidence_kinds.evidence_of(m)]["name"])}</div></td><td class="small">{esc(checks)}{("<p class=note>" + esc(note) + "</p>") if note else ""}</td></tr>')
     doc = SOLVER_DOCS.get(key)
     doc_link = f'<p><a href="{REPO_URL}/blob/master/docs/{doc}">How it is run, and what was found →</a></p>' if doc else ""
     body = f"""<div class="wrap">
@@ -692,9 +715,10 @@ def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
   <p class="lede">{esc(s['what'])}.</p>
   <p class="muted">{esc(KIND_WORDS.get(s['kind'], ''))} {standing} Score cards from: {esc(', '.join(versions))}.</p>
   {doc_link}
-  <p><a href="../compare.html?a={esc(key)}">Compare {esc(s['name'])} with another model →</a></p>
+  <p><a href="../compare.html?a={esc(key)}">Put {esc(s['name'])} beside another model →</a></p>
 </section>
-<section class="section"><div class="table-scroll"><table class="data"><thead><tr><th>Test</th><th>Difference, rank</th><th>Checks</th></tr></thead>
+{config_block(key)}
+<section class="section"><h2>Every result</h2><div class="table-scroll"><table class="data"><thead><tr><th>Test</th><th>Difference, kind of evidence</th><th>Checks</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table></div></section>
 </div>"""
     return layout(s["name"] + " " + s["sub"], body, "solvers.html", depth=1, description=f"Every benchmark result for {s['name']} ({s['sub']}).")
@@ -704,7 +728,7 @@ def compare_page(manifests: list[dict], runs: dict) -> str:
     """Two models side by side, test by test."""
     keys = SOLVERS_ORDER({k for v in runs.values() for k in v})
     models = [dict(key=k, name=series_label(k, keys) if SOLVER[k]["name"] in {SOLVER[o]["name"] for o in keys if o != k} else SOLVER[k]["name"],
-                   sub=SOLVER[k]["sub"], color=SOLVER[k]["color"], kind=SOLVER[k]["kind"]) for k in keys]
+                   sub=SOLVER[k]["sub"], color=SOLVER[k]["color"], kind=SOLVER[k]["kind"], tier=tier_of(k) or "") for k in keys]
     for mm in models:
         mm["full"] = mm["name"] if mm["sub"].split("·")[-1].strip() in mm["name"] else f'{mm["name"]} · {mm["sub"]}'
     tests = []
@@ -715,8 +739,8 @@ def compare_page(manifests: list[dict], runs: dict) -> str:
             sid = sid_of(m["test_id"])
             res = {}
             for k, c in runs[m["test_id"]].items():
-                sc = ranking.score(c)
-                res[k] = dict(s=sc if sc is None or sc < 1e300 else 1e300, l=ranking.label(sc), k=ranking.klass(sc),
+                sc = measures.score(c)
+                res[k] = dict(s=sc if sc is None or sc < 1e300 else 1e300, l=measures.label(sc), k=measures.klass(sc),
                               c=[[ck["label"], ck["value"], ck["state"], ck["limit"]] for ck in checks_for(m, c) if ck.get("gating", True)],
                               n=NOTES.get((sid, k), ""))
             tests.append(dict(sid=sid, name=story(m)["name"], group=gname, r=res))
@@ -724,8 +748,8 @@ def compare_page(manifests: list[dict], runs: dict) -> str:
     opts = "".join(f'<option value="{esc(mm["key"])}">{esc(mm["full"])}</option>' for mm in models)
     body = f"""<div class="wrap">
 <section class="page-head">
-  <h1>Compare two models</h1>
-  <p class="lede">Pick two models to see, test by test, which gets closer to the right answer. Each result is its percent difference from the right answer; within 10 % of each other counts as a tie.</p>
+  <h1>Two models side by side</h1>
+  <p class="lede">Pick two models to see their results side by side on the tests both ran, each with its configuration tier. Nothing is added up: a difference on one test says nothing about another, and results of different tiers were set up under different rules.</p>
 </section>
 <div class="cmp-pick">
   <label>Model A<select id="cmp-a">{opts}</select></label>
@@ -744,23 +768,20 @@ var M={};D.models.forEach(function(m){M[m.key]=m;});
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 var q=new URLSearchParams(location.search);A.value=M[q.get('a')]?q.get('a'):(M['swmm524']?'swmm524':D.models[0].key);
 B.value=M[q.get('b')]?q.get('b'):(M['openswmm-fv']?'openswmm-fv':D.models[1].key);
-function tie(x,y){if(x==null||y==null)return false;if(x<0.01&&y<0.01)return true;var h=Math.max(x,y);return h===0||Math.abs(x-y)<=0.1*h;}
 function cell(r,m){var dm=' data-m="'+esc(m)+'"';if(!r)return '<td class="muted"'+dm+'>not run</td>';var h='<td'+dm+'><span class="score '+r.k+'">'+esc(r.l)+'</span><ul class="cmp-checks">';
 r.c.forEach(function(c){h+='<li class="'+c[2]+'">'+esc(c[0])+': '+esc(c[1])+(c[3]?' <span class="muted">('+esc(c[3])+')</span>':'')+'</li>';});return h+'</ul></td>';}
-function draw(){var a=A.value,b=B.value,both=[],onlyA=0,onlyB=0,s={bp:0,ap:0,bpo:0,bf:0};
+function draw(){var a=A.value,b=B.value,both=[],onlyA=0,onlyB=0;
 history.replaceState(null,'','?a='+encodeURIComponent(a)+'&b='+encodeURIComponent(b));
-document.getElementById('cmp-ha').textContent=M[a].full;document.getElementById('cmp-hb').textContent=M[b].full;
-function who(t){var x=t.r[a].s,y=t.r[b].s;if(x==null||y==null||tie(x,y))return 0;return x<y?1:2;}
-D.tests.forEach(function(t){var ra=t.r[a],rb=t.r[b];if(ra&&rb){both.push(t);var w=who(t);if(w===1)s.ap++;else if(w===2)s.bpo++;else s.bp++;}else if(ra)onlyA++;else if(rb)onlyB++;});
-both.sort(function(x,y){return (who(x)?0:1)-(who(y)?0:1);});
-var rows='';both.forEach(function(t){var diff=who(t)!==0;rows+='<tr'+(diff?' class="cmp-diff"':'')+'><th scope="row"><a href="tests/'+esc(t.sid)+'.html">'+esc(t.name)+'</a><small>'+esc(t.sid)+' · '+esc(t.group)+'</small></th>'+cell(t.r[a],M[a].name)+cell(t.r[b],M[b].name)+'</tr>';});
+document.getElementById('cmp-ha').textContent=M[a].full+(M[a].tier?' ('+M[a].tier+')':'');document.getElementById('cmp-hb').textContent=M[b].full+(M[b].tier?' ('+M[b].tier+')':'');
+D.tests.forEach(function(t){var ra=t.r[a],rb=t.r[b];if(ra&&rb)both.push(t);else if(ra)onlyA++;else if(rb)onlyB++;});
+var rows='';both.forEach(function(t){rows+='<tr><th scope="row"><a href="tests/'+esc(t.sid)+'.html">'+esc(t.name)+'</a><small>'+esc(t.sid)+' · '+esc(t.group)+'</small></th>'+cell(t.r[a],M[a].name)+cell(t.r[b],M[b].name)+'</tr>';});
 document.querySelector('#cmp-table tbody').innerHTML=rows||'<tr><td colspan="3">These two models have no test in common yet.</td></tr>';
-var n=both.length;document.getElementById('cmp-summary').innerHTML=n?('<div><b>'+n+'</b><span>tests both ran</span></div><div class="hl"><b>'+s.ap+'</b><span>'+esc(M[a].name)+' closer</span></div><div class="hl"><b>'+s.bpo+'</b><span>'+esc(M[b].name)+' closer</span></div><div><b>'+s.bp+'</b><span>tied (within 10 %)</span></div>'):'';
+var n=both.length;document.getElementById('cmp-summary').innerHTML=n?('<div><b>'+n+'</b><span>tests both ran</span></div>'+(M[a].tier!==M[b].tier?'<div class="hl"><b>'+esc(M[a].tier||'?')+' vs '+esc(M[b].tier||'?')+'</b><span>different configuration tiers: set up under different rules</span></div>':'')):'';
 document.getElementById('cmp-only').textContent=(onlyA||onlyB)?('Not compared: '+onlyA+' test(s) only '+M[a].name+' ran, '+onlyB+' only '+M[b].name+' ran.'):'';}
 A.addEventListener('change',draw);B.addEventListener('change',draw);
 document.getElementById('cmp-swap').addEventListener('click',function(){var t=A.value;A.value=B.value;B.value=t;draw();});draw();})();
 </script>"""
-    return layout("Compare two models", body, "solvers.html", scripts=script, description="Two benchmark models side by side, test by test.")
+    return layout("Two models side by side", body, "solvers.html", scripts=script, description="Two benchmark models side by side, test by test.")
 
 
 def solvers_index(manifests: list[dict], runs: dict) -> str:
@@ -773,18 +794,13 @@ def solvers_index(manifests: list[dict], runs: dict) -> str:
         if not ks:
             continue
         lis = []
-        ov = leaderboard(runs)
-        ks = sorted(ks, key=lambda k: ((ov.get(k, {}).get("rank") if ov.get(k, {}).get("ranked") else 999), -(ov.get(k, {}).get("rating") or 0)))
         for k in ks:
-            o = ov.get(k, {})
             n = sum(1 for by in runs.values() if k in by)
-            stand = (f'#{o["rank"]} on the leaderboard · rating {o["rating"]:.0f} · {o["tests"]} tests' if o.get("ranked")
-                     else f'{n} test{"s" if n != 1 else ""}, not ranked')
             lis.append(f'<li><a href="solvers/{k}.html"><span class="sw" style="background:{SOLVER[k]["color"]}"></span><b>{esc(SOLVER[k]["name"])}</b> '
-                       f'<span class="muted">{esc(SOLVER[k]["sub"])}</span></a> — {esc(stand)}</li>')
+                       f'<span class="muted">{esc(SOLVER[k]["sub"])}</span></a> {tier_badge(k)} — {n} test{"s" if n != 1 else ""}</li>')
         out.append(f'<section class="section"><h2>{title}</h2><p class="muted">{esc(KIND_WORDS[kind])}</p><ul class="waitlist">{"".join(lis)}</ul></section>')
     body = f"""<div class="wrap"><section class="page-head"><h1>Models</h1>
-<p class="lede">Every model scored on the benchmark, with all of its results on one page. <a href="rankings.html">See the leaderboard →</a> · <a href="compare.html">Compare two models side by side →</a></p></section>{''.join(out)}</div>"""
+<p class="lede">Every model run on the benchmark, with how it was set up and all of its results on one page. <a href="profiles.html">Evidence profiles →</a> · <a href="compare.html">Two models side by side →</a></p></section>{''.join(out)}</div>"""
     return layout("Models", body, "solvers.html", description="Every model scored on the benchmark.")
 
 
@@ -864,8 +880,10 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
   <p>On a dam break into shallow water, HydroCouple's finite-volume routing gets the bore right and converges; SWMM's classic dynamic wave, in both 5.2.4 and 6, does not.</p>
 </a>""")
     findings = "".join(cards[:4])
-    import rankpage
-    top_chart = rankpage.rating_chart_html(rankpage.board(runs, SOLVER), SOLVER, top=10)
+    kinds_html = "".join(
+        f'<div class="card"><div class="label">{esc(v["name"])}</div><p>The truth: {esc(v["truth"])}. A difference means {esc(v["a_miss_means"])}.</p>'
+        f'<p class="small muted">{plural(sum(1 for m in manifests if m["status"] != "draft" and evidence_kinds.evidence_of(m) == k_), "test")}</p></div>'
+        for k_, v in evidence_kinds.EVIDENCE.items())
     by_sid = {sid_of(m["test_id"]): m for m in manifests}
     featured = ["A1F-010", "A2C-EA4", "A1F-042", "A1D-002", "A12-012", "A1P-020", "B-RTC-001"]
     tcards = "".join(test_card(by_sid[s_], runs) for s_ in featured if s_ in by_sid)
@@ -877,15 +895,14 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
 <div class="wrap">
 <section class="home-board">
   <div>
-    <h1>Which water models get the answer right?</h1>
-    <p class="lede">An open leaderboard for flood, river, drainage and water-network models. Every test has a known right answer, every model runs the same inputs, and every result can be re-run by anyone.</p>
-    <div class="btns"><a class="btn primary" href="rankings.html">See the full leaderboard</a><a class="btn ghost" href="score.html">Score your model</a></div>
+    <h1>What evidence is there that a water model gets it right?</h1>
+    <p class="lede">Open, reproducible evidence for flood, river, drainage and water-network models. Every model runs the same inputs, every result shows how the model was set up, and the suite re-runs itself on a schedule and checks every week for new engine releases. Nothing is ranked: each result is a measurement.</p>
+    <div class="btns"><a class="btn primary" href="profiles.html">See the evidence profiles</a><a class="btn ghost" href="score.html">Score your model</a></div>
   </div>
-  <figure class="home-top" aria-labelledby="home-top-h">
-    <div class="lb-sec-head"><h2 id="home-top-h">Top models by OpenHydro rating</h2></div>
-    {top_chart}
-    <figcaption><span>Higher is better. Each dot is a model's rating and the band its 95 % interval. Production software and research codes, all tests.</span><a href="rankings.html">Full table and per-group boards</a></figcaption>
-  </figure>
+</section>
+<section class="section tight" aria-label="Three kinds of evidence">
+  <h2>Three kinds of evidence, never averaged together</h2>
+  <div class="grid how">{kinds_html}</div>
 </section>
 <section class="section tight" aria-label="At a glance">
   <div class="stats">
@@ -898,7 +915,7 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
 <section class="section">
   <h2>Start where you are</h2>
   <div class="grid">
-    <a class="card" href="results.html"><div class="kicker">I use flood or drainage models</div><h3>Compare models on the same tests</h3><p>See how close each model gets to the right answer, ranked test by test and overall, with run times.</p></a>
+    <a class="card" href="results.html"><div class="kicker">I use flood or drainage models</div><h3>See the evidence for the problem you model</h3><p>For each kind of flow, what exact solutions, measurements and reference engines say about each model, and how it was set up.</p></a>
     <a class="card" href="score.html"><div class="kicker">I build a solver</div><h3>Score your code</h3><p>Download the inputs, run them, and check your results in the browser before you submit.</p></a>
     <a class="card" href="how-it-works.html"><div class="kicker">I review model results</div><h3>Check why a result can be trusted</h3><p>Fixed inputs, pinned software versions, every result reproducible.</p></a>
   </div>
@@ -949,14 +966,14 @@ def test_card(m: dict, runs: dict, up: str = "", status_text: str | None = None)
         score = f'<div class="tc-score">{esc(status_text)}</div>'
     elif scored:
         n = len(scored)
-        rows = ranking.rank_test({k: by[k] for k in scored}, hold=HOLD)
-        # a small leaderboard: every model on the test (up to six), with its difference
+        rows = ORDER({k: by[k] for k in scored})
+        # the models on the test (up to six), by configuration tier, with each one's difference
         shown_rows = rows[:6]
         lis = "".join(
-            f'<li><span class="tc-rk">{(str(r["rank"]) + ("=" if r.get("tie") else "")) if r.get("rank") else "–"}</span>'
+            f'<li><span class="tc-rk">{esc(r["tier"] or "")}</span>'
             f'<span class="sw" style="background:{esc(SOLVER[r["key"]]["color"])}"></span>'
             f'<span class="tc-nm">{esc(SOLVER[r["key"]]["name"])} <span class="tc-sub">{esc(SOLVER[r["key"]]["sub"])}</span></span>'
-            f'<span class="lb-cell {ranking.klass(r["score"])}">{esc(ranking.short(r["score"]))}</span></li>' for r in shown_rows)
+            f'<span class="lb-cell {measures.klass(r["score"])}">{esc(measures.short(r["score"]))}</span></li>' for r in shown_rows)
         more = f'<li class="tc-more">and {n - len(shown_rows)} more</li>' if n > len(shown_rows) else ""
         score = f'<div class="tc-score"><ol class="tc-board" aria-label="{n} model{"s" if n != 1 else ""} on this test">{lis}{more}</ol></div>'
     else:
@@ -1040,12 +1057,11 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
                     tds.append('<td><span class="notrun" aria-label="not run">—</span></td>')
                     continue
                 cid = f"{sid}|{k}"
-                sc = ranking.score(c)
-                rk = next((r for r in ranking.rank_test(runs.get(m["test_id"]) or {}, hold=HOLD) if r["key"] == k), {})
-                cells[cid] = dict(test=st["name"], sid=sid, solver=f'{SOLVER[k]["name"]} · {SOLVER[k]["sub"]}', label=ranking.label(sc),
-                                  cls=ranking.klass(sc), rank=rk.get("rank"), checks=checks_for(m, c), note=plain_note(NOTES.get((sid, k), "")))
-                label = f'{st["name"]}, {SOLVER[k]["name"]} {SOLVER[k]["sub"]}: {ranking.label(sc)}'
-                tds.append(f'<td><button type="button" class="cellbtn {ranking.klass(sc)}" data-cell="{esc(cid)}" aria-pressed="false" aria-label="{esc(label)}">{esc(ranking.short(sc))}</button></td>')
+                sc = measures.score(c)
+                cells[cid] = dict(test=st["name"], sid=sid, solver=f'{SOLVER[k]["name"]} · {SOLVER[k]["sub"]}', label=measures.label(sc),
+                                  cls=measures.klass(sc), tier=tier_of(k) or "", checks=checks_for(m, c), note=plain_note(NOTES.get((sid, k), "")))
+                label = f'{st["name"]}, {SOLVER[k]["name"]} {SOLVER[k]["sub"]}: {measures.label(sc)}'
+                tds.append(f'<td><button type="button" class="cellbtn {measures.klass(sc)}" data-cell="{esc(cid)}" aria-pressed="false" aria-label="{esc(label)}">{esc(measures.short(sc))}</button></td>')
             rows.append(f'<tr data-group="{gkey}"><th scope="row"><a href="tests/{sid}.html">{esc(st["name"])}</a><small>{esc(sid)}</small></th>{"".join(tds)}</tr>')
     filters = '<button type="button" class="pill" data-filter="all" aria-pressed="true">All tests</button>' + "".join(
         f'<button type="button" class="pill" data-filter="{k}" aria-pressed="false">{esc(v)}</button>' for k, v in GROUPS.items()
@@ -1102,7 +1118,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
 <div class="wrap">
 <section class="page-head">
   <h1>Tests and results</h1>
-  <p class="lede">Every model runs the same inputs against a known right answer. Each result shows its percent difference from the right answer; lower is better. <a href="rankings.html">See the leaderboard →</a></p>
+  <p class="lede">Every model runs the same inputs. Each result shows its percent difference from the right answer, the kind of evidence behind that answer, and how the model was set up. <a href="profiles.html">Evidence profiles by model →</a></p>
 </section>
 <div class="filters" role="group" aria-label="Filter tests">{filters}
   <div class="view-toggle" role="group" aria-label="View"><button type="button" data-view="cards" aria-pressed="true">Cards</button><button type="button" data-view="table" aria-pressed="false">Table</button></div>
@@ -1125,7 +1141,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
 (function(){var data=JSON.parse(document.getElementById('cells').textContent),panel=document.getElementById('panel');
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function render(id){var c=data[id];if(!c)return;var h='<div class="kicker">Selected result</div><div class="title">'+esc(c.test)+'</div><div class="solver">'+esc(c.solver)+'</div>'+
-('<span class="score '+c.cls+'"><b class="rk">#'+(c.rank||'–')+'</b> '+esc(c.label)+'</span>')+'<ul class="checks">';
+('<span class="score '+c.cls+'">'+esc(c.label)+'</span> <span class="tier">'+esc(c.tier||'')+'</span>')+'<ul class="checks">';
 c.checks.forEach(function(k){var sy={m:'•',info:'·'}[k.state]||'•',al={m:'counted',info:'reported only'}[k.state]||'';h+='<li><span class="'+k.state+'" aria-label="'+al+'">'+sy+'</span><span><b>'+esc(k.label)+':</b> '+esc(k.value)+' <span class="muted">('+esc(k.limit)+')</span></span></li>';});
 h+='</ul>'+(c.note?'<p class="small">'+esc(c.note)+'</p>':'')+'<a href="tests/'+esc(c.sid)+'.html#m-'+esc(id.split('|')[1])+'" style="font-weight:600">Open the test →</a>'+
 %LEGEND%;
@@ -1148,8 +1164,8 @@ document.querySelectorAll('[data-view]').forEach(function(b){b.addEventListener(
                   description="How close each flood, river, drainage and network model gets to the right answer on every test.")
 
 
-SCORE_LEGEND = ('<div class="legend-mini score-legend"><span>Percent difference from the right answer:</span>'
-                + "".join(f'<span><i class="score {k}">{esc(t)}</i></span>' for _, k, t in ranking.BANDS)
+SCORE_LEGEND = ('<div class="legend-mini score-legend"><span>Percent difference from the right answer (shading for reading only, not a verdict):</span>'
+                + "".join(f'<span><i class="score {k}">{esc(t)}</i></span>' for _, k, t in measures.BANDS)
                 + '<span><b style="color:#A7B4BC">—</b> not run</span></div>')
 
 
@@ -1159,7 +1175,7 @@ def _panel_html(c: dict | None) -> str:
     checks = "".join(f'<li><span class="{k["state"]}" aria-label="{ {"m": "counted", "info": "reported only"}.get(k["state"], "") }">{SYM[k["state"]]}</span>'
                      f'<span><b>{esc(k["label"])}:</b> {esc(k["value"])} <span class="muted">({esc(k["limit"])})</span></span></li>' for k in c["checks"])
     return (f'<div class="kicker">Selected result</div><div class="title">{esc(c["test"])}</div><div class="solver">{esc(c["solver"])}</div>'
-            f'<span class="score {c["cls"]}"><b class="rk">#{c["rank"] or "–"}</b> {esc(c["label"])}</span>'
+            f'<span class="score {c["cls"]}">{esc(c["label"])}</span> <span class="tier">{esc(c["tier"])}</span>'
             f'<ul class="checks">{checks}</ul>' + (f'<p class="small">{esc(c["note"])}</p>' if c["note"] else "")
             + f'<a href="tests/{esc(c["sid"])}.html" style="font-weight:600">Open the test →</a>' + SCORE_LEGEND)
 
@@ -1306,7 +1322,7 @@ def share_block(sid: str, k: str, card: dict) -> str:
     """A link to this result and a badge to embed it."""
     link = f"{SITE_URL}results.html#cell={sid}|{k}"
     badge = f"{SITE_URL}badges/{sid}/{k}.svg"
-    word = ranking.label(ranking.score(card))
+    word = measures.label(measures.score(card))
     md = f"[![OpenHydro Bench {sid}: {word}]({badge})]({link})"
     html_ = f'<a href="{link}"><img src="{badge}" alt="OpenHydro Bench {sid}: {word}"></a>'
     return (f'<details class="share"><summary>Share or embed this result</summary>'
@@ -1472,8 +1488,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
 </section>"""
     # model cards
     mcards = []
-    order = ranking.rank_test(runs, hold=HOLD)
-    rk = {r["key"]: r for r in order}
+    order = ORDER(runs)
     for k in [r["key"] for r in order]:
         c = runs[k]
         s = SOLVER[k]
@@ -1483,7 +1498,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         note = NOTES.get((sid, k), "")
         name = s["name"] if not k.startswith("lisflood") else f'{s["name"]} {s["sub"].split("·")[-1].strip()}'
         mcards.append(f"""<article class="model-card" id="m-{k}">
-  <div class="top"><div><div class="name"><span class="sw" style="background:{s['color']}"></span>{esc(name)}</div><div class="what">{esc(s['what'])}</div></div>{score_pill(c, rk[k].get("rank"), rk[k].get("tie"))}</div>
+  <div class="top"><div><div class="name"><span class="sw" style="background:{s['color']}"></span>{esc(name)}</div><div class="what">{esc(s['what'])} {tier_badge(k)}</div></div>{score_pill(c)}</div>
   {two_verdicts(c)}
   {run_line(c)}
   <div class="checks-grid">{checks}</div>
@@ -1517,7 +1532,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     def side_cells(k: str) -> str:
         v = sides[k]
         nse = "–" if v["nse"] is None else f'{v["nse"]:.3f}'
-        return ((f'<td class="num">{"–" if v["conservation"] is None else esc(ranking.short(v["conservation"]))}</td>' if has_c else "")
+        return ((f'<td class="num">{"–" if v["conservation"] is None else esc(measures.short(v["conservation"]))}</td>' if has_c else "")
                 + (f'<td class="num">{"–" if v["timing"] is None else esc(nice(v["timing"], 3)) + " s"}</td>' if has_t else "")
                 + (f'<td class="num">{nse}</td>' if has_n else ""))
     for r in order:
@@ -1528,18 +1543,18 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         if wc is not None:
             d_ = {cc["id"]: cc for cc in m["scoring"]["criteria"]}.get(wc["id"], wc)
             why = check_label({**d_, "threshold": wc.get("threshold", d_.get("threshold", {}))})
-        tb_rows.append(f'<tr><td class="num lb-rank">{(str(r["rank"]) + ("=" if r.get("tie") else "")) if r.get("rank") else "–"}</td>'
+        tb_rows.append(f'<tr><td>{tier_badge(r["key"])}</td>'
                        f'<td><a href="#m-{esc(r["key"])}"><span class="sw" style="background:{esc(s_["color"])}"></span><b>{esc(s_["name"])}</b> <span class="lb-sub">{esc(s_["sub"])}</span></a></td>'
-                       f'<td class="num"><span class="lb-cell {ranking.klass(r["score"])}">{esc(ranking.short(r["score"]))}</span></td>'
-                       f'<td class="tb-why">{esc(why)}{(" · <b>not ranked: " + esc(r["flag"] if HOLD(r["key"]) else "the engine flags this run") + "</b>") if r.get("flag") else ""}</td>{side_cells(r["key"])}<td class="num">{esc(ranking.fmt_time((c.get("run") or {}).get("wall_seconds")))}</td></tr>')
-    tboard = ('<div class="table-scroll"><table class="tb"><thead><tr><th class="num">Rank</th><th>Model</th><th class="num">Difference</th>'
+                       f'<td class="num"><span class="lb-cell {measures.klass(r["score"])}">{esc(measures.short(r["score"]))}</span></td>'
+                       f'<td class="tb-why">{esc(why)}{(" · <b>" + esc(r["flag"] if HOLD(r["key"]) else "the engine flags this run") + "</b>") if r.get("flag") else ""}</td>{side_cells(r["key"])}<td class="num">{esc(measures.fmt_time((c.get("run") or {}).get("wall_seconds")))}</td></tr>')
+    tboard = ('<div class="table-scroll"><table class="tb"><thead><tr><th>Set-up</th><th>Model</th><th class="num">Difference</th>'
               '<th>Largest difference in</th>' + ('<th class="num" title="Largest mass, continuity or storage balance error">Mass error</th>' if has_c else '')
               + ('<th class="num" title="Largest arrival or peak-time error">Timing</th>' if has_t else '')
               + ('<th class="num" title="Lowest Nash-Sutcliffe efficiency (1 is perfect)">NSE</th>' if has_n else '') + '<th class="num">Run time</th></tr></thead><tbody>' + "".join(tb_rows) + "</tbody></table></div>") if len(tb_rows) > 1 else ""
     if mcards:
         models = f"""<section class="section" style="padding-bottom:0" id="models">
   <h2>How models did</h2>
-  <p class="muted">In rank order: by each model's percent difference from the right answer, the largest over the test's accuracy checks (lower is better; results within 10 % of each other share a rank). Mass error, timing and NSE are shown beside it, not folded in. {esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
+  <p class="muted">Listed by configuration tier (T0 out of the box, T1 documented guidance, T2 expert), not by result. Each difference is the largest percent difference from the right answer over the test's accuracy checks; mass error, timing and NSE are shown beside it, not folded in. Each model's set-up is on its model page. {esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
   {tboard}
   {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
   <div class="models">{''.join(mcards)}{not_yet}</div>
@@ -1637,8 +1652,8 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     truth = {"analytic": "Exact solution", "exact_states": "Exact, from conservation", "intercomparison": "Known end states",
              "measured": "Laboratory or field measurements", "pinned_engine": "A pinned reference engine"}.get(kind, "")
     n_run = len(runs)
-    best_sc = min((x for x in (ranking.score(c) for c in runs.values()) if x is not None), default=None)
-    result_line = (f"<b>{n_run}</b> model{'s' if n_run != 1 else ''} · closest {esc(ranking.label(best_sc))}" if n_run else "No model run yet")
+    best_sc = min((x for x in (measures.score(c) for c in runs.values()) if x is not None), default=None)
+    result_line = (f"<b>{n_run}</b> model{'s' if n_run != 1 else ''} · closest {esc(measures.label(best_sc))}" if n_run else "No model run yet")
     hero_chart = bool(chart_html) and not net_html
     art = (f'<figure class="case-art">{tile_svg(sid, "Sketch of the test: " + st["name"], fit="meet")}'
            f'<figcaption><dl class="glance"><dt>Right answer</dt><dd>{esc(truth)}{(" · " + esc(_source_short(m))) if _source_short(m) else ""}</dd>'
@@ -1772,9 +1787,9 @@ def how_page(manifests: list[dict], runs: dict) -> str:
   </div>
 </section>
 <section class="section tight">
-  <h2>How results are scored and ranked</h2>
+  <h2>How results are measured</h2>
   <div class="grid">
-    <div class="card"><h3>Measurements, not verdicts</h3><p>Each check's error is given as a percentage of the quantity it is an error in (a depth error over the exact mean depth, a front error over the distance the front travels; mass errors are already percentages). A result's score is its largest percent difference over the test's accuracy checks; there is no limit and no pass or fail. Models are listed in that order on every test; results within 10 % of each other share a rank. <a href="rankings.html">Overall rankings</a> count head-to-head wins on the tests two models share, so a model is never compared on tests it did not run.</p></div>
+    <div class="card"><h3>Measurements, not verdicts</h3><p>Each check's error is given as a percentage of the quantity it is an error in (a depth error over the exact mean depth, a front error over the distance the front travels; mass errors are already percentages). A result's score is its largest percent difference over the test's accuracy checks; there is no limit and no pass or fail. Nothing is ranked and no number is combined across tests. Results on a test are listed by configuration tier, and each model's <a href="profiles.html">evidence profile</a> shows, for each capability, what verification, validation and comparison evidence says about it.</p></div>
     <div class="card"><h3>Getting better on finer grids</h3><p>Each test is run on up to four grids and scored on the finest. Every card lists the error on each grid and the rate it shrinks at (the "observed order", as in ASME V&amp;V 20), beside the scheme's design order. The rate is reported, not counted in the score.</p></div>
     <div class="card"><h3>Each check has a reason</h3><p>Every check is written down with why it was chosen and what its percentage is of (the exact mean depth, the distance a front travels). Mass errors, timing errors (in seconds) and NSEs are shown in their own columns, not folded into the score. Open any test's technical details to read them.</p></div>
   </div>
@@ -1817,13 +1832,18 @@ def redirect(to: str) -> str:
 
 
 def HOLD(key: str) -> str | None:  # noqa: N802 - a constant-like rule
-    """Results shown but not ranked: submissions until a second party reproduces them (review F4)."""
+    """Why a result carries a label: a submitted results file that the suite's CI has not reproduced (review F4)."""
     if SOLVER.get(key, {}).get("kind") == "submitted":
-        return "a submitted result is not ranked until someone else reproduces it"
+        return "submitted results file, not reproduced by the suite's CI"
     return None
 
 
-# Who makes each model and how it is licensed (the leaderboard's organisation and licence columns)
+def ORDER(runs_on_test: dict) -> list[dict]:  # noqa: N802
+    """The results on one test, by configuration tier and then the model registry's order (never by score)."""
+    return measures.rows_for_test(runs_on_test, [s_["key"] for s_ in SOLVERS], tier_of=tier_of, hold=HOLD)
+
+
+# Who makes each model and how it is licensed (shown on the evidence profiles)
 _META = [
     ("demo", "OpenHydro Bench", "Open (Apache-2.0)"),
     ("swmm-anuga", "OpenHydro Bench coupler", "Open (Apache-2.0)"),
