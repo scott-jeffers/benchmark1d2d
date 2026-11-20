@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "key": "epanet22",
+  "engine": {
+    "name": "EPA EPANET",
+    "version": "2.2",
+    "pin": "wntr==1.5.0 (bundled EPANET 2.2 toolkit)"
+  },
+  "tier": "T2",
+  "set_by": "suite",
+  "script": "scripts/run_network_cases.py",
+  "changed_from_default": [
+    {
+      "setting": "ACCURACY",
+      "value": 1e-06,
+      "default": 0.001,
+      "reason": "Converged to 1e-6 so the solve is far tighter than the checks (run_network_cases.py).",
+      "source": "Default from OpenWaterAnalytics/EPANET v2.2: src/input1.c setdefaults() and its #defines",
+      "cases": [
+        "A1P-001",
+        "A1P-010",
+        "A1P-030"
+      ],
+      "required_by_case": false,
+      "selects_method": false
+    },
+    {
+      "setting": "QUALITY TIMESTEP",
+      "value": 1,
+      "default": 0.0,
+      "reason": "1 s quality step for the tracer test, so the transport is resolved on the case's time scale (run_network_cases.py).",
+      "source": "Default from OpenWaterAnalytics/EPANET v2.2: src/input1.c setdefaults() and its #defines",
+      "cases": [
+        "A1P-030"
+      ],
+      "required_by_case": true,
+      "selects_method": false
+    }
+  ],
+  "defaults_audit": "automatic",
+  "notes": "Tier T2: the suite converges the solve to 1e-6 instead of EPANET's default 0.001, so the solve is far tighter than the checks."
+}

@@ -22,7 +22,7 @@ accuracy checks (the ones the catalogue marks informational are shown, not
 counted). A test with no accuracy check is scored on its skill check as
 100 x (1 - NSE), then on its conservation checks. Conservation and timing are
 reported beside the score, in their own columns. There is no limit and no
-verdict: results are ranked on the score (site/ranking.py).
+verdict and no rank: results are listed by configuration tier (site/measures.py).
 """
 
 from __future__ import annotations

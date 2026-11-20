@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "key": "demo1d",
+  "engine": {
+    "name": "Demo 1D solver",
+    "version": "0.1.0"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "runner/python/benchmark1d2d/exec",
+  "changed_from_default": [],
+  "defaults_audit": "manual",
+  "notes": "Worked example that ships with the suite."
+}

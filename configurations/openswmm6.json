@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "key": "openswmm6",
+  "engine": {
+    "name": "OpenSWMM Engine",
+    "version": "6.0.0a4.dev1",
+    "pin": "openswmm==6.0.0a4.dev1"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_track_b.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending"
+}

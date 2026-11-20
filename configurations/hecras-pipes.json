@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "key": "hecras-pipes",
+  "engine": {
+    "name": "HEC-RAS",
+    "version": "7.0.1",
+    "pin": "HEC-RAS_701_Setup.exe SHA-256 1FE76297…3CEE73"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_hecras_pipes.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending",
+  "notes": "Headless plans omit the pipe solver's settings, so the runner writes HEC-RAS's defaults for them and reruns the engine."
+}

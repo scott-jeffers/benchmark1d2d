@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "A1F-001_macdonald_m1_backwater",
   "case_version": "1.1.0",
   "status": "candidate",
   "track": "A",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "steady_open_channel"
+  ],
   "title": "MacDonald M1 subcritical backwater",
   "description": "Steady 1D open-channel M1-like backwater with MacDonald manufactured bed so that a prescribed smooth depth profile is exact.",
   "physics": {

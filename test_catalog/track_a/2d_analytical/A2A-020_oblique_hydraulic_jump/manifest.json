@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.2.0",
   "case_version": "2.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A2A-020_oblique_hydraulic_jump",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "shocks_jumps"
+  ],
   "title": "Oblique hydraulic jump",
   "description": "Supercritical flow (Fr₁ = 2.5) meets a straight wall at 15° and is turned through an oblique hydraulic jump. The exact solution has two uniform states separated by a straight jump at 39.58° to the incoming flow, with depth ratio 1.81. It tests shock capturing in 2D and directional accuracy on a Cartesian grid.",
   "physics": {

@@ -1,10 +1,26 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A2L-010_idealised_city_dambreak",
   "test_class": "validation_lab",
+  "evidence": "validation",
+  "capabilities": [
+    "wet_dry",
+    "flood_waves",
+    "urban_surface"
+  ],
+  "data_card": {
+    "measured": "Water depths at gauges in a laboratory dam break through an idealised city of square blocks (Soares-Frazão & Zech 2008).",
+    "method": "Laboratory gauges in the IMPACT flume.",
+    "uncertainty": "Not yet stated: the value in reference.uncertainty is a placeholder until the published gauge or survey error is recorded.",
+    "known_issues": [
+      "CADAM/IMPACT redistribution terms not confirmed."
+    ],
+    "exercises": "A dam-break wave around and between buildings: reflections, hydraulic jumps in streets and flow partition between streets.",
+    "cannot_tell": "At laboratory scale, turbulence and the buildings' edges matter more than in a real city; a match at gauge points does not show the velocity field is right."
+  },
   "title": "Idealised city dam-break",
   "description": "Dam-break flow through an idealised urban district (Soares-Frazão & Zech 2008).",
   "physics": {

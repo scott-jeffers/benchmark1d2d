@@ -12,6 +12,8 @@
     "status",
     "track",
     "test_class",
+    "evidence",
+    "capabilities",
     "physics",
     "provenance",
     "inputs",
@@ -68,6 +70,41 @@
         "stress"
       ]
     },
+    "evidence": {
+      "type": "string",
+      "enum": [
+        "verification",
+        "validation",
+        "comparison"
+      ],
+      "description": "Kind of evidence (protocol 4.0): verification = exact or manufactured truth; validation = measured truth with uncertainty; comparison = no independent truth (a pinned reference engine, or states derived from the inputs). Must agree with test_class (benchmark1d2d.evidence.EVIDENCE_OF_CLASS)."
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "wet_dry",
+          "still_water",
+          "steady_open_channel",
+          "shocks_jumps",
+          "flood_waves",
+          "inundation",
+          "urban_surface",
+          "pipe_hydraulics",
+          "storage_structures",
+          "controls",
+          "drainage_networks",
+          "pressure_networks",
+          "transients",
+          "transport",
+          "coupled_exchange"
+        ]
+      },
+      "description": "Capability groups the case gives evidence on; names and plain-language meaning in benchmark1d2d.evidence.CAPABILITIES."
+    },
     "title": {
       "type": "string",
       "description": "Short human-readable title."
@@ -120,6 +157,12 @@
           "type": "string"
         }
       }
+    },
+    "data_card": {
+      "$ref": "#/$defs/data_card"
+    },
+    "validation_design": {
+      "$ref": "#/$defs/validation_design"
     }
   },
   "allOf": [
@@ -361,6 +404,23 @@
             }
           }
         }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence": {
+            "const": "validation"
+          }
+        },
+        "required": [
+          "evidence"
+        ]
+      },
+      "then": {
+        "required": [
+          "data_card"
+        ]
       }
     }
   ],
@@ -688,9 +748,10 @@
             "available",
             "to_digitise",
             "request_from_authors",
-            "pending_license"
+            "pending_license",
+            "open_to_convert"
           ],
-          "description": "State of the measured reference data."
+          "description": "State of the measured reference data. open_to_convert: published under an open licence, still to be converted into the reference file."
         },
         "probe_map": {
           "type": "object",
@@ -1067,6 +1128,41 @@
             "median"
           ],
           "description": "Measured cases with many gauge records: judge the worst record (default) or the median one."
+        },
+        "significance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "units",
+            "source"
+          ],
+          "description": "Evidence protocol 4.0: the size of error that matters in engineering practice for this check, from a cited external source (a code of practice, a design standard, a published acceptance criterion). A result is reported as within or beyond it. Not a pass mark, and never set from the suite's own results.",
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": [
+                "abs<=",
+                ">="
+              ],
+              "default": "abs<="
+            },
+            "value": {
+              "type": "number"
+            },
+            "units": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "minLength": 10,
+              "description": "The external document and clause the value comes from."
+            },
+            "basis": {
+              "type": "string",
+              "description": "What the source uses the value for."
+            }
+          }
         }
       }
     },
@@ -1298,6 +1394,105 @@
               }
             }
           }
+        }
+      }
+    },
+    "data_card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "measured",
+        "method",
+        "uncertainty",
+        "exercises",
+        "cannot_tell"
+      ],
+      "description": "Evidence protocol 4.0: what a validation case's observations are, how far they can be trusted, and what they can and cannot show.",
+      "properties": {
+        "measured": {
+          "type": "string",
+          "description": "What was measured, where and when."
+        },
+        "method": {
+          "type": "string",
+          "description": "How: instruments, survey, sampling interval."
+        },
+        "uncertainty": {
+          "type": "string",
+          "description": "The observations' own error, with its source."
+        },
+        "known_issues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Gaps, inconsistencies, changes to the site."
+        },
+        "exercises": {
+          "type": "string",
+          "description": "The processes a model must get right to match the observations."
+        },
+        "cannot_tell": {
+          "type": "string",
+          "description": "What a match or a miss does not show."
+        }
+      }
+    },
+    "validation_design": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "declared",
+        "events"
+      ],
+      "description": "Evidence protocol 4.0: how a validation case is run and scored, declared before any run.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "engine",
+            "practice"
+          ],
+          "description": "engine: a fixed, published model is run unchanged (isolates the engine; mostly measures the model). practice: each team builds its own model from the raw data (tests code, modeller and workflow)."
+        },
+        "declared": {
+          "type": "string",
+          "format": "date",
+          "description": "When the split was fixed; it may not change after results are published."
+        },
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "role"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "calibration",
+                  "scored",
+                  "held_back"
+                ],
+                "description": "calibration: a team may tune against it. scored: results are reported on it and nobody may tune against it. held_back: not published until a round closes."
+              },
+              "notes": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "holdout_policy": {
+          "type": "string",
+          "description": "How the scored and held-back events are kept out of calibration."
         }
       }
     }

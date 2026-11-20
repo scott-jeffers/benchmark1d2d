@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A1D-003_storage_power_law_outlet",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "storage_structures"
+  ],
   "title": "Storage draining through a power-law outlet",
   "description": "A 100 m² storage, 2 m deep, empties through an outlet rated Q = 0.5 h^0.5 to a free outfall. Its depth follows h(t) = (√h0 − C t/(2A))² exactly: 0.441 m and 0.332 m³/s at 300 s.",
   "physics": {

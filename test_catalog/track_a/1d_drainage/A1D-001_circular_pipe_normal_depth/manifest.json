@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A1D-001_circular_pipe_normal_depth",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "pipe_hydraulics"
+  ],
   "title": "Normal depth in partly full circular pipes",
   "description": "Three chains of ten 1 m circular pipes (n = 0.013, slope 0.002) carry 0.15, 0.5 and 1.0 m³/s to normal-depth outfalls, filling them to about a quarter, a half and three quarters. At steady state every interior manhole and every pipe runs at Manning normal depth in the exact circular section.",
   "physics": {

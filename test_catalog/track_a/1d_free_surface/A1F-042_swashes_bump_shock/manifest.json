@@ -1,10 +1,15 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A1F-042_swashes_bump_shock",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "steady_open_channel",
+    "shocks_jumps"
+  ],
   "title": "Transcritical flow over a bump with a hydraulic jump (SWASHES)",
   "description": "Steady frictionless flow of q = 0.18 m²/s over the 0.2 m bump, held at 0.33 m downstream. The flow goes critical at the crest, accelerates down the bump and jumps back to subcritical at x = 11.666 m, where the Rankine–Hugoniot condition holds.",
   "physics": {

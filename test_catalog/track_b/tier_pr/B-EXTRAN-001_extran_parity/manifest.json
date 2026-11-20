@@ -1,10 +1,15 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "B-EXTRAN-001_extran_parity",
   "case_version": "2.0.0",
   "status": "candidate",
   "track": "B",
   "test_class": "parity",
+  "evidence": "comparison",
+  "capabilities": [
+    "pipe_hydraulics",
+    "drainage_networks"
+  ],
   "title": "EXTRAN Manual Example 1: parity against SWMM 5.2.4",
   "description": "EXTRAN Manual Example 1 (Roesner et al. 1988) as distributed with the OWA/EPA SWMM 5 regression set: a dendritic sewer network with surcharge and three hydrograph inflows, 8 h dynamic-wave routing. Candidate depths and flows are compared with EPA SWMM 5.2.4 at every node and link. Case v2.0.0 replaces a 2-conduit synthetic fixture that v1 presented as this example.",
   "physics": {

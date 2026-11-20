@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A1D-002_surcharged_pipe_grade_line",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "pipe_hydraulics"
+  ],
   "title": "Surcharged pipes: hydraulic grade line",
   "description": "Five 0.6 m pipes (100 m, n = 0.013) carry 0.3 m³/s to an outfall held 1.5 m above its invert, so every pipe runs full. The hydraulic grade line falls by n²Q²L/(A²R^(4/3)) = 0.239 m along each pipe (1.19 m in all); manhole depths follow exactly.",
   "physics": {

@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "key": "hydronet-pinn",
+  "engine": {
+    "name": "HydroNet (FVM-PINN)",
+    "version": "0d98ff5",
+    "pin": "github.com/psu-efd/HydroNet 0d98ff5"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_hydronet.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending",
+  "training_disclosure": "Trained on each test's own initial and boundary conditions and the finite-volume residual; no reference data used.",
+  "notes": "Trained per grid with the recipe of its own dam-break example (64x5 network, 5000 Adam epochs)."
+}

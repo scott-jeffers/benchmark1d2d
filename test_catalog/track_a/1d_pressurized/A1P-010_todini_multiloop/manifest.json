@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A1P-010_todini_multiloop",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "pressure_networks"
+  ],
   "title": "Todini multi-loop network",
   "description": "Steady two-loop gravity network (Alperovits & Shamir 1977 topology, fixed analysis diameters, Hazen–Williams). Reference heads and flows from a Todini–Pilati gradient solve converged to 1e-12 m, cross-checked against EPANET 2.2 (|ΔH| < 1 mm).",
   "physics": {

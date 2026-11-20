@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A1F-041_swashes_bump_transcritical",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "steady_open_channel"
+  ],
   "title": "Transcritical flow over a bump, no shock (SWASHES)",
   "description": "Steady frictionless flow of q = 1.53 m²/s over the 0.2 m bump, with 0.66 m held downstream only while the outflow is subcritical (as in SWASHES). The flow passes through critical depth at the crest, subcritical upstream and supercritical downstream, with no jump: the depth falls from 1.01 m to 0.41 m.",
   "physics": {

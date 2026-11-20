@@ -1,5 +1,7 @@
 # Scoring method 2
 
+> **Superseded.** Method 2 judged results pass or fail and attached certification claims; both were dropped in method 3.0 (18 October 2026). The current method is [evidence protocol 4.0](evidence.md). This page is kept as the record of what earlier score cards were judged against.
+
 **Status:** method 2.1, adopted on 16 October 2026. A result **passes** when
 it is accurate: every gating check within its limit. Its convergence rate is
 judged separately (R3), and a result that passes and converges carries the

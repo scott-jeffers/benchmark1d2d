@@ -105,6 +105,12 @@ ENGINES = {
                               options={"HEAD_TOLERANCE": "0.00001", "MAX_TRIALS": "20"}),
     "openswmm-dw-converged": dict(label="OpenSWMM Engine v6 dynamic wave converged iteration", routing="DYNWAVE", base="openswmm-dw",
                                   options={"HEAD_TOLERANCE": "0.00001", "MAX_TRIALS": "20"}),
+    # Out of the box (tier T0, evidence protocol 4.0): SWMM's own iteration defaults (HEAD_TOLERANCE 0 tells
+    # SWMM to use its default, 0.005 ft = 0.0015 m; MAX_TRIALS 8 is its default). The only settings left
+    # changed are the ones the case's short conduits make unavoidable (routing and minimum step, and the
+    # minimum nodal area on the bump channels); configurations/swmm524-defaults.json lists them.
+    "swmm524-defaults": dict(label="EPA SWMM 5.2.4 own iteration defaults", routing="DYNWAVE", base="swmm524",
+                             options={"HEAD_TOLERANCE": "0"}),
 }
 OPTION_OVERRIDES: dict[str, str] = {}  # set per engine in main(): the engine's options replacing the harness's
 

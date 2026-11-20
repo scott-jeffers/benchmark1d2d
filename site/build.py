@@ -594,7 +594,7 @@ KIND_OF = {"timing": "not a percentage: reported in seconds", "skill": "not a pe
 
 def criteria_table(m: dict, card: dict | None) -> str:
     import difference
-    import ranking
+    import measures
     res = {r["id"]: r for r in (card or {}).get("criteria_results", [])}
     rows = []
     has_acc = any(difference.kind(c) == "accuracy" and c.get("gating", True) for c in m["scoring"]["criteria"])
@@ -608,7 +608,7 @@ def criteria_table(m: dict, card: dict | None) -> str:
             pc = difference.percent(m["test_id"], {**r, "threshold": thr, "metric": c["metric"]})
             if difference.kind(c) != "accuracy" and (has_acc or difference.kind(c) == "timing"):
                 pc = None  # reported in its own column on the test page, not as the score
-            got = f'<td class="num">{fmt(obs) if obs is not None else "n/a"} {esc(thr.get("units", ""))}</td><td class="num">{esc(ranking.short(pc)) if pc is not None else "–"}</td>'
+            got = f'<td class="num">{fmt(obs) if obs is not None else "n/a"} {esc(thr.get("units", ""))}</td><td class="num">{esc(measures.short(pc)) if pc is not None else "–"}</td>'
         rows.append(
             f"<tr><td><b>{esc(c['id'])}</b><div class=muted>{esc(c['metric'])} of {esc(c.get('variable', ''))}"
             f"{' · ' + (KIND_WORD[difference.kind(c)] if has_acc or difference.kind(c) == 'timing' else 'in the score') if c.get('gating', True) else ' · reported, not counted'}</div></td>"
@@ -1201,8 +1201,6 @@ def main() -> int:
         c = json.loads(p.read_text(encoding="utf-8"))
         c["_path"] = p
         evidence[c["test_id"]] = [c]  # later (fresh CI output) wins
-    # each parity test's noise floor: the percent difference two builds of the reference engine itself show (review F3)
-    pages.ranking.set_noise_floors({pages.sid_of(t): pages.ranking.score(lst[0]) for t, lst in evidence.items() if lst})
     parity = load_parity()
     names = {pages.sid_of(m["test_id"]): pages.story(m)["name"] for m in manifests}
     checkable = checkdata.build(manifests, result_dirs, DIST / "data" / "check", names)  # before the downloads: they carry its sheets
@@ -1305,18 +1303,17 @@ def main() -> int:
         by = runs.get(m["test_id"], {})
         st = pages.story(m)
         try:
-            best = min((s for s in (pages.ranking.score(c) for c in by.values()) if s is not None), default=None)
+            best = min((s for s in (pages.measures.score(c) for c in by.values()) if s is not None), default=None)
             og.og_image(DIST / "assets" / "og" / f"{sid}.png", sid, pages.GROUPS.get(st["group"], ""), st["name"], st["question"],
-                        0, len(by), summary=f"{len(by)} model{'s' if len(by) != 1 else ''} scored · closest: {pages.ranking.label(best)}")
+                        0, len(by), summary=f"{len(by)} model{'s' if len(by) != 1 else ''} scored · closest: {pages.measures.label(best)}")
         except Exception as exc:  # noqa: BLE001 - a preview image must not break the build
             print(f"WARN preview image for {sid}: {exc}", file=sys.stderr)
         for k, c in by.items():
             bp = DIST / "badges" / sid / f"{k}.svg"
             bp.parent.mkdir(parents=True, exist_ok=True)
-            sc = pages.ranking.score(c)
-            rk = next((r for r in pages.ranking.rank_test(by, hold=pages.HOLD) if r["key"] == k), {})
-            right = (f"#{rk['rank']} of {len(by)} · " if rk.get("rank") else "") + pages.ranking.label(sc)
-            bp.write_text(og.badge_svg(f"OpenHydro Bench {sid}", right, pages.ranking.klass(sc)), encoding="utf-8")
+            sc = pages.measures.score(c)
+            right = (f"{pages.tier_of(k)} · " if pages.tier_of(k) else "") + pages.measures.label(sc)
+            bp.write_text(og.badge_svg(f"OpenHydro Bench {sid}", right, pages.measures.klass(sc)), encoding="utf-8")
     try:
         og.og_image(DIST / "assets" / "og" / "home.png", "A1F-010", "Open benchmarks for water models",
                     "Does your flood model get the water right?", "Every test has a known right answer. Run your model, compare, and get a result anyone can check.",
@@ -1347,16 +1344,13 @@ def main() -> int:
     vindex = viewer.write_data(DIST, manifests, runs, fields_by, pages.SOLVER, pages.SOLVERS_ORDER, pages.score_tag, pages.story)
     out_pages["viewer.html"] = viewer.viewer_page(pages.layout, vindex)
     out_pages["network.html"] = netresults.page(pages.layout, netindex)
-    import rankpage
+    import profilepage
 
-    rk_data = rankpage.data(manifests, runs, pages.SOLVER, pages.story, pages.sid_of, pages.machine_info.summary, pages.model_meta)
-    lb_rows = rankpage.board(runs, pages.SOLVER)
-    group_rows = {g: rankpage.board(runs, pages.SOLVER, group=g) for g, _ in pages.ranking.GROUPS}
-    out_pages["rankings.html"] = rankpage.page(pages.layout, rk_data, lb_rows, pages.SOLVER, pages.model_meta, group_rows)
-    lb_json, lb_csv = rankpage.exports(rk_data["updated"], lb_rows, pages.SOLVER, pages.model_meta)
+    out_pages["profiles.html"], pf_json, pf_csv = profilepage.page(manifests, runs, pages)
+    out_pages["rankings.html"] = pages.redirect("profiles.html")  # the leaderboard was retired in protocol 4.0
     (DIST / "data").mkdir(exist_ok=True)
-    (DIST / "data" / "leaderboard.json").write_text(lb_json, encoding="utf-8")
-    (DIST / "data" / "leaderboard.csv").write_text(lb_csv, encoding="utf-8")
+    (DIST / "data" / "profiles.json").write_text(pf_json, encoding="utf-8")
+    (DIST / "data" / "profiles.csv").write_text(pf_csv, encoding="utf-8")
     import coupledview
 
     cindex = coupledview.write_data(DIST, manifests, runs, pages.SOLVER, pages.score_tag, pages.story)

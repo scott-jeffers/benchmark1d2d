@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.2.0",
   "case_version": "2.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A2A-010_macdonald_2d",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "steady_open_channel"
+  ],
   "title": "MacDonald 2D manufactured channel",
   "description": "Steady subcritical flow with Manning friction in a 1 km × 100 m channel whose bed is built (MacDonald's method) so that a known smooth depth profile is the exact solution. It is A1F-001's profile on a 2D grid: the solver has to balance pressure, bed slope and friction in two dimensions, starting from a uniform depth.",
   "physics": {

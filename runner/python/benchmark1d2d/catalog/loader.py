@@ -88,8 +88,8 @@ def load_manifest(test_id_or_path: str | Path, repo: Path | None = None) -> dict
     return data
 
 
-def list_catalog(track: str | None = None, repo: Path | None = None) -> list[dict[str, Any]]:
-    """Return summary dicts for each catalog case, optionally filtered by track."""
+def list_catalog(track: str | None = None, repo: Path | None = None, evidence: str | None = None) -> list[dict[str, Any]]:
+    """Return summary dicts for each catalog case, optionally filtered by track or kind of evidence."""
     repo_root = repo or find_repo_root()
     track_filter = track.upper() if track else None
     summaries: list[dict[str, Any]] = []
@@ -99,6 +99,8 @@ def list_catalog(track: str | None = None, repo: Path | None = None) -> list[dic
         case_track = str(data.get("track", ""))
         if track_filter and case_track != track_filter:
             continue
+        if evidence and data.get("evidence") != evidence:
+            continue
         summaries.append(
             {
                 "test_id": data.get("test_id"),
@@ -106,6 +108,8 @@ def list_catalog(track: str | None = None, repo: Path | None = None) -> list[dic
                 "title": data.get("title"),
                 "status": data.get("status"),
                 "test_class": data.get("test_class"),
+                "evidence": data.get("evidence"),
+                "capabilities": data.get("capabilities") or [],
                 "path": str(manifest_path.resolve()),
             }
         )

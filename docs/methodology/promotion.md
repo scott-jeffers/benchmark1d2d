@@ -1,6 +1,8 @@
 # Promoting a case: draft → candidate → frozen
 
-Only `frozen` cases count toward certification claims (see `GOVERNANCE.md`).
+Only `frozen` cases have fixed inputs and answers, so only their results are
+comparable across releases. Freezing is one of the few steps a person takes
+(see `GOVERNANCE.md`).
 A case moves up when it meets every rule for the next status. Rules 1–7 are
 computed from the manifest and the published score cards
 (`benchmark1d2d.catalog.promotion`), so each case page shows exactly what
@@ -19,9 +21,9 @@ blocks it. Rule 8 is a person's sign-off.
 
 | # | Rule | Why |
 |---|------|-----|
-| 5 | A published run passes the case | Shows the case is passable as specified. |
+| 5 | A published run of the case: a CI score card the engine does not flag | Shows the case can be run as specified. |
 | 6 | Verification cases: that run's observed order of accuracy meets the minimum (or the manifest explains why order does not apply) | Pointwise agreement at one grid can be luck; convergence cannot. |
-| 7 | Two independently written codes pass. For parity cases: a second build of the reference engine (the official EPA binaries, scored by the cross-build job) reproduces the reference | A case that only one code passes may be tuned to that code; a parity reference that depends on the compiler is not a stable target. |
+| 7 | Verification: two independently written codes converge to the reference at their expected order. Validation and inter-comparison: two independently written codes have published runs. Parity: a second build of the reference engine (the official EPA binaries, scored by the cross-build job) reproduces the reference | A case that only one code can approach may be tuned to that code; a parity reference that depends on the compiler is not a stable target. |
 | 8 | A maintainer review is recorded in the manifest (`review: {by, date, notes}`) | Someone other than the author has checked the physics, the reference and the tolerances. |
 
 A frozen case is never edited in place. Any change to its inputs, reference or

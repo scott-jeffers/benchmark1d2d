@@ -1,0 +1,125 @@
+{
+  "schema_version": "1.2.0",
+  "test_id": "A2F-010_north_carolina_2016_hwm",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_class": "validation_field",
+  "evidence": "validation",
+  "capabilities": [
+    "inundation",
+    "wet_dry"
+  ],
+  "data_card": {
+    "measured": "Surveyed high-water marks (USGS documented 267, of which 254 were surveyed) and mapped inundation polygons and depth rasters for seven North Carolina communities, October 2016.",
+    "method": "USGS post-flood field survey of high-water marks; inundation and depth surfaces interpolated from the marks and terrain.",
+    "uncertainty": "Each mark carries a USGS quality rating; to be recorded per mark when the reference is built.",
+    "known_issues": [
+      "The mapped extent is derived from the same marks, so it is not independent evidence.",
+      "Use constraints to be confirmed in the release metadata (US government data are usually public domain)."
+    ],
+    "exercises": "Riverine floodplain inundation over real terrain: conveyance, storage and peak levels.",
+    "cannot_tell": "Peak marks do not show timing, and the inflow hydrograph and roughness are themselves uncertain, so a miss can come from the boundary data as much as the model."
+  },
+  "validation_design": {
+    "mode": "practice",
+    "declared": "2026-11-20",
+    "events": [
+      {
+        "id": "2016-10",
+        "role": "scored",
+        "notes": "Single event; teams may calibrate only against upstream gauged stages, never the marks."
+      }
+    ],
+    "holdout_policy": "The marks are public, so the holdout is by rule: calibration may use gauge records only, and each submission declares that in its configuration."
+  },
+  "title": "North Carolina October 2016 flood: high-water marks",
+  "description": "Riverine 2D inundation against USGS-surveyed high-water marks and mapped flood extents after the October 2016 flood in North Carolina.",
+  "physics": {
+    "dimensionality": "2D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "shallow_water_2d"
+    ],
+    "phenomena": [
+      "field_inundation",
+      "high_water_marks",
+      "riverine_flood"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Watson, K. M.",
+          "Musser, J. W."
+        ],
+        "year": 2017,
+        "title": "Flood inundation, flood depth, and high-water marks for selected areas in North Carolina from the October 2016 flood (version 2.1)",
+        "report_number": "USGS data release",
+        "doi": "10.5066/F75X276T"
+      }
+    ],
+    "license": "TBD-confirm",
+    "adaptation_notes": "Draft: one reach to be chosen from the seven mapped communities; terrain (lidar), inflow hydrographs from USGS gauges and roughness to be assembled."
+  },
+  "inputs": [
+    {
+      "path": "inputs/terrain.tif",
+      "role": "terrain",
+      "format": "tif",
+      "pending": {
+        "reason": "Lidar terrain for the chosen reach, and the inflow hydrographs from USGS streamgages.",
+        "obtain_from": "USGS 3DEP; USGS NWIS"
+      }
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/high_water_marks.csv",
+    "availability": "open_to_convert",
+    "include_measurement_uncertainty": true,
+    "uncertainty": {
+      "type": "absolute",
+      "value": 0.1,
+      "units": "m",
+      "notes": "Placeholder: replace with each mark's surveyed accuracy or quality rating from the data release."
+    }
+  },
+  "simulation": {
+    "t_end": 432000.0,
+    "output_interval": 900.0,
+    "required_outputs": [
+      "h"
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "hwm",
+        "metric": "L2",
+        "variable": "wse",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.3,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Peak water surface at surveyed high-water marks within 0.3 m. Provisional, written before any run; to be replaced by each mark's quality rating."
+      },
+      {
+        "id": "extent",
+        "metric": "CSI",
+        "variable": "h",
+        "threshold": {
+          "op": ">=",
+          "value": 0.7,
+          "units": "1"
+        },
+        "gating": false,
+        "rationale": "Critical success index against the USGS inundation polygon; reported, not counted, until the polygon's own uncertainty is stated."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}

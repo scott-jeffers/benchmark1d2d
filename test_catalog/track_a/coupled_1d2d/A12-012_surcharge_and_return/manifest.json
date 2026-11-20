@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A12-012_surcharge_and_return",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "coupled_exchange"
+  ],
   "title": "Surcharge onto the surface and back",
   "description": "A storm hydrograph (peak 0.3 m³/s at 10 min, 180 m³ in all) enters a sewer whose outgoing pipe carries only about 0.06 m³/s. The manhole surcharges onto a 20 × 20 m walled hollow that falls 1 % towards it; when the storm passes, the water returns down the manhole. After three hours every drop has left by the outfall.",
   "physics": {

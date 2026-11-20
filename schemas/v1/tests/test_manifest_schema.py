@@ -36,6 +36,7 @@ INVALID_FIXTURES = [
     "track_b_analytic.json",
     "citation_no_id.json",
     "weighted_no_minimum.json",
+    "unknown_capability.json",
 ]
 
 

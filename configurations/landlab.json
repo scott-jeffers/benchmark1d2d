@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "key": "landlab",
+  "engine": {
+    "name": "Landlab OverlandFlow",
+    "version": "2.11.0",
+    "pin": "landlab==2.11.0"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_landlab.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending"
+}

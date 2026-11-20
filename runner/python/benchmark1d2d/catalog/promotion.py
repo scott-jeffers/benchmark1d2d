@@ -10,12 +10,17 @@ Promotion rules (see ``docs/methodology/promotion.md``):
     4. every gating criterion states why its tolerance is what it is
 
 ``candidate`` → ``frozen``
-    5. a run that passes the case, with its score card published by CI
+    5. a published run of the case (a CI score card the engine does not flag)
     6. verification cases: observed order of accuracy meets the minimum
-    7. two independent implementations pass (a second solver or engine,
-       written separately from the first), so the case is not tuned to one code;
-       for parity cases, a second build of the reference engine reproduces the
-       reference (the official EPA binaries, scored by the cross-build job)
+    7. verification cases: two independently written codes converge at the
+       expected order; validation and inter-comparison cases: two independently
+       written codes have published runs; parity cases: a second build of the
+       reference engine reproduces the reference (the official EPA binaries,
+       scored by the cross-build job). Either way, the case is not tuned to one code.
+
+Protocol 4.0 has no pass marks, so rules 5 and 7 no longer read a card's
+``passed`` field (except for the cross-build check, where it records whether
+two builds of the reference engine agree within the parity noise floor).
     8. a maintainer review recorded in the manifest (``review.by``, ``review.date``)
 
 Everything except 8 is computed from the manifest and the published score
@@ -36,9 +41,9 @@ LABELS = {
     "inputs": "All inputs available",
     "reference": "Reference (truth) available",
     "rationale": "Every tolerance justified",
-    "passing_run": "A published run passes",
+    "passing_run": "A published run",
     "order": "Order of accuracy shown",
-    "independent": "Two independent codes pass",
+    "independent": "Two independent codes",
     "review": "Maintainer review recorded",
 }
 
@@ -86,15 +91,16 @@ def checklist(manifest: dict[str, Any], cards: list[dict[str, Any]] | None = Non
     # Score cards from a second build of the reference engine (the cross-build
     # job) are evidence for rule 7 on parity cases, not candidate runs.
     rebuilds = [c for c in cards if "official" in str((c.get("solver") or {}).get("name", ""))]
-    passing = [c for c in cards if c.get("passed") and c not in rebuilds]
-    add("passing_run", bool(passing), f"{len(passing)} passing score card(s)" if passing else "no passing score card published yet")
+    published = [c for c in cards if c not in rebuilds and c.get("criteria_results") is not None
+                 and not (((c.get("run") or {}).get("engine") or {}).get("flagged"))]
+    add("passing_run", bool(published), f"{len(published)} published score card(s)" if published else "no score card published yet")
+    converging = [c for c in published if (c.get("convergence_result") or {}).get("passed")]
     if str(m.get("test_class", "")).startswith("verification"):
         conv = (m.get("scoring") or {}).get("convergence") or {}
         if conv.get("not_applicable"):
             add("order", True, "not applicable: " + conv["not_applicable"])
         else:
-            shown = [c for c in passing if (c.get("convergence_result") or {}).get("passed")]
-            add("order", bool(shown), "observed order meets the minimum" if shown else "no passing run with multi-grid evidence")
+            add("order", bool(converging), "observed order meets the minimum" if converging else "no run whose observed order meets the minimum")
     else:
         add("order", True, "not a verification case")
     if m.get("test_class") == "parity":
@@ -105,8 +111,10 @@ def checklist(manifest: dict[str, Any], cards: list[dict[str, Any]] | None = Non
         out.append({"id": "independent", "label": "Reference reproduced by a second build", "met": bool(ok_builds),
                     "detail": detail, "stage": "frozen"})
     else:
-        solvers = sorted({_family(c) for c in passing})
-        add("independent", len(solvers) >= 2, f"passing codes: {', '.join(solvers) or 'none'}" + ("" if len(solvers) >= 2 else " — needs a second, independently written solver or engine"))
+        verif = str(m.get("test_class", "")).startswith("verification") and not ((m.get("scoring") or {}).get("convergence") or {}).get("not_applicable")
+        solvers = sorted({_family(c) for c in (converging if verif else published)})
+        what = "codes converging at the expected order" if verif else "codes with published runs"
+        add("independent", len(solvers) >= 2, f"{what}: {', '.join(solvers) or 'none'}" + ("" if len(solvers) >= 2 else " — needs a second, independently written solver or engine"))
     rv = m.get("review") or {}
     add("review", bool(rv.get("by") and rv.get("date")), f"reviewed by {rv['by']} on {rv['date']}" if rv.get("by") and rv.get("date") else "no maintainer review recorded")
     return out

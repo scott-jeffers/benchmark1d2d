@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "A1P-020_joukowsky_instant_closure",
   "case_version": "3.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "transients"
+  ],
   "title": "Joukowsky instant valve closure",
   "description": "Frictionless pipe after an instantaneous valve closure: the classic Joukowsky pressure rise ρaV₀ travels upstream as a sharp front until it reaches the reservoir. Because the front is a discontinuity carried by a linear wave equation, a first-order fixed-grid scheme converges in L1 only at order ½ (p/(p+1) for order p), which sets the convergence target; the storage balance checks mass exactly.",
   "physics": {

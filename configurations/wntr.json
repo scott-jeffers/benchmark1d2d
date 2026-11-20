@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "key": "wntr",
+  "engine": {
+    "name": "WNTR WNTRSimulator",
+    "version": "1.5.0",
+    "pin": "wntr==1.5.0"
+  },
+  "tier": "T2",
+  "set_by": "suite",
+  "script": "scripts/run_network_cases.py",
+  "changed_from_default": [
+    {
+      "setting": "ACCURACY",
+      "value": 1e-06,
+      "default": 0.001,
+      "reason": "Converged to 1e-6 so the solve is far tighter than the checks (run_network_cases.py).",
+      "source": "Default from OpenWaterAnalytics/EPANET v2.2: src/input1.c setdefaults() and its #defines",
+      "cases": [
+        "A1P-010"
+      ],
+      "required_by_case": false,
+      "selects_method": false
+    }
+  ],
+  "defaults_audit": "automatic",
+  "notes": "Tier T2: the suite converges the solve to 1e-6 instead of the default 0.001."
+}

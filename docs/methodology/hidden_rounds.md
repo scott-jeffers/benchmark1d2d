@@ -2,9 +2,9 @@
 
 A fixed test can be tuned to: its answer is published, and a results file can
 be built from the reference code without running a solver (review F4: a forged
-A1F-011 file ranked first). The site therefore holds submitted results
-unranked until a maintainer has re-run them, and ranks results the suite's CI
-produced itself. Hidden rounds add tests nobody has seen before they run.
+A1F-011 file looked best). The site therefore labels submitted results files
+that the suite's CI has not reproduced, and reruns submitted configurations
+itself. Hidden rounds add tests nobody has seen before they run.
 
 ## How a round works
 
@@ -35,4 +35,4 @@ produced itself. Hidden rounds add tests nobody has seen before they run.
 ## Still to do
 
 A catalog entry for the family (a manifest whose inputs are a seed list, not
-files), the runners' support for it, and a round's own board.
+files), the runners' support for it, and a round's own page of results.

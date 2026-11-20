@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A12-010_manhole_surcharge_onto_street",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "coupled_exchange"
+  ],
   "title": "Manhole surcharge onto a sloping street",
   "description": "A 0.6 m pipe delivers 0.5 m³/s to a manhole with no outlet, which surcharges onto a 10 m wide street sloping at 0.005 (Manning n = 0.02). At steady state the manhole passes the whole inflow onto the street, and downstream the street carries it as uniform sheet flow at the exact normal depth (n q / √S)^(3/5) = 77.7 mm.",
   "physics": {

@@ -1,17 +1,29 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.2.0",
   "test_id": "B-EXTRAN-001_extran_parity",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "B",
   "test_class": "parity",
+  "evidence": "comparison",
+  "capabilities": [
+    "pipe_hydraulics",
+    "drainage_networks"
+  ],
   "title": "EXTRAN parity against SWMM 5.2.4",
   "description": "Industry parity case: candidate solver output compared to pinned EPA SWMM 5.2.4 on a classic EXTRAN-style sewer network fixture.",
   "physics": {
     "dimensionality": "1D",
     "flow_type": "mixed",
-    "governing_equations": ["saint_venant_dynamic", "pressurized_pipe"],
-    "phenomena": ["surcharge", "backwater", "network_routing"]
+    "governing_equations": [
+      "saint_venant_dynamic",
+      "pressurized_pipe"
+    ],
+    "phenomena": [
+      "surcharge",
+      "backwater",
+      "network_routing"
+    ]
   },
   "provenance": {
     "citations": [
@@ -45,7 +57,10 @@
   "simulation": {
     "t_end": 21600,
     "output_interval": 60,
-    "required_outputs": ["h", "Q"]
+    "required_outputs": [
+      "h",
+      "Q"
+    ]
   },
   "scoring": {
     "criteria": [
@@ -53,7 +68,11 @@
         "id": "peak_depth",
         "metric": "relative_peak",
         "variable": "h",
-        "threshold": {"op": "abs<=", "value": 1.0, "units": "%"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 1.0,
+          "units": "%"
+        },
         "gating": true,
         "rationale": "Within SWMM 5.2.4 self-consistency band on EXTRAN cases."
       },
@@ -61,7 +80,11 @@
         "id": "volume",
         "metric": "relative_volume",
         "variable": "volume",
-        "threshold": {"op": "abs<=", "value": 1.0, "units": "%"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 1.0,
+          "units": "%"
+        },
         "gating": true,
         "rationale": "Hydrograph volume within ±1% of pinned SWMM 5.2.4 reference."
       }

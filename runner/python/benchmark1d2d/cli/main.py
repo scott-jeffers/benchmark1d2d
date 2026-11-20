@@ -16,14 +16,14 @@ from benchmark1d2d.scoring.scorer import score_case
 
 
 def _cmd_catalog_list(args: argparse.Namespace) -> int:
-    rows = list_catalog(track=args.track)
+    rows = list_catalog(track=args.track, evidence=args.evidence)
     if not rows:
         print("No catalog cases found.")
         return 0
-    print(f"{'TEST_ID':<42} {'TRACK':<6} {'STATUS':<12} TITLE")
+    print(f"{'TEST_ID':<42} {'EVIDENCE':<13} {'STATUS':<12} TITLE")
     for r in rows:
         print(
-            f"{r['test_id']:<42} {r['track']:<6} {str(r.get('status', '')):<12} {r.get('title', '')}"
+            f"{r['test_id']:<42} {str(r.get('evidence') or ''):<13} {str(r.get('status', '')):<12} {r.get('title', '')}"
         )
     return 0
 
@@ -282,6 +282,8 @@ def build_parser() -> argparse.ArgumentParser:
     cat_sub = cat.add_subparsers(dest="catalog_cmd", required=True)
     cat_list = cat_sub.add_parser("list", help="List catalog cases")
     cat_list.add_argument("--track", choices=["A", "B"], default=None)
+    cat_list.add_argument("--evidence", choices=["verification", "validation", "comparison"], default=None,
+                          help="Only cases giving this kind of evidence (protocol 4.0)")
     cat_list.set_defaults(func=_cmd_catalog_list)
 
     run = sub.add_parser("run", help="Execute a solver on a catalog case")

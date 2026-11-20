@@ -1,10 +1,25 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A2L-020_triangular_sill_wetdry",
   "test_class": "validation_lab",
+  "evidence": "validation",
+  "capabilities": [
+    "wet_dry",
+    "flood_waves"
+  ],
+  "data_card": {
+    "measured": "Water depths at gauges in a laboratory dam break over a triangular bottom sill (Soares-Frazão 2007).",
+    "method": "Laboratory gauges.",
+    "uncertainty": "Not yet stated: the value in reference.uncertainty is a placeholder until the published gauge or survey error is recorded.",
+    "known_issues": [
+      "CADAM/IMPACT redistribution terms not confirmed."
+    ],
+    "exercises": "A wave overtopping a sill, reflecting and wetting and drying behind it.",
+    "cannot_tell": "Depth gauges alone do not show whether the reflected bores are right in velocity."
+  },
   "title": "Triangular sill wet/dry",
   "description": "Dam-break wave over a triangular bottom sill with wetting and drying.",
   "physics": {

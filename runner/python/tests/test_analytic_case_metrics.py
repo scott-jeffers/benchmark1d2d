@@ -98,7 +98,12 @@ def test_promotion_checklist_reports_real_blockers() -> None:
     ids = {b["id"] for b in next_stage(draft, [])["blockers"]}
     assert {"licence", "inputs", "reference"} <= ids
     cand = load_manifest("A1F-010", repo=REPO)
-    card = {"test_id": cand["test_id"], "passed": True, "solver": {"name": "demo"}, "convergence_result": {"passed": True}}
+    # protocol 4.0: no pass marks, so a card's own "passed" does not matter; convergence at the expected order does
+    card = {"test_id": cand["test_id"], "passed": False, "criteria_results": [], "solver": {"name": "demo"}, "convergence_result": {"passed": True}}
     other = {**card, "solver": {"name": "another code"}}
     assert {b["id"] for b in next_stage(cand, [card])["blockers"]} == {"independent", "review"}
     assert {b["id"] for b in next_stage(cand, [card, other])["blockers"]} == {"review"}
+    stalled = {**other, "convergence_result": {"passed": False}}
+    assert {b["id"] for b in next_stage(cand, [card, stalled])["blockers"]} == {"independent", "review"}
+    flagged = {**card, "run": {"engine": {"flagged": True}}}
+    assert "passing_run" in {b["id"] for b in next_stage(cand, [flagged])["blockers"]}

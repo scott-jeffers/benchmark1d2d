@@ -1,10 +1,76 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "A1F-100_bellinge_urban_drainage",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "validation_field",
+  "evidence": "validation",
+  "capabilities": [
+    "pipe_hydraulics",
+    "storage_structures",
+    "controls",
+    "drainage_networks"
+  ],
+  "data_card": {
+    "measured": "Water levels at seven level meters in the Bellinge combined sewer (Odense, Denmark) through eight storms between 2011 and 2019, read at one minute.",
+    "method": "Utility level meters (DTU Data item 2, CC BY 4.0); each meter reads no lower than its own floor.",
+    "uncertainty": "Provisional ±0.02 m level-meter accuracy (reference.uncertainty); the published model is uncalibrated (Pedersen et al. 2021, §4).",
+    "known_issues": [
+      "The model is the published, uncalibrated SWMM model run unchanged.",
+      "Rain-gauge data (item 3a) are CC BY-NC and not used; the model's own rain-gauge file drives the runs.",
+      "Basin and pump-sump meters are dominated by controls the model may not reproduce."
+    ],
+    "exercises": "Network routing under real storms with basins, pumps, weirs and control rules.",
+    "cannot_tell": "With the model run unchanged, the miss against the meters mostly measures the model and its data; the engines agree with each other far better than with the meters."
+  },
+  "validation_design": {
+    "mode": "engine",
+    "declared": "2026-11-20",
+    "events": [
+      {
+        "id": "2011-06-30",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2011-08-26",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2012-06-29",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2013-08-12",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2014-06-24",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2014-08-17",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2015-07-25",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      },
+      {
+        "id": "2019-10-11",
+        "role": "scored",
+        "notes": "Engine validation: the published model is run unchanged, so no event is used for calibration."
+      }
+    ],
+    "holdout_policy": "Engine validation scores every storm because nothing is tuned. A practice-validation round on the same data will use the four storms of 2011–2013 for calibration and score the four of 2014–2019; that split is fixed here, before any practice-validation run."
+  },
   "title": "Bellinge combined sewer system (Odense, Denmark) — field validation",
   "description": "1.7 km² mainly combined urban drainage system in Bellinge, Odense, with a published EPA SWMM model and years of level-meter records. A candidate runs the published model, unchanged except for its run dates, on eight storms (2011-2019) and is judged against the measured water levels at seven level meters.",
   "physics": {
@@ -195,7 +261,14 @@
           "units": "1"
         },
         "gating": true,
-        "rationale": "Set before any run: Moriasi et al. (2007) 'satisfactory' band, NSE ≥ 0.5, for the median gauge record (a meter on one storm). A record where the meter moved less than three times its accuracy is not scored for NSE."
+        "rationale": "Set before any run: Moriasi et al. (2007) 'satisfactory' band, NSE ≥ 0.5, for the median gauge record (a meter on one storm). A record where the meter moved less than three times its accuracy is not scored for NSE.",
+        "significance": {
+          "op": ">=",
+          "value": 0.5,
+          "units": "1",
+          "source": "Moriasi et al. (2007), Model evaluation guidelines for systematic quantification of accuracy in watershed simulations, Trans. ASABE 50(3)",
+          "basis": "Lower bound of the 'satisfactory' band for NSE."
+        }
       },
       {
         "id": "peak_level",
@@ -208,7 +281,14 @@
           "units": "m"
         },
         "gating": true,
-        "rationale": "Set before any run: the ±0.1 m depth criterion for verifying sewer models against measurements (WaPUG 2002; CIWEM UDG 2017 Code of Practice), for the median gauge record."
+        "rationale": "Set before any run: the ±0.1 m depth criterion for verifying sewer models against measurements (WaPUG 2002; CIWEM UDG 2017 Code of Practice), for the median gauge record.",
+        "significance": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "m",
+          "source": "WaPUG (2002) Code of Practice for the Hydraulic Modelling of Sewer Systems; CIWEM UDG (2017) Code of Practice for the Hydraulic Modelling of Urban Drainage Systems",
+          "basis": "Depth criterion for verifying a sewer model against measured event levels."
+        }
       }
     ]
   }

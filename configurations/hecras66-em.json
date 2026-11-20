@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0.0",
+  "key": "hecras66-em",
+  "engine": {
+    "name": "HEC-RAS",
+    "version": "6.6",
+    "pin": "HEC-RAS_66_Setup.exe SHA-256 42A370B1…4715EB"
+  },
+  "tier": "T1",
+  "set_by": "suite",
+  "script": "scripts/run_hecras_2d.py (2D), scripts/run_hecras.py (1D), scripts/run_hecras_2d_cases.py",
+  "changed_from_default": [
+    {
+      "setting": "2D equation set",
+      "value": "SWE-EM",
+      "default": "SWE-ELM",
+      "reason": "As hecras-em, on the previous release.",
+      "source": "HEC-RAS 2D User's Manual, choice of 2D equation set (exact section to be cited)"
+    }
+  ],
+  "defaults_audit": "pending",
+  "notes": "The runner writes time-step control by Courant number (max 1, min 0.45), theta 1 and the 2D filter tolerances explicitly (see the plan and unsteady files in each model package); whether each matches HEC-RAS's own default is not yet audited."
+}

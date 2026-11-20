@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "key": "lisflood-fv1",
+  "engine": {
+    "name": "LISFLOOD-FP (first-order finite volume)",
+    "version": "8.3",
+    "pin": "Zenodo source MD5 abaa2e41b58f6c7df4443274bf130d4a, CPU, double precision"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_lisflood.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending"
+}

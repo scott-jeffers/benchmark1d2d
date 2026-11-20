@@ -1,10 +1,15 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "A1F-011_stoker_wet_bed_dambreak",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "shocks_jumps",
+    "flood_waves"
+  ],
   "title": "Stoker wet-bed dam break",
   "description": "1D inviscid Saint-Venant dam break onto a wet bed (hl=1, hr=0.1) with exact Stoker (1957) Riemann solution.",
   "physics": {

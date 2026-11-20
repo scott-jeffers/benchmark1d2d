@@ -98,13 +98,14 @@ def recipe(key: str, sid: str) -> dict | None:
                     note=("The model files below are the published model with each storm's dates set. The rain-gauge file they "
                           "read (rg_bellinge_Jun2010_Aug2021.dat, 28 MB) is too large to include; the fetch step downloads it with "
                           "the model from DTU Data."))
-    if key in ("swmm524", "openswmm-dw", "openswmm-fv", "hydra-uds", "swmm515", "swmm524-converged", "openswmm-dw-converged") and not sid.startswith("B-"):
+    if key in ("swmm524", "openswmm-dw", "openswmm-fv", "hydra-uds", "swmm515", "swmm524-converged", "openswmm-dw-converged", "swmm524-defaults") and not sid.startswith("B-"):
         drainage = sid.startswith("A1D")
         script = "scripts/run_drainage_cases.py" if drainage else "scripts/run_swmm_track_a.py"
-        extra = {"swmm524": [], "openswmm-dw": OPENSWMM, "openswmm-fv": OPENSWMM, "hydra-uds": HYDRA, "swmm515": SWMM51}[key]
+        base = key.removesuffix("-converged").removesuffix("-defaults")
+        extra = {"swmm524": [], "openswmm-dw": OPENSWMM, "openswmm-fv": OPENSWMM, "hydra-uds": HYDRA, "swmm515": SWMM51}[base]
         flags = {"swmm524": "", "openswmm-dw": " --openswmm-python .venv-openswmm/bin/python",
                  "openswmm-fv": " --openswmm-python .venv-openswmm/bin/python", "hydra-uds": ' --hydra-exe "$HYDRA"',
-                 "swmm515": " --swmm51-python .venv-swmm51/bin/python"}[key]
+                 "swmm515": " --swmm51-python .venv-swmm51/bin/python"}[base]
         return dict(install=['python -m pip install -e ".[dev,engines]"', *extra],
                     run=[f"python {script} {sid} --engines {key}{flags}"], script=script, workflow="track-a.yml", platform="Linux")
     if key in ("hydronet-fvm", "hydronet-pinn"):

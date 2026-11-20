@@ -1,10 +1,15 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "B-EPANET-001_net1_parity",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "B",
   "test_class": "parity",
+  "evidence": "comparison",
+  "capabilities": [
+    "storage_structures",
+    "pressure_networks"
+  ],
   "title": "EPANET Net1 parity against EPANET 2.2",
   "description": "EPANET Example Network 1 (9 junctions, 1 reservoir, 1 tank, 12 pipes, 1 pump; 24 h extended period). Candidate nodal pressures and link flows are compared element by element with EPANET 2.2.",
   "physics": {
