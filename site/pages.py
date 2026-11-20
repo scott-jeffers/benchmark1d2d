@@ -459,6 +459,40 @@ def _margin_span(ck: dict) -> str:
     return f' · <span class="mg">{esc(t)}</span>' if t else ""
 
 
+# Sensitivity envelopes (scripts/sensitivity_swmm.py): model key -> its file, loaded once.
+SENSITIVITY: dict[str, dict] = {}
+for _p in sorted((Path(__file__).parent / "fixtures" / "sensitivity").glob("*.json")):
+    try:
+        _d = json.loads(_p.read_text(encoding="utf-8"))
+        SENSITIVITY[_d["model"]] = _d
+    except (OSError, ValueError, KeyError):
+        pass
+
+
+def sensitivity_html(sid: str) -> str:
+    """How far reasonable set-up choices move each audited model's result on this test (protocol 4.0 §3)."""
+    out = []
+    for key, d in SENSITIVITY.items():
+        e = (d.get("tests") or {}).get(sid)
+        if not e or key not in SOLVER:
+            continue
+        rows = "".join(
+            f'<tr><td>{esc(d["variants"].get(v, v))}</td><td class="num">'
+            + (f'<span class="lb-cell {measures.klass(r.get("percent_difference"))}">{esc(measures.short(r.get("percent_difference")))}</span>' if r.get("completed") else "did not run")
+            + f'</td><td class="small">{"engine flags the run" if r.get("engine_flagged") else ""}</td></tr>'
+            for v, r in e["variants"].items())
+        out.append(
+            f'<section class="section"><h3>How much the set-up matters: {esc(SOLVER[key]["name"])}</h3>'
+            f'<p>Across {len(e["variants"])} set-ups a competent user could choose (one option changed at a time from the published one), '
+            f'the result ranges from <b>{esc(measures.short(e["low"]))}</b> ({esc(d["variants"].get(e["low_variant"], e["low_variant"]))}) '
+            f'to <b>{esc(measures.short(e["high"]))}</b> ({esc(d["variants"].get(e["high_variant"], e["high_variant"]))}). '
+            f'Geometry, boundaries, friction, grid and routing step stay the test\'s own.</p>'
+            f'<details><summary>Every set-up</summary><div class="table-scroll"><table class="tb"><thead><tr><th>Set-up</th><th class="num">Difference</th><th></th></tr></thead>'
+            f'<tbody>{rows}</tbody></table></div></details>'
+            f'<p class="small muted">Run {esc(d.get("date", ""))} with {esc(d.get("engine", ""))} by <a href="{BLOB}{esc(d.get("script", ""))}">{esc(d.get("script", ""))}</a>.</p></section>')
+    return "".join(out)
+
+
 ROLE_WORDS = {"calibration": "calibration: a team may tune against it", "scored": "scored: nobody may tune against it",
               "held_back": "held back: released only when a round closes"}
 
@@ -1600,6 +1634,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
   <h2>How models did</h2>
   <p class="muted">Listed by configuration tier (T0 out of the box, T1 documented guidance, T2 expert), not by result. Each difference is the largest percent difference from the right answer over the test's accuracy checks; mass error, timing and NSE are shown beside it, not folded in. Each model's set-up is on its model page. {esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
   {tboard}
+  {sensitivity_html(sid)}
   {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
   <div class="models">{''.join(mcards)}{not_yet}</div>
 </section>"""

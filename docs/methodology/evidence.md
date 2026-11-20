@@ -76,6 +76,16 @@ up under different rules and are never compared as if alike. The gap between
 a model's T0 and T2 results is itself evidence: it shows how much an
 engineer's set-up choices matter for that kind of flow.
 
+**Sensitivity envelopes.** Each envelope reruns a model with the
+choices a competent user could reasonably make, changing one numerical option
+at a time from the published configuration. It reports the range of each
+test's result, with the set-up at each end. The test's geometry, boundaries,
+friction, grid and routing step stay fixed. The first envelope covers
+EPA SWMM 5.2.4 on its channel tests: iteration tolerance and trials (including
+SWMM's own defaults), normal-flow limitation, inertial damping and the
+variable-step factor. It is produced by `scripts/sensitivity_swmm.py`, rerun
+monthly by `sensitivity.yml`, and shown on each test page.
+
 `defaults_audit` states how far the "changed from default" list has been
 checked:
 
@@ -83,7 +93,18 @@ checked:
 - `manual`: the list was checked by hand against the documentation.
 - `pending`: only the changes the runner makes on purpose are listed.
 
-The goal is `automatic` for every engine.
+The goal is `automatic` for every engine. For EPA SWMM, OpenSWMM, Hydra,
+EPANET and WNTR it already is. `scripts/audit_configurations.py` compares
+every numerical option in the model files the runners kept against the
+engine's defaults. Those defaults are copied from the engine's source at the
+pinned tag (`benchmark1d2d.defaults`). CI checks the records against the model
+files and recomputes them whenever results are collected.
+
+A **T0** record may change only two kinds of setting, and the schema enforces
+both:
+
+- settings the case makes unavoidable (`required_by_case`), such as a time step short enough for the case's grid
+- settings that select the engine method being tested (`selects_method`), such as a routing method
 
 ## 4. A result's measures
 

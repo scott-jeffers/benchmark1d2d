@@ -1,0 +1,39 @@
+name: Sensitivity
+
+# Evidence protocol 4.0 §3: how much the set-up choices a competent user could make move each result.
+# Reruns EPA SWMM 5.2.4 on its channel tests, one option changed at a time, and commits the envelope
+# (site/fixtures/sensitivity/swmm524.json). No person needs to start or approve it.
+
+on:
+  schedule:
+    - cron: "17 3 1 * *"  # monthly, the 1st at 03:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sensitivity
+  cancel-in-progress: false
+
+jobs:
+  swmm524:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -e ".[dev,engines,site]"
+      - name: Sweep reasonable set-ups
+        run: python scripts/sensitivity_swmm.py
+      - name: Commit the envelope
+        run: |
+          git config user.name "benchmark1d2d-bot"
+          git config user.email "benchmark1d2d-bot@users.noreply.github.com"
+          git add site/fixtures/sensitivity
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git commit -m "Sensitivity envelope (EPA SWMM 5.2.4)"
+          git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"
