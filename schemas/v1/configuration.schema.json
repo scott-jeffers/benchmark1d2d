@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openhydro.org/schemas/v1/configuration.schema.json",
+  "title": "Benchmark1d2d model configuration",
+  "description": "How one model was set up for its published results (protocol 4.0): which engine build, which configuration tier, and every setting that differs from the engine's own default, with the reason. One file per configuration under configurations/. A result is always shown with its configuration, and results of different tiers are never compared as if alike.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "key", "engine", "tier", "set_by", "changed_from_default", "defaults_audit"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0.0"},
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "The model key used by score cards and the site (site/pages.py SOLVERS)."
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "pin": {"type": "string", "description": "Exact install: package pin, installer hash or source commit."}
+      }
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["T0", "T1", "T2"],
+      "description": "T0 out of the box: the engine's defaults, plus only what the case itself defines (geometry, boundaries, friction, grid). T1 documented guidance: only changes the developer's own published guidance recommends for this kind of flow, each with its source. T2 expert: any setting the engine exposes, chosen by a named person or group; one configuration per capability group unless per_case_tuning is declared."
+    },
+    "set_by": {
+      "type": "string",
+      "description": "Who chose the configuration: 'suite' for configurations the suite's runners write, else the person or organisation that submitted it."
+    },
+    "script": {"type": "string", "description": "The runner that writes the native model files."},
+    "changed_from_default": {
+      "type": "array",
+      "description": "Every setting that differs from the engine's default. Empty means none is known to differ; see defaults_audit for how far that has been checked.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["setting", "value", "reason"],
+        "properties": {
+          "setting": {"type": "string"},
+          "value": {"type": ["string", "number", "boolean"]},
+          "default": {"type": ["string", "number", "boolean", "null"]},
+          "reason": {"type": "string"},
+          "source": {"type": "string", "description": "For T1, the developer's guidance this follows (document and section)."}
+        }
+      }
+    },
+    "defaults_audit": {
+      "type": "string",
+      "enum": ["automatic", "manual", "pending"],
+      "description": "automatic: changed_from_default is produced by diffing the written model against the engine's defaults on every run. manual: it was checked by hand against the engine's documentation. pending: not yet checked; the list holds only the changes the runner makes deliberately."
+    },
+    "per_case_tuning": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if settings differ from case to case within a capability group (T2 only)."
+    },
+    "training_disclosure": {
+      "type": "string",
+      "description": "For learned models: what the model was trained on, and whether any suite case, reference or generator was used."
+    },
+    "notes": {"type": "string"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"tier": {"const": "T1"}}},
+      "then": {"properties": {"changed_from_default": {"items": {"required": ["setting", "value", "reason", "source"]}}}}
+    },
+    {
+      "if": {"properties": {"tier": {"const": "T0"}}},
+      "then": {"properties": {"per_case_tuning": {"const": false}}}
+    }
+  ]
+}

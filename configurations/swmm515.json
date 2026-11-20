@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "key": "swmm515",
+  "engine": {
+    "name": "EPA SWMM",
+    "version": "5.1.15",
+    "pin": "swmm-toolkit==0.10.0"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_track_b.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending"
+}

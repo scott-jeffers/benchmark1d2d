@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0.0",
+  "key": "openswmm-fv",
+  "engine": {
+    "name": "OpenSWMM Engine (finite volume)",
+    "version": "6.0.0a4.dev1",
+    "pin": "openswmm==6.0.0a4.dev1"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_swmm_track_a.py",
+  "changed_from_default": [
+    {
+      "setting": "FLOW_ROUTING",
+      "value": "FV",
+      "default": null,
+      "reason": "Selects the engine's finite-volume routing, the option this configuration exists to test."
+    }
+  ],
+  "defaults_audit": "pending"
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "key": "swmm524",
+  "engine": {
+    "name": "EPA SWMM (dynamic wave)",
+    "version": "5.2.4",
+    "pin": "swmm-toolkit==0.17.0"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_swmm_track_a.py, scripts/run_drainage_cases.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending",
+  "notes": "Channel tests are written as one conduit per grid cell; the harness writes HEAD_TOLERANCE 0.0005 m and MAX_TRIALS 8."
+}

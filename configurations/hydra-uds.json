@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "key": "hydra-uds",
+  "engine": {
+    "name": "Hydra (urban drainage)",
+    "version": "17.0.0 (CLI 4.1.1)",
+    "pin": "hydra-cli-4.1.1 SHA-256 bffb9859…3591d"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_track_b.py, scripts/run_drainage_cases.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending"
+}

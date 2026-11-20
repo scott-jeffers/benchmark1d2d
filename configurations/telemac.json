@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "key": "telemac",
+  "engine": {
+    "name": "openTELEMAC-2D",
+    "version": "9.1.1",
+    "pin": "conda-forge opentelemac=v9.1.1"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_telemac.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending",
+  "notes": "Finite-volume option with its default settings."
+}

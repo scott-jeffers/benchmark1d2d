@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0.0",
+  "key": "swmm524-converged",
+  "engine": {
+    "name": "EPA SWMM (dynamic wave)",
+    "version": "5.2.4",
+    "pin": "swmm-toolkit==0.17.0"
+  },
+  "tier": "T2",
+  "set_by": "suite",
+  "script": "scripts/run_swmm_track_a.py",
+  "changed_from_default": [
+    {
+      "setting": "HEAD_TOLERANCE",
+      "value": "0.00001 m",
+      "default": "0.0005 m as the harness writes it",
+      "reason": "Lets the dynamic-wave iteration converge on short conduits (review finding F1)."
+    },
+    {
+      "setting": "MAX_TRIALS",
+      "value": 20,
+      "default": "8 as the harness writes it",
+      "reason": "Lets the dynamic-wave iteration converge on short conduits (review finding F1)."
+    }
+  ],
+  "defaults_audit": "pending"
+}

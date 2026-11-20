@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "key": "swmm-anuga",
+  "engine": {
+    "name": "EPA SWMM 5.2.4 + ANUGA 4.0.1 (suite coupler)",
+    "version": "suite"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_coupled_cases.py",
+  "changed_from_default": [],
+  "defaults_audit": "manual",
+  "notes": "A worked example of a coupled model, not a product: 1 s weir/orifice exchange at the manholes."
+}

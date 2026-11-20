@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "key": "geoclaw",
+  "engine": {
+    "name": "GeoClaw (Clawpack)",
+    "version": "5.9.2",
+    "pin": "clawpack v5.9.2"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_geoclaw.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending",
+  "notes": "Settings of GeoClaw's stock example on a uniform grid."
+}

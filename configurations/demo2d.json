@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "key": "demo2d",
+  "engine": {
+    "name": "Demo 2D solver",
+    "version": "0.1.0"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_demo_2d.py",
+  "changed_from_default": [],
+  "defaults_audit": "manual",
+  "notes": "Worked example that ships with the suite."
+}

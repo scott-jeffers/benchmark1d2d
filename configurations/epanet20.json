@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "key": "epanet20",
+  "engine": {
+    "name": "EPA EPANET",
+    "version": "2.0"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/epanet_parity.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending"
+}

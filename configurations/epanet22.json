@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "key": "epanet22",
+  "engine": {
+    "name": "EPA EPANET",
+    "version": "2.2",
+    "pin": "wntr==1.5.0 (bundled EPANET 2.2 toolkit)"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_network_cases.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending"
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "key": "hydronet-fvm",
+  "engine": {
+    "name": "HydroNet (Roe finite volume)",
+    "version": "0d98ff5",
+    "pin": "github.com/psu-efd/HydroNet 0d98ff5"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_hydronet.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending",
+  "notes": "CFL 0.3, its default."
+}

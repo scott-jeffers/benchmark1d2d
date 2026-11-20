@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "key": "tsnet",
+  "engine": {
+    "name": "TSNet",
+    "version": "0.3.1",
+    "pin": "tsnet==0.3.1"
+  },
+  "tier": "T0",
+  "set_by": "suite",
+  "script": "scripts/run_tsnet.py",
+  "changed_from_default": [],
+  "defaults_audit": "pending"
+}
