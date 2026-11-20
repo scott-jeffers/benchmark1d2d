@@ -459,6 +459,16 @@ def _margin_span(ck: dict) -> str:
     return f' · <span class="mg">{esc(t)}</span>' if t else ""
 
 
+def significance_note(d: dict, observed) -> str:
+    """'within / beyond the engineering-significance value (source)' when the check carries one (protocol 4.0)."""
+    sg = d.get("significance")
+    if not sg or not isinstance(observed, (int, float)) or observed != observed:
+        return ""
+    within = observed >= sg["value"] if sg.get("op") == ">=" else abs(observed) <= sg["value"]
+    shown = f'{"≥ " if sg.get("op") == ">=" else "±"}{nice(sg["value"], 3)}{"" if sg["units"] == "1" else " " + sg["units"]}'
+    return f'{"meets" if within else "misses"} the practice value {shown} ({sg["source"].split(";")[0].split(",")[0]})'
+
+
 def checks_for(m: dict, card: dict) -> list[dict]:
     """Every check of one run in plain words: label, measured value, and that value as a percent difference."""
     defs = {c["id"]: c for c in m["scoring"]["criteria"]}
@@ -481,6 +491,9 @@ def checks_for(m: dict, card: dict) -> list[dict]:
             diff = "conservation, reported beside the score" if not scored else ""
         else:
             diff = "timing, reported beside the score, in seconds"
+        sig = significance_note(d, r.get("observed"))
+        if sig:
+            diff = f"{diff} · {sig}" if diff else sig
         out.append(dict(label=check_label(d), value=check_value(d, r.get("observed")),
                         limit=diff if gating else ("reported, not counted" + (f" · {diff}" if diff else "")),
                         pct=pct if scored else None, state="m" if scored else "info", gating=gating, kind=k))

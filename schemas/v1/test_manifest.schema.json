@@ -1104,6 +1104,41 @@
             "median"
           ],
           "description": "Measured cases with many gauge records: judge the worst record (default) or the median one."
+        },
+        "significance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "units",
+            "source"
+          ],
+          "description": "Evidence protocol 4.0: the size of error that matters in engineering practice for this check, from a cited external source (a code of practice, a design standard, a published acceptance criterion). A result is reported as within or beyond it. Not a pass mark, and never set from the suite's own results.",
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": [
+                "abs<=",
+                ">="
+              ],
+              "default": "abs<="
+            },
+            "value": {
+              "type": "number"
+            },
+            "units": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "minLength": 10,
+              "description": "The external document and clause the value comes from."
+            },
+            "basis": {
+              "type": "string",
+              "description": "What the source uses the value for."
+            }
+          }
         }
       }
     },

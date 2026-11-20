@@ -63,8 +63,9 @@ def short(s: float | None) -> str:
 
 
 # Shading of the percent difference, for reading a table at a glance. The
-# shades are not verdicts and carry no engineering meaning; per-check
-# engineering-significance values replace them in a later protocol version.
+# shades are not verdicts and carry no engineering meaning. Where a check
+# carries an engineering-significance value from a cited source (manifest
+# ``significance``), the site also says whether the result meets it.
 BANDS = [(0.1, "s0", "under 0.1 %"), (1.0, "s1", "0.1–1 %"), (3.0, "s2", "1–3 %"), (10.0, "s3", "3–10 %"), (30.0, "s4", "10–30 %"), (math.inf, "s5", "over 30 %")]
 
 

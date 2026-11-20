@@ -202,7 +202,14 @@
           "units": "1"
         },
         "gating": true,
-        "rationale": "Set before any run: Moriasi et al. (2007) 'satisfactory' band, NSE ≥ 0.5, for the median gauge record (a meter on one storm). A record where the meter moved less than three times its accuracy is not scored for NSE."
+        "rationale": "Set before any run: Moriasi et al. (2007) 'satisfactory' band, NSE ≥ 0.5, for the median gauge record (a meter on one storm). A record where the meter moved less than three times its accuracy is not scored for NSE.",
+        "significance": {
+          "op": ">=",
+          "value": 0.5,
+          "units": "1",
+          "source": "Moriasi et al. (2007), Model evaluation guidelines for systematic quantification of accuracy in watershed simulations, Trans. ASABE 50(3)",
+          "basis": "Lower bound of the 'satisfactory' band for NSE."
+        }
       },
       {
         "id": "peak_level",
@@ -215,7 +222,14 @@
           "units": "m"
         },
         "gating": true,
-        "rationale": "Set before any run: the ±0.1 m depth criterion for verifying sewer models against measurements (WaPUG 2002; CIWEM UDG 2017 Code of Practice), for the median gauge record."
+        "rationale": "Set before any run: the ±0.1 m depth criterion for verifying sewer models against measurements (WaPUG 2002; CIWEM UDG 2017 Code of Practice), for the median gauge record.",
+        "significance": {
+          "op": "abs<=",
+          "value": 0.1,
+          "units": "m",
+          "source": "WaPUG (2002) Code of Practice for the Hydraulic Modelling of Sewer Systems; CIWEM UDG (2017) Code of Practice for the Hydraulic Modelling of Urban Drainage Systems",
+          "basis": "Depth criterion for verifying a sewer model against measured event levels."
+        }
       }
     ]
   }

@@ -84,9 +84,21 @@ These are unchanged from scoring method 3.0, sections 1–2
   steps unconverged, or a continuity error above 10 %) is shown with that flag.
 
 The shading of a percent difference on the site exists only to make tables
-easier to read; it is not a verdict. A later protocol version replaces it with
-per-check *engineering-significance* values, each with a citation (for
-example, WaPUG/CIWEM ±0.1 m for sewer levels), reported as "within / beyond".
+easier to read; it is not a verdict.
+
+**Engineering significance.** A check may carry a `significance` value: the
+size of error that matters in practice, taken from a cited external source
+such as a code of practice, a design standard or a published acceptance
+criterion. The site then says whether each result meets it. The value is never
+set from the suite's own results, and it is not a pass mark.
+
+So far only the Bellinge checks carry one:
+
+- ±0.1 m peak level (WaPUG 2002; CIWEM UDG 2017)
+- NSE 0.5 (Moriasi et al. 2007)
+
+Adding values for other checks is a protocol decision. That is one of the
+three left to people; see [significance.md](significance.md).
 
 ## 5. What the site shows
 
