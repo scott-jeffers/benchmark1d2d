@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A1D-004_pump_on_its_curve",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "storage_structures"
+  ],
   "title": "Pump operating on its head–flow curve",
   "description": "A 20 m² wet well receives 0.1 m³/s and is emptied by a pump (head–flow curve 12 m/0, 10 m/0.08, 6 m/0.15 m³/s) against an outfall held at 10 m. At steady state the pump passes the inflow at a head rise of 8.857 m, so the wet well stands at 1.143 m.",
   "physics": {

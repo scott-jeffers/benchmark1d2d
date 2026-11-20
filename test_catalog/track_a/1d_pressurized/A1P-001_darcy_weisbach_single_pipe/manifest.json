@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A1P-001_darcy_weisbach_single_pipe",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "pressure_networks"
+  ],
   "title": "Darcy–Weisbach single pipe",
   "description": "Steady flow through a 1 km, 300 mm pipe at 1 m/s. The friction factor follows from Colebrook–White, so the exact head loss Δh = f (L/D) V²/(2g) = 3.09 m checks both the friction law a solver uses and how it applies it.",
   "physics": {

@@ -1,10 +1,15 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "A1F-010_ritter_dry_bed_dambreak",
   "case_version": "3.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "wet_dry",
+    "flood_waves"
+  ],
   "title": "Ritter dry-bed dam break",
   "description": "1D inviscid Saint-Venant dam break onto a dry bed with exact Ritter (1892) solution.",
   "physics": {

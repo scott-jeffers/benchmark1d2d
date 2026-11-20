@@ -1,10 +1,16 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "A2C-EA4_flood_propagation_speed",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "intercomparison",
+  "evidence": "comparison",
+  "capabilities": [
+    "wet_dry",
+    "flood_waves",
+    "inundation"
+  ],
   "title": "EA Test 4 — speed of flood propagation over an extended floodplain",
   "description": "Flat, horizontal 1000 m × 2000 m floodplain at 0 m; a breach hydrograph peaking at 20 m³/s enters along a 20 m line mid-way along the west edge. Tests front celerity and transient depths and velocities at the leading edge.",
   "physics": {

@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A1F-040_swashes_bump_subcritical",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "steady_open_channel"
+  ],
   "title": "Subcritical flow over a bump (SWASHES)",
   "description": "Steady frictionless flow of q = 4.42 m²/s over a 0.2 m parabolic bump in a 25 m channel, held at 2 m downstream. The flow stays subcritical; the depth follows from constant discharge and Bernoulli head (a cubic at every point), dipping to 1.71 m over the crest.",
   "physics": {

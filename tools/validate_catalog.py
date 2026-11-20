@@ -6,7 +6,8 @@ Checks (per case under test_catalog/):
   2. Input SHA-256 integrity (paths relative to the case folder)
   3. provenance.license present and listed in DATA_LICENSES.md
   4. TBD-confirm licenses only allowed with status: draft
-  5. Optional Crossref DOI resolution (--check-doi)
+  5. evidence agrees with test_class (protocol 4.0)
+  6. Optional Crossref DOI resolution (--check-doi)
 
 Placeholder empty-file hash is rejected unless --allow-placeholder-hash is set
 and status is draft or candidate. Frozen (and deprecated) always reject
@@ -30,6 +31,9 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from jsonschema import Draft202012Validator
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "runner" / "python"))
+from benchmark1d2d.evidence import EVIDENCE_OF_CLASS  # noqa: E402
 from jsonschema.exceptions import SchemaError, ValidationError
 
 PLACEHOLDER_SHA256 = (
@@ -173,6 +177,13 @@ def validate_manifest_dict(
         result.fail(format_schema_error(err))
     except SchemaError as err:
         result.fail(f"schema definition error: {err.message}")
+
+    test_class = data.get("test_class")
+    if test_class in EVIDENCE_OF_CLASS and data.get("evidence") not in (None, EVIDENCE_OF_CLASS[test_class]):
+        result.fail(
+            f"evidence {data.get('evidence')!r} disagrees with test_class {test_class!r} "
+            f"(expected {EVIDENCE_OF_CLASS[test_class]!r})"
+        )
 
     status = data.get("status")
     provenance = data.get("provenance") or {}

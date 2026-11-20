@@ -1,20 +1,31 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.2.0",
   "test_id": "A1F-010_ritter_dry_bed_dambreak",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "wet_dry",
+    "flood_waves"
+  ],
   "physics": {
     "dimensionality": "1D",
     "flow_type": "free_surface",
-    "governing_equations": ["saint_venant_dynamic"],
-    "phenomena": ["dam_break"]
+    "governing_equations": [
+      "saint_venant_dynamic"
+    ],
+    "phenomena": [
+      "dam_break"
+    ]
   },
   "provenance": {
     "citations": [
       {
-        "authors": ["Ritter, A."],
+        "authors": [
+          "Ritter, A."
+        ],
         "year": 1892,
         "title": "Die Fortpflanzung der Wasserwellen",
         "report_number": "ZdVDI 36(33)"
@@ -35,15 +46,27 @@
     "generator": {
       "module": "references.ritter",
       "function": "depth_velocity",
-      "parameters": {"h0": 1.0, "x0": 1000.0, "g": 9.81}
+      "parameters": {
+        "h0": 1.0,
+        "x0": 1000.0,
+        "g": 9.81
+      }
     }
   },
   "simulation": {
     "t_end": 60,
     "output_interval": 5,
-    "required_outputs": ["h", "u", "Q"],
+    "required_outputs": [
+      "h",
+      "u",
+      "Q"
+    ],
     "mesh_refinement": {
-      "levels": [10, 5, 2.5],
+      "levels": [
+        10,
+        5,
+        2.5
+      ],
       "fixed_courant": 0.5
     }
   },
@@ -53,7 +76,11 @@
         "id": "front_position",
         "metric": "front_position_error",
         "variable": "h",
-        "threshold": {"op": "abs<=", "value": 2.5, "units": "m"},
+        "threshold": {
+          "op": "abs<=",
+          "value": 2.5,
+          "units": "m"
+        },
         "gating": true,
         "weight": 1.0,
         "rationale": "Should fail: pass_rule weighted without minimum_score."

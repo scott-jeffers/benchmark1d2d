@@ -1,10 +1,16 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A2F-001_malpasset_1959",
   "test_class": "validation_field",
+  "evidence": "validation",
+  "capabilities": [
+    "wet_dry",
+    "flood_waves",
+    "inundation"
+  ],
   "title": "Malpasset 1959 dam failure",
   "description": "Historical Malpasset dam-break (1959, France); 2D shallow-water field validation against surveyed high-water marks (CADAM).",
   "physics": {

@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A1F-020_hydraulic_jump_belanger",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "shocks_jumps"
+  ],
   "title": "Bélanger hydraulic jump",
   "description": "A stationary hydraulic jump on a horizontal frictionless bed: supercritical inflow (h1 = 0.2 m, Fr1 = 2.5) meets the Bélanger sequent depth h2 = 0.61 m held downstream. The exact solution is a step that stays at x = 50 m; the case checks that a solver captures the jump with the right conjugate depths and does not let it drift.",
   "physics": {

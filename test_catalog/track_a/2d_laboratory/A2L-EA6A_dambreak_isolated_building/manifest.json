@@ -1,10 +1,16 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "A2L-EA6A_dambreak_isolated_building",
   "case_version": "1.0.0",
   "status": "draft",
   "track": "A",
   "test_class": "validation_lab",
+  "evidence": "validation",
+  "capabilities": [
+    "shocks_jumps",
+    "flood_waves",
+    "urban_surface"
+  ],
   "title": "EA Test 6A — dam break past an isolated building (laboratory scale)",
   "description": "UCL laboratory dam break through a 1 m gate against a single idealised building (Soares-Frazão & Zech 2002, IMPACT), as adopted by the Environment Agency. Tests hydraulic jumps and the wake behind an obstacle against gauge measurements.",
   "physics": {

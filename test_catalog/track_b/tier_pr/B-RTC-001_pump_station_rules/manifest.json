@@ -1,10 +1,16 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "B-RTC-001_pump_station_rules",
   "case_version": "2.0.0",
   "status": "candidate",
   "track": "B",
   "test_class": "parity",
+  "evidence": "comparison",
+  "capabilities": [
+    "storage_structures",
+    "controls",
+    "drainage_networks"
+  ],
   "title": "Control-rule parity: pump stations switched by wet-well level",
   "description": "A 90-node sanitary network (SI units) with two pump stations whose pumps are switched ON and OFF by IF/THEN rules on wet-well depth (e.g. pump U433_Psan_1_ou_2 switches 74 times in 36 h). Tests that a candidate evaluates control rules at the same moments as SWMM 5.2.4. Case v2.0.0 replaces EXTRAN Example 1 with a rule whose condition never changed, so v1 never exercised a switch.",
   "physics": {

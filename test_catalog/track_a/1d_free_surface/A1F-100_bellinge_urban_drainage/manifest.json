@@ -1,10 +1,17 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "A1F-100_bellinge_urban_drainage",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "validation_field",
+  "evidence": "validation",
+  "capabilities": [
+    "pipe_hydraulics",
+    "storage_structures",
+    "controls",
+    "drainage_networks"
+  ],
   "title": "Bellinge combined sewer system (Odense, Denmark) — field validation",
   "description": "1.7 km² mainly combined urban drainage system in Bellinge, Odense, with a published EPA SWMM model and years of level-meter records. A candidate runs the published model, unchanged except for its run dates, on eight storms (2011-2019) and is judged against the measured water levels at seven level meters.",
   "physics": {

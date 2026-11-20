@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A1P-021_bergant_slow_closure_column_sep",
   "test_class": "validation_lab",
+  "evidence": "validation",
+  "capabilities": [
+    "transients"
+  ],
   "title": "Bergant slow valve closure with column separation",
   "description": "Laboratory water-hammer with slow valve closure producing column separation and cavity collapse; compare pressure traces to published gauge data.",
   "physics": {

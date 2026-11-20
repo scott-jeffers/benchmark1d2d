@@ -12,6 +12,8 @@
     "status",
     "track",
     "test_class",
+    "evidence",
+    "capabilities",
     "physics",
     "provenance",
     "inputs",
@@ -67,6 +69,41 @@
         "regression",
         "stress"
       ]
+    },
+    "evidence": {
+      "type": "string",
+      "enum": [
+        "verification",
+        "validation",
+        "comparison"
+      ],
+      "description": "Kind of evidence (protocol 4.0): verification = exact or manufactured truth; validation = measured truth with uncertainty; comparison = no independent truth (a pinned reference engine, or states derived from the inputs). Must agree with test_class (benchmark1d2d.evidence.EVIDENCE_OF_CLASS)."
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "wet_dry",
+          "still_water",
+          "steady_open_channel",
+          "shocks_jumps",
+          "flood_waves",
+          "inundation",
+          "urban_surface",
+          "pipe_hydraulics",
+          "storage_structures",
+          "controls",
+          "drainage_networks",
+          "pressure_networks",
+          "transients",
+          "transport",
+          "coupled_exchange"
+        ]
+      },
+      "description": "Capability groups the case gives evidence on; names and plain-language meaning in benchmark1d2d.evidence.CAPABILITIES."
     },
     "title": {
       "type": "string",

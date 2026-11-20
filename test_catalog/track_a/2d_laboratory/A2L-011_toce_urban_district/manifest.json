@@ -1,10 +1,16 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A2L-011_toce_urban_district",
   "test_class": "validation_lab",
+  "evidence": "validation",
+  "capabilities": [
+    "wet_dry",
+    "flood_waves",
+    "urban_surface"
+  ],
   "title": "Toce urban district",
   "description": "Flash-flood experiment in a simplified urban district (CADAM / IMPACT).",
   "physics": {

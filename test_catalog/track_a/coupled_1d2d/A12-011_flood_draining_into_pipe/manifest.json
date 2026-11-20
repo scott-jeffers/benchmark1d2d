@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A12-011_flood_draining_into_pipe",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "coupled_exchange"
+  ],
   "title": "Flood draining into a pipe",
   "description": "A 30 × 30 m walled yard holds 0.3 m of water (270 m³). It drains through a gully whose crest stands 5 cm above the yard floor into a 0.3 m pipe to a free outfall. The water above the crest leaves through the pipe; the 5 cm below it cannot. After two hours the yard is ponded at the crest level (45 m³ stays), and 225 m³ has left by the outfall.",
   "physics": {

@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_id": "A1P-030_advection_dispersion_tracer",
   "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "transport"
+  ],
   "title": "Advection–dispersion tracer (Ogata–Banks)",
   "description": "A tracer is released continuously at x = 0 into a uniform flow (u = 0.1 m/s, D = 0.01 m²/s); after one hour the front is 360 m downstream. Ogata & Banks (1961) give the exact profile, which tests both advection and dispersion and penalises numerical diffusion.",
   "physics": {

@@ -1,10 +1,14 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "case_version": "0.1.0",
   "status": "draft",
   "track": "A",
   "test_id": "A12-001_rubinato_manhole_exchange",
   "test_class": "validation_coupled",
+  "evidence": "validation",
+  "capabilities": [
+    "coupled_exchange"
+  ],
   "title": "Rubinato manhole exchange",
   "description": "Laboratory sewer/surface exchange through a manhole; validate 1D–2D coupling exchange equations (Rubinato et al. 2017).",
   "physics": {

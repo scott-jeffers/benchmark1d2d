@@ -1,10 +1,16 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "A2C-EA5_valley_flooding",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "intercomparison",
+  "evidence": "comparison",
+  "capabilities": [
+    "shocks_jumps",
+    "flood_waves",
+    "inundation"
+  ],
   "title": "EA Test 5 — valley flooding",
   "description": "Dam-failure hydrograph (peak 3000 m³/s) released down a ~17 km valley whose slope eases from ~0.01 to ~0.001, producing both super- and subcritical flow, run to 30 h. Tests peak levels, velocities and travel times.",
   "physics": {

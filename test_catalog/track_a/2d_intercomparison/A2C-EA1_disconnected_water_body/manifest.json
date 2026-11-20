@@ -1,10 +1,15 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "A2C-EA1_disconnected_water_body",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "intercomparison",
+  "evidence": "comparison",
+  "capabilities": [
+    "wet_dry",
+    "inundation"
+  ],
   "title": "EA Test 1 — flooding a disconnected water body",
   "description": "700 m × 100 m sloping strip with a depression behind a 10.25 m sill. A water-level boundary rises from 9.7 m to 10.35 m, holds, then falls back; the pond must fill, become horizontal, and settle at the sill crest. Tests wetting/drying and disconnected water bodies.",
   "physics": {

@@ -1,10 +1,15 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "test_id": "A2C-EA2_floodplain_depressions",
   "case_version": "1.0.0",
   "status": "candidate",
   "track": "A",
   "test_class": "intercomparison",
+  "evidence": "comparison",
+  "capabilities": [
+    "wet_dry",
+    "inundation"
+  ],
   "title": "EA Test 2 — filling of floodplain depressions",
   "description": "2 km × 2 km floodplain with a 4 × 4 grid of ~0.5 m deep depressions; a 20 m³/s, ~85 min hydrograph enters along 100 m of the north-west edge and the run continues to 48 h. Tests low-momentum filling and final inundation extent.",
   "physics": {
