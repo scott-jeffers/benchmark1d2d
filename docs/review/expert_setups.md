@@ -114,8 +114,11 @@ With the default SWE-ELM equations, nothing changes, so that error comes from th
 not the step. A set-up cannot change the equation set (the suite already scores both). An expert
 modelling a dam break in HEC-RAS should choose SWE-EM, as HEC advises.
 
-A further set-up, `hecras-em-dam-break-fine-step`, halves the Courant cap again (0.25) to see
-whether the remaining 27 m lag keeps shrinking.
+A further set-up, `hecras-em-dam-break-fine-step`, halves the Courant cap again (0.25, never
+below 0.1). The lag keeps shrinking: 27 m → **10 m**, score 7.2 → **2.7**. That leaves the front
+just outside the 9.8 m band; the mass and the wet-bed dam break stay exact. For a dry-bed dam
+break in HEC-RAS, the step matters more than the tolerances: use SWE-EM and keep the Courant
+number near 0.25.
 
 ## What no setting fixes, and why
 

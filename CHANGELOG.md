@@ -10,7 +10,7 @@ Suite releases are independent of schema semver (`schemas/v1`).
     - **OpenSWMM 1D/2D**: the mesh vertex at the gully raised to the grate's crest. A12-011 goes from 23.7 % to passing every check.
     - **Landlab**: a 1 µm wet film instead of 1 mm. The lake at rest goes from 13.3 % to 0.001 %.
     - **LISFLOOD-FP ACC**: q-centred diffusion and a smaller step on the bumps, a fifth to a half less error.
-    - **HEC-RAS 2D SWE-EM**: dam-break time step and tolerances halve the dry-bed front's lag (15.4 % → 7.2 %). SWE-ELM does not change, so that error comes from its equations.
+    - **HEC-RAS 2D SWE-EM**: a smaller time step and tighter tolerances cut the dry-bed front's lag from 58 m to 10 m (15.4 % → 2.7 %). SWE-ELM does not change, so that error comes from its equations.
     - Set-ups can now be proposed for HEC-RAS 2D, Landlab, OpenSWMM 1D/2D and HydroNet's finite-volume solver.
     - Where no setting helps, the reason is recorded: HydroNet's Roe flux never starts a dry-bed dam break, Hydra has no solver controls, OpenSWMM FV's scheme options change nothing, and local-inertia solvers lack advection.
 - **Is it the software or the modeller? Every result can now be checked and challenged.**
