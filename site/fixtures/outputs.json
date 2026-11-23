@@ -1123,6 +1123,29 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.telemac.outputs.zip"
   }
  },
+ "A1F-100": {
+  "hydra-uds": {
+   "bytes": 896305,
+   "date": "2026-11-23",
+   "run": 45229046438,
+   "sha256": "9e600eaa202ff9f4c65d5d21ddba518c7912e555eca237449ff66f1660c956d8",
+   "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-100.hydra-uds.outputs.zip"
+  },
+  "openswmm-dw": {
+   "bytes": 884106,
+   "date": "2026-11-23",
+   "run": 45229046438,
+   "sha256": "f0f42125f068a5de9a91aee339ca7e559a7b2721f35308ceb000e93798880960",
+   "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-100.openswmm-dw.outputs.zip"
+  },
+  "swmm524": {
+   "bytes": 883881,
+   "date": "2026-11-23",
+   "run": 45229046438,
+   "sha256": "0fe744918568c3b256c7101c3296ae2332677026ab65c12ecb3ada504d360079",
+   "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-100.swmm524.outputs.zip"
+  }
+ },
  "A1P-001": {
   "epanet22": {
    "bytes": 2738,
