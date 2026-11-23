@@ -219,6 +219,8 @@ def run_line(card: dict) -> str:
     """How long the run took, and on what, and the engine's own report on it."""
     r = card.get("run") or {}
     ad = (card.get("solver") or {}).get("adapter") or ""
+    if ad:  # SWMM reads HEAD_TOLERANCE 0 as "use the default"; say so rather than show a bare zero
+        ad = re.sub(r"HEAD_TOLERANCE 0(?=[),;]|$)", "HEAD_TOLERANCE 0, which SWMM reads as its default 0.0015 m", ad)
     out = (f'<p class="small muted settings-line"><b>Settings:</b> {esc(ad)}</p>' if ad and ad not in ("generic_parquet",) else "") + engine_line(card)
     if r.get("wall_seconds") is None:
         return out
@@ -570,7 +572,9 @@ def checks_for(m: dict, card: dict) -> list[dict]:
         p, ci = cv.get("order"), cv.get("ci")
         value = (f"rate {p:.2f}" + (f" (90 % range {ci[0]:.2f} to {ci[1]:.2f})" if ci else "")).replace("-", "−") if p is not None else "no rate"
         expect = (m.get("scoring") or {}).get("convergence", {}).get("expected_order")
-        note = f"the scheme's design order is {nice(expect, 1)}" if expect else "how fast the error shrinks"
+        need = (card.get("convergence_result") or {}).get("min_observed_order")
+        note = ((f"the scheme's design order is {nice(expect, 1)}" if expect else "how fast the error shrinks")
+                + (f"; below {nice(need, 2)} the error is not shrinking as it should" if need else ""))
         if cv.get("verdict") == "at_floor":
             note = "already at the solver's own precision"
         sp, er = conv.get("spacings") or [], conv.get("errors") or []
@@ -655,8 +659,8 @@ CASE_NOTES = {
 
 # ── layout ──────────────────────────────────────────────────────────────────
 
-NAV = [("profiles.html", "Evidence"), ("results.html", "Tests &amp; results"), ("viewer.html", "Viewer"), ("network.html", "Networks"), ("score.html", "Score your model"), ("how-it-works.html", "How it works")]
-FOOT = [("news.html", "What's new"), ("profiles.html", "Evidence profiles"), ("solvers.html", "Models"), ("compare.html", "Side by side"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("coupled.html", "1D/2D viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
+NAV = [("profiles.html", "Evidence"), ("results.html", "Tests &amp; results"), ("viewer.html", "Viewer"), ("network.html", "Networks"), ("score.html", "Score your model"), ("how-it-works.html", "How it works"), ("about.html", "About")]
+FOOT = [("about.html", "About and how to cite"), ("news.html", "What's new"), ("profiles.html", "Evidence profiles"), ("solvers.html", "Models"), ("compare.html", "Side by side"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("coupled.html", "1D/2D viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
         ("method.html", "Method"), ("get-started.html", "Command line")]
 LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 2 11 14 17 8 S27 2 33 8" fill="none" stroke-width="3" stroke-linecap="round"/>'
         '<path class="b" d="M1 18 H33" stroke-width="3" stroke-linecap="round"/></svg>')
@@ -716,7 +720,7 @@ def layout(title: str, body: str, active: str, depth: int = 0, description: str 
 </main>
 <footer class="site-foot">
   <div class="wrap">
-    <span>{SITE_NAME} · open source (Apache-2.0) · data under each test's own <a href="{BLOB}DATA_LICENSES.md">licence</a> · <a href="{BLOB}{difference.METHOD_DOC}">Scoring method {difference.METHOD_VERSION}</a> ({difference.METHOD_DATE}) · built {built}</span>
+    <span>{SITE_NAME} · open source (Apache-2.0) · data under each test's own <a href="{BLOB}DATA_LICENSES.md">licence</a> · <a href="{BLOB}{difference.PROTOCOL_DOC}">Evidence protocol {difference.PROTOCOL_VERSION}</a> ({difference.PROTOCOL_DATE}), measured with scorer {difference.METHOD_VERSION} · built {built}</span>
     <nav aria-label="More">{foot}<a href="{REPO_URL}">Source on GitHub</a></nav>
   </div>
 </footer>
@@ -731,7 +735,7 @@ def layout(title: str, body: str, active: str, depth: int = 0, description: str 
 VERDICT_BADGE = {"pass": '<span class="badge pass">✓ Passes</span>', "fail": '<span class="badge fail">✗ Fails</span>',
                  "inconclusive": '<span class="badge unsure">? Inconclusive</span>'}
 VERDICT_WORD = {"pass": "passes", "fail": "fails", "inconclusive": "inconclusive"}
-SYM = {"m": "•", "info": "·", "ok": "•", "no": "•", "unsure": "•"}  # measurements, not verdicts: no ✓ or ✗
+SYM = {"m": "", "info": "", "ok": "", "no": "", "unsure": ""}  # measurements, not verdicts: no ✓ or ✗
 
 
 def two_verdicts(card: dict) -> str:
@@ -797,7 +801,7 @@ def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
     rows = []
     for m, c in mine:
         sid = sid_of(m["test_id"])
-        checks = "; ".join(f'{SYM[ck["state"]]} {ck["label"]} {ck["value"]}' for ck in checks_for(m, c) if ck.get("gating", True))
+        checks = "; ".join(f'{ck["label"]} {ck["value"]}' for ck in checks_for(m, c) if ck.get("gating", True))
         note = plain_note(NOTES.get((sid, key), ""))
         rows.append(f'<tr><td><a href="../tests/{sid}.html#m-{key}"><b>{esc(story(m)["name"])}</b></a><div class="muted small">{esc(sid)}</div></td>'
                     f'<td>{score_pill(c)}<div class="muted small">{esc(evidence_kinds.EVIDENCE[evidence_kinds.evidence_of(m)]["name"])}</div></td><td class="small">{esc(checks)}{("<p class=note>" + esc(note) + "</p>") if note else ""}</td></tr>')
@@ -924,6 +928,8 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
     prod = [SOLVER[k]["name"] for k in SOLVERS_ORDER(solvers_seen) if SOLVER[k]["kind"] == "production"]
     prod_names = sorted({p.split(" ")[0] for p in prod}, key=lambda s: [x["name"].split(" ")[0] for x in SOLVERS].index(s))
     n_models = len(census) if census is not None else 0
+    n_runs = sum(1 for r in runs.values() for k in r if SOLVER.get(k, {}).get("kind") != "suite")
+    families = {SOLVER[k]["name"].split(" ")[0] for k in solvers_seen if k in SOLVER and SOLVER[k]["kind"] != "suite"}
     # findings
     fronts = {}
     for k, c in (runs.get("A1F-010_ritter_dry_bed_dambreak") or {}).items():
@@ -1001,10 +1007,10 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
 </section>
 <section class="section tight" aria-label="At a glance">
   <div class="stats">
-    <div><b>{n_tests}</b><span>tests, from pipes to floodplains</span></div>
-    <div><b>{len(families)}</b><span>models scored, including {esc(', '.join(prod_names[:4]))}</span></div>
-    <div><b>{n_models:,}</b><span>real SWMM models checked</span></div>
-    <div><b>Every</b><span>result re-run from scratch on each change</span></div>
+    <div><b>{n_live}</b><span>tests ready to run, from pipes to floodplains, and {n_tests - n_live} more waiting on data</span></div>
+    <div><b>{len(families)}</b><span>programs, including {esc(', '.join(prod_names[:4]))}, in {len([k for k in solvers_seen if SOLVER.get(k, {}).get("kind") != "suite"])} set-ups</span></div>
+    <div><b>{n_runs:,}</b><span>results, every one re-run from scratch when anything changes</span></div>
+    <div><b>{n_models:,}</b><span>real SWMM models checked for engine compatibility</span></div>
   </div>
 </section>
 <section class="section">
@@ -1019,7 +1025,7 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
 <section class="dark section">
   <div class="wrap">
     <div class="head-row"><h2>What the tests found</h2><a href="results.html">All results →</a></div>
-    <div class="grid">{findings}</div>
+    <div class="grid two">{findings}</div>
   </div>
 </section>
 <div class="wrap">
@@ -1027,6 +1033,7 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
   <div class="head-row"><div><h2>Tests built from real engineering questions</h2>
   <p class="muted" style="margin:0">Each one isolates something a model has to get right on a real project, from a sewer pipe running full to a dam failing above a city.</p></div>
   <a href="results.html" style="font-weight:600">All {n_live} tests →</a></div>
+  {TIER_LEGEND}
   <div class="grid narrow">{tcards}</div>
 </section>
 <section class="section" id="how">
@@ -1051,6 +1058,11 @@ setInterval(function(){t=t>=72?0:t+0.4;draw();},50);draw();})();
     return layout(SITE_NAME, body, "index.html", scripts=script)
 
 
+TIER_WORDS = {"T0": "T0: engine defaults", "T1": "T1: developer's published guidance", "T2": "T2: expert settings, named on the model page"}
+TIER_LEGEND = ('<p class="tier-legend small muted"><b>T0</b> engine defaults · <b>T1</b> the developer\'s published guidance · '
+               '<b>T2</b> expert settings, each named on the model page. Percentages are each result\'s difference from the right answer.</p>')
+
+
 def test_card(m: dict, runs: dict, up: str = "", status_text: str | None = None) -> str:
     """A tile for one test: picture, topic, question and how the models did."""
     sid = sid_of(m["test_id"])
@@ -1062,12 +1074,23 @@ def test_card(m: dict, runs: dict, up: str = "", status_text: str | None = None)
     elif scored:
         n = len(scored)
         rows = ORDER({k: by[k] for k in scored})
+        # real software first; the suite's own worked examples only when nothing else ran
+        real = [r for r in rows if SOLVER[r["key"]]["kind"] != "suite"]
+        rows = real or rows
+        n = len(rows)
         # the models on the test (up to six), by configuration tier, with each one's difference
         shown_rows = rows[:6]
+        names = [SOLVER[r["key"]]["name"] for r in shown_rows]
+        def _label(k: str) -> str:
+            s_ = SOLVER[k]
+            if names.count(s_["name"]) > 1 or s_["kind"] == "compat":
+                return f'{s_["name"]} · {s_["sub"].split("·")[-1].strip()}'
+            return s_["name"]
         lis = "".join(
-            f'<li><span class="tc-rk">{esc(r["tier"] or "")}</span>'
+            f'<li title="{esc(SOLVER[r["key"]]["name"] + " " + SOLVER[r["key"]]["sub"])} · {esc(TIER_WORDS.get(r["tier"] or "", ""))}">'
+            f'<span class="tc-rk">{esc(r["tier"] or "")}</span>'
             f'<span class="sw" style="background:{esc(SOLVER[r["key"]]["color"])}"></span>'
-            f'<span class="tc-nm">{esc(SOLVER[r["key"]]["name"])} <span class="tc-sub">{esc(SOLVER[r["key"]]["sub"])}</span></span>'
+            f'<span class="tc-nm">{esc(_label(r["key"]))}</span>'
             f'<span class="lb-cell {measures.klass(r["score"])}">{esc(measures.short(r["score"]))}</span></li>' for r in shown_rows)
         more = f'<li class="tc-more">and {n - len(shown_rows)} more</li>' if n > len(shown_rows) else ""
         score = f'<div class="tc-score"><ol class="tc-board" aria-label="{n} model{"s" if n != 1 else ""} on this test">{lis}{more}</ol></div>'
@@ -1091,6 +1114,19 @@ def _holder(m: dict) -> str:
     return (m.get("reference") or {}).get("obtain_from", "")
 
 
+def _holder_html(holder: str) -> str:
+    """Who holds the data, with any bare web address turned into a short link."""
+    import re as _re
+
+    def link(mt: "_re.Match[str]") -> str:
+        url = mt.group(0).rstrip(".,;)")
+        host = _re.sub(r"^https?://(www\.)?", "", url).split("/")[0]
+        label = "DOI " + url.split("doi.org/")[1] if "doi.org/" in url else host
+        return f'<a href="{esc(url)}">{esc(label)}</a>'
+
+    return _re.sub(r"https?://\S+", link, esc(holder))
+
+
 def in_preparation(drafts: list[dict]) -> str:
     """The tests defined but waiting on data: what is missing and who holds it."""
     if not drafts:
@@ -1100,8 +1136,8 @@ def in_preparation(drafts: list[dict]) -> str:
         sid = sid_of(m["test_id"])
         holder = _holder(m)
         items.append(f'<li class="prep-item"><a href="tests/{sid}.html"><b>{esc(story(m)["name"])}</b></a> <span class="muted small">{esc(sid)}</span>'
-                     f'<div class="small">Missing: {esc(_need(m))}.</div>'
-                     + (f'<div class="small muted">Held by: {esc(holder)}</div>' if holder else "") + "</li>")
+                     f'<div class="small">Needs: {esc(_need(m))}.</div>'
+                     + (f'<div class="small muted">Held by: {_holder_html(holder)}</div>' if holder else "") + "</li>")
     return f"""<section class="tile-group prep" data-group="prep" id="in-preparation">
   <h3>In preparation: {len(drafts)} tests waiting on data</h3>
   <p class="muted">Defined, with their physics, inputs and scoring written, but each needs measurements or geometry that its owners have to release. If you hold one of these datasets, or know who does, <a href="{REPO_URL}/issues/new?title=Data%20for%20a%20test%20in%20preparation">tell us</a>.</p>
@@ -1177,7 +1213,8 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
         parts = [(int((w == 0).sum()), "#155E3B", "identical"), (int(((w > 0) & (w <= 1)).sum()), "#0B6FB8", "within 1 %"),
                  (int(((w > 1) & (w <= 5)).sum()), "#7FB2D9", "1–5 %"), (int((w > 5).sum()), "#D9622B", "over 5 %"),
                  (int(len(df) - len(sc)), "#C9D3D9", "could not run or nothing to compare")]
-        bar = "".join(f'<div style="flex:{n} 1 0;background:{col}">{n if n > 40 else ""}</div>' for n, col, _ in parts if n)
+        ink = {"#7FB2D9": "#0E1C26", "#C9D3D9": "#0E1C26", "#D9622B": "#0E1C26"}
+        bar = "".join(f'<div style="flex:{n} 1 0;background:{col};color:{ink.get(col, "#fff")}">{n if n > 40 else ""}</div>' for n, col, _ in parts if n)
         key = "".join(f'<span><span class="sw" style="background:{col}"></span>{lab}</span>' for _, col, lab in parts)
         aria = ", ".join(f"{n} {lab}" for n, _, lab in parts)
         name = labels.get(summ["candidate"], summ["candidate"])
@@ -1217,7 +1254,8 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
 </section>
 <div class="filters" role="group" aria-label="Filter tests">{filters}
   <div class="view-toggle" role="group" aria-label="View"><button type="button" data-view="cards" aria-pressed="true">Cards</button><button type="button" data-view="table" aria-pressed="false">Table</button></div>
-</div>
+  </div>
+</div>{TIER_LEGEND}
 <div id="view-cards">{test_gallery(shown, runs, _need)}{in_preparation(drafts)}</div>
 <div id="view-table">
 <aside class="card panel" aria-live="polite" id="panel">{panel}</aside>
@@ -1228,7 +1266,7 @@ def results_page(manifests: list[dict], runs: dict, parity, census) -> str:
   </table>
 </div>
 </div>
-<p class="small" style="margin-top:14px;max-width:90ch">The demo solvers are simple worked examples that ship with the suite. {esc(prod_list)} are production software, each run with its defaults except the settings named on its score cards (time-step limits, output points, the converged SWMM variants' iteration tolerance). HydroNet is a research code (physics-informed machine learning), scored with the settings of its own examples. SWMM 5.1.15 and EPANET 2.0 are scored for compatibility with the current releases, not for physics. Columns marked <i>submitted by …</i> were run by others and scored here.</p>
+<p class="small" style="margin-top:14px;max-width:90ch">Production software is installed from its official source and run with its defaults, except the settings named on its model page (a time-step limit, output points, an iteration tolerance). Research codes are run with the settings of their own examples. Previous releases (SWMM 5.1.15, HEC-RAS 6.6, EPANET 2.0) are compared with the current ones for compatibility, not for physics. The suite's own worked examples (Demo 1D, Demo 2D) appear only on test pages. Results marked <i>submitted by …</i> were run by others and scored here.</p>
 <section class="section" style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">{corpus}{wait}{submitted}</section>
 </div>
 {json_script("cells", cells)}"""
@@ -1561,6 +1599,13 @@ def model_file_card(m: dict) -> str:
 </div></section>"""
 
 
+def _check_value(ck: dict) -> str:
+    """A check's value; the error on each grid as a short list, one grid per line."""
+    if ck.get("kind") == "grid":
+        return '<ul class="grid-err">' + "".join(f"<li>{esc(part)}</li>" for part in str(ck["value"]).split(" · ")) + "</ul>"
+    return esc(ck["value"])
+
+
 def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_figs: str, evidence: list[dict], extra: list | None = None) -> str:
     from benchmark1d2d.catalog.promotion import checklist, next_stage
 
@@ -1584,24 +1629,24 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     # model cards
     mcards = []
     order = ORDER(runs)
+    order = [r for r in order if SOLVER[r["key"]]["kind"] != "suite"] + [r for r in order if SOLVER[r["key"]]["kind"] == "suite"]  # worked examples last
     for k in [r["key"] for r in order]:
         c = runs[k]
         s = SOLVER[k]
         checks = "".join(f'<div class="check{ {"m": "", "info": " info"}.get(ck["state"], "") }"><div class="k">{esc(ck["label"])}</div>'
-                         f'<div class="v">{SYM[ck["state"]]} {esc(ck["value"])}</div><div class="lim">{esc(ck["limit"])}</div></div>'
+                         f'<div class="v">{_check_value(ck)}</div><div class="lim">{esc(ck["limit"])}</div></div>'
                          for ck in checks_for(m, c))
         note = NOTES.get((sid, k), "")
         name = s["name"] if not k.startswith("lisflood") else f'{s["name"]} {s["sub"].split("·")[-1].strip()}'
-        mcards.append(f"""<article class="model-card" id="m-{k}">
-  <div class="top"><div><div class="name"><span class="sw" style="background:{s['color']}"></span>{esc(name)}</div><div class="what">{esc(s['what'])} {tier_badge(k)}</div></div>{score_pill(c)}</div>
-  {two_verdicts(c)}
+        mcards.append(f"""<details class="model-card" id="m-{k}">
+  <summary class="top"><div><div class="name"><span class="sw" style="background:{s['color']}"></span>{esc(name)} {tier_badge(k)}</div><div class="what">{esc(s['what'])}</div></div>{score_pill(c)}</summary>
   {run_line(c)}
   <div class="checks-grid">{checks}</div>
   {f'<p class="note">{esc(plain_note(note))}</p>' if note else ''}
-  <p class="note small">Scored with method {difference.METHOD_VERSION} · Score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>
+  <p class="note small">Measured with scorer {difference.METHOD_VERSION} · Score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>
   {share_block(sid, k, c)}
   {run_block(sid, k, c) if m["track"] == "A" else ""}
-</article>""")
+</details>""")
     levels = (m["simulation"].get("mesh_refinement") or {}).get("levels") or []
     grid_txt = (f"Each model runs the same inputs on {len(levels)} grids, from {nice(max(levels), 3)} m down to {nice(min(levels), 3)} m cells; the checks are scored on the {nice(min(levels), 3)} m grid, and each card lists the error on every grid."
                 if len(levels) > 1 else "Each model runs the same inputs.")
@@ -1653,6 +1698,8 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
   {tboard}
   {sensitivity_html(sid)}
   {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
+  <div class="head-row" style="margin-top:28px"><h3 style="margin:0">Each model in detail</h3><div class="pf-tools"><button type="button" class="btn ghost sm" data-open-all=".models details.model-card">Open all</button><button type="button" class="btn ghost sm" data-close-all=".models details.model-card">Close all</button></div></div>
+  <p class="muted small">Select a model for its checks, run details, settings and score card.</p>
   <div class="models">{''.join(mcards)}{not_yet}</div>
 </section>"""
     else:
@@ -1831,7 +1878,7 @@ def score_page(manifests: list[dict], checkable: list[dict]) -> str:
   <div class="card sc-pub">
     <div class="sc-n">4</div>
     <h2>Publish it</h2>
-    <p>Five questions, then one file to send. A bot scores it with the suite's own scorer and replies within minutes; a maintainer checks the settings and puts it on the site, marked <i>submitted by</i> you.</p>
+    <p>Five questions, then one file to send through a GitHub form (a free account is needed). A bot scores it with the suite's own scorer and replies within minutes. If the files score without problems, they go on the site automatically, marked <i>submitted by</i> you and your GitHub account. No one approves or holds them back.</p>
     <form id="sc-form" class="sc-form">
       <label class="nv-field">Software <input name="software" required placeholder="e.g. TUFLOW HPC"></label>
       <label class="nv-field">Version <input name="version" required placeholder="the exact release or build"></label>
@@ -1866,7 +1913,61 @@ benchmark1d2d score A1F-010 --results mine_dx1.25.csv \\
 # ── how it works ────────────────────────────────────────────────────────────
 
 
+
+def about_page(manifests: list[dict], runs: dict) -> str:
+    """Who runs the suite, how it stays neutral, what it is not, and how to cite it."""
+    from benchmark1d2d import evidence as _ev
+
+    live = [m for m in manifests if m["status"] != "draft"]
+    n_val = sum(1 for m in live if evidence_kinds.evidence_of(m) == "validation")
+    n_frozen = sum(1 for m in manifests if m["status"] == "frozen")
+    covered = {c for m in live if runs.get(m["test_id"]) for c in _ev.capabilities_of(m)}
+    gaps = [v["name"] for k, v in _ev.CAPABILITIES.items() if k not in covered]
+    body = f"""<div class="wrap">
+<section class="page-head">
+  <h1>About Benchmark1D2D</h1>
+  <p class="lede">An open, reproducible body of evidence on whether flood, river, drainage and water-network models get the answers engineers depend on. It is run by software, in the open, so that anyone can check every number and nobody can hold a result back.</p>
+</section>
+<section class="section grid two about-grid">
+  <div class="card"><h2>Who runs it</h2>
+    <p>Benchmark1D2D was started and is maintained by Scott Jeffers, with contributions from the modelling community through <a href="{REPO_URL}">GitHub</a>. All code is open source (Apache-2.0); each test's data keeps its own <a href="{BLOB}DATA_LICENSES.md">licence</a>.</p>
+    <p>A proposal for an ASCE Environmental &amp; Water Resources Institute (EWRI) task committee on verification and validation evidence is being prepared (<a href="{BLOB}docs/submission/ewri_task_committee_proposal.md">draft</a>). Benchmark1D2D is not an ASCE standard and is not endorsed by ASCE or EWRI.</p></div>
+  <div class="card"><h2>How it stays neutral</h2>
+    <p>Every result is produced, scored and published by automated runs, with no approval step, notice period or embargo. A developer cannot see results before the public, and cannot stop them being published.</p>
+    <p>Only three decisions are left to people: changing the protocol, accepting a new test's reference data, and fixing an adapter when an engine changes its file format. A steering group with balanced seats and published conflict-of-interest declarations is planned to hold them (<a href="{BLOB}GOVERNANCE.md">governance</a>).</p></div>
+
+  <div class="card"><h2>What it is not</h2>
+    <ul>
+      <li><b>Not a ranking.</b> No model is scored overall, and no number is combined across tests.</li>
+      <li><b>Not a certification.</b> A good result on these tests does not make a model fit for your project; it is evidence for your engineering judgement.</li>
+      <li><b>Not the last word on settings.</b> Each result says how the model was set up. Anyone can send a better set-up, and it is run and shown beside the others.</li>
+    </ul></div>
+  <div class="card"><h2>Where the evidence is thin</h2>
+    <ul>
+      <li>{plural(n_val, "test")} so far compare{"s" if n_val == 1 else ""} models with laboratory or field measurements; the rest use exact solutions or another code. <a href="results.html#in-preparation">Datasets being sought →</a></li>
+      <li>{"No test is" if n_frozen == 0 else plural(n_frozen, "test") + (" is" if n_frozen == 1 else " are")} frozen yet: a test is frozen once its reference has been reviewed and independent models have run it, so candidate tests may still be corrected.</li>
+      {f'<li>No evidence yet on: {esc(", ".join(gaps))}.</li>' if gaps else ''}
+      <li>Production software runs on shared cloud machines, so run times are context, not a speed comparison.</li>
+    </ul></div>
+
+  <div class="card"><h2>Take part</h2>
+    <ul>
+      <li><a href="score.html">Run a test in your software</a> and publish the result.</li>
+      <li>Hold a dataset a test is waiting for? <a href="{REPO_URL}/issues/new?title=Data%20for%20a%20test%20in%20preparation">Tell us</a>.</li>
+      <li>Found a problem with a test, a result or this site? <a href="{REPO_URL}/issues/new">Open an issue</a>; fixes are listed under <a href="reports.html">Reports and audit</a>.</li>
+    </ul></div>
+  <div class="card"><h2>How to cite</h2>
+    <p class="small">Jeffers, S. and contributors. <i>Benchmark1D2D: open verification and validation benchmarks for hydraulic models.</i> {SITE_URL} (accessed <i>date</i>). Cite the test version and the score card's hash for a specific result.</p>
+    <p class="small">Machine-readable: <a href="{BLOB}CITATION.cff">CITATION.cff</a>. Literature behind every test: <a href="data/citations.bib">citations.bib</a>.</p></div>
+</section>
+</div>"""
+    return layout("About", body, "about.html",
+                  description="Who runs Benchmark1D2D, how it stays neutral, what it is not, where the evidence is thin, and how to cite it.")
+
 def how_page(manifests: list[dict], runs: dict) -> str:
+    from benchmark1d2d.catalog.promotion import next_stage as _next_stage
+    n_ready = sum(1 for m_ in manifests if m_["status"] == "candidate"
+                  and not [b_ for b_ in _next_stage(m_, list((runs.get(m_["test_id"]) or {}).values()))["blockers"] if "review" not in b_["label"].lower()])
     n = len(manifests)
     by_status = {s: sum(1 for m in manifests if m["status"] == s) for s in ("frozen", "candidate", "draft")}
     body = f"""
@@ -1905,7 +2006,7 @@ def how_page(manifests: list[dict], runs: dict) -> str:
   <div class="grid narrow">
     <div class="card"><h3>Draft · {by_status['draft']}</h3><p>Defined, but waiting on data or a verified answer.</p></div>
     <div class="card"><h3>Candidate · {by_status['candidate']}</h3><p>Inputs, answer and limits published, and at least one model scored.</p></div>
-    <div class="card"><h3>Frozen · {by_status['frozen']}</h3><p>Reviewed, run by independent models, and fixed: a change to a frozen test makes a new version.</p></div>
+    <div class="card"><h3>Frozen · {by_status['frozen']}</h3><p>Reviewed, run by independent models, and fixed: a change to a frozen test makes a new version.{(f" None yet. {plural(n_ready, 'test')} meet{'s' if n_ready == 1 else ''} every computed rule and wait{'s' if n_ready == 1 else ''} only on one recorded review of the reference, the single step people take." if n_ready else " None yet: each candidate still has a computed rule to meet, listed on its page.") if by_status["frozen"] == 0 else ""}</p></div>
   </div>
   <p class="muted" style="margin-top:16px">{n} tests in all. The rules for each step are in the <a href="method.html">method</a>.</p>
 </section>

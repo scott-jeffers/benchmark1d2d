@@ -105,3 +105,19 @@ window.addEventListener("load", function () {
     throwOnError: false
   });
 });
+
+// A link to a collapsed section opens it; "Open all" / "Close all" buttons.
+(function () {
+  function openHash() {
+    var id = decodeURIComponent(location.hash.slice(1)); if (!id) return;
+    var el = document.getElementById(id); if (!el) return;
+    var d = el.tagName === "DETAILS" ? el : el.closest("details");
+    if (d && !d.open) { d.open = true; el.scrollIntoView(); }
+  }
+  window.addEventListener("hashchange", openHash); openHash();
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-open-all],[data-close-all]"); if (!b) return;
+    var sel = b.getAttribute("data-open-all") || b.getAttribute("data-close-all"), open = b.hasAttribute("data-open-all");
+    document.querySelectorAll(sel).forEach(function (d) { d.open = open; });
+  });
+})();

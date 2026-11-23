@@ -71,7 +71,7 @@ def score_folder(folder: Path, key) -> tuple[list[str], list[str]]:
         return [], [f"{folder.name}: {e}" for e in errs]
     solver = {"name": f"{sub['solver']['name']} {sub['solver']['version']}", "version": sub["solver"]["version"],
               "adapter": "submitted results" + (f"; options: {sub['solver']['options']}" if sub["solver"].get("options") else ""),
-              "submitted_by": sub["submitted_by"]}
+              "submitted_by": sub["submitted_by"] + (f" (GitHub: {sub['github_user']})" if sub.get("github_user") else "")}
     out = OUT / folder.name
     out.mkdir(parents=True, exist_ok=True)
     lines.append(f"### {sub['solver']['name']} {sub['solver']['version']} — submitted by {sub['submitted_by']}"
@@ -99,13 +99,20 @@ def score_folder(folder: Path, key) -> tuple[list[str], list[str]]:
             problems.append(f"{folder.name}/{tid}: could not score ({type(exc).__name__}: {exc})")
             continue
         (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-        crit = "; ".join(f"{r['id']} {r['observed']:.4g} {r['threshold']['units']} ({'pass' if r['passed'] else 'FAIL'})"
+        crit = "; ".join(f"{r['id']} {r['observed']:.4g} {r['threshold']['units']}"
                          for r in card["criteria_results"] if r.get("observed") is not None)
         conv = card.get("convergence_result") or {}
         if conv:
             order = conv.get("observed_order")
             crit += f"; convergence order {order:.2f}" if order is not None else "; convergence not measured"
-        lines.append(f"- **{tid}**: {card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} — {crit}")
+        try:
+            import sys as _sys
+            _sys.path.insert(0, str(REPO / "site"))
+            import measures as _measures
+            off = _measures.label(_measures.score(card))
+        except Exception:  # noqa: BLE001 - the reply still lists every measurement
+            off = "measured"
+        lines.append(f"- **{tid}**: {off}{' the right answer' if off.endswith('off') else ''} — {crit}")
     lines.append("")
     return lines, problems
 

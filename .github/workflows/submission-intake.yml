@@ -2,9 +2,9 @@ name: Submission intake
 
 # Results sent through the "Submit results" issue form (the Publish button on
 # the site's Score page fills it in): the bot reads the attached zip, scores it
-# with the suite's scorer and replies on the issue. When a maintainer adds the
-# `publish` label, the bot commits the folder under submissions/ and closes the
-# issue; the next site build shows the results.
+# with the suite's scorer and replies on the issue. If the files score without
+# problems, the bot commits the folder under submissions/ (recording the GitHub
+# account that sent it) and closes the issue; the next site build shows them.
 on:
   issues:
     types: [opened, edited, labeled]
@@ -14,6 +14,7 @@ on:
 permissions:
   contents: write
   issues: write
+  actions: write  # start the site build after publishing (bot pushes do not trigger it)
 
 concurrency:
   group: intake-${{ github.event.issue.number }}
@@ -46,14 +47,14 @@ jobs:
         id: score
         env:
           NUMBER: ${{ github.event.issue.number }}
-          PUBLISH: ${{ github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'publish' }}
+          AUTHOR: ${{ github.event.issue.user.login }}
         run: |
           set +e
-          ARGS=""; [ "$PUBLISH" = "true" ] && ARGS="--publish"
-          python scripts/intake_submission.py --issue-body out/intake/body.md --issue-number "$NUMBER" --reply out/intake/reply.md $ARGS
+          # Published automatically when the files score without problems (automation charter: no result waits on a person).
+          python scripts/intake_submission.py --issue-body out/intake/body.md --issue-number "$NUMBER" --reply out/intake/reply.md --publish --author "$AUTHOR"
           echo "status=$?" >> "$GITHUB_OUTPUT"
       - name: Commit the published folder
-        if: github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'publish' && steps.score.outputs.status == '0'
+        if: steps.score.outputs.status == '0'
         env:
           NUMBER: ${{ github.event.issue.number }}
         run: |
@@ -63,12 +64,17 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "Submitted results from issue #$NUMBER"
           for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done
+      - name: Rebuild the site
+        if: steps.score.outputs.status == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml -R "$GITHUB_REPOSITORY" --ref master || true
       - name: Reply on the issue
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ github.event.issue.number }}
-          PUBLISHED: ${{ github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'publish' && steps.score.outputs.status == '0' }}
+          PUBLISHED: ${{ steps.score.outputs.status == '0' }}
         run: |
           [ -f out/intake/reply.md ] || echo "The bot could not read this issue; a maintainer will look." > out/intake/reply.md
           gh issue comment "$NUMBER" -R "$GITHUB_REPOSITORY" --body-file out/intake/reply.md

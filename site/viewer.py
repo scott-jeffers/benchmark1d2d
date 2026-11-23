@@ -127,7 +127,7 @@ def viewer_page(layout, index: list[dict]) -> str:
 </section>
 <section class="section" id="vw-conv-sec" hidden>
   <h2>Error on finer grids</h2>
-  <p class="muted small">Each model's error against the exact answer on every grid it ran (both axes logarithmic). A correct method's line falls at the test's expected rate; the dashed line shows the minimum rate, drawn through the best model's coarsest point. Point at a line or a row to pick it out; the chips show and hide models.</p>
+  <p class="muted small">Each model's error against the exact answer on every grid it ran (both axes logarithmic). A correct method's line falls at the test's expected rate; the dashed line shows the minimum rate, drawn from the smallest error on the coarsest grid. Point at a line or a row to pick it out; the chips show and hide models.</p>
   <div class="vw-chips" id="vw-chips2" role="group" aria-label="Models shown"></div>
   <svg id="vw-conv" class="chart" viewBox="0 0 1000 420" role="img" aria-label="Error against grid spacing for each model"></svg>
   <div class="table-scroll" style="margin-top:12px"><table class="data" id="vw-table"><thead><tr><th>Model</th><th class="num">Difference</th><th class="num">Rate</th><th>90 % range</th><th>Against the design order</th></tr></thead><tbody></tbody></table></div>

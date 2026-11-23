@@ -17,7 +17,7 @@ def test_example_submission_scores(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(ss, "OUT", tmp_path)
     lines, problems = ss.score_folder(REPO / "submissions" / "_example", ss._key())
     assert problems == []
-    assert any("**A1F-011**: PASS" in ln for ln in lines)
+    assert any(ln.startswith("- **A1F-011**:") and "off the right answer" in ln and "PASS" not in ln for ln in lines)
     card = next(tmp_path.rglob("*.scorecard.json")).read_text(encoding="utf-8")
     assert '"submitted_by":"benchmark1d2d maintainers"' in card
 
@@ -42,3 +42,23 @@ def test_kit_lists_network_elements() -> None:
     ids = {r[-2] for r in rows[1:]}
     assert {"M0", "M20", "MP1", "MP20"} <= ids
     assert "benchmark1d2d score A1D-005" in kit["HOW_TO_SUBMIT.md"]
+
+
+def test_intake_records_github_account_and_keeps_others_folders(tmp_path, monkeypatch) -> None:
+    """Auto-published submissions carry the sender's GitHub account; a second sender never overwrites the first."""
+    import json
+
+    import intake_submission as intake
+
+    monkeypatch.setattr(intake, "SUBMISSIONS", tmp_path)
+    ex = REPO / "submissions" / "_example"
+    sheets = sorted(p for p in ex.iterdir() if p.suffix == ".csv")
+    body = tmp_path / "body.md"
+    body.write_text("### Software\n\nQASoft\n\n### Version\n\n1\n\n### Organisation or your name\n\nQA\n\n### Tests\n\nA1F-011\n", encoding="utf-8")
+    for who in ("alice", "mallory"):
+        monkeypatch.setattr(sys, "argv", ["x", "--issue-body", str(body), "--issue-number", "1", "--reply", str(tmp_path / f"{who}.md"),
+                                          "--publish", "--author", who, "--local-files", *map(str, sheets)])
+        assert intake.main() == 0, (tmp_path / f"{who}.md").read_text(encoding="utf-8")
+    folders = sorted(p.name for p in tmp_path.iterdir() if p.is_dir())
+    assert folders == ["qasoft-1-qa", "qasoft-1-qa-mallory"]
+    assert json.loads((tmp_path / "qasoft-1-qa" / "submission.json").read_text())["github_user"] == "alice"

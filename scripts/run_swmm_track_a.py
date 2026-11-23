@@ -368,7 +368,8 @@ def main() -> int:
             if len(paths) < 2:
                 continue
             ver = version.replace("openswmm", "").strip()
-            settings = ", ".join(f"{k} {v}" for k, v in ENGINES[engine].get("options", {}).items())
+            settings = ", ".join(f"{k} {v}" + (" (SWMM's default, 0.0015 m)" if (k, v) == ("HEAD_TOLERANCE", "0") else "")
+                                 for k, v in ENGINES[engine].get("options", {}).items())
             solver = {"name": f"{ENGINES[engine]['label']}" + (f" ({ver})" if base not in ("swmm524", "swmm515") else ""), "version": ver,
                       "adapter": f"swmm ({ENGINES[engine]['routing']} routing, conduit per grid cell"
                                  + (f"; {settings}" if settings else "; harness settings MAX_TRIALS 8, HEAD_TOLERANCE 0.0005 m") + ")"}

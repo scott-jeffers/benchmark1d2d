@@ -5,6 +5,13 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ## [Unreleased]
 
+- **Website QA/QC pass** ([report](docs/review/site_qa_2026-11-23.md)): every page, the upload and accessibility checked, and every finding fixed.
+    - **Upload:** common column names (Distance, Chainage, Station…) are read; clear messages for blank sheets, Excel files and water-level columns; Publish appears only after a successful check.
+    - **Submissions publish automatically** when they score without problems, recording the sender's GitHub account; one sender can never overwrite another's results. The bot reports differences, not pass/fail.
+    - **Readability:** the stray space before every comma and full stop is gone; colour contrast meets WCAG AA (625 failures down to 2); the header no longer wraps on laptops.
+    - **Evidence profiles** open with a models-by-capabilities matrix and collapsible model sections (33,000 px down to 5,600 px); **test pages** keep the summary table and open each model's detail on demand.
+    - **New About page:** who runs the suite, how it stays neutral, what it is not, where the evidence is thin, how to cite. A 404 page.
+    - Consistent counts on the home page; tier legend; demo solvers no longer lead the cards; footer names evidence protocol 4.0.
 - **The site is named Benchmark1D2D**, matching the repository; it was OpenHydro Bench. Pages, badges, the feed, social images and the citation metadata use the new name.
 - **Light and dark mode.** A switch in the header picks either; until a reader picks, the site follows the system setting, and the choice is remembered. Maps and charts redraw in the new colours.
 - **Evidence protocol 4.0: evidence, not standings** ([evidence.md](docs/methodology/evidence.md), [ADR-0004](docs/adr/ADR-0004-evidence-not-rankings.md)).

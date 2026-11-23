@@ -60,8 +60,8 @@
       "module": "references.w5105",
       "function": "tabulated_profile",
       "parameters": {
-        "table": "reference/profiles.csv",
-        "note": "Pending: the W5-105 tabulated analytical levels, once the report's reuse terms are confirmed."
+        "note": "Pending: the W5-105 tabulated analytical levels, once the report's reuse terms are confirmed.",
+        "table_path": "reference/profiles.csv"
       }
     }
   },

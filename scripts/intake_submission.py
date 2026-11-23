@@ -157,6 +157,7 @@ def main() -> int:
     ap.add_argument("--issue-number", required=True)
     ap.add_argument("--reply", type=Path, required=True)
     ap.add_argument("--publish", action="store_true", help="keep the folder in submissions/ for the workflow to commit")
+    ap.add_argument("--author", default="", help="GitHub login of the issue author (recorded with the results)")
     ap.add_argument("--local-files", nargs="*", type=Path, help="testing: use these files instead of the issue's attachments")
     args = ap.parse_args()
 
@@ -208,8 +209,16 @@ def main() -> int:
             submission = {"schema_version": "1.0.0", "solver": {"name": software, "version": version, **({"options": settings} if settings else {})},
                           "submitted_by": org, "date": date.today().isoformat(), "results_licence": licence, "cases": cases,
                           "notes": f"Submitted through issue #{args.issue_number}."}
+            author = re.sub(r"[^A-Za-z0-9-]", "", args.author)[:39]
+            if author:
+                submission["github_user"] = author
             folder = SUBMISSIONS / slug
             existing = json.loads((folder / "submission.json").read_text(encoding="utf-8")) if (folder / "submission.json").is_file() else None
+            if existing and author and existing.get("github_user") not in (None, author):
+                # someone else already published under this name: keep theirs, file this one separately
+                slug = slugify(software, version, org, author)
+                folder = SUBMISSIONS / slug
+                existing = json.loads((folder / "submission.json").read_text(encoding="utf-8")) if (folder / "submission.json").is_file() else None
             if existing:  # a second batch from the same software and organisation: add or replace its tests
                 keep = [c for c in existing["cases"] if c["test_id"] not in {c2["test_id"] for c2 in cases}]
                 submission["cases"] = keep + cases
@@ -232,8 +241,9 @@ def main() -> int:
                 reply += ["**Problems**", ""] + [f"- {p}" for p in problems] + ["",
                           "Fix the sheet and attach it again in a new comment or by editing the issue; this reply updates."]
             else:
-                reply += [f"A maintainer will check the settings and add the `publish` label; the results then appear on the site, "
-                          f"marked *submitted by {org}*, under {licence}."]
+                reply += [f"No problems found, so the results are published automatically, marked *submitted by {org}*"
+                          + (f" (sent from GitHub account {author})" if author else "") + f", under {licence}. "
+                          "They are shown as submitted results: the suite scored your files but did not re-run your software."]
             if args.publish and not problems:
                 if folder.is_dir():
                     shutil.rmtree(folder)
