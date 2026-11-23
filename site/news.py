@@ -108,8 +108,8 @@ def atom_feed(changelog: Path, log: Path, out: Path) -> None:
         entries.append((e["date"].replace("Z", ":00Z"), f"{n} result change{'s' if n != 1 else ''}", f"{SITE_URL}news.html", summary))
     entries.sort(key=lambda x: x[0], reverse=True)
     xml = ['<?xml version="1.0" encoding="utf-8"?>', '<feed xmlns="http://www.w3.org/2005/Atom">',
-           "<title>OpenHydro Bench: what's new</title>", f'<link href="{SITE_URL}news.html"/>', f'<link rel="self" href="{SITE_URL}feed.xml"/>',
-           f"<id>{SITE_URL}feed.xml</id>", f"<updated>{now}</updated>", "<author><name>OpenHydro Bench</name></author>"]
+           "<title>Benchmark1D2D: what's new</title>", f'<link href="{SITE_URL}news.html"/>', f'<link rel="self" href="{SITE_URL}feed.xml"/>',
+           f"<id>{SITE_URL}feed.xml</id>", f"<updated>{now}</updated>", "<author><name>Benchmark1D2D</name></author>"]
     for when, title, link, summary in entries[:50]:
         xml += ["<entry>", f"<title>{esc(title)}</title>", f'<link href="{esc(link)}"/>', f"<id>{esc(link)}#{esc(when)}</id>",
                 f"<updated>{esc(when)}</updated>", f"<summary>{esc(summary)}</summary>", "</entry>"]

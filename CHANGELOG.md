@@ -5,6 +5,8 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ## [Unreleased]
 
+- **The site is named Benchmark1D2D**, matching the repository; it was OpenHydro Bench. Pages, badges, the feed, social images and the citation metadata use the new name.
+- **Light and dark mode.** A switch in the header picks either; until a reader picks, the site follows the system setting, and the choice is remembered. Maps and charts redraw in the new colours.
 - **Evidence protocol 4.0: evidence, not standings** ([evidence.md](docs/methodology/evidence.md), [ADR-0004](docs/adr/ADR-0004-evidence-not-rankings.md)).
     - **Ranks and the rating are gone.** The leaderboard, the OpenHydro rating, per-test ranks and head-to-head win counts are removed from the site, its exports and its badges. Every measurement is kept, and no score card is re-scored.
     - **Three kinds of evidence.** Every case states its kind (manifest schema 1.2.0, `evidence`): verification, validation or comparison. The EA Tests 1–5 are comparison evidence.

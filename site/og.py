@@ -70,7 +70,7 @@ def _wrap(text: str, font, width: int) -> list[str]:
     return lines
 
 
-def og_image(path: Path, sid: str, kicker: str, title: str, question: str, n_ok: int, n_run: int, site: str = "OpenHydro Bench",
+def og_image(path: Path, sid: str, kicker: str, title: str, question: str, n_ok: int, n_run: int, site: str = "Benchmark1D2D",
              footer: str | None = None, n_unsure: int = 0, summary: str | None = None) -> None:
     from PIL import Image, ImageDraw
 

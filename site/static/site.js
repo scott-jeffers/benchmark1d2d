@@ -1,3 +1,20 @@
+// Light/dark switch. Follows the system until the reader picks; the choice is remembered.
+(function () {
+  var btn = document.querySelector(".theme-toggle"), root = document.documentElement;
+  if (!btn) return;
+  function isDark() { var t = root.getAttribute("data-theme"); return t === "dark" || (t !== "light" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches); }
+  function label() { var l = isDark() ? "Switch to light mode" : "Switch to dark mode"; btn.setAttribute("aria-label", l); btn.title = l; }
+  btn.addEventListener("click", function () {
+    var next = isDark() ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    label();
+    window.dispatchEvent(new Event("themechange"));
+  });
+  if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", label);
+  label();
+})();
+
 // Mobile menu.
 (function () {
   var btn = document.querySelector(".nav-toggle"), nav = document.getElementById("site-nav");

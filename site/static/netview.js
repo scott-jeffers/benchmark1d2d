@@ -488,6 +488,7 @@
     draw();
   });
   if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { draw(); });
+  window.addEventListener("themechange", function () { draw(); });
 
   // ── legend and side panel ──────────────────────────────────────────────────
   function bar(colorFn, n) {

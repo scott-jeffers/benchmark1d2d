@@ -1,4 +1,4 @@
-"""Pages of the OpenHydro Bench site in the plain-language design.
+"""Pages of the Benchmark1D2D site in the plain-language design.
 
 ``build.py`` loads the catalog, score cards and corpus data and calls these
 renderers; helpers that already lived in ``build.py`` (markdown, the
@@ -25,7 +25,10 @@ from tiles import tile_svg
 
 H: Any = None  # the build module, set by build.main()
 
-SITE_NAME = "OpenHydro Bench"
+SITE_NAME = "Benchmark1D2D"
+THEME_ICONS = ('<svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>'
+               '<svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/>'
+               '<path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>')
 REPO_URL = "https://github.com/scott-jeffers/benchmark1d2d"
 SITE_URL = "https://scott-jeffers.github.io/benchmark1d2d/"
 BLOB = REPO_URL + "/blob/master/"
@@ -693,13 +696,18 @@ def layout(title: str, body: str, active: str, depth: int = 0, description: str 
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{up}static/style.css">
 <link rel="icon" href="{up}static/favicon.svg" type="image/svg+xml">
+<meta name="color-scheme" content="light dark">
+<script>try{{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}}catch(e){{}}</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site-head">
   <div class="wrap">
     <a class="brand" href="{up}index.html">{LOGO}{SITE_NAME}</a>
-    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <div class="head-tools">
+      <button class="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">{THEME_ICONS}</button>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    </div>
     <nav class="site-nav" id="site-nav" aria-label="Main">{nav}<a class="gh" href="{REPO_URL}">GitHub</a></nav>
   </div>
 </header>
@@ -988,7 +996,7 @@ def home_page(manifests: list[dict], runs: dict, census, parity, evidence: dict)
   </div>
 </section>
 <section class="section tight" aria-label="Three kinds of evidence">
-  <h2>Three kinds of evidence, never averaged together</h2>
+  <h2>Three ways to know a model gets it right</h2>
   <div class="grid how">{kinds_html}</div>
 </section>
 <section class="section tight" aria-label="At a glance">
@@ -1410,8 +1418,8 @@ def share_block(sid: str, k: str, card: dict) -> str:
     link = f"{SITE_URL}results.html#cell={sid}|{k}"
     badge = f"{SITE_URL}badges/{sid}/{k}.svg"
     word = measures.label(measures.score(card))
-    md = f"[![OpenHydro Bench {sid}: {word}]({badge})]({link})"
-    html_ = f'<a href="{link}"><img src="{badge}" alt="OpenHydro Bench {sid}: {word}"></a>'
+    md = f"[![Benchmark1D2D {sid}: {word}]({badge})]({link})"
+    html_ = f'<a href="{link}"><img src="{badge}" alt="Benchmark1D2D {sid}: {word}"></a>'
     return (f'<details class="share"><summary>Share or embed this result</summary>'
             f'<p class="small"><img src="../badges/{esc(sid)}/{esc(k)}.svg" alt="" height="20"></p>'
             f'<label class="small">Link<input type="text" readonly value="{esc(link)}" onclick="this.select()"></label>'
@@ -1933,8 +1941,8 @@ def ORDER(runs_on_test: dict) -> list[dict]:  # noqa: N802
 
 # Who makes each model and how it is licensed (shown on the evidence profiles)
 _META = [
-    ("demo", "OpenHydro Bench", "Open (Apache-2.0)"),
-    ("swmm-anuga", "OpenHydro Bench coupler", "Open (Apache-2.0)"),
+    ("demo", "Benchmark1D2D", "Open (Apache-2.0)"),
+    ("swmm-anuga", "Benchmark1D2D coupler", "Open (Apache-2.0)"),
     ("epanet", "US EPA", "Open (public domain)"),
     ("hecras", "US Army Corps of Engineers (HEC)", "Free, closed source"),
     ("telemac", "openTELEMAC consortium", "Open (GPL-3.0)"),

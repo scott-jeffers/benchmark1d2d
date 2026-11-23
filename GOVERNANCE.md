@@ -28,7 +28,7 @@ person, and nobody can hold a result back.
 
 ## Maintainers
 
-- Technical lead / initial author: @Scott (OpenHydro)
+- Technical lead / initial author: Scott Jeffers
 - Additional maintainers are added by consensus of the current maintainers.
 - Planned: a steering group with balanced seats from agencies, academia, practice and developers, and published conflict-of-interest declarations ([draft charter](docs/submission/steering_group_charter.md), [declaration form](docs/submission/conflict_of_interest_form.md)). It holds the three decisions above and nothing else.
 

@@ -1372,7 +1372,7 @@ def main() -> int:
             bp.parent.mkdir(parents=True, exist_ok=True)
             sc = pages.measures.score(c)
             right = (f"{pages.tier_of(k)} · " if pages.tier_of(k) else "") + pages.measures.label(sc)
-            bp.write_text(og.badge_svg(f"OpenHydro Bench {sid}", right, pages.measures.klass(sc)), encoding="utf-8")
+            bp.write_text(og.badge_svg(f"Benchmark1D2D {sid}", right, pages.measures.klass(sc)), encoding="utf-8")
     try:
         og.og_image(DIST / "assets" / "og" / "home.png", "A1F-010", "Open benchmarks for water models",
                     "Does your flood model get the water right?", "Every test has a known right answer. Run your model, compare, and get a result anyone can check.",

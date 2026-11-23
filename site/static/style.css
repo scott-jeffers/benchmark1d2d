@@ -1,4 +1,4 @@
-/* OpenHydro Bench — plain, modern, readable.
+/* Benchmark1D2D — plain, modern, readable.
    Schibsted Grotesk for text, IBM Plex Mono for numbers that matter.
    Colours are tokens; charts read them, so light and dark both follow. */
 :root {
@@ -105,6 +105,16 @@ main > .section:first-child { padding-top: 40px; }
   .site-nav a { padding: 12px 0; border-bottom: 1px solid var(--rule-2); }
   .site-nav a.gh { margin-top: 10px; text-align: center; border-bottom: 0; }
 }
+/* Light/dark switch: the icon shows the mode you would switch to. */
+.head-tools { display: flex; align-items: center; gap: 10px; order: 3; margin-left: 18px; }
+@media (min-width: 761px) { .site-nav { margin-left: auto; } }
+.theme-toggle { display: inline-grid; place-items: center; width: 40px; height: 40px; border: 1.5px solid var(--rule); border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; padding: 0; }
+.theme-toggle:hover { border-color: var(--water); color: var(--water); }
+.theme-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.theme-toggle .i-sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .i-sun { display: block; } :root[data-theme="dark"] .theme-toggle .i-moon { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .theme-toggle .i-sun { display: block; } :root:not([data-theme="light"]) .theme-toggle .i-moon { display: none; } }
+.site-nav a.gh { color: var(--sheet); }
 .site-foot { border-top: 1px solid var(--rule); background: var(--sheet); margin-top: 40px; }
 .site-foot .wrap { padding-top: 28px; padding-bottom: 32px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 32px; font-size: 14px; color: var(--ink-2); }
 .site-foot nav { display: flex; flex-wrap: wrap; gap: 6px 18px; }

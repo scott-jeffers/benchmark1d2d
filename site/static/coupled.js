@@ -311,6 +311,7 @@
   function stickTop() { var h = document.querySelector(".site-head"); if (h) $("cv-player").style.top = h.offsetHeight + "px"; }
   stickTop();
   window.addEventListener("resize", function () { stickTop(); if (R) { sizeMap(); render(); } });
+  window.addEventListener("themechange", function () { if (R) { sizeMap(); render(); } });
 
   // ── loading ──────────────────────────────────────────────────────────────
   function loadModel(m) {

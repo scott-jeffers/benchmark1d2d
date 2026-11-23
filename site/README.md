@@ -1,4 +1,4 @@
-# OpenHydro Bench site
+# Benchmark1D2D site
 
 A dependency-light Python generator: plain HTML written from the catalog
 manifests, the score cards and the corpus data. Published by
