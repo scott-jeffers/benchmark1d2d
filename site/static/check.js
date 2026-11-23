@@ -50,7 +50,7 @@
   }
 
   // Column names as people write them, mapped to the results contract (mirrors io/results.py ALIASES).
-  var ALIAS = { time: "t", time_s: "t", depth: "h", water_depth: "h", velocity: "u", u_velocity: "u", x_velocity: "u", v_velocity: "v",
+  var ALIAS = { distance: "x", station: "x", chainage: "x", position: "x", x_position: "x", easting: "x", northing: "y", y_position: "y", depth_m: "h", h_m: "h", flow_rate: "Q", time_seconds: "t", time: "t", time_s: "t", depth: "h", water_depth: "h", velocity: "u", u_velocity: "u", x_velocity: "u", v_velocity: "v",
     y_velocity: "v", pressure: "p", flow: "Q", discharge: "Q", q: "Q", concentration: "c", bed: "z", bed_level: "z", bed_elevation: "z",
     invert: "z", volume: "V", id: "element_id", element: "element_id", name: "element_id", node: "element_id", type: "element_type" };
   var KNOWN = { t: 1, x: 1, y: 1, h: 1, u: 1, v: 1, p: 1, Q: 1, c: 1, z: 1, V: 1, element_id: 1, element_type: 1 };
@@ -61,7 +61,9 @@
     if (KNOWN[k]) return k;
     return ALIAS[k] || null;
   }
+  var LEVEL_WORDS = /^(water_?level|stage|wse|wsel|water_surface(_elevation)?|elevation|head|hgl)$/;
   function parseCSV(text) {
+    if (/^PK\u0003\u0004/.test(text) || text.indexOf("\u0000") >= 0) throw new Error("this looks like an Excel or other binary file. Save the sheet as CSV (File → Save as → CSV) and drop that instead.");
     var lines = text.replace(/\r/g, "").split("\n").filter(function (l) { return l.trim().length; });
     if (!lines.length) throw new Error("the file is empty");
     var first = lines[0], sep = first.indexOf("\t") >= 0 ? "\t" : (first.indexOf(";") >= 0 && first.indexOf(",") < 0 ? ";" : ",");
@@ -77,7 +79,14 @@
         cols[h].push(STR[h] ? v : (v === "" ? NaN : parseFloat(v)));
       });
     }
-    if (!cols.x && !cols.element_id) throw new Error("no x column (or element ids): keep the positions from the results sheet");
+    if (!cols.x && !cols.element_id) throw new Error("no position column found. Keep the x column from the results sheet (names like x, Distance or Chainage work). Columns found: " + raw.map(function (h) { return h.trim(); }).join(", "));
+    var vals = Object.keys(cols).filter(function (k) { return k !== "x" && k !== "y" && k !== "t" && k !== "element_id" && k !== "element_type"; });
+    var filled = vals.some(function (k) { return cols[k].some(function (v) { return isFinite(v); }); });
+    if (!filled) {
+      var lvl = raw.filter(function (h) { return LEVEL_WORDS.test(h.replace(/\s*[\(\[].*?[\)\]]\s*/g, "").trim().toLowerCase().replace(/\s+/g, "_")); });
+      if (lvl.length) throw new Error("the column \u201c" + lvl[0].trim() + "\u201d looks like a water level. This test needs depth h (water level minus bed level); add a depth column.");
+      throw new Error("the sheet has positions but no results yet. Fill in the empty column (for example h, the depth in metres) and drop it again.");
+    }
     cols._ignored = raw.filter(function (h, i) { return !head[i]; }).map(function (h) { return h.trim(); }).filter(Boolean);
     return cols;
   }
@@ -263,7 +272,7 @@
       var cls = " info", sym = "";
       var txt = conv.p === null ? "needs 3+ grids" : ("rate " + conv.p.toFixed(2) + (conv.ci ? " (90 % range " + conv.ci[0].toFixed(2) + " to " + conv.ci[1].toFixed(2) + ")" : "")).replace(/-/g, "−");
       h += '<div class="check' + cls + '"><div class="k">Improves with finer grids</div><div class="v">' + sym + txt +
-        '</div><div class="lim">reported, not counted · the scheme\'s design order is about ' + nice(meta.conv.min_observed_order, 2) + "</div></div>";
+        '</div><div class="lim">reported, not counted · ' + (meta.conv.expected_order ? "a scheme of order " + nice(meta.conv.expected_order, 2) + " gives about " + nice(meta.conv.expected_order, 2) + "; " : "") + "below " + nice(meta.conv.min_observed_order, 2) + " the error is not shrinking as it should</div></div>";
     }
     h += "</div>";
     if (meta.mode === "elements" || meta.mode === "states") {
@@ -275,9 +284,12 @@
     } else if (meta.conv) {
       h += '<p class="small" style="margin-top:14px">Drop one file for each of the ' + meta.levels.length + " grid sizes (" + meta.levels.map(function (l) { return l.name; }).join(", ") + ") to measure how fast your error shrinks.</p>";
     }
-    h += '<p class="small" style="margin:14px 0 0">A check in your browser with the same formulas as the scorer. Publish it below to get the official, signed score on the site.</p></div>';
+    h += '<p class="small" style="margin:14px 0 0">A check in your browser with the same formulas as the scorer. The percentage is your largest difference from the right answer over the counted checks. ' +
+      '<a href="tests/' + esc(meta.sid) + '.html#models">See how other models did on this test →</a> Publish it below to put it on the site.</p></div>';
     report.innerHTML = h;
+    showPublish();
   }
+  function showPublish() { var pub = document.getElementById("sc-publish"); if (pub) pub.hidden = false; }
 
   // ── networks: node and link values against the exact answer ──────────────
   function checkElements(meta, name, cols) {
@@ -385,7 +397,7 @@
     files = Array.prototype.slice.call(files);
     Promise.all(files.map(function (f) { return f.text().then(function (t) { return { name: f.name, text: t }; }); })).then(function (read) {
       last = { sid: sid, files: read, levels: {} };
-      var pub = document.getElementById("sc-publish"); if (pub) pub.hidden = false;
+      var pub = document.getElementById("sc-publish"); if (pub) pub.hidden = true;
       var sent = document.getElementById("sc-sent"); if (sent) sent.hidden = true;
       var mem = read.map(function (r) { return { name: r.name, text: function () { return Promise.resolve(r.text); } }; });
       if (!BY[sid] || !BY[sid].check) uncheckedSummary(sid, mem); else score(sid, mem);
@@ -440,7 +452,7 @@
       .then(function (got) {
         var h = '<div class="card"><h2 style="margin:0 0 6px">' + esc(BY[sid].name) + '</h2><p>Your files read cleanly. This test is scored by the full scorer, which runs when you publish: you get the scores as a reply within minutes, before anything goes on the site.</p><ul class="small">';
         got.forEach(function (g) { h += "<li><b>" + esc(g.name) + "</b>: " + g.rows + " rows; columns " + esc(g.cols.join(", ")) + "</li>"; });
-        report.innerHTML = h + "</ul></div>";
+        report.innerHTML = h + "</ul></div>"; showPublish();
       }).catch(function (err) { report.innerHTML = '<div class="callout warn"><b>Could not read this file.</b> ' + esc(err.message) + "</div>"; });
   }
 

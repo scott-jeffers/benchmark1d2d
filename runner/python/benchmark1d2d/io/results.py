@@ -120,6 +120,8 @@ def results_engine_report(path: str | Path) -> dict | None:
 
 # Column names people write in their own tools, mapped to the results contract (lower case, units stripped).
 ALIASES = {
+    "distance": "x", "station": "x", "chainage": "x", "position": "x", "x_position": "x", "easting": "x",
+    "northing": "y", "y_position": "y", "depth_m": "h", "h_m": "h", "flow_rate": "Q", "time_seconds": "t",
     "time": "t", "time_s": "t", "depth": "h", "water_depth": "h", "velocity": "u", "u_velocity": "u", "x_velocity": "u",
     "v_velocity": "v", "y_velocity": "v", "pressure": "p", "flow": "Q", "discharge": "Q", "q": "Q",
     "concentration": "c", "bed": "z", "bed_level": "z", "bed_elevation": "z", "invert": "z", "volume": "V",

@@ -25,7 +25,7 @@ and no rank, and no number is combined across tests
 ([evidence protocol 4.0](docs/methodology/evidence.md),
 [ADR-0004](docs/adr/ADR-0004-evidence-not-rankings.md)).
 
-**Three kinds of evidence, never averaged together.** Every case states its kind:
+**Three ways to know a model gets it right.** Every case states its kind:
 
 | | Verification | Validation | Comparison |
 |---|---|---|---|

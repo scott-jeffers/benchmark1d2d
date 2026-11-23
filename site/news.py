@@ -75,8 +75,8 @@ def news_page(layout, md, changelog: Path, log: Path) -> str:
     ch_html = []
     for e in changes[:40]:
         items = "".join(f"<li><span class=\"muted\">{esc(WF_NAMES.get(i.get('workflow') or '', i.get('workflow') or ''))}:</span> {_change_html(i['text'])}</li>"
-                        for i in e["items"][:30])
-        more = f'<li class="muted">…and {len(e["items"]) - 30} more</li>' if len(e["items"]) > 30 else ""
+                        for i in e["items"][:12])
+        more = f'<li class="muted">…and {len(e["items"]) - 12} more</li>' if len(e["items"]) > 12 else ""
         ch_html.append(f'<article class="news-change"><div class="kicker">{esc(e["date"].replace("T", " "))}</div><ul>{items}{more}</ul></article>')
     body = f"""<div class="wrap">
 <section class="page-head">
@@ -84,10 +84,12 @@ def news_page(layout, md, changelog: Path, log: Path) -> str:
   <p class="lede">New tests, new models and every change in a result, as it happens. <a href="feed.xml">Follow the feed</a>.</p>
 </section>
 <div class="news-cols">
-  <section><h2>Releases</h2>{''.join(rel_html) or '<p class="muted">No releases yet.</p>'}</section>
+  <section><h2>Releases</h2>{''.join(rel_html[:4]) or '<p class="muted">No releases yet.</p>'}
+    {f'<details class="older"><summary>{len(rel_html) - 4} older releases</summary>{"".join(rel_html[4:])}</details>' if len(rel_html) > 4 else ''}</section>
   <section><h2>Result changes</h2>
-    <p class="muted">Recorded each time the solvers are re-run and a result moves: a new score card, a pass that became a fail (or the reverse), a number that changed, a shift in SWMM compatibility.</p>
-    {''.join(ch_html) or '<p class="muted">No result has changed since this log began.</p>'}
+    <p class="muted">Recorded each time the solvers are re-run and a result moves: a new score card, a difference from the right answer that moved, a shift in SWMM compatibility.</p>
+    {''.join(ch_html[:8]) or '<p class="muted">No result has changed since this log began.</p>'}
+    {f'<details class="older"><summary>{len(ch_html) - 8} earlier runs</summary>{"".join(ch_html[8:])}</details>' if len(ch_html) > 8 else ''}
   </section>
 </div>
 </div>"""
@@ -108,8 +110,8 @@ def atom_feed(changelog: Path, log: Path, out: Path) -> None:
         entries.append((e["date"].replace("Z", ":00Z"), f"{n} result change{'s' if n != 1 else ''}", f"{SITE_URL}news.html", summary))
     entries.sort(key=lambda x: x[0], reverse=True)
     xml = ['<?xml version="1.0" encoding="utf-8"?>', '<feed xmlns="http://www.w3.org/2005/Atom">',
-           "<title>OpenHydro Bench: what's new</title>", f'<link href="{SITE_URL}news.html"/>', f'<link rel="self" href="{SITE_URL}feed.xml"/>',
-           f"<id>{SITE_URL}feed.xml</id>", f"<updated>{now}</updated>", "<author><name>OpenHydro Bench</name></author>"]
+           "<title>Benchmark1D2D: what's new</title>", f'<link href="{SITE_URL}news.html"/>', f'<link rel="self" href="{SITE_URL}feed.xml"/>',
+           f"<id>{SITE_URL}feed.xml</id>", f"<updated>{now}</updated>", "<author><name>Benchmark1D2D</name></author>"]
     for when, title, link, summary in entries[:50]:
         xml += ["<entry>", f"<title>{esc(title)}</title>", f'<link href="{esc(link)}"/>', f"<id>{esc(link)}#{esc(when)}</id>",
                 f"<updated>{esc(when)}</updated>", f"<summary>{esc(summary)}</summary>", "</entry>"]

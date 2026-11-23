@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: "OpenHydro Bench (benchmark1d2d): open V&V benchmarks for hydraulic models"
+title: "Benchmark1D2D: open V&V benchmarks for hydraulic models"
 message: "If you use this software, please cite it using the metadata from this file."
 type: software
 authors:

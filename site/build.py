@@ -750,6 +750,9 @@ def legacy_figures(m: dict, result_dirs: list[Path], assets: Path) -> str:
             return fig_ea(m, result_dirs, assets)
         if kind == "pinned_engine":
             return fig_track_b(m)
+    except FileNotFoundError as exc:  # a draft waiting on its reference data has no figure yet
+        if m.get("status") != "draft":
+            print(f"WARN figures for {tid}: {exc}", file=sys.stderr)
     except Exception as exc:  # a missing optional input must not break the build
         print(f"WARN figures for {tid}: {exc}", file=sys.stderr)
     return ""
@@ -1289,6 +1292,7 @@ def main() -> int:
         "results.html": pages.results_page(manifests, runs, parity, census),
         "score.html": pages.score_page(manifests, checkable),
         "how-it-works.html": pages.how_page(manifests, runs),
+        "about.html": pages.about_page(manifests, runs),
         "catalog.html": pages.redirect("results.html"),
         "corpus.html": corpus_page(index, census, parity),
         "reports.html": reports_page(manifests, cards, evidence),
@@ -1372,7 +1376,7 @@ def main() -> int:
             bp.parent.mkdir(parents=True, exist_ok=True)
             sc = pages.measures.score(c)
             right = (f"{pages.tier_of(k)} · " if pages.tier_of(k) else "") + pages.measures.label(sc)
-            bp.write_text(og.badge_svg(f"OpenHydro Bench {sid}", right, pages.measures.klass(sc)), encoding="utf-8")
+            bp.write_text(og.badge_svg(f"Benchmark1D2D {sid}", right, pages.measures.klass(sc)), encoding="utf-8")
     try:
         og.og_image(DIST / "assets" / "og" / "home.png", "A1F-010", "Open benchmarks for water models",
                     "Does your flood model get the water right?", "Every test has a known right answer. Run your model, compare, and get a result anyone can check.",
@@ -1408,6 +1412,14 @@ def main() -> int:
 
     out_pages["profiles.html"], pf_json, pf_csv = profilepage.page(manifests, runs, pages, census)
     out_pages["rankings.html"] = pages.redirect("profiles.html")  # the leaderboard was retired in protocol 4.0
+    # GitHub Pages serves 404.html for any missing path, at any depth: absolute links only
+    nf = pages.layout("Page not found", f"""<div class="wrap"><section class="page-head"><h1>Page not found</h1>
+<p class="lede">That address is not part of the site. It may be an old link: tests and results now live under <a href="{pages.SITE_URL}results.html">Tests and results</a>, and model profiles under <a href="{pages.SITE_URL}profiles.html">Evidence</a>.</p>
+<div class="btns"><a class="btn primary" href="{pages.SITE_URL}index.html">Go to the home page</a><a class="btn ghost" href="{pages.SITE_URL}results.html">Browse every test</a></div></section></div>""", "404.html")
+    nf = nf.replace('href="static/', f'href="{pages.SITE_URL}static/').replace('src="static/', f'src="{pages.SITE_URL}static/')
+    for href, _ in pages.NAV + pages.FOOT + [("index.html", ""), ("feed.xml", "")]:
+        nf = nf.replace(f'href="{href}"', f'href="{pages.SITE_URL}{href}"')
+    out_pages["404.html"] = nf
     (DIST / "data").mkdir(exist_ok=True)
     (DIST / "data" / "profiles.json").write_text(pf_json, encoding="utf-8")
     (DIST / "data" / "profiles.csv").write_text(pf_csv, encoding="utf-8")

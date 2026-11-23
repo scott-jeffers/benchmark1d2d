@@ -37,6 +37,9 @@ from pathlib import Path
 METHOD_VERSION = "3.0"
 METHOD_DATE = "18 October 2026"
 METHOD_DOC = "docs/methodology/scoring_v3.md"
+PROTOCOL_VERSION = "4.0"  # how results are presented: evidence, not standings
+PROTOCOL_DATE = "20 November 2026"
+PROTOCOL_DOC = "docs/methodology/evidence.md"
 
 SCALES_FILE = Path(__file__).resolve().parents[1] / "test_catalog" / "difference_scales.json"
 

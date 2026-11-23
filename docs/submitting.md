@@ -25,9 +25,11 @@ https://scott-jeffers.github.io/benchmark1d2d/score.html
 4. **Press Publish**, answer five questions (software, version, who ran it,
    settings, licence) and send the zip it makes through the GitHub form it
    opens (a free GitHub account is needed). A bot scores the zip with the
-   suite's own scorer and replies on the issue within minutes. A maintainer
-   checks the settings and adds the `publish` label; the bot then adds the
-   results to `submissions/` and the next site build shows them.
+   suite's own scorer and replies on the issue within minutes. If the files
+   score without problems, the bot adds them to `submissions/` straight away,
+   recording the GitHub account that sent them, and starts a site build. No
+   one approves or holds them back; they are shown as *submitted* results
+   (scored by the suite, not re-run by it).
 
 To fix something, attach a corrected sheet in a comment on the same issue: the
 bot scores it again.

@@ -1,5 +1,5 @@
 {
-  "title": "OpenHydro Bench (benchmark1d2d): open verification and validation benchmarks for 1D, 2D and coupled hydraulic models",
+  "title": "Benchmark1D2D: open verification and validation benchmarks for 1D, 2D and coupled hydraulic models",
   "upload_type": "software",
   "description": "An open, engine-agnostic suite that scores flood, drainage and pipe-network models against exact solutions, conservation laws, laboratory and field measurements, and the pinned EPA SWMM 5.2.4 and EPANET 2.2 reference engines. Every result is a signed score card; production codes (HEC-RAS 6.6, TELEMAC-2D, ANUGA, GeoClaw, LISFLOOD-FP, EPA SWMM, OpenSWMM, Hydra) are run as black boxes, and results submitted by other developers are scored with the same limits.",
   "creators": [{"name": "Jeffers, Scott"}],

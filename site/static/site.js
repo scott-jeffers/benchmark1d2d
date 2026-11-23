@@ -1,3 +1,20 @@
+// Light/dark switch. Follows the system until the reader picks; the choice is remembered.
+(function () {
+  var btn = document.querySelector(".theme-toggle"), root = document.documentElement;
+  if (!btn) return;
+  function isDark() { var t = root.getAttribute("data-theme"); return t === "dark" || (t !== "light" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches); }
+  function label() { var l = isDark() ? "Switch to light mode" : "Switch to dark mode"; btn.setAttribute("aria-label", l); btn.title = l; }
+  btn.addEventListener("click", function () {
+    var next = isDark() ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    label();
+    window.dispatchEvent(new Event("themechange"));
+  });
+  if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", label);
+  label();
+})();
+
 // Mobile menu.
 (function () {
   var btn = document.querySelector(".nav-toggle"), nav = document.getElementById("site-nav");
@@ -88,3 +105,19 @@ window.addEventListener("load", function () {
     throwOnError: false
   });
 });
+
+// A link to a collapsed section opens it; "Open all" / "Close all" buttons.
+(function () {
+  function openHash() {
+    var id = decodeURIComponent(location.hash.slice(1)); if (!id) return;
+    var el = document.getElementById(id); if (!el) return;
+    var d = el.tagName === "DETAILS" ? el : el.closest("details");
+    if (d && !d.open) { d.open = true; el.scrollIntoView(); }
+  }
+  window.addEventListener("hashchange", openHash); openHash();
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-open-all],[data-close-all]"); if (!b) return;
+    var sel = b.getAttribute("data-open-all") || b.getAttribute("data-close-all"), open = b.hasAttribute("data-open-all");
+    document.querySelectorAll(sel).forEach(function (d) { d.open = open; });
+  });
+})();
