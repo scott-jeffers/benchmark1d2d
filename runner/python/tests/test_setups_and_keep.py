@@ -109,6 +109,9 @@ def test_owner_run_scores_and_labels_the_card(tmp_path, monkeypatch) -> None:
     import run_owner
 
     monkeypatch.setattr(run_owner, "OUT", tmp_path / "owner")
+    # the results sheets of A1F-011's download kit, as the site builds it (tests/data/owner_kit)
+    kits = Path(__file__).parent / "data" / "owner_kit"
+    monkeypatch.setattr(run_owner, "KITS", kits)
     cmd = f"{sys.executable} {{repo}}/scripts/owner_example.py {{test}} {{kit}} {{results}}"
     monkeypatch.setattr(sys, "argv", ["x", "--software", "Owner example", "--version", "1", "--organisation", "QA", "--command", cmd, "A1F-011"])
     assert run_owner.main() == 0

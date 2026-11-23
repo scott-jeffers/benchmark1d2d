@@ -45,11 +45,16 @@ sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO / "scripts")]
 OUT = REPO / "out" / "owner"
 
 
+KITS = REPO / "site" / "dist" / "data" / "cases"  # the site's download kits (``python site/build.py`` makes them)
+
+
 def kit(sid: str, dest: Path) -> Path:
-    """Unpack the test's download kit (built by the site, or from the catalog when the site is not built)."""
-    zp = REPO / "site" / "dist" / "data" / "cases" / f"{sid}.zip"
+    """Unpack the test's download kit, the same zip the site offers (building the site first if it has not been built)."""
+    zp = KITS / f"{sid}.zip"
     if not zp.is_file():
-        subprocess.run([sys.executable, "site/build.py"], cwd=REPO, check=True, stdout=subprocess.DEVNULL)
+        r = subprocess.run([sys.executable, "site/build.py"], cwd=REPO, capture_output=True, text=True)
+        if r.returncode != 0 or not zp.is_file():
+            raise RuntimeError(f"no download kit for {sid}: building the site failed (pip install -e '.[dev,site]'):\n{r.stderr[-1500:]}")
     with zipfile.ZipFile(zp) as z:
         z.extractall(dest)
     return dest / sid
