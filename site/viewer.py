@@ -3,7 +3,7 @@
 ``write_data`` writes ``data/viewer/<test>.json`` for each Track A test:
 the depth maps (exact and each model, ``site/fields.py``), with frames over
 time where they exist, and each model's grid-convergence errors and fitted
-rate. ``viewer_page`` is the page; ``static/viewer.js`` draws it.
+rate. ``panel`` is the viewer, pinned to one test on that test's page; ``static/viewer.js`` draws it.
 """
 
 from __future__ import annotations
@@ -35,13 +35,15 @@ def test_data(m: dict, by: dict, model_fields: dict, solver: dict, order, verdic
     sid = m["test_id"].split("_")[0]
     st = story(m)
     models = []
-    for k in order(set(by)):
+    keys = order(set(by))
+    keys = [k for k in keys if solver[k].get("kind") != "suite"] + [k for k in keys if solver[k].get("kind") == "suite"]  # worked examples last
+    for k in keys:
         c = by[k]
         a = c.get("_judged") or {}
         conv = c.get("convergence_result") or {}
         cv = a.get("converges") or {}
         rec = dict(key=k, label=f'{solver[k]["name"]} · {solver[k]["sub"]}' if solver[k].get("sub") else solver[k]["name"],
-                   color=solver[k]["color"], score=verdict(c), verified=bool(a.get("verified")))
+                   color=solver[k]["color"], score=verdict(c), verified=bool(a.get("verified")), kind=solver[k].get("kind", ""))
         if conv.get("errors"):
             rec["conv"] = dict(errors=[abs(e) for e in conv["errors"]], spacings=conv["spacings"], order=cv.get("order"),
                                ci=cv.get("ci"), verdict=cv.get("verdict"), min=conv.get("min_observed_order"),
@@ -91,48 +93,51 @@ def write_data(dist: Path, manifests: list[dict], runs: dict, fields_by: dict, s
     return index
 
 
-def viewer_page(layout, index: list[dict]) -> str:
-    opts = "".join(f'<option value="{esc(t["sid"])}">{esc(t["sid"])} · {esc(t["name"])}{" · maps" if t["maps"] else ""}{" · animated" if t["frames"] else ""}</option>'
-                   for t in index)
-    first = next((t["sid"] for t in index if t["frames"]), index[0]["sid"] if index else "")
-    body = f"""<div class="wrap">
-<section class="page-head nv-head">
-  <h1>Results viewer</h1>
-  <p class="lede">Every model's result on one test, side by side: depth maps over time, the difference from the exact answer, and how the error shrinks on finer grids.</p>
-</section>
-<div class="vw-pick card">
+def panel(index: list[dict], fixed: str | None = None, base: str = "") -> str:
+    """The viewer's controls and figures. ``fixed`` pins it to one test (on that test's page); ``base`` prefixes data paths."""
+    groups = [("Maps that change over time", [t for t in index if t["maps"] and t["frames"]]),
+              ("Maps at the end of the run", [t for t in index if t["maps"] and not t["frames"]]),
+              ("Error on finer grids only (one-dimensional tests)", [t for t in index if not t["maps"]])]
+    opts = "".join(f'<optgroup label="{esc(g)}">' + "".join(f'<option value="{esc(t["sid"])}">{esc(t["name"])} ({esc(t["sid"])})</option>' for t in ts) + "</optgroup>"
+                   for g, ts in groups if ts)
+    first = fixed or next((t["sid"] for t in index if t["frames"]), index[0]["sid"] if index else "")
+    picker = ("" if fixed else f"""<div class="vw-pick card">
   <label>Test <select id="vw-test">{opts}</select></label>
   <a id="vw-link" href="#" class="small">Open the test page →</a>
-</div>
-<section class="section" id="vw-maps-sec" hidden>
+</div>""")
+    if fixed:
+        picker = f'<select id="vw-test" hidden><option value="{esc(fixed)}" selected>{esc(fixed)}</option></select><a id="vw-link" href="#" hidden></a>'
+    return f"""{picker}
+<p class="vw-msg" id="vw-msg" role="status" hidden></p>
+<section class="section vw-sec" id="vw-maps-sec" hidden>
   <div class="head-row"><h2 style="margin:0">Depth maps</h2>
-    <div class="view-toggle" role="group" aria-label="Map mode"><button type="button" data-mode="depth" aria-pressed="true">Depth</button><button type="button" data-mode="diff" aria-pressed="false">Difference from exact</button></div>
+    <div class="view-toggle" id="vw-modes" role="group" aria-label="What the maps show"><button type="button" data-mode="depth" aria-pressed="true">Depth</button><button type="button" data-mode="diff" aria-pressed="false">Difference from exact</button></div>
   </div>
   <p class="muted small" id="vw-maps-note"></p>
   <div class="vw-player" id="vw-player">
     <div class="vw-time" id="vw-time" hidden>
-      <button type="button" class="vw-step" id="vw-back" aria-label="Previous frame"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 2h2.5v14H3zM16 2 7 9l9 7z"/></svg></button>
-      <button type="button" class="play" id="vw-play" aria-label="Play"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2 L16 9 L4 16 Z"/></svg></button>
-      <button type="button" class="vw-step" id="vw-fwd" aria-label="Next frame"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M12.5 2H15v14h-2.5zM2 2l9 7-9 7z"/></svg></button>
+      <button type="button" class="vw-step" id="vw-back" aria-label="Previous frame" title="Previous frame (←)"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 2h2.5v14H3zM16 2 7 9l9 7z"/></svg></button>
+      <button type="button" class="play" id="vw-play" aria-label="Play" title="Play (space)"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2 L16 9 L4 16 Z"/></svg></button>
+      <button type="button" class="vw-step" id="vw-fwd" aria-label="Next frame" title="Next frame (→)"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M12.5 2H15v14h-2.5zM2 2l9 7-9 7z"/></svg></button>
       <input type="range" id="vw-scrub" min="0" max="0" value="0" aria-label="Time">
       <span id="vw-tlabel" class="vw-tlabel"></span>
       <div class="vw-speed" role="group" aria-label="Speed"><button type="button" data-speed="0.5" aria-pressed="false">½×</button><button type="button" data-speed="1" aria-pressed="true">1×</button><button type="button" data-speed="2" aria-pressed="false">2×</button><button type="button" data-speed="4" aria-pressed="false">4×</button></div>
     </div>
+    <p class="vw-endnote small muted" id="vw-endnote" hidden>Differences are compared at the end of the run, so the player is off. Switch back to Depth to play the run.</p>
     <div class="vw-legend" id="vw-legend"></div>
   </div>
-  <p class="vw-hint small muted" id="vw-hint">Point at any map to read every model's depth at that spot. Click a map to enlarge it.</p>
-  <div class="vw-chips" id="vw-chips" role="group" aria-label="Models shown"></div>
+  <p class="vw-hint small muted" id="vw-hint"></p>
+  <div class="vw-chips" id="vw-chips" role="group" aria-label="Models shown on the maps"></div>
   <p class="small muted vw-stale-note" id="vw-stale-note" hidden></p>
   <div class="vw-maps" id="vw-maps"></div>
 </section>
-<section class="section" id="vw-conv-sec" hidden>
-  <h2>Error on finer grids</h2>
-  <p class="muted small">Each model's error against the exact answer on every grid it ran (both axes logarithmic). A correct method's line falls at the test's expected rate; the dashed line shows the minimum rate, drawn from the smallest error on the coarsest grid. Point at a line or a row to pick it out; the chips show and hide models.</p>
-  <div class="vw-chips" id="vw-chips2" role="group" aria-label="Models shown"></div>
+<!--VW-SPLIT-->
+<section class="section vw-sec" id="vw-conv-sec" hidden>
+  <h2>Does the error shrink on finer grids?</h2>
+  <p class="muted small" id="vw-conv-note">Each line is one model: its error against the exact answer on each grid it ran, from coarse (right) to fine (left). Both axes are logarithmic, so a steady slope means the error shrinks at a steady rate. Lines at least as steep as the dashed guide shrink fast enough. Point at a line or a row to pick it out.</p>
+  <p class="small vw-1d" id="vw-1d" hidden></p>
+  <div class="vw-chips" id="vw-chips2" role="group" aria-label="Models shown on the chart"></div>
   <svg id="vw-conv" class="chart" viewBox="0 0 1000 420" role="img" aria-label="Error against grid spacing for each model"></svg>
-  <div class="table-scroll" style="margin-top:12px"><table class="data" id="vw-table"><thead><tr><th>Model</th><th class="num">Difference</th><th class="num">Rate</th><th>90 % range</th><th>Against the design order</th></tr></thead><tbody></tbody></table></div>
+  <div class="table-scroll" style="margin-top:12px"><table class="data" id="vw-table"><thead><tr><th>Model</th><th class="num">Difference from the right answer</th><th class="num">Rate the error shrinks</th><th>Likely range (90 %)</th><th>Shrinking as designed?</th></tr></thead><tbody></tbody></table></div>
 </section>
-</div>
-<script type="application/json" id="vw-index">{json.dumps(dict(tests=index, first=first))}</script>"""
-    return layout("Results viewer", body, "viewer.html", scripts='<script src="static/viewer.js" defer></script>',
-                  description="Compare every model's result on a benchmark test: depth maps, differences from the exact answer and grid convergence.")
+<script type="application/json" id="vw-index">{json.dumps(dict(tests=[t for t in index if not fixed or t["sid"] == fixed], first=first, fixed=fixed, base=base))}</script>"""

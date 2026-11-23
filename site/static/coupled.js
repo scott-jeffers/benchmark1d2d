@@ -3,6 +3,7 @@
 (function () {
   "use strict";
   var IDX = JSON.parse(document.getElementById("cv-index").textContent);
+  var BASE = IDX.base || "", FIXED = IDX.fixed || null;  // on a test page the viewer is pinned to that test
   function scoreChip(sc) { return sc ? '<span class="vw-chip-v score ' + sc.k + '">' + esc(sc.l) + '</span>' : ''; }
   function $(id) { return document.getElementById(id); }
   var sel = $("cv-test"), modelsBox = $("cv-models"), link = $("cv-link"), story = $("cv-story");
@@ -296,8 +297,10 @@
       if (timer) { stop(); start(); }
     });
   });
+  function onScreen(el) { if (!el) return false; var r = el.getBoundingClientRect(); return r.bottom > 80 && r.top < window.innerHeight - 80; }  // keys act only on a player you can see
   document.addEventListener("keydown", function (e) {
     if (!R || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (!onScreen($("cv-map"))) return;
     var tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "select" || tag === "textarea" || (tag === "button" && e.key === " ")) return;
     if (e.key === " ") { e.preventDefault(); if (timer) stop(); else start(); }
@@ -317,7 +320,7 @@
   function loadModel(m) {
     stop();
     modelsBox.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-key") === m.key ? "true" : "false"); });
-    fetch(m.url).then(function (r) { return r.json(); }).then(function (d) {
+    fetch(BASE + m.url).then(function (r) { return r.json(); }).then(function (d) {
       R = d; chain = buildChain();
       var S = R.surface;
       hmax = 1e-3; S.h.forEach(function (fr) { fr.forEach(function (v) { if (v > hmax) hmax = v; }); });
@@ -341,7 +344,7 @@
     if (!t) return;
     T = t;
     link.href = "tests/" + encodeURIComponent(sid) + ".html";
-    try { history.replaceState(null, "", "#" + sid); } catch (e) { /* file:// */ }
+    if (!FIXED) { try { history.replaceState(null, "", "#" + sid); } catch (e) { /* file:// */ } }
     modelsBox.innerHTML = t.models.map(function (m) {
       return '<button type="button" class="vw-chip" data-key="' + esc(m.key) + '" aria-pressed="false"><span class="sw" style="background:' + esc(m.color) + '"></span>' + esc(m.label) +
         scoreChip(m.score) + "</button>";
@@ -350,8 +353,8 @@
     if (t.models.length) loadModel(t.models[0]);
   }
   sel.addEventListener("change", function () { load(sel.value); });
-  window.addEventListener("hashchange", function () { var w = decodeURIComponent(location.hash.slice(1)); if (w && w !== sel.value) { sel.value = w; load(w); } });
-  var want = decodeURIComponent((location.hash || "").slice(1)) || IDX.first;
+  if (!FIXED) window.addEventListener("hashchange", function () { var w = decodeURIComponent(location.hash.slice(1)); if (w && w !== sel.value) { sel.value = w; load(w); } });
+  var want = FIXED || decodeURIComponent((location.hash || "").slice(1)) || IDX.first;
   if (IDX.tests.some(function (t) { return t.sid === want; })) sel.value = want;
   if (sel.value) load(sel.value);
 })();

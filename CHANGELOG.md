@@ -5,6 +5,15 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ## [Unreleased]
 
+- **One page per test.** Each test's page now holds everything about it, starting with its interactive picture: 2D depth maps you can play and compare with the exact answer, the network map with every engine's result, or the coupled sewer-and-street replay, then one results table (now including how fast each model's error shrinks on finer grids), the convergence chart, each model's detail and the test itself. The separate Viewer, Networks and 1D/2D viewer pages are retired; old links open the right test page (a network link keeps the selected manhole or pipe). The menu is now Evidence · Tests & results · Score your model · How it works · About.
+- **Results viewer reworked after a full test** of every test, control, phone and dark mode:
+    - Tests listed by name and grouped by what you can see (maps over time, maps at the end, grid comparison only).
+    - Difference mode turns the player off and says why; the exact map is labelled as the reference; a Depth/Difference switch appears only where there is an exact answer.
+    - Map chips list only models that have maps; the grid chart has its own chips; demo solvers come last.
+    - Enlarge with a corner button (works on touch; Esc closes); the enlarged map moves to the top; a tap reads every map; captions stay on one line on desktop and wrap on phones.
+    - The grid chart says what it plots ("Average depth error (m)"), the guide line's label no longer covers model lines, and the table says in plain words whether each model's error shrinks as designed.
+    - One-dimensional tests explain why there are no maps and link to their profiles; a failed load says so instead of leaving a blank page.
+    - Numbers no longer show a gap around the decimal point ("0 . 94").
 - **Website QA/QC pass** ([report](docs/review/site_qa_2026-11-23.md)): every page, the upload and accessibility checked, and every finding fixed.
     - **Upload:** common column names (Distance, Chainage, Station…) are read; clear messages for blank sheets, Excel files and water-level columns; Publish appears only after a successful check.
     - **Submissions publish automatically** when they score without problems, recording the sender's GitHub account; one sender can never overwrite another's results. The bot reports differences, not pass/fail.

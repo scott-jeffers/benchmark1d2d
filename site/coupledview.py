@@ -5,7 +5,7 @@ surface depth over time, every manhole's surface level, head and exchange,
 the network's heads and flows, and the volume accounts; see
 ``scripts/run_coupled_cases.py``). The result collector files them under
 ``site/fixtures/replay/<test>/<model>.json``; ``write_data`` copies the ones
-for the catalog's current case version to ``data/coupled/`` and ``page`` is
+for the catalog's current case version to ``data/coupled/`` and ``panel`` (shown on each coupled test's page) is
 the viewer, drawn by ``static/coupled.js``.
 """
 
@@ -57,18 +57,15 @@ def write_data(dist: Path, manifests: list[dict], runs: dict, solver: dict, verd
     return [index[k] for k in sorted(index)]
 
 
-def page(layout, index: list[dict]) -> str:
-    opts = "".join(f'<option value="{esc(t["sid"])}">{esc(t["sid"])} · {esc(t["name"])}</option>' for t in index)
-    first = "A12-012" if any(t["sid"] == "A12-012" for t in index) else (index[0]["sid"] if index else "")
-    body = f"""<div class="wrap">
-<section class="page-head nv-head">
-  <h1>1D/2D viewer</h1>
-  <p class="lede">Watch a coupled model run: the pipe network underneath, the street surface on top, and the water moving between them at each manhole.</p>
-</section>
-<div class="vw-pick card cv-pick">
-  <label>Test <select id="cv-test">{opts}</select></label>
+def panel(index: list[dict], fixed: str | None = None, base: str = "") -> str:
+    """The coupled viewer's controls and figures. ``fixed`` pins it to one test; ``base`` prefixes data paths."""
+    opts = "".join(f'<option value="{esc(t["sid"])}">{esc(t["name"])} ({esc(t["sid"])})</option>' for t in index if not fixed or t["sid"] == fixed)
+    first = fixed or ("A12-012" if any(t["sid"] == "A12-012" for t in index) else (index[0]["sid"] if index else ""))
+    tests = [t for t in index if not fixed or t["sid"] == fixed]
+    return f"""<div class="vw-pick card cv-pick">
+  <label{" hidden" if fixed else ""}>Test <select id="cv-test">{opts}</select></label>
   <div class="cv-models" id="cv-models" role="group" aria-label="Model"></div>
-  <a id="cv-link" href="#" class="small">Open the test page →</a>
+  <a id="cv-link" href="#" class="small"{" hidden" if fixed else ""}>Open the test page →</a>
 </div>
 <p class="cv-story" id="cv-story" aria-live="polite"></p>
 <div class="vw-player" id="cv-player">
@@ -99,7 +96,4 @@ def page(layout, index: list[dict]) -> str:
   <figure class="cv-panel"><figcaption><b>Where the water is</b> <span class="muted small">volume on the street, in the pipes, and gone out (m³)</span></figcaption><svg id="cv-vol" viewBox="0 0 640 190" role="img" aria-label="Volumes over time"></svg><p class="small muted cv-bal" id="cv-bal"></p></figure>
 </div>
 <p class="small muted">Click a chart to jump to that time. Point at the surface to read the depth there.</p>
-</div>
-<script type="application/json" id="cv-index">{json.dumps(dict(tests=index, first=first))}</script>"""
-    return layout("1D/2D viewer", body, "coupled.html", scripts='<script src="static/coupled.js" defer></script>',
-                  description="Watch a coupled sewer and surface model run: the street, the pipes and the exchange at each manhole.")
+<script type="application/json" id="cv-index">{json.dumps(dict(tests=tests, first=first, fixed=fixed, base=base))}</script>"""

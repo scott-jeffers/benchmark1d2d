@@ -1279,6 +1279,7 @@ def main() -> int:
         pages.INPUT_ZIPS[(zp.parent.name, zp.stem)] = (rel.as_posix(), zp.stat().st_size)
     import netresults
 
+    deferred_cases: list[tuple] = []  # test pages are built last, once every viewer's data exists
     netindex = netresults.write_data(DIST, manifests, runs, pages.SOLVER, pages.SOLVERS_ORDER, pages.score_tag, pages.story)
     pages.NETVIEW = {t["sid"]: t for t in netindex}
     for tid, by in runs.items():  # every run's signed card, by solver
@@ -1357,7 +1358,7 @@ def main() -> int:
                             curves[k] = cv
                             break
         figs = legacy_figures(m, result_dirs, assets)
-        out_pages[page_name(m["test_id"])] = pages.case_page(m, by, exact, curves, figs, evidence.get(m["test_id"], []), extra)
+        deferred_cases.append((m, by, exact, curves, figs, evidence.get(m["test_id"], []), extra))
     # social preview images and result badges
     import og
 
@@ -1406,8 +1407,8 @@ def main() -> int:
                     fields_by.setdefault(sid_, {})["demo2d"] = f
                     break
     vindex = viewer.write_data(DIST, manifests, runs, fields_by, pages.SOLVER, pages.SOLVERS_ORDER, pages.score_tag, pages.story)
-    out_pages["viewer.html"] = viewer.viewer_page(pages.layout, vindex)
-    out_pages["network.html"] = netresults.page(pages.layout, netindex)
+    out_pages["viewer.html"] = pages.hash_redirect()  # the viewers now live on each test page
+    out_pages["network.html"] = pages.hash_redirect()
     import profilepage
 
     out_pages["profiles.html"], pf_json, pf_csv = profilepage.page(manifests, runs, pages, census)
@@ -1427,7 +1428,31 @@ def main() -> int:
 
     cindex = coupledview.write_data(DIST, manifests, runs, pages.SOLVER, pages.score_tag, pages.story)
     pages.COUPLEDVIEW = {t["sid"] for t in cindex}
-    out_pages["coupled.html"] = coupledview.page(pages.layout, cindex)
+    out_pages["coupled.html"] = pages.hash_redirect()
+    # one page per test: the interactive picture (maps, network or coupled replay) sits on the test's own page
+    vby = {t["sid"]: t for t in vindex}
+    nby = {t["sid"] for t in netindex}
+    cby = {t["sid"] for t in cindex}
+    for m, by, exact, curves, figs, ev, extra in deferred_cases:
+        sid = short_id(m["test_id"])
+        panels: dict = {}
+        scripts = []
+        if sid in cby:
+            panels["coupled"] = f'<h2>Watch it run</h2>{coupledview.panel(cindex, fixed=sid, base="../")}'
+            scripts.append('<script src="../static/coupled.js" defer></script>')
+        if sid in nby:
+            panels["network"] = f'<h2>The network and every engine\'s result</h2><div class="nv-embed">{netresults.panel(netindex, fixed=sid, base="../")}</div>'
+            scripts.append('<script src="../static/netview.js" defer></script>')
+        if sid in vby:
+            top, _, rest = viewer.panel(vindex, fixed=sid, base="../").partition("<!--VW-SPLIT-->")
+            if vby[sid].get("maps"):
+                panels["maps"] = top
+            else:
+                rest = top + rest  # keep the (hidden) map elements the script expects
+            panels["conv"] = f'<div class="vw-embed">{rest}</div>'
+            scripts.append('<script src="../static/viewer.js" defer></script>')
+        panels["scripts"] = "".join(scripts)
+        out_pages[page_name(m["test_id"])] = pages.case_page(m, by, exact, curves, figs, ev, extra, panels=panels)
     out_pages["scoring-review.html"] = pages.review.review_page(pages.layout, manifests, runs, pages.SOLVER, pages.SOLVERS_ORDER)
     (DIST / "solvers").mkdir(exist_ok=True)
     for k in {k for v in runs.values() for k in v}:

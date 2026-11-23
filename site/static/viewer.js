@@ -3,6 +3,7 @@
 (function () {
   "use strict";
   var IDX = JSON.parse(document.getElementById("vw-index").textContent);
+  var BASE = IDX.base || "", FIXED = IDX.fixed || null;  // on a test page the viewer is pinned to that test
   function $(id) { return document.getElementById(id); }
   var sel = $("vw-test"), link = $("vw-link");
   var mapsSec = $("vw-maps-sec"), mapsEl = $("vw-maps");
@@ -10,6 +11,10 @@
   var legend = $("vw-legend"), note = $("vw-maps-note"), staleNote = $("vw-stale-note");
   var timeBox = $("vw-time"), scrub = $("vw-scrub"), tlabel = $("vw-tlabel"), play = $("vw-play");
   var chipsA = $("vw-chips"), chipsB = $("vw-chips2"), hint = $("vw-hint");
+  var msg = $("vw-msg"), modes = $("vw-modes"), endnote = $("vw-endnote"), oneD = $("vw-1d");
+  var VAR = { h: "depth", Q: "flow", u: "velocity", v: "velocity", eta: "water level", c: "concentration" };
+  var UNIT = { h: "m", Q: "m³/s", u: "m/s", v: "m/s", eta: "m", c: "" };
+  var NORM = { L1: "Average", L2: "Root-mean-square", Linf: "Largest" };
   var NS = "http://www.w3.org/2000/svg";
   var D = null, mode = "depth", frame = 0, timer = null, hmax = 1, dmax = 0.01, times = null, speed = 1;
   var hidden = {}, probe = null, ext = null;
@@ -36,6 +41,10 @@
   var POS = [[244, 244, 244], [244, 165, 130], [214, 96, 77], [178, 24, 43], [103, 0, 31]];
   function diffColor(t) { t = Math.max(-1, Math.min(1, t)); return ramp(t < 0 ? NEG : POS, Math.abs(t)); }
 
+  function clockAt(i) {
+    var t = times[i], s = clock(t);
+    return s + (i === times.length - 1 ? " · end" : i === 0 ? " · start" : "");
+  }
   function clock(t) {
     if (t < 120) return "t = " + fmt(t) + " s";
     var hh = Math.floor(t / 3600), mm = Math.round((t - hh * 3600) / 60);
@@ -173,31 +182,30 @@
     });
     readouts();
     if (times) {
-      tlabel.textContent = clock(t);
+      tlabel.textContent = clockAt(frame);
       scrub.style.setProperty("--pct", (times.length > 1 ? 100 * frame / (times.length - 1) : 100) + "%");
     }
-    staleNote.hidden = !stale;
-    staleNote.textContent = mode === "diff" ? "Differences are taken at the end of the run, where the exact answer is computed on each model's own grid." :
-      stale ? "Faded maps: the model kept no snapshot at this time, so its final state is shown." : "";
-    if (mode === "diff") staleNote.hidden = false;
+    staleNote.hidden = !stale || mode === "diff";
+    staleNote.textContent = stale ? "Faded maps: that model saved no snapshot at this time, so its final state is shown." : "";
     legendHtml();
   }
 
   function scoreChip(sc) { return sc ? '<span class="vw-chip-v score ' + sc.k + '">' + esc(sc.l) + '</span>' : ''; }
   // ── model chips (shared by the maps and the convergence chart) ────────────
-  function chipModels() {
-    return D.models.filter(function (m) { return m.field || (m.conv && m.conv.errors && m.conv.errors.length > 1); });
-  }
-  function renderChips() {
-    var ms = chipModels();
-    var html = ms.length > 1 ? ms.map(function (m) {
+  function mapModels() { return D.models.filter(function (m) { return m.field; }); }
+  function convModels() { return D.models.filter(function (m) { return m.conv && m.conv.errors && m.conv.errors.length > 1; }); }
+  function chipHtml(ms) {
+    return ms.length > 1 ? ms.map(function (m) {
       var on = !hidden[m.key];
       return '<button type="button" class="vw-chip" data-key="' + esc(m.key) + '" aria-pressed="' + on + '"><span class="sw" style="background:' + esc(m.color) + '"></span>' +
         esc(m.label.split(" · ")[0]) + (m.label.indexOf(" · ") > 0 ? ' <span class="vw-chip-sub">' + esc(m.label.split(" · ").slice(1).join(" · ")) + "</span>" : "") +
         scoreChip(m.score) + "</button>";
-    }).join("") + '<span class="vw-chip-all"><button type="button" class="linkish" data-all="1">All</button> · <button type="button" class="linkish" data-all="best">Closest half</button></span>' : "";
-    [chipsA, chipsB].forEach(function (box) {
-      box.innerHTML = html;
+    }).join("") + '<span class="vw-chip-all">Show: <button type="button" class="linkish" data-all="1">all</button> · <button type="button" class="linkish" data-all="best">the closest half</button></span>' : "";
+  }
+  function renderChips() {
+    [[chipsA, mapModels()], [chipsB, convModels()]].forEach(function (pair) {
+      var box = pair[0], ms = pair[1];
+      box.innerHTML = chipHtml(ms);
       box.querySelectorAll("[data-key]").forEach(function (b) {
         b.addEventListener("click", function () { var k = b.getAttribute("data-key"); hidden[k] = !hidden[k]; applyHidden(); });
       });
@@ -223,9 +231,22 @@
   }
 
   // ── maps ───────────────────────────────────────────────────────────────────
+  var ZOOM_IN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"/></svg>';
+  var ZOOM_OUT = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4"/></svg>';
+  function toggleBig(fig) {
+    var big = !fig.classList.contains("vw-big");
+    mapsEl.querySelectorAll(".vw-big").forEach(function (o) { o.classList.remove("vw-big"); var z = o.querySelector(".vw-zoom"); z.innerHTML = ZOOM_IN; z.title = "Enlarge"; });
+    if (big) {
+      fig.classList.add("vw-big"); var z = fig.querySelector(".vw-zoom"); z.innerHTML = ZOOM_OUT; z.title = "Back to the grid (Esc)";
+      var top = fig.getBoundingClientRect().top + window.scrollY - $("vw-player").getBoundingClientRect().bottom - 8;
+      if (fig.getBoundingClientRect().top < $("vw-player").getBoundingClientRect().bottom || fig.getBoundingClientRect().bottom > window.innerHeight) window.scrollTo({ top: Math.max(0, top - 0), behavior: "smooth" });
+    }
+    renderMaps();
+  }
   function buildMaps() {
     mapsEl.innerHTML = ""; probe = null;
     var ms = D.models.filter(function (m) { return m.field; });
+    times = null; timeBox.hidden = true;
     if (!D.two_d || (!ms.length && !D.exact)) { mapsSec.hidden = true; return; }
     mapsSec.hidden = false;
     ext = extent();
@@ -236,23 +257,24 @@
     cards.forEach(function (m) {
       var fig = document.createElement("figure"); fig.className = "vw-map" + (m.key === "exact" ? " vw-exact" : ""); fig.setAttribute("data-key", m.key);
       var b = m.score ? '<span class="score sm ' + m.score.k + '">' + esc(m.score.l) + " off</span>" : "";
-      fig.innerHTML = '<figcaption><span class="sw" style="background:' + esc(m.color) + '"></span><span class="vw-name">' + esc(m.label) + "</span> " + b + '<output class="vw-read" aria-live="off"></output></figcaption>';
+      fig.innerHTML = '<figcaption><span class="sw" style="background:' + esc(m.color) + '"></span><span class="vw-name" title="' + esc(m.label) + '">' + esc(m.label) + "</span> " + b +
+        '<output class="vw-read" aria-live="off"></output><button type="button" class="vw-zoom" aria-label="Enlarge ' + esc(m.label) + '" title="Enlarge">' + ZOOM_IN + "</button></figcaption>" +
+        (m.key === "exact" ? '<div class="vw-ref small muted" hidden>Exact depth, for reference</div>' : "");
       var cv = document.createElement("canvas"); cv.width = W; cv.height = H; cv.setAttribute("data-key", m.key);
       cv.setAttribute("role", "img"); cv.setAttribute("aria-label", "Depth map: " + m.label);
       cv.title = "Click to enlarge";
       fig.appendChild(cv); mapsEl.appendChild(fig);
+      fig.querySelector(".vw-zoom").addEventListener("click", function () { toggleBig(fig); });
       function at(e) {
         var r = cv.getBoundingClientRect();
         return { x: ext.x0 + (e.clientX - r.left) / r.width * (ext.x1 - ext.x0), y: ext.y1 - (e.clientY - r.top) / r.height * (ext.y1 - ext.y0) };
       }
       cv.addEventListener("pointermove", function (e) { probe = at(e); renderMaps(); });
+      cv.addEventListener("pointerdown", function (e) { if (e.pointerType !== "mouse") { probe = at(e); renderMaps(); } });  // a tap reads every map
       cv.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse") { probe = null; renderMaps(); } });
       cv.addEventListener("click", function (e) {
-        if (e.pointerType === "touch") return;  // a tap places the probe; the button enlarges on touch
-        var big = !fig.classList.contains("vw-big");
-        mapsEl.querySelectorAll(".vw-big").forEach(function (o) { o.classList.remove("vw-big"); });
-        if (big) fig.classList.add("vw-big");
-        renderMaps();
+        if (e.pointerType === "touch") return;  // a tap places the probe; the button in the caption enlarges on touch
+        toggleBig(fig);
       });
     });
     var ts = [];
@@ -261,10 +283,11 @@
     times = ts.length > 1 ? ts : null;
     timeBox.hidden = !times;
     if (times) { scrub.max = String(times.length - 1); frame = times.length - 1; scrub.value = String(frame); }
-    document.querySelector('[data-mode="diff"]').hidden = !D.exact;
-    if (!D.exact) setMode("depth", true);
-    note.textContent = (D.exact ? "The exact answer and each model's finest grid, on one colour scale." : "Each model's finest grid, on one colour scale (this test has no exact map: it is judged on gauges and water balance).") +
-      " Dry ground is shown in sand. Maps are binned to at most 96 cells along the longer side" + (times ? ", frames over time to 48." : ".");
+    modes.hidden = !D.exact;
+    setMode(D.exact ? mode : "depth", true);
+    note.textContent = (D.exact ? "The exact answer (outlined) and each model's result on its finest grid, all on one colour scale." :
+      "Each model's result on its finest grid, all on one colour scale. This test has no exact map; models are compared with measured gauges and the water balance on the test page.") +
+      " Dry ground has the colour marked “dry” on the scale." + (times ? "" : " The maps show the end of the run.");
     scales(); renderMaps();
   }
 
@@ -275,8 +298,12 @@
     document.querySelectorAll("#vw-table tbody tr").forEach(function (tr) { tr.classList.toggle("vw-on", tr.getAttribute("data-key") === key); });
   }
   function buildConv() {
-    var ms = D.models.filter(function (m) { return m.conv && m.conv.errors && m.conv.errors.length > 1; });
+    var ms = convModels();
     convSec.hidden = !ms.length;
+    document.querySelector("#vw-table tbody").innerHTML = "";
+    oneD.hidden = !!FIXED || !(mapsSec.hidden && ms.length);
+    oneD.innerHTML = D.two_d ? "This test's models saved no maps, so only the grid comparison is shown." :
+      'This test is one-dimensional, so there are no maps. The <a href="' + BASE + 'tests/' + encodeURIComponent(D.sid) + '.html">test page</a> plays each model\'s profile over time.';
     if (!ms.length) return;
     while (convSvg.firstChild) convSvg.removeChild(convSvg.firstChild);
     var xs = [], ys = [];
@@ -296,12 +323,15 @@
     xt.forEach(function (v) { var t = node("text", { x: px(v), y: B + 18, "text-anchor": "middle", "class": "axl" }); t.textContent = fmt(v); });
     var xl = node("text", { x: (L + R) / 2, y: B + 42, "text-anchor": "middle", "class": "axl" }); xl.textContent = "Grid spacing (m)";
     var yl = node("text", { x: narrow ? 26 : 18, y: (T + B) / 2, transform: "rotate(-90 " + (narrow ? 26 : 18) + " " + (T + B) / 2 + ")", "text-anchor": "middle", "class": "axl" });
-    yl.textContent = (ms[0].conv.norm || "L1") + " error in " + (ms[0].conv.variable || "h");
+    var vr = ms[0].conv.variable || "h", un = UNIT[vr] !== undefined ? UNIT[vr] : "";
+    yl.textContent = (NORM[ms[0].conv.norm || "L1"] || "Average") + " " + (VAR[vr] || vr) + " error" + (un ? " (" + un + ")" : "");
     var best = ms.slice().sort(function (a, b) { return a.conv.errors[0] - b.conv.errors[0]; })[0], pmin = best.conv.min || 0.8;
     var sp = best.conv.spacings, er = best.conv.errors, ic = sp.indexOf(Math.max.apply(null, sp));
     var xa = Math.min.apply(null, sp), ya = er[ic] * Math.pow(xa / sp[ic], pmin);
     node("line", { x1: px(sp[ic]), y1: py(er[ic]), x2: px(xa), y2: py(ya), "class": "need" });
-    var nl = node("text", { x: (px(xa) + px(sp[ic])) / 2, y: (py(ya) + py(er[ic])) / 2 + 22, "class": "axl need-l", "text-anchor": "middle" }); nl.textContent = "minimum rate " + pmin;
+    var gt = document.createElementNS(NS, "title"); gt.textContent = "Guide: an error shrinking at rate " + pmin + ", the slowest that counts as converging"; convSvg.lastChild.appendChild(gt);
+    $("vw-conv-note").textContent = "Each line is one model: its error against the exact answer on each grid it ran, from coarse (right) to fine (left). Both axes are logarithmic, so a straight line means the error shrinks at a steady rate. " +
+      "Lines at least as steep as the dashed guide (rate " + pmin + ") shrink fast enough. Point at a line or a row to pick it out.";
     var tb = document.querySelector("#vw-table tbody"), rows = "";
     ms.forEach(function (m) {
       var pts = m.conv.spacings.map(function (s, i) { return [s, m.conv.errors[i]]; }).filter(function (p) { return p[1] > 0; }).sort(function (a, b) { return a[0] - b[0]; });
@@ -315,7 +345,8 @@
       });
       g.addEventListener("mouseenter", function () { highlight(m.key); });
       g.addEventListener("mouseleave", function () { highlight(null); });
-      var cv = { pass: "as designed", fail: "slower", inconclusive: "not settled", at_floor: "at its precision" }[m.conv.verdict] || "–";
+      var cv = { pass: "yes", fail: "too slowly", inconclusive: "not clear yet", at_floor: "limited by number precision" }[m.conv.verdict] || "–";
+      if (m.conv.verdict === "fail" && m.conv.order !== null && m.conv.order < 0.1) cv = "no: the error does not shrink";
       rows += '<tr data-key="' + esc(m.key) + '"><td><span class="sw" style="background:' + esc(m.color) + '"></span> ' + esc(m.label) + "</td><td class=\"num\">" + (m.score ? '<span class="score sm ' + m.score.k + '">' + esc(m.score.l) + "</span>" : "–") +
         '</td><td class="num">' + fmt(m.conv.order) + "</td><td>" + (m.conv.ci ? fmt(m.conv.ci[0]) + " to " + fmt(m.conv.ci[1]) : "–") + "</td><td>" + cv + "</td></tr>";
     });
@@ -351,8 +382,12 @@
       if (timer) { stop(); start(); }
     });
   });
+  function onScreen(el) { if (!el) return false; var r = el.getBoundingClientRect(); return r.bottom > 80 && r.top < window.innerHeight - 80; }  // keys act only on a player you can see
   document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { var b = mapsEl.querySelector(".vw-big"); if (b) toggleBig(b); return; }
+    if (mode === "diff") return;
     if (!times || mapsSec.hidden || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (!onScreen(mapsSec)) return;
     var tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "select" || tag === "textarea" || (tag === "button" && e.key === " ")) return;
     if (e.key === " ") { e.preventDefault(); if (timer) stop(); else start(); }
@@ -365,7 +400,14 @@
   function setMode(m, quiet) {
     mode = m;
     document.querySelectorAll("[data-mode]").forEach(function (o) { o.setAttribute("aria-pressed", o.getAttribute("data-mode") === m ? "true" : "false"); });
-    hint.textContent = "Point at any map to read every model's " + (m === "diff" ? "difference from the exact depth" : "depth") + " at that spot. Click a map to enlarge it.";
+    var diff = m === "diff";
+    if (diff) { stop(); if (times) { frame = times.length - 1; scrub.value = String(frame); } }
+    timeBox.hidden = !times || diff;
+    endnote.hidden = !(times && diff);
+    mapsEl.querySelectorAll(".vw-ref").forEach(function (r) { r.hidden = !diff; });
+    hint.textContent = (diff ? "Blue: the model is too shallow there; red: too deep; white: it matches. " : "") +
+      (times && !diff ? "Press play to watch the run (it opens at the end; space plays and pauses, ← → step). " : "") +
+      "Point at any map to read every model's " + (diff ? "difference from the exact depth" : "depth") + " at that spot. Click a map, or its corner button, to enlarge it.";
     if (!quiet) renderMaps();
   }
   document.querySelectorAll("[data-mode]").forEach(function (b) { b.addEventListener("click", function () { setMode(b.getAttribute("data-mode")); }); });
@@ -373,20 +415,24 @@
   function load(sid) {
     stop();
     link.href = "tests/" + encodeURIComponent(sid) + ".html";
-    try { history.replaceState(null, "", "#" + sid); } catch (e) { /* file:// */ }
-    fetch("data/viewer/" + encodeURIComponent(sid) + ".json").then(function (r) { return r.json(); }).then(function (d) {
-      D = d; hidden = {};
-      buildMaps(); buildConv(); renderChips(); chipsB.hidden = !mapsSec.hidden; applyHidden();
-    }).catch(function () { mapsSec.hidden = true; convSec.hidden = true; });
+    if (!FIXED) try { history.replaceState(null, "", "#" + sid); } catch (e) { /* file:// */ }
+    msg.hidden = false; msg.className = "vw-msg muted small"; msg.textContent = "Loading…";
+    fetch(BASE + "data/viewer/" + encodeURIComponent(sid) + ".json").then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (d) {
+      D = d; hidden = {}; msg.hidden = true;
+      buildMaps(); buildConv(); renderChips(); applyHidden();
+    }).catch(function () {
+      mapsSec.hidden = true; convSec.hidden = true;
+      msg.className = "vw-msg callout"; msg.innerHTML = 'This test\'s results could not be loaded. Try again, or open the <a href="' + BASE + 'tests/' + encodeURIComponent(sid) + '.html">test page</a>.';
+    });
   }
   sel.addEventListener("change", function () { load(sel.value); });
   function stickTop() { var h = document.querySelector(".site-head"); if (h) $("vw-player").style.top = h.offsetHeight + "px"; }
   stickTop(); window.addEventListener("resize", stickTop);
-  window.addEventListener("hashchange", function () {
+  if (!FIXED) window.addEventListener("hashchange", function () {
     var w = decodeURIComponent((location.hash || "").slice(1));
     if (w && w !== sel.value && IDX.tests.some(function (t) { return t.sid === w; })) { sel.value = w; load(w); }
   });
-  var want = decodeURIComponent((location.hash || "").slice(1)) || IDX.first;
+  var want = FIXED || decodeURIComponent((location.hash || "").slice(1)) || IDX.first;
   if (IDX.tests.some(function (t) { return t.sid === want; })) sel.value = want;
   if (sel.value) load(sel.value);
 })();
