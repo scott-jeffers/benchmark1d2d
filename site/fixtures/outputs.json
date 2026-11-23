@@ -1,17 +1,17 @@
 {
  "A12-010": {
   "openswmm-2d": {
-   "bytes": 2133508,
+   "bytes": 2133510,
    "date": "2026-11-23",
-   "run": 45256771854,
-   "sha256": "ceb7643f656c451c19e39079db7152db3a4264859866f120d0cf6130c2a6f1f4",
+   "run": 45256536679,
+   "sha256": "cbd73c2d67873b0365e0aafac360df593c179090b1e38de155be4f24ab5182ce",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-010.openswmm-2d.outputs.zip"
   },
   "openswmm-2d-x": {
-   "bytes": 4309927,
+   "bytes": 4309930,
    "date": "2026-11-23",
-   "run": 45256771854,
-   "sha256": "87b472052256516c1f90de843566c585c004dceb8bc80256352be29730bdf5c6",
+   "run": 45256536679,
+   "sha256": "f11ff10f21aad7f6314e15214a472300b96158585338356f793a4e434d8efbfc",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-010.openswmm-2d-x.outputs.zip"
   },
   "swmm-anuga": {
@@ -24,17 +24,17 @@
  },
  "A12-011": {
   "openswmm-2d": {
-   "bytes": 4899171,
+   "bytes": 4884917,
    "date": "2026-11-23",
-   "run": 45256771854,
-   "sha256": "1f5d0251f908991fb25135716249412015099d0c54f1266f10942ea8ef981416",
+   "run": 45256536679,
+   "sha256": "3dae0e415273886fd8cc611503116cb85ef1843d6589a7d5fa7af800fe40245a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-011.openswmm-2d.outputs.zip"
   },
   "openswmm-2d-x": {
-   "bytes": 9510777,
+   "bytes": 9464449,
    "date": "2026-11-23",
-   "run": 45256771854,
-   "sha256": "04cc7c83d54593f120aa95b1c5448c1201a2b59cfb37efc8a4a797506689879f",
+   "run": 45256536679,
+   "sha256": "8c4cbde537014132a07a0c158084e0f22c2461432fc8f8f60a412e7770e4e833",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-011.openswmm-2d-x.outputs.zip"
   },
   "swmm-anuga": {
@@ -47,17 +47,17 @@
  },
  "A12-012": {
   "openswmm-2d": {
-   "bytes": 535591,
+   "bytes": 535590,
    "date": "2026-11-23",
-   "run": 45256771854,
-   "sha256": "c71c6c35b80ee6d3bf1bd871d60ff8a839bf6f21e97a102a35f323a0a1bed665",
+   "run": 45256536679,
+   "sha256": "88f4975c199a30f0a7c0a4e34a60ceade25cfd7f42c52b5e380c4074aa503006",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-012.openswmm-2d.outputs.zip"
   },
   "openswmm-2d-x": {
-   "bytes": 1038631,
+   "bytes": 1038629,
    "date": "2026-11-23",
-   "run": 45256771854,
-   "sha256": "75eddca8c6bbeaacf150528394970fc9ac33e1ff3183d3faf23d3a6e6d4a8222",
+   "run": 45256536679,
+   "sha256": "91b78566d0c20d387c2fe3122441d5cf27cfc33c824619808e16421f34a768c5",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-012.openswmm-2d-x.outputs.zip"
   },
   "swmm-anuga": {
@@ -1069,8 +1069,8 @@
   "landlab": {
    "bytes": 25381,
    "date": "2026-11-23",
-   "run": 45256771854,
-   "sha256": "998dbee1f5abfc9553f5e7f98a6f92144eba68e5710d8d47dda967383aa1cc97",
+   "run": 45275532064,
+   "sha256": "ff30f9289a8437bfce4af69bf48c0a88e9dedf9c883834171efd01c37c39800a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.landlab.outputs.zip"
   },
   "lisflood-acc": {
