@@ -1,70 +1,70 @@
 {
  "A12-010": {
   "openswmm-2d": {
-   "bytes": 2133509,
+   "bytes": 2133510,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "7f24e647fdd1f5ada1df8aba3c7ae2127bc1f198bdc8aa4f4df676d5b73a4de0",
+   "run": 45256536679,
+   "sha256": "cbd73c2d67873b0365e0aafac360df593c179090b1e38de155be4f24ab5182ce",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-010.openswmm-2d.outputs.zip"
   },
   "openswmm-2d-x": {
-   "bytes": 4309926,
+   "bytes": 4309930,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "917c5689649d722267b26ec5c01a81146a32a8b641642abddd3ad1e2e14c59b8",
+   "run": 45256536679,
+   "sha256": "f11ff10f21aad7f6314e15214a472300b96158585338356f793a4e434d8efbfc",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-010.openswmm-2d-x.outputs.zip"
   },
   "swmm-anuga": {
    "bytes": 7281,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "47a5dd71c837eee5ae948877aa5a242982048142fbe028a8bdbd976ab1867dec",
+   "run": 45256536679,
+   "sha256": "4d8f94095220038a75b61b8cffd88ea6c17a244829de5a1b4c54c60553cca970",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-010.swmm-anuga.outputs.zip"
   }
  },
  "A12-011": {
   "openswmm-2d": {
-   "bytes": 4884919,
+   "bytes": 4884917,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "e7fca0052dc494ff8ffc37538159e1ac31b4660f0ca630005672127eb7384f10",
+   "run": 45256536679,
+   "sha256": "3dae0e415273886fd8cc611503116cb85ef1843d6589a7d5fa7af800fe40245a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-011.openswmm-2d.outputs.zip"
   },
   "openswmm-2d-x": {
-   "bytes": 9464458,
+   "bytes": 9464449,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "10d008ef524d5e41b7742782d3f57152c76315fbce0e252f427e3f67652a2ce5",
+   "run": 45256536679,
+   "sha256": "8c4cbde537014132a07a0c158084e0f22c2461432fc8f8f60a412e7770e4e833",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-011.openswmm-2d-x.outputs.zip"
   },
   "swmm-anuga": {
    "bytes": 14227,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "b352317437a3713cc07450d374655e6d940e18a27c20362a263cd22636640fd5",
+   "run": 45256536679,
+   "sha256": "0550e9c0373755330e05a9c0418b8aa565e995ad028db7a814e61ba9010f53f2",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-011.swmm-anuga.outputs.zip"
   }
  },
  "A12-012": {
   "openswmm-2d": {
-   "bytes": 535591,
+   "bytes": 535590,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "75a96598ff40211b3a725bfe6409bee1411d30a648c58153afc6071d7bb8b8ef",
+   "run": 45256536679,
+   "sha256": "88f4975c199a30f0a7c0a4e34a60ceade25cfd7f42c52b5e380c4074aa503006",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-012.openswmm-2d.outputs.zip"
   },
   "openswmm-2d-x": {
-   "bytes": 1037890,
+   "bytes": 1038629,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "32976c68059f654ca998fc11bbf32fd72d7bed929e376d7bccf661b27f55ab83",
+   "run": 45256536679,
+   "sha256": "91b78566d0c20d387c2fe3122441d5cf27cfc33c824619808e16421f34a768c5",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-012.openswmm-2d-x.outputs.zip"
   },
   "swmm-anuga": {
-   "bytes": 10353,
+   "bytes": 10352,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "043e600abd3c664bc0b8aa0c7f12854e900154b27563170efc49c9c76192c792",
+   "run": 45256536679,
+   "sha256": "dfab9cd08105fc92cd4b4a4804e8c0750bab9527b129b60c9f408e3ec728211e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A12-012.swmm-anuga.outputs.zip"
   }
  },
@@ -290,17 +290,17 @@
  },
  "A1F-001": {
   "anuga": {
-   "bytes": 17260,
+   "bytes": 17257,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "924d4e2dc373c70f8dc38532fb61d419a1973dc0e6ab7f13f1500f97a2ce7dc9",
+   "run": 45256536679,
+   "sha256": "9c8de78227809230a3c2aa36a820a50b79d1e038c3917acb83c797cd5efb5be7",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.anuga.outputs.zip"
   },
   "basilisk": {
    "bytes": 16991,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "8eeed9392b7ede549dbdd77979bbf0e10e420197f4f1c4c5ed44599a201bad5c",
+   "run": 45256536679,
+   "sha256": "ff35cca884d5f217d4d631167cb45548d665985c5a6be7d9d90cf1e65f2228c1",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.basilisk.outputs.zip"
   },
   "hydra-uds": {
@@ -311,31 +311,31 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.hydra-uds.outputs.zip"
   },
   "landlab": {
-   "bytes": 16987,
+   "bytes": 16986,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "f1db639cc34d931eb707f03f3e8d81b1738ccf979c624ff5a872b1162723b636",
+   "run": 45256536679,
+   "sha256": "4055441ec54e12919dc2202199cca56c6df65acfa5894d3b36a5419b8c4ece49",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.landlab.outputs.zip"
   },
   "lisflood-acc": {
-   "bytes": 53972,
+   "bytes": 53967,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "731684ab24b0f1082bfac4f16eed6084bc32caad017d457bdf91fa3d0993a625",
+   "run": 45256536679,
+   "sha256": "c3e821600d7965cef43689d56c3bcb7519efa286f42a69fca97fa74c06a40ba3",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.lisflood-acc.outputs.zip"
   },
   "lisflood-dg2": {
-   "bytes": 49567,
+   "bytes": 49570,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "37584372d0fd86bdd7005b175a7d019ce7e4465e0cf6890c18d18a730c1f84a1",
+   "run": 45256536679,
+   "sha256": "8ef533ef5b51e01e1eca38fede17ada15de477c630300cbdad1b27a539c39341",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.lisflood-dg2.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 40143,
+   "bytes": 40141,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "a04366c8099fd063c84b454ae21776c5158e7b025d940972991bcab60970204e",
+   "run": 45256536679,
+   "sha256": "437b138973f433df39873cc28dc43247b69d913c89bf05fdf85bfd04685a5279",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
@@ -397,24 +397,24 @@
  },
  "A1F-010": {
   "anuga": {
-   "bytes": 37283,
+   "bytes": 37282,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "087f39bc60669fa8d80196b8f4b2266ae6675b59777535ab22af1bddab2f136f",
+   "run": 45256536679,
+   "sha256": "a68a73046d48b8c751c44d897be8b2c8f3d50ca9b4324344373b2e95f1303dae",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.anuga.outputs.zip"
   },
   "basilisk": {
-   "bytes": 37749,
+   "bytes": 37752,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "18c68b48d9811e749998aaa97f4cd8fd62e9b60f791d47fe8c42813279b70ad4",
+   "run": 45256536679,
+   "sha256": "98f38532064387b83f1a05ca18a7fcf14762cb8650816658d94bf90e0287c685",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.basilisk.outputs.zip"
   },
   "geoclaw": {
-   "bytes": 94760,
+   "bytes": 94762,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "a2a96b40e7d7daf155feca4d9552a966efdae990782fcd715fd44b2f2c5a8d55",
+   "run": 45256536679,
+   "sha256": "0d1580a8a398aba0035b18a9e02271f432446d0690c94c347d3ccc9df8ef1757",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.geoclaw.outputs.zip"
   },
   "hydra-uds": {
@@ -425,38 +425,38 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.hydra-uds.outputs.zip"
   },
   "hydronet-fvm": {
-   "bytes": 14855,
+   "bytes": 14850,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "b778d734bb5caa2e997dd55a09232a70514ec3d8aa2da4914e0fee5425bd1505",
+   "run": 45256536679,
+   "sha256": "e91d6f3c9fe6bff0a35baab9de2458bf2b2f2b7d8efd80360938fa89aa7e965e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.hydronet-fvm.outputs.zip"
   },
   "landlab": {
-   "bytes": 29655,
+   "bytes": 29649,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "ee9402cd7e3d6a7a1ba751e17287baddaedb958285d0796fa524a8b907a20f66",
+   "run": 45256536679,
+   "sha256": "b6e41e5f904e6a262d8b9776d07ef84e3cef5328433e5b7f1507489209af3e9d",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.landlab.outputs.zip"
   },
   "lisflood-acc": {
-   "bytes": 68384,
+   "bytes": 68383,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "cc3ca552dd2727b0f1efaef92baca0e573712e4b46d29001518663980de7829f",
+   "run": 45256536679,
+   "sha256": "5e6961096aaefe20a61ee48ccea5b41cb820532f4b02de6473c19b4fb924a372",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.lisflood-acc.outputs.zip"
   },
   "lisflood-dg2": {
-   "bytes": 76090,
+   "bytes": 76091,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "c742eb31f3d14b60003c1f35ca8eecc452db9bfc220db423cae7cbb2f165fead",
+   "run": 45256536679,
+   "sha256": "b514132a6942819d0a13d5e6c06591bbe43075fab433c3512e77eb8761792256",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.lisflood-dg2.outputs.zip"
   },
   "lisflood-fv1": {
    "bytes": 68013,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "2d041f56044d5a7e3f039c4d9d2f6938e18d2fcbe836b6e06a39de285608b8bf",
+   "run": 45256536679,
+   "sha256": "ef9d2eaf5a812cfc37c958b80fa5326c081497a61cb9848a02c2d94c18bfd63b",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
@@ -518,24 +518,24 @@
  },
  "A1F-011": {
   "anuga": {
-   "bytes": 24209,
+   "bytes": 24213,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "1af863b1195647ede0afe1cffd83fb281117ceacc435243e63d977c6e0f6c2e9",
+   "run": 45256536679,
+   "sha256": "9fba0e0a21cbfde7aa0216c179f9aaa1f289839bd0364b77b33e4bf38d99c9d4",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.anuga.outputs.zip"
   },
   "basilisk": {
-   "bytes": 25560,
+   "bytes": 25559,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "e442f90008a998484193fa133022860e0bbe432fee66794703580397d6c93fca",
+   "run": 45256536679,
+   "sha256": "1c53026a3ac5923882178dfc7885a8d961e75e396559cb07d448f9f08c3030ca",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.basilisk.outputs.zip"
   },
   "geoclaw": {
-   "bytes": 68253,
+   "bytes": 68246,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "5e67927b92762371d5e623331235dcd19934af6951e1d6f5053ae29e0dfa8cab",
+   "run": 45256536679,
+   "sha256": "a222818b5e555e60a398bae1572f6edbc78921915ad79f35d2eb102caf03f18b",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.geoclaw.outputs.zip"
   },
   "hydra-uds": {
@@ -546,38 +546,38 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.hydra-uds.outputs.zip"
   },
   "hydronet-fvm": {
-   "bytes": 29377,
+   "bytes": 29371,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "2829711a5dd40c59993ff1876f6b30f7a7d7561baae61d5d419d3148d8a7eea8",
+   "run": 45256536679,
+   "sha256": "fa6936116b7692bd9526a8145de329ae76a89eb6322ab95fc1bd563e42bacbee",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.hydronet-fvm.outputs.zip"
   },
   "landlab": {
-   "bytes": 25175,
+   "bytes": 25178,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "c9c19df7b9e6bb40a900e9640578672a0b5b310e8df846f834382b1f98e946b5",
+   "run": 45256536679,
+   "sha256": "0433361e37e67ecb87db9776d2fc5a6edbd74a65e58659a636bb36136663ab2f",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.landlab.outputs.zip"
   },
   "lisflood-acc": {
-   "bytes": 53515,
+   "bytes": 53513,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "3788deec42d473994164662d6866d47a5974c7d2b48c8859c3e57b0a4c8e0023",
+   "run": 45256536679,
+   "sha256": "8a2173eb30159da4fc4ee232eccd32a5719ee739db203535ffd3e2d0abbb4610",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.lisflood-acc.outputs.zip"
   },
   "lisflood-dg2": {
-   "bytes": 55472,
+   "bytes": 55475,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "58b7ab17f62a969fcabfa7c1c790cd1731737c38e4947d3a3564c7fce8c41a48",
+   "run": 45256536679,
+   "sha256": "fed0668230f742f862acd983745a6839970b31ed319d9736986190a3e528da0e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.lisflood-dg2.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 46294,
+   "bytes": 46291,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "d3602dd44d0a84ae1e7f62a226a73de22ee8e52c29030b85bcde65861c363f6a",
+   "run": 45256536679,
+   "sha256": "077f0caba2bca728b72c6d2191f0b75cd5ae734f0c0ba25dcba15a7f570da30e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
@@ -639,17 +639,17 @@
  },
  "A1F-020": {
   "anuga": {
-   "bytes": 19828,
+   "bytes": 19832,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "2dee01662a76d1fa74f03b7a9839acb1144a70d76319a8fee4a9dcda5ecedfe3",
+   "run": 45256536679,
+   "sha256": "9be1e3a9e4702bd7078af6970fb03ed7ae3f4828f6efc80853da668332aac17e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.anuga.outputs.zip"
   },
   "basilisk": {
-   "bytes": 16178,
+   "bytes": 16177,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "7a7ccd130e28f74aaf79fced084c60819a978392d1b94cd2dc3ad7ae7d0880fd",
+   "run": 45256536679,
+   "sha256": "e9bca3cc9b7d1f0386f9c2da7c298dfafdad741900146a532a86ac3ca98e59d2",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.basilisk.outputs.zip"
   },
   "hydra-uds": {
@@ -720,8 +720,8 @@
   "basilisk": {
    "bytes": 19606,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "1d3ff30176d0bf9d66e82ade75df6540d73921caf6de999053146c3e59cb3f9b",
+   "run": 45256536679,
+   "sha256": "84bad3c58500df61ae00cc1a6211963b3df76bdb8b8af1d9ba5d4cf8c470c226",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.basilisk.outputs.zip"
   },
   "hydra-uds": {
@@ -732,31 +732,31 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.hydra-uds.outputs.zip"
   },
   "landlab": {
-   "bytes": 28126,
+   "bytes": 28131,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "70bc08b8a0e0e7fe966f19e156d15578295de0c229426c88b8b34f5fd15410f9",
+   "run": 45256536679,
+   "sha256": "6a458f77642e62787fea832630d7446f82e8b74b157e8c8194b88e63d9902939",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.landlab.outputs.zip"
   },
   "lisflood-acc": {
-   "bytes": 79696,
+   "bytes": 79695,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "b1f1294a73b7385711b9f8464adc66999ea92d90f2a246ccdfa8f25727ca747f",
+   "run": 45256536679,
+   "sha256": "e87ff1125ef3c8682ce71e9daa1fc50e8aecdcaabf3057b94541f84f2fe8e0e2",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.lisflood-acc.outputs.zip"
   },
   "lisflood-dg2": {
-   "bytes": 32337,
+   "bytes": 32336,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "06021aaedf417edd6a334fc828be3a811b2a33d2ffbbdfd43f88cda6e32329a2",
+   "run": 45256536679,
+   "sha256": "c88311fcc153557a2c3b25ab0725009f94f1eb699815dedf7a8df752240cc9b6",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.lisflood-dg2.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 28263,
+   "bytes": 28267,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "e7a5763c135e48e6cd86616d93fd0ced3ba3cc5653a0a1bf726724e49a2e9f6e",
+   "run": 45256536679,
+   "sha256": "a6f1256db7a0a318a9831cb1bb55a741adf7224cf313a8cba1656b7c247c0d33",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
@@ -820,8 +820,8 @@
   "basilisk": {
    "bytes": 11575,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "aab3b62d5a8e5128ea03e9e15f2fd00487b5b810db85a239d88f24b0dfe2d947",
+   "run": 45256536679,
+   "sha256": "40dda5862ad51536399cf3764df7eed8749bb892d3a1341c82ae700fb7676583",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.basilisk.outputs.zip"
   },
   "hydra-uds": {
@@ -834,29 +834,29 @@
   "landlab": {
    "bytes": 28372,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "28bdef3f65e01bd1e0d21a352c39646c3a8966cc281fa8c57d19182373a3ae98",
+   "run": 45256536679,
+   "sha256": "597e5ce22f72bd116bcddbaf29662dc766e5cf027d16eaf6a145d325a9275111",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.landlab.outputs.zip"
   },
   "lisflood-acc": {
    "bytes": 79111,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "b2bf5f436336bc648dcc1a64d3f6b7cefea0e549d017def3c131ed53db69277d",
+   "run": 45256536679,
+   "sha256": "0b42d222101d5d984bc48b3b1cdacd362dea71b2e4e025d56ed27519d40867c3",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.lisflood-acc.outputs.zip"
   },
   "lisflood-dg2": {
-   "bytes": 32700,
+   "bytes": 32702,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "913a8ce3b3a337c3f567b941ef5f9cb5ebe02b83f248728e197e2f01c01a131b",
+   "run": 45256536679,
+   "sha256": "2203cef235dcb8ab380ab30cfb944ba7a81ce84ea39d3509fdb16798b4cef892",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.lisflood-dg2.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 28433,
+   "bytes": 28432,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "dc9d64eb4d75bdef10ddf395d0789e28f6ca057bff02918a795f64f2eae3e12f",
+   "run": 45256536679,
+   "sha256": "24ff4c96442d7842459cd03117e63d30e3691979691c88a79e8c44570c27411a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
@@ -918,10 +918,10 @@
  },
  "A1F-042": {
   "basilisk": {
-   "bytes": 19695,
+   "bytes": 19696,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "90ce72ecd7be60954ff69e857598d475b76e9f0910e7c594ac48ac9e4976a62b",
+   "run": 45256536679,
+   "sha256": "3e7247d61af6b0f5d2b300ce9a09aa22c8a430c1e3178876db36cb2b00e6d03b",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.basilisk.outputs.zip"
   },
   "hydra-uds": {
@@ -934,29 +934,29 @@
   "landlab": {
    "bytes": 28261,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "5ffc9b0a6ed9d9555c2a6dba7cb590004033794eae6d935991c5bf9d2862334a",
+   "run": 45256536679,
+   "sha256": "a6acbfa1cf4d76c33afb283b4c71b87f228903f3443ee97b9c540e4f5bef2339",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.landlab.outputs.zip"
   },
   "lisflood-acc": {
-   "bytes": 77433,
+   "bytes": 77427,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "48a77609ad3f7bdb4e537cc0bb7f722f4d027ab0dc353db48285b145d8dc2a47",
+   "run": 45256536679,
+   "sha256": "b975dc539ac68930f4dfb31617892dea0b59550271c22f3a299b4421ec48b082",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.lisflood-acc.outputs.zip"
   },
   "lisflood-dg2": {
-   "bytes": 42144,
+   "bytes": 42143,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "c912574a88ac916a400473e64b9f3874649ded4bf3fc52fdfac8014dd17e08b5",
+   "run": 45256536679,
+   "sha256": "0ee1361128a6cd06e513e22226807f9920fa3fbf09451335bdff2fd8f1153ff1",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.lisflood-dg2.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 37806,
+   "bytes": 37804,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "9c59727409035e5ce9ebfcf6ec8b74a1de0013af11433a239ec6537769db2a95",
+   "run": 45256536679,
+   "sha256": "da891cbd9bb95e776351ab881e4d3c1c25459d122ae38df566832e8d43551648",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
@@ -1018,17 +1018,17 @@
  },
  "A1F-043": {
   "basilisk": {
-   "bytes": 10753,
+   "bytes": 10754,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "3d3afd5b43761750afd7c7dfe4a0e9f7e7e95b46f0dc186a9f9c0144e3634d94",
+   "run": 45256536679,
+   "sha256": "834d02ea37cfb6085ec7bff86d94799d578049e6b6c5dd940c410a673bc1fd5d",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.basilisk.outputs.zip"
   },
   "geoclaw": {
-   "bytes": 151340,
+   "bytes": 151338,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "66b84d49e758b27ef38ce020e31b825d9f2e07464c43364433119de74697d09f",
+   "run": 45256536679,
+   "sha256": "064ce5216915e1ae2aacfbad2ef803d29f43c9f85f66961a2ef073e1d1ec8c4c",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.geoclaw.outputs.zip"
   },
   "hydra-uds": {
@@ -1039,31 +1039,31 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.hydra-uds.outputs.zip"
   },
   "landlab": {
-   "bytes": 26200,
+   "bytes": 26199,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "68c85a8b05a0d97aa98a6b4463d8d7f05b068e7825aa1e19ffc07bee4f09bd70",
+   "run": 45256536679,
+   "sha256": "7bb81b140b66b30996f873fe0e66cf906a9d604fadde383907e5156ddf9e14e2",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.landlab.outputs.zip"
   },
   "lisflood-acc": {
-   "bytes": 26676,
+   "bytes": 26675,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "036ab1b2a455a5b6cdd981a5e9722ba5c20a3d0b32be989a7a53268f9d6a8a5c",
+   "run": 45256536679,
+   "sha256": "438f34a3eb9b9fcd8593dc7e14f25b04a03afda305a2606d2f33e003a5d61d89",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.lisflood-acc.outputs.zip"
   },
   "lisflood-dg2": {
-   "bytes": 48113,
+   "bytes": 48109,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "3676332fb34652b730b7617e3b94ace679dc8e0b5eb71bd75c395113ea9efff6",
+   "run": 45256536679,
+   "sha256": "585594acdd24ce39a881ae2812f0d289587ec99bf92a8bb0b62f8fe702b8d8eb",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.lisflood-dg2.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 18478,
+   "bytes": 18477,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "0620cca3bd032bfc526580454acf545a416d8ab7cd3d1b8badc18a75ed4356f9",
+   "run": 45256536679,
+   "sha256": "acbfe5a39943f4d65635491819e19254069b34c9f3c524d3969fec263034f40d",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
@@ -1182,59 +1182,59 @@
  },
  "A2A-001": {
   "anuga": {
-   "bytes": 1067163,
+   "bytes": 1067161,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "16c2cfdbad9213f799f433b39929b09e09814ada887985e094f36e40261845a0",
+   "run": 45256536679,
+   "sha256": "f1861b2b5da996517e188c8ef30e1d4c161d1ffaa0dbe3fb6da63a6ab18e3a5e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-001.anuga.outputs.zip"
   },
   "basilisk": {
-   "bytes": 562820,
+   "bytes": 562822,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "9475a6338894696ebf8a92b9fa06dc053cf91d906b529aa531aca78507f72203",
+   "run": 45256536679,
+   "sha256": "ac03699dfb801155e88478a64a7b9e791c2489efe1fac6e64e00b0179059c717",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-001.basilisk.outputs.zip"
   },
   "geoclaw": {
-   "bytes": 2093827,
+   "bytes": 2093836,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "4227fb8fc3aac17cfd0397c4a0f1a30d7b7b4cd65a53454e6dab44af911843dc",
+   "run": 45256536679,
+   "sha256": "282dcb4492fa403a5ae3cfdc0b611c96fc5e3eecad86e0fbfe5d9bbd6adbdf80",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-001.geoclaw.outputs.zip"
   },
   "hydronet-fvm": {
-   "bytes": 9578,
+   "bytes": 9574,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "812454409e5bad56f2e46f6ce39ea207bd5f676b0eccb1cfe47b0a4937b5076b",
+   "run": 45256536679,
+   "sha256": "8025113a8fd64de4c7f92cc5dba0cc638997a00dc4828750dd38bb49a13842f5",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-001.hydronet-fvm.outputs.zip"
   },
   "landlab": {
-   "bytes": 939522,
+   "bytes": 939524,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "f0501f22572f1f1dc708c334500ac95893d2ee54f366eab790d1eec59da48156",
+   "run": 45256536679,
+   "sha256": "f8825ed28ffe38ca18bcebc2aed16eece705ac2bc1f599d843f1197f08e1dc8d",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-001.landlab.outputs.zip"
   },
   "lisflood-acc": {
    "bytes": 1494392,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "012066bcb371d57411fadf2df860278029c817575a44a899d030eb24566cbe28",
+   "run": 45256536679,
+   "sha256": "2e999fe0582492d52a5574aae201d38319ccaca524dbd241f82859e0fdbf1867",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-001.lisflood-acc.outputs.zip"
   },
   "lisflood-dg2": {
-   "bytes": 1384891,
+   "bytes": 1384890,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "b66c5004fa9e2502745dd861e34c145c94122042e872837f9959a062ea5fa6e1",
+   "run": 45256536679,
+   "sha256": "37e3773540443a81be5fd18799c5b26eb7e4e41432d649eb6cb2550a3a06c6cc",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-001.lisflood-dg2.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 1172360,
+   "bytes": 1172368,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "20ffe2fc5c839309ca27bb811065585b8c3336aced12df9d9c8bd2d21a4120a9",
+   "run": 45256536679,
+   "sha256": "557ff48d99581476a5787f4638564e0e083ce2079e8ea372a7e3f662826973f0",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-001.lisflood-fv1.outputs.zip"
   },
   "telemac": {
@@ -1247,45 +1247,45 @@
  },
  "A2A-010": {
   "anuga": {
-   "bytes": 113356,
+   "bytes": 113360,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "2d9a83d89470ac7f223a1c166d447ac717afaaab11835c17aa242c1affc2f1a6",
+   "run": 45256536679,
+   "sha256": "aa419b2d9a060d0ae3fbad0c10c665175ee32e983a2650216782e37896b4cf92",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-010.anuga.outputs.zip"
   },
   "basilisk": {
-   "bytes": 16436,
+   "bytes": 16434,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "64a1910717771eb5f1dbf4b76b9a64d58d5871ae2c36f27329a72a90ce92b702",
+   "run": 45256536679,
+   "sha256": "f9711fa2e576fd738bf7efea277d61f5503c4651925fd609bfd83b195c9356d5",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-010.basilisk.outputs.zip"
   },
   "landlab": {
-   "bytes": 16320,
+   "bytes": 16317,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "2c57e58c17c16c7d7701a47ff31f4a5daf75ef9be36c2ce0160ac36f48db3522",
+   "run": 45256536679,
+   "sha256": "7e89dd1ef106808fb51296d1e2fc95788444d3ea4f1f857c75edb90c04c65b0f",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-010.landlab.outputs.zip"
   },
   "lisflood-acc": {
-   "bytes": 53223,
+   "bytes": 53226,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "f1a850f836af1485eb3d89821c6668637b0736f3e1be261cccd798b783415aff",
+   "run": 45256536679,
+   "sha256": "8ee374c8be91676da61cc1499197fa91e652efcfb4394cc2c8d8ab5c5a723c1c",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-010.lisflood-acc.outputs.zip"
   },
   "lisflood-dg2": {
-   "bytes": 141825,
+   "bytes": 141826,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "2239c8f64427a37e2c175fb7f656380e7a2a29a287bff34f77f345d3e33bd22b",
+   "run": 45256536679,
+   "sha256": "495683d1bdf8188bb4ed6c653bb69f44aefd7d0d52e1819ec86be96da0ae7b7a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-010.lisflood-dg2.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 39342,
+   "bytes": 39339,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "3f1f50384bc3c5d823e7468acab9b81fc5e31f74f2fd15742da0531d6236fefb",
+   "run": 45256536679,
+   "sha256": "cde169a9d1eaa2f09cbd96717e0791de509315b684acc258326d035357dd77ee",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-010.lisflood-fv1.outputs.zip"
   },
   "telemac": {
@@ -1298,17 +1298,17 @@
  },
  "A2A-020": {
   "anuga": {
-   "bytes": 309982,
+   "bytes": 309986,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "2dc9d83374f40c3b7b06b6415c563da089712855dc56174ce5bd54345197d3fc",
+   "run": 45256536679,
+   "sha256": "9064c96d4a461ce1be406e9aff3b23a29b7468f3d6a0ab163306b1403ded18f5",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-020.anuga.outputs.zip"
   },
   "basilisk": {
    "bytes": 276371,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "47c24f825e8abf5dcfb5866c43f6347795c5133bccbb1e45eb81fd7b9832cc2a",
+   "run": 45256536679,
+   "sha256": "b8203a6d34abd718931056f4695af97904d437b9a0b56688a3ab67619e34046d",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-020.basilisk.outputs.zip"
   },
   "telemac": {
@@ -1321,24 +1321,24 @@
  },
  "A2C-EA1": {
   "lisflood-acc": {
-   "bytes": 125990,
+   "bytes": 126010,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "2ba04ee76af6d68f70f9b44366dfe419df71d0dc3d1b1fef72a31a067d4937a7",
+   "run": 45256536679,
+   "sha256": "184f7d71fa7145fdfabe9047e7d62a1487aa83804b60e9ccc6fa251d3b4d7b87",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA1.lisflood-acc.outputs.zip"
   },
   "lisflood-dg2": {
-   "bytes": 465218,
+   "bytes": 465217,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "b2aaf4618bdcaf4a5e7f5f44b67c4d988f9a78e2eb062977344e807bdc173f0b",
+   "run": 45256536679,
+   "sha256": "66b66813f47feacf37006a7998e0ae1d91d955b985b732dea8a63d68073b521f",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA1.lisflood-dg2.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 122637,
+   "bytes": 122611,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "4b754c21c35cdbfd2c9f3bbfdff411add0c092d8d5e8dc3e6bc1d6f62395f65f",
+   "run": 45256536679,
+   "sha256": "9d5b86ced69951e8aa4e16f3169787a4229ffedcf62d2fb7165543eddbbff6b2",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA1.lisflood-fv1.outputs.zip"
   },
   "telemac": {
@@ -1351,40 +1351,40 @@
  },
  "A2C-EA2": {
   "lisflood-acc": {
-   "bytes": 5349092,
+   "bytes": 5349086,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "4389a69db46bac62adb1159e43efe23a84ab073341e98c628928634fce121bfb",
+   "run": 45256536679,
+   "sha256": "69a0fd2af41a8e4487c12cfda6e3c984d339a9108d64d4ebfdd635680ea5c4f1",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA2.lisflood-acc.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 4646793,
+   "bytes": 4646817,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "40de0f2b78bb1f1a070bad263800e971f1cc3f3fb0d0b84a661128700ac6b1b9",
+   "run": 45256536679,
+   "sha256": "ba43d973041e9ddb29ed717da1ed367d55d4448f88e9173eb6750c3bf0faf77a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA2.lisflood-fv1.outputs.zip"
   }
  },
  "A2C-EA4": {
   "lisflood-acc": {
-   "bytes": 11044533,
+   "bytes": 11044531,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "2f64c209b1de5ca56c0a10860143951fe488553f628de2445fada9b90733b8c6",
+   "run": 45256536679,
+   "sha256": "f4b5dab3bb2ea76d01feef012606beccb65bda90893dd06138d7b2f48de37f1f",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA4.lisflood-acc.outputs.zip"
   },
   "lisflood-dg2": {
-   "bytes": 10966349,
+   "bytes": 10966344,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "a41c8816ed1b0f4fe607afee56cd32377c1f20184df7c7cfcf3ecd384ab17103",
+   "run": 45256536679,
+   "sha256": "e090319b07ca01e174feb7e491c7bf33c9e3559f209fe35a6fa82541eed886cd",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA4.lisflood-dg2.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 10536519,
+   "bytes": 10536489,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "e3d118718465ab5c540ee23d8e281d4145ff94bdb948ff07825986dd5c74acc7",
+   "run": 45256536679,
+   "sha256": "a00e9e181e3c86938558be26db2ec8225aa52c08cce0bf066906a0cc8532ad71",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA4.lisflood-fv1.outputs.zip"
   },
   "telemac": {
@@ -1397,17 +1397,17 @@
  },
  "A2C-EA5": {
   "lisflood-acc": {
-   "bytes": 4900361,
+   "bytes": 4900358,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "fb53b70e447d2221000539e2f9f6c26c0764014443fd770c84ad84f3b5fa2002",
+   "run": 45256536679,
+   "sha256": "a3f36e8516e119b33ad639abd4b6012e40a5f3cd9e0759b5cdee5a21b899c0b0",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA5.lisflood-acc.outputs.zip"
   },
   "lisflood-fv1": {
-   "bytes": 4414982,
+   "bytes": 4415118,
    "date": "2026-11-23",
-   "run": 45229046104,
-   "sha256": "0c8c0309b25c2d599ba4b0dea38a82dc00bcd41bb82079de0826df34bfa7eacd",
+   "run": 45256536679,
+   "sha256": "4477a3f85c128d5bb3dc3edfbfc384e2268f1b05e0b40f8fc11d0307c9c4091e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA5.lisflood-fv1.outputs.zip"
   }
  }
