@@ -155,7 +155,7 @@ def verdict(card: dict | None) -> str:
             "inconclusive": '<span class="verdict v-unsure">Inconclusive</span>'}[v]
 
 
-def md(text: str, drop_h1: bool = True) -> str:
+def md(text: str, drop_h1: bool = True, source: Path | None = None) -> str:
     """Markdown to HTML with LaTeX kept intact for KaTeX.
 
     Python-Markdown treats ``\\(`` as an escaped parenthesis and drops the
@@ -176,7 +176,34 @@ def md(text: str, drop_h1: bool = True) -> str:
     html_text = re.sub("\u0000M(\\d+)\u0000", lambda mt: esc(keep[int(mt.group(1))]), html_text)
     if drop_h1 and html_text.startswith("<h1"):
         html_text = html_text.split("</h1>", 1)[1]
+    if source is not None:
+        html_text = repo_links(html_text, source)
     return html_text
+
+
+def repo_links(html_text: str, source: Path) -> str:
+    """Point relative links in a rendered repository document at the file on GitHub.
+
+    A link such as ``evidence.md`` or ``../adr/ADR-0004.md`` is relative to the
+    document in the repository; on the site it would point nowhere. Links that
+    are absolute, anchors, or already resolve inside the built site are left alone.
+    """
+    import posixpath
+    import re
+
+    base = source.resolve().parent.relative_to(ROOT.resolve()).as_posix()
+
+    def fix(mt: "re.Match[str]") -> str:
+        href = mt.group(2)
+        path, _, frag = href.partition("#")
+        if not path or "://" in path or path.startswith(("mailto:", "/", "data:")) or path.endswith(".html"):
+            return mt.group(0)
+        target = posixpath.normpath(posixpath.join(base, path)) if base != "." else posixpath.normpath(path)
+        if target.startswith(".."):
+            return mt.group(0)
+        return f'{mt.group(1)}"{BLOB}{target}{"#" + frag if frag else ""}"'
+
+    return re.sub(r'(href=)"([^"]+)"', fix, html_text)
 
 
 # ── figures ─────────────────────────────────────────────────────────────────
@@ -993,6 +1020,7 @@ AUDIT_2 = [
 
 
 def reports_page(manifests: list[dict], cards: dict, evidence: dict[str, list[dict]] | None = None) -> str:
+    import pages
     rows = []
     for m in manifests:
         c = cards.get(m["test_id"])
@@ -1000,9 +1028,11 @@ def reports_page(manifests: list[dict], cards: dict, evidence: dict[str, list[di
             continue
         conv = c.get("convergence_result") or {}
         text = f'{m["test_id"]} {m.get("title", "")} {c["solver"]["name"]}'.lower()
+        kind = pages.evidence_kinds.evidence_of(m)
+        sc = pages.measures.score(c)
         rows.append(
-            f'<tr data-text="{esc(text)}" data-result="{card_verdict(c)}"><td><a href="{page_name(m["test_id"])}">{esc(short_id(m["test_id"]))}</a><div class=muted>{esc(m.get("title", ""))}</div></td><td>{esc(c["solver"]["name"])}</td><td>{verdict(c)}</td>'
-            f'<td>{esc(", ".join(c.get("certification_claims") or []) or "–")}</td>'
+            f'<tr data-text="{esc(text)}" data-result="{kind}"><td><a href="{page_name(m["test_id"])}">{esc(short_id(m["test_id"]))}</a><div class=muted>{esc(m.get("title", ""))}</div></td><td>{esc(c["solver"]["name"])}</td>'
+            f'<td><span class="lb-cell {pages.measures.klass(sc)}">{esc(pages.measures.short(sc))}</span></td><td>{esc(pages.evidence_kinds.EVIDENCE[kind]["name"])}</td>'
             f'<td class=num>{fmt(conv["observed_order"]) if conv.get("observed_order") is not None else "–"}</td>'
             f'<td><code class="hash" title="{esc(c.get("content_hash", ""))}" data-copy="{esc(c.get("content_hash", ""))}" data-label="content hash">{esc(c.get("content_hash", "")[:10])}…</code></td>'
             f'<td><a href="data/scorecards/{esc(c["_path"].name)}" download>JSON</a></td></tr>'
@@ -1010,23 +1040,24 @@ def reports_page(manifests: list[dict], cards: dict, evidence: dict[str, list[di
     audit = "".join(f"<li><h3>{esc(t)}</h3><p><b>Found:</b> {esc(a)}</p><p><b>Now:</b> {esc(b)}</p></li>" for t, a, b in AUDIT)
     audit2 = "".join(f"<li><h3>{esc(t)}</h3><p><b>Found:</b> {esc(a)}</p><p><b>Now:</b> {esc(b)}</p></li>" for t, a, b in AUDIT_2)
     xb_rows = "".join(
-        f'<tr><td><a href="{page_name(c["test_id"])}">{esc(short_id(c["test_id"]))}</a></td><td>{esc(c["solver"]["name"])}</td><td>{verdict(c)}</td>'
+        f'<tr><td><a href="{page_name(c["test_id"])}">{esc(short_id(c["test_id"]))}</a></td><td>{esc(c["solver"]["name"])}</td><td>{esc(pages.measures.short(pages.measures.score(c)))}</td>'
         f'<td>{esc("; ".join(r["id"] + " " + fmt(r["observed"]) + " " + r["threshold"]["units"] for r in c["criteria_results"]))}</td></tr>'
         for lst in (evidence or {}).values() for c in lst)
+    xb_section = (f"""<section><h2>Second build of the reference engine</h2>
+<p>The official EPA SWMM 5.2.4 Windows binaries run on each SWMM catalog input and are scored against the reference built from the same source in <code>swmm-toolkit</code>. Agreement shows a parity reference does not depend on the compiler.</p>
+<div class="table-scroll"><table class="data"><thead><tr><th>Case</th><th>Build</th><th>Difference</th><th>Worst element per check</th></tr></thead><tbody>{xb_rows}</tbody></table></div></section>""" if xb_rows else "")
     body = f"""
 <header class="page-head"><h1>Reports</h1>
-<p class="lede">Every score card is canonical JSON with a SHA-256 content hash, so any change to a published result is detectable. Cards are also Ed25519-signed; the demo runs below use a development key published in the repository, so their signatures show integrity, not authorship. Certification runs will be signed with a key held by the maintainers.</p></header>
+<p class="lede">Every score card is canonical JSON with a SHA-256 content hash, so any change to a published result is detectable. Cards are also Ed25519-signed; the demo runs below use a development key published in the repository, so their signatures show integrity, not authorship. Release runs will be signed with a key held by the steering group.</p></header>
 <section><h2>Score cards</h2>
 <form class="filters" role="search" onsubmit="return false">
   <label>Search <input type="search" id="rq" placeholder="Case, title or solver"></label>
-  <label>Result <select id="rq-result"><option value="">Any</option><option value="pass">Pass</option><option value="fail">Fail</option></select></label>
+  <label>Evidence <select id="rq-result"><option value="">Any</option><option value="verification">Verification</option><option value="validation">Validation</option><option value="comparison">Comparison</option></select></label>
   <output id="rq-count" aria-live="polite"></output>
 </form>
-<div class="table-scroll"><table class="data" data-filter="rq"><thead><tr><th>Case</th><th>Solver</th><th>Result</th><th>Claims</th><th class=num>Observed order</th><th>Content hash</th><th>File</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>
+<div class="table-scroll"><table class="data" data-filter="rq"><thead><tr><th>Case</th><th>Solver</th><th>Difference</th><th>Kind of evidence</th><th class=num>Observed order</th><th>Content hash</th><th>File</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>
 <p class="small"><a href="data/scorecards.zip" download>Download every score card (.zip)</a>. Check one with <code>benchmark1d2d verify-card path/to/card.json</code>.</p></section>
-{f"""<section><h2>Second build of the reference engine</h2>
-<p>The official EPA SWMM 5.2.4 Windows binaries run on each SWMM catalog input and are scored against the reference built from the same source in <code>swmm-toolkit</code>. Agreement shows a parity reference does not depend on the compiler.</p>
-<div class="table-scroll"><table class="data"><thead><tr><th>Case</th><th>Build</th><th>Result</th><th>Worst element per criterion</th></tr></thead><tbody>{xb_rows}</tbody></table></div></section>""" if xb_rows else ""}
+{xb_section}
 <section><h2>Audit log</h2>
 <p>End-to-end reviews found the following defects. Each is fixed, covered by tests, and recorded here because earlier results published from this repository were affected.</p>
 <h3>Second review, 14 October 2026</h3>
@@ -1069,7 +1100,7 @@ def doc_page(title: str, active: str, sources: list[Path], intro: str = "") -> s
     parts = []
     for p in sources:
         if p.is_file():
-            parts.append(f'<section class="prose">{md(p.read_text(encoding="utf-8"))}</section>')
+            parts.append(f'<section class="prose">{md(p.read_text(encoding="utf-8"), source=p)}</section>')
     body = f'<header class="page-head"><h1>{esc(title)}</h1>{intro}</header>' + "".join(parts)
     return layout(title, body, active)
 
@@ -1261,8 +1292,8 @@ def main() -> int:
         "catalog.html": pages.redirect("results.html"),
         "corpus.html": corpus_page(index, census, parity),
         "reports.html": reports_page(manifests, cards, evidence),
-        "method.html": doc_page("Method", "method.html", [ROOT / "docs/methodology/vv_plan.md", ROOT / "docs/methodology/promotion.md", ROOT / "docs/methodology/tolerance_rationale.md", ROOT / "docs/bibliography.md"],
-                                '<p class="lede">How tests are verified and validated, how limits are chosen, and the literature behind every test.</p>'),
+        "method.html": doc_page("Method", "method.html", [ROOT / "docs/methodology/evidence.md", ROOT / "docs/methodology/vv_plan.md", ROOT / "docs/methodology/significance.md", ROOT / "docs/methodology/promotion.md", ROOT / "docs/methodology/tolerance_rationale.md", ROOT / "docs/bibliography.md"],
+                                '<p class="lede">The evidence protocol the suite follows, how each kind of evidence is gathered, engineering-significance values, how cases are promoted, and the literature behind every test.</p>'),
         "get-started.html": doc_page("Command line", "get-started.html", [ROOT / "docs/get_started.md"]),
     }
     for m in manifests:
@@ -1351,7 +1382,8 @@ def main() -> int:
     out_pages["downloads.html"] = downloads_page(files)
     import news
 
-    out_pages["news.html"] = news.news_page(pages.layout, md, ROOT / "CHANGELOG.md", SITE / "fixtures" / "news.jsonl")
+    out_pages["news.html"] = news.news_page(pages.layout, lambda t, drop_h1=True: md(t, drop_h1, source=ROOT / "CHANGELOG.md"),
+                                            ROOT / "CHANGELOG.md", SITE / "fixtures" / "news.jsonl")
     news.atom_feed(ROOT / "CHANGELOG.md", SITE / "fixtures" / "news.jsonl", DIST / "feed.xml")
     out_pages["solvers.html"] = pages.solvers_index(manifests, runs)
     out_pages["compare.html"] = pages.compare_page(manifests, runs)

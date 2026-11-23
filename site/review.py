@@ -142,8 +142,9 @@ def review_page(layout, manifests: list[dict], runs: dict, solver: dict, order) 
     body = f"""<div class="wrap">
 <section class="page-head">
   <div class="kicker">Scoring method 2.1 · 16 October 2026</div>
-  <h1>How results are judged</h1>
-  <p class="lede">A result <b>passes</b> when it is accurate: every check within its limit. Whether its error shrinks as the grid gets finer is judged separately, with the rate's uncertainty, and a result that passes <em>and</em> converges is <b>verified</b>. Until 16 October 2026 one verdict folded both together. This page shows all {len(rs)} results both ways. <a href="{NOTE_URL}">Read the method</a>.</p>
+  <h1>How results were judged under method 2.1 (historical)</h1>
+  <p class="callout"><b>Superseded.</b> Since 20 November 2026 the suite reports measurements, not verdicts: no result passes or fails, and nothing is ranked (<a href="https://github.com/scott-jeffers/benchmark1d2d/blob/master/docs/methodology/evidence.md">evidence protocol 4.0</a>). This page is kept as the record of how earlier results were judged; see the <a href="profiles.html">evidence profiles</a> for the current view.</p>
+  <p class="lede">Under method 2.1, a result <b>passed</b> when it is accurate: every check within its limit. Whether its error shrinks as the grid gets finer is judged separately, with the rate's uncertainty, and a result that passes <em>and</em> converges is <b>verified</b>. Until 16 October 2026 one verdict folded both together. This page shows all {len(rs)} results both ways. <a href="{NOTE_URL}">Read the method</a>.</p>
 </section>
 
 <section class="section">
@@ -186,4 +187,4 @@ def review_page(layout, manifests: list[dict], runs: dict, solver: dict, order) 
   <div class="table-scroll"><table class="data"><thead><tr><th scope="col">Test</th><th scope="col">Model</th><th scope="col">Worst check, share of its limit</th><th scope="col">Now</th></tr></thead><tbody>{near_rows}</tbody></table></div>
 </section>
 </div>"""
-    return layout("How results are judged", body, "method.html", description="How benchmark results are judged, and what changed when method 2 was adopted.")
+    return layout("How results were judged under method 2.1 (historical)", body, "method.html", description="The record of how benchmark results were judged under method 2.1, superseded by evidence protocol 4.0.")

@@ -9,7 +9,7 @@ and so stay in step with the scores:
 
 * chains of pipes (A1D-001, 002, 005): the water along the line, exact
   against each model, and each manhole's and pipe's difference from the
-  exact answer, with the pass limit shaded;
+  exact answer, with the check's limit shaded;
 * a storage tank and a pumped wet well (A1D-003, 004): depth over time,
   exact against each model;
 * coupled tests (A12-*): the water balance over time (every model's stored
@@ -233,7 +233,7 @@ def chain_charts(m, data):
                    exact=dict(x=ex, y=ey, line_only=True, floor=floor if level and sid == "A1D-005" else None, points=True),
                    series=series, snap=True, unit="m")]
     charts.append(dict(id="diff", title="Difference from the exact answer at every manhole and pipe",
-                       note=(f"Shaded: the pass limit, ±{lim * 1000:g} mm." if lim else ""),
+                       note=(f"Shaded: the check's limit, ±{lim * 1000:g} mm (where it was set, not a verdict)." if lim else ""),
                        xlabel=xlab, ylabel="Model − exact (mm)", labels=labels,
                        exact=dict(x=[0, xmax], y=[0, 0], line_only=True, label="Exact (no difference)"),
                        band=[-lim * 1000, lim * 1000] if lim else None, series=diff, symmetric=True, rescale=True, snap=True,
@@ -290,7 +290,7 @@ def coupled_charts(m, data):
     lim = 0.005 * scale if scale else None
     charts = [dict(id="balance", title="Water balance over time",
                    note=("Water stored on the surface and in the pipes, minus what came in, plus what went out: zero for a model "
-                         f"that neither makes nor loses water. Shaded: the pass limit at the end of the run, ±{lim:.2g} m³ (0.5 %)."
+                         f"that neither makes nor loses water. Shaded: the check's limit at the end of the run, ±{lim:.2g} m³ (0.5 %), where it was set, not a verdict."
                          if lim else ""),
                    xlabel="Time (minutes)", ylabel="Water made (+) or lost (−), m³",
                    exact=dict(x=[0, tmax], y=[0, 0], line_only=True, label="Exact (no water made or lost)"),

@@ -314,7 +314,7 @@ STORIES: dict[str, dict] = {
         question="Does a coupled model exchange the right flow between sewer and street?",
         what="A laboratory rig where water surges up a manhole onto a surface and drains back.",
         why="Urban flooding happens where sewers and streets exchange water. The coupling equations are the weakest link of most models.",
-        must=["match the measured exchange flow", "get the surface depth peak within 5 %"],
+        must=["match the measured exchange flow within 10 % (median)", "track the surface depth (reported, not yet a check)"],
     ),
     "A12-010": dict(
         name="Manhole overflowing onto a street", group="coupled",
