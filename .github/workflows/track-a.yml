@@ -77,6 +77,7 @@ jobs:
             out/curves/**/*.curve.json
             out/netres/**/*.netres.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   telemac:
     name: openTELEMAC-2D (finding, not a gate)
@@ -116,6 +117,7 @@ jobs:
             out/telemac/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
 
   swmm:
@@ -168,3 +170,4 @@ jobs:
             out/curves/**/*.curve.json
             out/netres/**/*.netres.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip

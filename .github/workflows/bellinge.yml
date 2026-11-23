@@ -79,6 +79,7 @@ jobs:
             out/curves/**/A1F-100.curve.json
             out/netres/**/A1F-100.netres.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
 
   parity:

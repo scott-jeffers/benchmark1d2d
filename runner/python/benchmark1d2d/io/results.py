@@ -90,6 +90,9 @@ def write_results_parquet(path: str | Path, columns: Mapping[str, Any], wall_sec
         meta[ENGINE_KEY] = _json.dumps(engine_report, sort_keys=True).encode()
         table = table.replace_schema_metadata(meta)
     pq.write_table(table, path)
+    from benchmark1d2d import keep  # a copy for the published "Check this result" files, when the workflow asks for one
+
+    keep.result_file(path)
     return path
 
 

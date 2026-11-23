@@ -58,6 +58,8 @@ def main() -> int:
     from benchmark1d2d import keep
 
     keep.inputs = lambda *a, **k: None  # the published model packages stay as they are
+    keep.outputs = lambda *a, **k: None
+    keep.result_file = lambda *a, **k: None
     run = _runner()
     cases = sys.argv[1:] or list(run.CASES)
     results: dict[str, dict[str, dict]] = {c: {} for c in cases}

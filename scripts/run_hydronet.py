@@ -226,6 +226,10 @@ def main() -> int:
             for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
                 t0 = time.perf_counter()
                 mesh, h0, u0, v0, wse, t_end, kind = setup(m, tid, float(dx))
+                from benchmark1d2d import keep
+
+                keep.script_model(f"hydronet-{mode}", tid, float(dx), run_fvm if mode == "fvm" else run_pinn,
+                                  {"mode": mode, "epochs": getattr(args, "epochs", None), "h_dry": H_DRY, "t_end": t_end, "setup": "setup() in run_hydronet.py"})
                 with tempfile.TemporaryDirectory() as td:
                     cwd = os.getcwd()
                     os.chdir(td)

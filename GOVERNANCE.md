@@ -12,7 +12,9 @@ pipeline does the rest:
 - scores each run with the frozen scorer
 - checks that references still reproduce
 - republishes the site and its data exports
-- reruns submitted configurations, and promotes a configuration that does better across its capability group to the T2 shown
+- reruns proposed set-ups (`setups/`) weekly and shows each beside the suite's own result, under its proposer's name, never in its place
+- publishes, for every result, the settings, the model files the solver read and what it wrote ("Check this result")
+- measures how much reasonable settings move each result (sensitivity envelopes)
 
 Only three decisions are left to people. None of them is on the publishing
 path:
@@ -25,6 +27,47 @@ path:
 
 Everything else is the machine's job. A results page never waits on a
 person, and nobody can hold a result back.
+
+## Who runs a result, and checking it
+
+"The modeller built a bad model" is answered by making every result checkable
+and every set-up challengeable, not by argument:
+
+- **Every result can be checked.** Each result's *Check this result* box gives
+  the settings changed from the engine's defaults and why, the exact files the
+  solver read, what it wrote (as release files, too large for the website),
+  the signed score card, and the commands to run it again.
+- **Every set-up can be challenged.** Anyone may propose a different set-up for
+  a model the suite can re-run (`setups/<slug>/setup.json`, or the *Propose a
+  better set-up* issue form). The suite applies it to its own model files, runs
+  it on its own machines and shows the result beside its own, under the
+  proposer's name and GitHub account. Nobody approves it and nothing is
+  replaced. Settings the test defines (geometry, boundaries, friction, grid,
+  end time) cannot change, so every set-up solves the same problem.
+- **Developers are invited, not consulted.** A software's developer may
+  propose their recommended set-up at any time; it is marked as theirs, and as
+  T1 when it follows their published guidance. There is no right of reply,
+  notice period or embargo: results are published as they are produced.
+- **How much the set-up matters is measured.** Each model the suite can re-run
+  is swept one documented option at a time; the range is shown on every test.
+
+Every result carries one of five labels, so an engineer knows who ran it and
+whether it can be checked:
+
+| Label | Who ran it | Can anyone check it? |
+| --- | --- | --- |
+| Run by the suite | The suite, on its own machines | Yes: model files, outputs and commands are published |
+| Proposed set-up, run by the suite | The suite, with someone else's settings | Yes, as above |
+| Run on the owner's machine | The software's owner, on their licensed machine, through the suite's workflow (`owner-run.yml`, [guide](docs/owner-runner.md)) | With a licence: model files are published when the owner's command keeps them |
+| Submitted, with model files | The submitter | With a licence: model files are published |
+| Submitted results only | The submitter | No: shown, but labelled |
+
+**Commercial licences.** Some software licences restrict publishing benchmark
+results. The suite runs only software whose licence allows it, and publishes
+owner-run and submitted results on the understanding, confirmed by the person
+who sends them, that they may be published. A result whose owner shows it was
+published against their licence is removed; the removal is recorded in the
+changelog. No other result is ever withdrawn on request.
 
 ## Maintainers
 

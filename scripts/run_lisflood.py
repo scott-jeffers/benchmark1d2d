@@ -152,11 +152,15 @@ def run(exe: Path, solver: str, g: Grid, zf: Field, hf: Field, t_end: float, fri
         (w / "c.par").write_text("\n".join(par) + "\n", encoding="ascii")
         from benchmark1d2d import keep
 
+        from benchmark1d2d import setups
+
+        setups.apply(f"lisflood-{solver}", KEEP["test"], w)  # a proposed set-up (BENCH_SETUP) changes its settings here
         keep.inputs(f"lisflood-{solver}", KEEP["test"], w, g.dx)
         p = subprocess.run([str(exe), "c.par"], cwd=w, capture_output=True, text=True, timeout=3600)
         r = w / "res"
         if p.returncode != 0 or not (r / "c-0001.wd").exists():
             raise RuntimeError(f"lisflood failed ({p.returncode}):\n{p.stdout[-3000:]}\n{p.stderr[-2000:]}")
+        keep.outputs(f"lisflood-{solver}", KEEP["test"], w, g.dx)
         h = np.nan_to_num(read_asc(r / "c-0001.wd", g))
         u = np.nan_to_num(read_asc(r / "c-0001.Vx", g))
         v = np.nan_to_num(read_asc(r / "c-0001.Vy", g))
@@ -343,12 +347,16 @@ def ea(exe, solver, m, tid):
         (w / "c.par").write_text("\n".join(par) + "\n", encoding="ascii")
         from benchmark1d2d import keep
 
+        from benchmark1d2d import setups
+
+        setups.apply(f"lisflood-{solver}", tid, w)  # a proposed set-up (BENCH_SETUP) changes its settings here
         keep.inputs(f"lisflood-{solver}", tid, w)
         p = subprocess.run([str(exe), "c.par"], cwd=w, capture_output=True, text=True, timeout=6 * 3600)
         r = w / "res"
         n_frames = int(round(t_end / save))
         if p.returncode != 0 or not (r / f"c-{n_frames:04d}.wd").exists():
             raise RuntimeError(f"lisflood failed ({p.returncode}):\n{p.stdout[-3000:]}\n{p.stderr[-2000:]}")
+        keep.outputs(f"lisflood-{solver}", tid, w)
         X, Y = g.centres()
         act = np.asarray(case.grid.active, dtype=bool)
         frames = []

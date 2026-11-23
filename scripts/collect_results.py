@@ -35,6 +35,8 @@ sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO)]
 FIXTURES = REPO / "site" / "fixtures"
 CURVES = FIXTURES / "curves"
 INPUTS = FIXTURES / "inputs"  # model files per test and model (scripts/export_inputs.py)
+OUTPUTS_INDEX = FIXTURES / "outputs.json"  # what each solver wrote, published as release files (too large for the site)
+OUTPUTS_TAG = "run-files"  # the release that holds them; each file is replaced by the newest run
 REPLAY = FIXTURES / "replay"  # coupled runs replayed in the 1D/2D viewer (scripts/run_coupled_cases.py)
 NETRES = FIXTURES / "netres"  # per-element results for the network viewer (scripts/export_netresults.py)
 NEWS = FIXTURES / "news.jsonl"  # one line per collection that changed something: the site's "What's new" page  # chart extracts (scripts/export_curves.py), one per test and model
@@ -48,6 +50,8 @@ WORKFLOWS = {
     "track-a.yml": ["telemac-scorecards", "swmm-track-a-scorecards", "track-a-scorecards"],
     "nightly.yml": ["nightly-census"],
     "bellinge.yml": None,
+    "setups.yml": None,  # proposed set-ups, re-run by the suite (filed under setups/<slug>/)
+    "owner-run.yml": None,  # run on the software owner's own machine (filed under owner/<software>/)
 }
 
 # solver name (from the card) -> fixture directory, first match wins
@@ -92,6 +96,34 @@ SHIFT_MODELS = 5
 PARITY_FILES = re.compile(r"^(nightly|pr|release|bellinge)_(?!census)[\w.-]+\.(parquet|summary\.json)$|^epanet_[\w.-]+\.(parquet|summary\.json)$")
 
 
+def publish_outputs(repo: str, path: Path, run: dict, dry_run: bool) -> int:
+    """Upload one ``<test>.<model>.outputs.zip`` to the run-files release (replacing the older one) and index it."""
+    import hashlib
+
+    stem = path.name[: -len(".outputs.zip")]
+    sid, _, key = stem.partition(".")
+    if not key:
+        return 0
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    index = json.loads(OUTPUTS_INDEX.read_text(encoding="utf-8")) if OUTPUTS_INDEX.is_file() else {}
+    old = (index.get(sid) or {}).get(key) or {}
+    if old.get("sha256") == digest:
+        return 0
+    if not dry_run:
+        if gh("release", "view", OUTPUTS_TAG, "-R", repo, "--json", "tagName", check=False).strip() == "":
+            gh("release", "create", OUTPUTS_TAG, "-R", repo, "--prerelease", "--title", "Run files: what each solver wrote",
+               "--notes", "The output files of the latest run of every test and model, as the solvers wrote them, with the results "
+                          "files the scorer read. Replaced as new runs arrive; the site links each one from its test page "
+                          "(Check this result).", check=False)
+        gh("release", "upload", OUTPUTS_TAG, str(path), "-R", repo, "--clobber", check=False)
+        index.setdefault(sid, {})[key] = {
+            "url": f"https://github.com/{repo}/releases/download/{OUTPUTS_TAG}/{path.name}",
+            "bytes": len(data), "sha256": digest, "run": run.get("databaseId"), "date": (run.get("createdAt") or "")[:10]}
+        OUTPUTS_INDEX.write_text(json.dumps(index, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    return 1
+
+
 def gh(*args: str, check: bool = True) -> str:
     p = subprocess.run(["gh", *args], capture_output=True, text=True)
     if check and p.returncode != 0:
@@ -127,6 +159,11 @@ def artifact_sources(repo: str, workflow: str, wanted: list[str] | None, lookbac
 
 
 def route(card: dict) -> str | None:
+    setup = (card.get("solver") or {}).get("setup") or {}
+    if setup.get("slug"):  # a proposed set-up: never filed with the base model's own results
+        return "setups/" + re.sub(r"[^a-z0-9_-]+", "-", setup["slug"].lower())
+    if (card.get("solver") or {}).get("run_by") == "owner":  # run on the software owner's machine
+        return "owner/" + re.sub(r"[^a-z0-9]+", "-", (card["solver"].get("name") or "x").lower()).strip("-")
     name = (card.get("solver") or {}).get("name", "")
     for pat, d in ROUTES:
         if re.search(pat, name):
@@ -265,6 +302,7 @@ def main() -> int:
     args = ap.parse_args()
 
     lines, flips, n_changed, n_curves, n_inputs = ["# Collected results", ""], 0, 0, 0, 0
+    n_outputs = 0
     for wf, wanted in WORKFLOWS.items():
         sources = artifact_sources(args.repo, wf, wanted)
         if not sources:
@@ -290,6 +328,9 @@ def main() -> int:
                             if shift:
                                 lines.append(f"  - {shift}")
                                 flips += 1
+                        continue
+                    if path.name.endswith(".outputs.zip"):  # what the solver wrote (Check this result)
+                        n_outputs += publish_outputs(args.repo, path, run, args.dry_run)
                         continue
                     if path.name.endswith(".inputs.zip"):  # the model files a runner wrote (Run it yourself)
                         sid, _, key = path.name[: -len(".inputs.zip")].partition(".")
@@ -369,7 +410,7 @@ def main() -> int:
                     if not args.dry_run:
                         dest.parent.mkdir(parents=True, exist_ok=True)
                         dest.write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
-    lines += ["", f"{n_changed} file(s) changed, {flips} pass/fail change(s), {n_curves} chart curve(s) or network extract(s) updated, {n_inputs} model-file zip(s) updated."]
+    lines += ["", f"{n_changed} file(s) changed, {flips} pass/fail change(s), {n_curves} chart curve(s) or network extract(s) updated, {n_inputs} model-file zip(s) updated, {n_outputs} output zip(s) published."]
     if n_changed and not args.dry_run:
         record_news(lines)
     args.summary.parent.mkdir(parents=True, exist_ok=True)

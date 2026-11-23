@@ -808,6 +808,7 @@ def run_case(m: dict, ras_exe: Path) -> tuple[dict, dict]:
     keep.inputs("hecras-pipes", m["test_id"], folder, None)
     t0 = time.perf_counter()
     hdf = compute(folder, ras_exe, "01", 4 * 3600)
+    keep.outputs("hecras-pipes", m["test_id"], folder, None)
     log(f"    run: {time.perf_counter() - t0:.0f} s")
     log(base.messages(folder))
     b01 = folder / f"{name}.b01"

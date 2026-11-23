@@ -45,7 +45,7 @@ def for_submission(sub: dict, key: str) -> dict:
         "schema_version": "1.0.0",
         "key": key,
         "engine": {"name": str(solver.get("name", key)), "version": str(solver.get("version", ""))},
-        "tier": sub.get("tier", "T2"),
+        "tier": sub.get("tier") or "T2",
         "set_by": str(sub.get("submitted_by", "submitter")),
         "changed_from_default": list(sub.get("changed_from_default") or []),
         "defaults_audit": "manual" if sub.get("changed_from_default") else "pending",

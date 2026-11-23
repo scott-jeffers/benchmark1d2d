@@ -104,6 +104,7 @@ jobs:
             out/hecras*/work/**/*.hdf
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   hecras-2d:
     name: HEC-RAS ${{ matrix.ras }} 2D dam breaks (finding, not a gate)
@@ -183,6 +184,7 @@ jobs:
             out/hecras*2d/work/**/*.rst
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   hecras-2d-cases:
     name: HEC-RAS ${{ matrix.ras }} 2D with boundary lines, ${{ matrix.eq }} (finding, not a gate)
@@ -263,6 +265,7 @@ jobs:
             out/hecras*2d/work/**/*.bco*
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   hecras-pipes:
     name: HEC-RAS ${{ matrix.ras }} pipe networks on the 1D/2D tests (finding, not a gate)
@@ -326,6 +329,7 @@ jobs:
             out/coupled/hecras-pipes/work/**/*.log
             out/coupled/hecras-pipes/work/**/*.txt
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   probe:
     name: HEC-RAS 7.0.1 pipe-network probe (diagnostics)

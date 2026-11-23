@@ -1,8 +1,8 @@
 name: Sensitivity
 
 # Evidence protocol 4.0 §3: how much the set-up choices a competent user could make move each result.
-# Reruns EPA SWMM 5.2.4 on its channel tests, one option changed at a time, and commits the envelope
-# (site/fixtures/sensitivity/swmm524.json). No person needs to start or approve it.
+# Re-runs each model the suite can re-run with other settings, one documented option changed at a time,
+# and commits each envelope (site/fixtures/sensitivity/<model>.json). No person needs to start or approve it.
 
 on:
   schedule:
@@ -11,29 +11,129 @@ on:
 
 permissions:
   contents: write
+  actions: write  # rebuild the site after committing
 
 concurrency:
   group: sensitivity
   cancel-in-progress: false
 
 jobs:
-  swmm524:
+  swmm:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        id: py310
+        with:
+          python-version: "3.10"
+      - run: ${{ steps.py310.outputs.python-path }} -m pip install -q "swmm-toolkit==0.10.0"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install -e ".[dev,engines,site]"
+          python -m venv "$RUNNER_TEMP/openswmm"
+          "$RUNNER_TEMP/openswmm/bin/python" -m pip install -q "openswmm==6.0.0a4.dev1" numpy
+      - name: EPA SWMM 5.2.4
+        run: python scripts/sensitivity_swmm.py
+      - name: SWMM 5.1.15 and OpenSWMM Engine v6
+        run: |
+          for m in swmm515 openswmm-dw openswmm-fv; do
+            python scripts/sensitivity.py "$m" --openswmm-python "$RUNNER_TEMP/openswmm/bin/python" \
+              --swmm51-python "${{ steps.py310.outputs.python-path }}" || echo "::warning title=Sensitivity $m::sweep failed"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sensitivity-swmm
+          path: site/fixtures/sensitivity/*.json
+
+  telemac:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install
-        run: python -m pip install -e ".[dev,engines,site]"
-      - name: Sweep reasonable set-ups
-        run: python scripts/sensitivity_swmm.py
-      - name: Commit the envelope
+      - run: python -m pip install -q -e ".[dev,site]"
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: telemac
+          create-args: -c conda-forge opentelemac=v9.1.1 python=3.12
+          init-shell: none
+      - name: openTELEMAC-2D (1D channels and analytic 2D tests; the EA tests are too slow for a sweep)
         run: |
+          python scripts/fetch_inputs.py
+          python scripts/sensitivity.py telemac A1F-001 A1F-010 A1F-011 A1F-020 A1F-040 A2A-001 A2A-010 \
+            --telemac-prefix "$MAMBA_ROOT_PREFIX/envs/telemac" || echo "::warning title=Sensitivity telemac::sweep failed"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sensitivity-telemac
+          path: site/fixtures/sensitivity/telemac.json
+
+  lisflood:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      LF_URL: https://zenodo.org/api/records/13121119/files/LISFLOOD-FP-8.3.zip/content
+      LF_MD5: abaa2e41b58f6c7df4443274bf130d4a
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update -q && sudo apt-get install -y -q libnetcdf-dev libnuma-dev
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/lisflood-src.zip
+          key: lisflood-8.3-src-v1
+      - name: Download (pinned checksum) and build
+        run: |
+          zip="$RUNNER_TEMP/lisflood-src.zip"
+          for i in 1 2 3 4 5 6 7 8; do
+            echo "$LF_MD5  $zip" | md5sum -c --status - 2>/dev/null && break
+            curl -fsSL --retry 3 --retry-all-errors -C - -o "$zip" "$LF_URL" || sleep 5
+          done
+          echo "$LF_MD5  $zip" | md5sum -c -
+          unzip -q "$zip" -d "$RUNNER_TEMP/lf"
+          src=$(dirname "$(find "$RUNNER_TEMP/lf" -path '*/source/CMakeLists.txt' | head -1)")
+          cmake -S "$src" -B "$RUNNER_TEMP/lf/build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/lf/build" -j4 --target lisflood
+      - name: LISFLOOD-FP (FV1, ACC; DG2 on the 1D channels)
+        run: |
+          python -m pip install -q -e ".[dev,site]"
+          python scripts/fetch_inputs.py
+          for m in lisflood-fv1 lisflood-acc; do
+            python scripts/sensitivity.py "$m" A1F-001 A1F-010 A1F-011 A1F-040 A2A-001 A2A-010 \
+              --lisflood-exe "$RUNNER_TEMP/lf/build/lisflood" || echo "::warning title=Sensitivity $m::sweep failed"
+          done
+          python scripts/sensitivity.py lisflood-dg2 A1F-001 A1F-010 A1F-011 --lisflood-exe "$RUNNER_TEMP/lf/build/lisflood" \
+            || echo "::warning title=Sensitivity lisflood-dg2::sweep failed"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sensitivity-lisflood
+          path: site/fixtures/sensitivity/lisflood-*.json
+
+  commit:
+    needs: [swmm, telemac, lisflood]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: out/sensitivity
+      - name: Commit the envelopes
+        run: |
+          find out/sensitivity -name "*.json" ! -name "*.partial.json" -exec cp {} site/fixtures/sensitivity/ \;
           git config user.name "benchmark1d2d-bot"
           git config user.email "benchmark1d2d-bot@users.noreply.github.com"
           git add site/fixtures/sensitivity
           if git diff --cached --quiet; then echo "no change"; exit 0; fi
-          git commit -m "Sensitivity envelope (EPA SWMM 5.2.4)"
+          git commit -m "Sensitivity envelopes"
           git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"
+          gh workflow run pages.yml --ref "${GITHUB_REF_NAME}" || true
+        env:
+          GH_TOKEN: ${{ github.token }}

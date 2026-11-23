@@ -836,6 +836,9 @@ def score_case(
     scored rather than passed.
     """
     results_path = Path(results_path)
+    from benchmark1d2d import setups  # a proposed set-up re-run by the suite is filed as its own model
+
+    solver = setups.decorate(solver, manifest["test_id"])
     ref_kind = (manifest.get("reference") or {}).get("kind")
     if ref_kind == "analytic":
         criteria_results, convergence_result, passed = _score_analytic(
