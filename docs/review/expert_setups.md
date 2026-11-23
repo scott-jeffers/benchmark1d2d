@@ -65,9 +65,9 @@ street depth in A12-010 stays 8 mm high: that comes from the mesh, not the coupl
 
 ### Landlab OverlandFlow: a thinner wet film
 
-**Problem.** OverlandFlow puts a film of `h_init` (default 1 mm) on every cell so its flux
+**Problem.** OverlandFlow puts a film of `h_init` (default 0.01 mm) on every cell so its flux
 formula never divides by zero. In the lake at rest over an emerged bump (A1F-043), the dry crest
-carries that 1 mm film, which drives a spurious flow that never settles (score 13.3).
+carries that 0.01 mm film, which drives a spurious flow that never settles (score 13.3).
 
 **Fix.** `h_init 0.000001`, i.e. 1 µm (set-up `landlab-lake-at-rest`). Score **13.3 → 0.001**.
 On the dam breaks it makes no difference. The `steep_slopes` option was also tried and made them
