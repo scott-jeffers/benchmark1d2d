@@ -11,7 +11,7 @@ Three parts:
   model file is, what its variables mean, and every model's results, with the
   pinned reference engine (Track B), the exact answer (the drainage cases) or
   the measured levels (Bellinge) alongside.
-* ``page`` is ``network.html``; ``static/netview.js`` parses the .inp in the
+* ``panel`` is the network map on each network test's page; ``static/netview.js`` parses the .inp in the
   browser and draws it.
 """
 
@@ -293,21 +293,20 @@ def thumbnail(text: str, kind: str, w: int = 320, h: int = 200) -> str:
             f'<path d="{d}" class="nv-thumb-l"/><g class="nv-thumb-n">{dots}</g></svg>')
 
 
-def page(layout, index: list[dict]) -> str:
+def panel(index: list[dict], fixed: str | None = None, base: str = "") -> str:
+    """The network map's controls. ``fixed`` pins it to one test (on that test's page); ``base`` prefixes data paths."""
     groups = [("Parity with the reference engines (Track B)", [t for t in index if t["sid"].startswith("B-")]),
               ("Drainage networks with exact answers", [t for t in index if t["sid"].startswith("A1D")]),
               ("Water-supply networks with exact answers", [t for t in index if t["sid"].startswith("A1P")]),
               ("A real sewer system", [t for t in index if t["sid"] == "A1F-100"])]
     opts = "".join(f'<optgroup label="{esc(g)}">' + "".join(
-        f'<option value="{esc(t["sid"])}">{esc(t["sid"])} · {esc(t["name"])}</option>' for t in ts) + "</optgroup>" for g, ts in groups if ts)
-    first = "B-RTC-001" if any(t["sid"] == "B-RTC-001" for t in index) else (index[0]["sid"] if index else "")
-    body = f"""<div class="wrap nv-wrap">
-<section class="page-head nv-head">
-  <h1>Network viewer</h1>
-  <p class="lede">Every SWMM and EPANET test, drawn from its own .inp file, with each engine's results on the map.</p>
-</section>
-<div class="nv-bar card">
-  <label class="nv-field">Test <select id="nv-test">{opts}</select></label>
+        f'<option value="{esc(t["sid"])}">{esc(t["name"])} ({esc(t["sid"])})</option>' for t in ts) + "</optgroup>" for g, ts in groups if ts)
+    if fixed:
+        opts = f'<option value="{esc(fixed)}" selected>{esc(fixed)}</option>'
+    first = fixed or ("B-RTC-001" if any(t["sid"] == "B-RTC-001" for t in index) else (index[0]["sid"] if index else ""))
+    tests = [{k: v for k, v in t.items() if k != "thumb"} for t in index if not fixed or t["sid"] == fixed]
+    html = f"""<div class="nv-bar card">
+  <label class="nv-field"{" hidden" if fixed else ""}>Test <select id="nv-test">{opts}</select></label>
   <div class="nv-dl" id="nv-dl"></div>
 </div>
 <div class="nv-tabs" role="tablist">
@@ -357,7 +356,5 @@ def page(layout, index: list[dict]) -> str:
     </div>
   </div>
 </section>
-</div>
-<script type="application/json" id="nv-index">{json.dumps(dict(tests=[{k: v for k, v in t.items() if k != "thumb"} for t in index], first=first))}</script>"""
-    return layout("Network viewer", body, "network.html", scripts='<script src="static/netview.js" defer></script>',
-                  description="SWMM and EPANET benchmark networks drawn from their .inp files, with every engine's results on the map.")
+<script type="application/json" id="nv-index">{json.dumps(dict(tests=tests, first=first, fixed=fixed, base=base))}</script>"""
+    return html

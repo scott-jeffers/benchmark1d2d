@@ -659,8 +659,8 @@ CASE_NOTES = {
 
 # ── layout ──────────────────────────────────────────────────────────────────
 
-NAV = [("profiles.html", "Evidence"), ("results.html", "Tests &amp; results"), ("viewer.html", "Viewer"), ("network.html", "Networks"), ("score.html", "Score your model"), ("how-it-works.html", "How it works"), ("about.html", "About")]
-FOOT = [("about.html", "About and how to cite"), ("news.html", "What's new"), ("profiles.html", "Evidence profiles"), ("solvers.html", "Models"), ("compare.html", "Side by side"), ("viewer.html", "Results viewer"), ("network.html", "Network viewer"), ("coupled.html", "1D/2D viewer"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
+NAV = [("profiles.html", "Evidence"), ("results.html", "Tests &amp; results"), ("score.html", "Score your model"), ("how-it-works.html", "How it works"), ("about.html", "About")]
+FOOT = [("about.html", "About and how to cite"), ("news.html", "What's new"), ("profiles.html", "Evidence profiles"), ("solvers.html", "Models"), ("compare.html", "Side by side"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
         ("method.html", "Method"), ("get-started.html", "Command line")]
 LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 2 11 14 17 8 S27 2 33 8" fill="none" stroke-width="3" stroke-linecap="round"/>'
         '<path class="b" d="M1 18 H33" stroke-width="3" stroke-linecap="round"/></svg>')
@@ -1591,11 +1591,11 @@ def model_file_card(m: dict) -> str:
     <p>{what}</p>
     <div class="btns">
       <a class="btn primary" href="../{esc(nv['inp'])}" download>Download {esc(nv['inp_name'])} <span class="nv-kb">{(f"{nv['bytes'] / 1048576:.1f} MB") if nv['bytes'] >= 1048576 else f"{max(1, round(nv['bytes'] / 1024))} KB"}</span></a>
-      <a class="btn ghost" href="../network.html#{esc(sid)}">Open it on the map →</a>
+      <a class="btn ghost" href="#see">Open it on the map ↓</a>
     </div>
     <p class="small muted" style="margin-top:12px">On the map: click any element to see its line in the file and every engine's result there over time{", or colour the network by how far each engine is from the reference" if sid.startswith("B-") else ""}.</p>
   </div>
-  {f'<a class="nv-thumb-link" href="../network.html#{esc(sid)}" aria-label="Open the network on the map">{nv["thumb"]}</a>' if nv.get("thumb") else ""}
+  {f'<a class="nv-thumb-link" href="#see" aria-label="Open the network on the map">{nv["thumb"]}</a>' if nv.get("thumb") else ""}
 </div></section>"""
 
 
@@ -1606,7 +1606,30 @@ def _check_value(ck: dict) -> str:
     return esc(ck["value"])
 
 
-def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_figs: str, evidence: list[dict], extra: list | None = None) -> str:
+CONV_WORDS = {"pass": "yes", "fail": "too slowly", "inconclusive": "not clear yet", "at_floor": "limited by number precision"}
+
+
+def _conv_cell(c: dict) -> str:
+    """How fast this run's error shrinks on finer grids, with the same plain verdict as the convergence chart."""
+    cv = (c.get("_judged") or {}).get("converges") or {}
+    order = cv.get("order", (c.get("convergence_result") or {}).get("observed_order"))
+    if order is None:
+        return '<td class="num">–</td>'
+    word = CONV_WORDS.get(cv.get("verdict"), "")
+    if cv.get("verdict") == "fail" and order < 0.1:
+        word = "no, the error does not shrink"
+    return f'<td class="num">{esc(nice(order, 2))}</td><td>{esc(word)}</td>'
+
+
+def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_figs: str, evidence: list[dict], extra: list | None = None,
+              panels: dict | None = None) -> str:
+    """One page per test: the interactive picture first, then every model's result, then the test itself.
+
+    ``panels`` holds the interactive viewers that apply to this test, already pinned to it:
+    ``maps`` (2D depth maps), ``conv`` (convergence chart), ``network`` (the network map), ``coupled`` (the 1D/2D replay)
+    and ``scripts`` (the script tags they need).
+    """
+    panels = panels or {}
     from benchmark1d2d.catalog.promotion import checklist, next_stage
 
     sid = sid_of(m["test_id"])
@@ -1668,6 +1691,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     has_c = any(v["conservation"] is not None for v in sides.values())
     has_t = any(v["timing"] is not None for v in sides.values())
     has_n = any(v["nse"] is not None for v in sides.values())
+    has_g = any((runs[r["key"]].get("convergence_result") or {}).get("errors") for r in order)
 
     def side_cells(k: str) -> str:
         v = sides[k]
@@ -1686,15 +1710,18 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         tb_rows.append(f'<tr><td>{tier_badge(r["key"])}</td>'
                        f'<td><a href="#m-{esc(r["key"])}"><span class="sw" style="background:{esc(s_["color"])}"></span><b>{esc(s_["name"])}</b> <span class="lb-sub">{esc(s_["sub"])}</span></a></td>'
                        f'<td class="num"><span class="lb-cell {measures.klass(r["score"])}">{esc(measures.short(r["score"]))}</span></td>'
-                       f'<td class="tb-why">{esc(why)}{(" · <b>" + esc(r["flag"] if HOLD(r["key"]) else "the engine flags this run") + "</b>") if r.get("flag") else ""}</td>{side_cells(r["key"])}<td class="num">{esc(measures.fmt_time((c.get("run") or {}).get("wall_seconds")))}</td></tr>')
+                       f'<td class="tb-why">{esc(why)}{(" · <b>" + esc(r["flag"] if HOLD(r["key"]) else "the engine flags this run") + "</b>") if r.get("flag") else ""}</td>{side_cells(r["key"])}'
+                       + (_conv_cell(c) if has_g else "") + f'<td class="num">{esc(measures.fmt_time((c.get("run") or {}).get("wall_seconds")))}</td></tr>')
     tboard = ('<div class="table-scroll"><table class="tb"><thead><tr><th>Set-up</th><th>Model</th><th class="num">Difference</th>'
               '<th>Largest difference in</th>' + ('<th class="num" title="Largest mass, continuity or storage balance error">Mass error</th>' if has_c else '')
               + ('<th class="num" title="Largest arrival or peak-time error">Timing</th>' if has_t else '')
-              + ('<th class="num" title="Lowest Nash-Sutcliffe efficiency (1 is perfect)">NSE</th>' if has_n else '') + '<th class="num">Run time</th></tr></thead><tbody>' + "".join(tb_rows) + "</tbody></table></div>") if len(tb_rows) > 1 else ""
+              + ('<th class="num" title="Lowest Nash-Sutcliffe efficiency (1 is perfect)">NSE</th>' if has_n else '')
+              + ('<th class="num" title="Observed order of convergence across the grids">Rate the error shrinks</th><th>Shrinking as designed?</th>' if has_g else '')
+              + '<th class="num">Run time</th></tr></thead><tbody>' + "".join(tb_rows) + "</tbody></table></div>") if len(tb_rows) > 1 else ""
     if mcards:
         models = f"""<section class="section" style="padding-bottom:0" id="models">
   <h2>How models did</h2>
-  <p class="muted">Listed by configuration tier (T0 out of the box, T1 documented guidance, T2 expert), not by result. Each difference is the largest percent difference from the right answer over the test's accuracy checks; mass error, timing and NSE are shown beside it, not folded in. Each model's set-up is on its model page. {esc(grid_txt)}{f' <a href="../viewer.html#{esc(sid)}">Compare them in the results viewer{" (depth maps and animation)" if m["physics"].get("dimensionality") == "2D" else ""} →</a>' if m["track"] == "A" and sid not in COUPLEDVIEW else ""}{f' <a href="../coupled.html#{esc(sid)}"><b>Watch the coupled model run in the 1D/2D viewer →</b></a>' if sid in COUPLEDVIEW else ""}</p>
+  <p class="muted">Listed by configuration tier (T0 out of the box, T1 documented guidance, T2 expert), not by result. Each difference is the largest percent difference from the right answer over the test's accuracy checks; mass error, timing and NSE are shown beside it, not folded in. Each model's set-up is on its model page. {esc(grid_txt)}</p>
   {tboard}
   {sensitivity_html(sid)}
   {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
@@ -1706,7 +1733,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         models = f"""<section class="section" style="padding-bottom:0" id="models"><h2>How models did</h2>
   <p>No model has been scored on this test yet.</p>{not_yet}</section>"""
     # convergence + status
-    conv = conv_chart(m, runs)
+    conv = "" if panels.get("conv") else conv_chart(m, runs)
     cards_for = list(runs.values()) + list(evidence or [])
     items = checklist(m, cards_for)
     nxt = next_stage(m, cards_for)
@@ -1727,6 +1754,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     split = (f'<section class="section split-row" style="padding-bottom:0"><div class="card"><h2>Error shrinks as the grid gets finer</h2>'
              f'<p class="small">Average error on each grid. A steeper line means the model converges faster.</p>{conv}</div>{status_card}</section>'
              if conv else f'<section class="section split-row" style="padding-bottom:0">{status_card}</section>')
+    conv_live = panels.get("conv", "")
     # technical details
     kind = m["reference"]["kind"]
     ref_desc = {
@@ -1788,6 +1816,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     <div class="chip-row">{_tags(m)}</div>
     <h1>{esc(st['name'])}</h1>
     <p class="lede">{esc(st['question'])}</p>
+    {f'<p class="case-what">{esc(st["what"])}</p>' if panels.get("maps") or panels.get("network") or panels.get("coupled") else ""}
   </div>
   <div class="case-id">Test {esc(sid)}<br>{esc(_source_short(m))}<br>Version {esc(m['case_version'])}</div>
 </header>"""
@@ -1803,8 +1832,14 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
            f'<dt>Results</dt><dd>{result_line} · <a href="#models">see them ↓</a></dd>'
            f'<dt>Must</dt><dd>{esc(st["must"][0])}</dd></dl>'
            f'<span class="small">Sketch, not to scale.</span></figcaption></figure>') if not hero_chart else ""
-    body = f'<div class="wrap">{head}{art}{model_file_card(m)}{figure}{story_cards}{data_card_html(m)}{netsec}{models}{split}{tech}</div>{chart_data}'
-    scripts = '<script src="../static/chart.js" defer></script>' if chart_html else ""
+    live = "".join(panels.get(k, "") for k in ("coupled", "network", "maps"))
+    if live:  # the interactive picture replaces the sketch and the network thumbnail
+        top = f'<section class="section case-live" id="see">{live}</section>' + (f'<section class="section" style="padding-bottom:0"><h2>Along a line</h2>{figure}</section>' if figure and panels.get("maps") else figure)
+        about = f'<section class="section" id="about"><h2>About this test</h2>{story_cards}</section>'
+        body = f'<div class="wrap">{head}{top}{netsec}{models}{conv_live}{split}{about}{data_card_html(m)}{tech}</div>{chart_data}'
+    else:
+        body = f'<div class="wrap">{head}{art}{model_file_card(m)}{figure}{story_cards}{data_card_html(m)}{netsec}{models}{conv_live}{split}{tech}</div>{chart_data}'
+    scripts = ('<script src="../static/chart.js" defer></script>' if chart_html else "") + panels.get("scripts", "")
     return layout(st["name"], body, "results.html", depth=1, description=st["question"], scripts=scripts, math=True,
                   og_image=f"assets/og/{sid}.png", path=f"tests/{sid}.html")
 
@@ -2021,6 +2056,14 @@ def how_page(manifests: list[dict], runs: dict) -> str:
 </section>
 </div>"""
     return layout("How it works", body, "how-it-works.html", description="How the benchmark keeps its answers right and its results repeatable.")
+
+
+def hash_redirect(fallback: str = "results.html") -> str:
+    """A retired viewer: send ``page.html#TEST`` (or ``#TEST:node:id``) to that test's own page, which now holds the viewer."""
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Moved</title><meta name="robots" content="noindex">
+<script>(function(){{var h=decodeURIComponent((location.hash||"").slice(1)),sid=h.split(":")[0];
+location.replace(/^[A-Z0-9-]+$/.test(sid)?"tests/"+sid+".html#"+(h.indexOf(":")>0?h:"see"):"{fallback}");}})();</script>
+</head><body><p>This viewer is now part of each test's page. <a href="{fallback}">Browse every test</a>.</p></body></html>"""
 
 
 def redirect(to: str) -> str:

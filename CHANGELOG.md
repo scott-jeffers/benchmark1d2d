@@ -5,6 +5,7 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ## [Unreleased]
 
+- **One page per test.** Each test's page now holds everything about it, starting with its interactive picture: 2D depth maps you can play and compare with the exact answer, the network map with every engine's result, or the coupled sewer-and-street replay, then one results table (now including how fast each model's error shrinks on finer grids), the convergence chart, each model's detail and the test itself. The separate Viewer, Networks and 1D/2D viewer pages are retired; old links open the right test page (a network link keeps the selected manhole or pipe). The menu is now Evidence · Tests & results · Score your model · How it works · About.
 - **Results viewer reworked after a full test** of every test, control, phone and dark mode:
     - Tests listed by name and grouped by what you can see (maps over time, maps at the end, grid comparison only).
     - Difference mode turns the player off and says why; the exact map is labelled as the reference; a Depth/Difference switch appears only where there is an exact answer.

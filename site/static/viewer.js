@@ -3,6 +3,7 @@
 (function () {
   "use strict";
   var IDX = JSON.parse(document.getElementById("vw-index").textContent);
+  var BASE = IDX.base || "", FIXED = IDX.fixed || null;  // on a test page the viewer is pinned to that test
   function $(id) { return document.getElementById(id); }
   var sel = $("vw-test"), link = $("vw-link");
   var mapsSec = $("vw-maps-sec"), mapsEl = $("vw-maps");
@@ -300,9 +301,9 @@
     var ms = convModels();
     convSec.hidden = !ms.length;
     document.querySelector("#vw-table tbody").innerHTML = "";
-    oneD.hidden = !(mapsSec.hidden && ms.length);
+    oneD.hidden = !!FIXED || !(mapsSec.hidden && ms.length);
     oneD.innerHTML = D.two_d ? "This test's models saved no maps, so only the grid comparison is shown." :
-      'This test is one-dimensional, so there are no maps. The <a href="tests/' + encodeURIComponent(D.sid) + '.html">test page</a> plays each model\'s profile over time.';
+      'This test is one-dimensional, so there are no maps. The <a href="' + BASE + 'tests/' + encodeURIComponent(D.sid) + '.html">test page</a> plays each model\'s profile over time.';
     if (!ms.length) return;
     while (convSvg.firstChild) convSvg.removeChild(convSvg.firstChild);
     var xs = [], ys = [];
@@ -381,10 +382,12 @@
       if (timer) { stop(); start(); }
     });
   });
+  function onScreen(el) { if (!el) return false; var r = el.getBoundingClientRect(); return r.bottom > 80 && r.top < window.innerHeight - 80; }  // keys act only on a player you can see
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") { var b = mapsEl.querySelector(".vw-big"); if (b) toggleBig(b); return; }
     if (mode === "diff") return;
     if (!times || mapsSec.hidden || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (!onScreen(mapsSec)) return;
     var tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "select" || tag === "textarea" || (tag === "button" && e.key === " ")) return;
     if (e.key === " ") { e.preventDefault(); if (timer) stop(); else start(); }
@@ -412,24 +415,24 @@
   function load(sid) {
     stop();
     link.href = "tests/" + encodeURIComponent(sid) + ".html";
-    try { history.replaceState(null, "", "#" + sid); } catch (e) { /* file:// */ }
+    if (!FIXED) try { history.replaceState(null, "", "#" + sid); } catch (e) { /* file:// */ }
     msg.hidden = false; msg.className = "vw-msg muted small"; msg.textContent = "Loading…";
-    fetch("data/viewer/" + encodeURIComponent(sid) + ".json").then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (d) {
+    fetch(BASE + "data/viewer/" + encodeURIComponent(sid) + ".json").then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (d) {
       D = d; hidden = {}; msg.hidden = true;
       buildMaps(); buildConv(); renderChips(); applyHidden();
     }).catch(function () {
       mapsSec.hidden = true; convSec.hidden = true;
-      msg.className = "vw-msg callout"; msg.innerHTML = 'This test\'s results could not be loaded. Try again, or open the <a href="tests/' + encodeURIComponent(sid) + '.html">test page</a>.';
+      msg.className = "vw-msg callout"; msg.innerHTML = 'This test\'s results could not be loaded. Try again, or open the <a href="' + BASE + 'tests/' + encodeURIComponent(sid) + '.html">test page</a>.';
     });
   }
   sel.addEventListener("change", function () { load(sel.value); });
   function stickTop() { var h = document.querySelector(".site-head"); if (h) $("vw-player").style.top = h.offsetHeight + "px"; }
   stickTop(); window.addEventListener("resize", stickTop);
-  window.addEventListener("hashchange", function () {
+  if (!FIXED) window.addEventListener("hashchange", function () {
     var w = decodeURIComponent((location.hash || "").slice(1));
     if (w && w !== sel.value && IDX.tests.some(function (t) { return t.sid === w; })) { sel.value = w; load(w); }
   });
-  var want = decodeURIComponent((location.hash || "").slice(1)) || IDX.first;
+  var want = FIXED || decodeURIComponent((location.hash || "").slice(1)) || IDX.first;
   if (IDX.tests.some(function (t) { return t.sid === want; })) sel.value = want;
   if (sel.value) load(sel.value);
 })();

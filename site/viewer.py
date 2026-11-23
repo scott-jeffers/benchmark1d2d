@@ -3,7 +3,7 @@
 ``write_data`` writes ``data/viewer/<test>.json`` for each Track A test:
 the depth maps (exact and each model, ``site/fields.py``), with frames over
 time where they exist, and each model's grid-convergence errors and fitted
-rate. ``viewer_page`` is the page; ``static/viewer.js`` draws it.
+rate. ``panel`` is the viewer, pinned to one test on that test's page; ``static/viewer.js`` draws it.
 """
 
 from __future__ import annotations
@@ -93,24 +93,23 @@ def write_data(dist: Path, manifests: list[dict], runs: dict, fields_by: dict, s
     return index
 
 
-def viewer_page(layout, index: list[dict]) -> str:
+def panel(index: list[dict], fixed: str | None = None, base: str = "") -> str:
+    """The viewer's controls and figures. ``fixed`` pins it to one test (on that test's page); ``base`` prefixes data paths."""
     groups = [("Maps that change over time", [t for t in index if t["maps"] and t["frames"]]),
               ("Maps at the end of the run", [t for t in index if t["maps"] and not t["frames"]]),
               ("Error on finer grids only (one-dimensional tests)", [t for t in index if not t["maps"]])]
     opts = "".join(f'<optgroup label="{esc(g)}">' + "".join(f'<option value="{esc(t["sid"])}">{esc(t["name"])} ({esc(t["sid"])})</option>' for t in ts) + "</optgroup>"
                    for g, ts in groups if ts)
-    first = next((t["sid"] for t in index if t["frames"]), index[0]["sid"] if index else "")
-    body = f"""<div class="wrap">
-<section class="page-head nv-head">
-  <h1>Results viewer</h1>
-  <p class="lede">Pick a test to see every model's answer side by side: depth maps you can play over time, where each model differs from the exact answer, and whether its error shrinks as the grid gets finer.</p>
-</section>
-<div class="vw-pick card">
+    first = fixed or next((t["sid"] for t in index if t["frames"]), index[0]["sid"] if index else "")
+    picker = ("" if fixed else f"""<div class="vw-pick card">
   <label>Test <select id="vw-test">{opts}</select></label>
   <a id="vw-link" href="#" class="small">Open the test page →</a>
-</div>
+</div>""")
+    if fixed:
+        picker = f'<select id="vw-test" hidden><option value="{esc(fixed)}" selected>{esc(fixed)}</option></select><a id="vw-link" href="#" hidden></a>'
+    return f"""{picker}
 <p class="vw-msg" id="vw-msg" role="status" hidden></p>
-<section class="section" id="vw-maps-sec" hidden>
+<section class="section vw-sec" id="vw-maps-sec" hidden>
   <div class="head-row"><h2 style="margin:0">Depth maps</h2>
     <div class="view-toggle" id="vw-modes" role="group" aria-label="What the maps show"><button type="button" data-mode="depth" aria-pressed="true">Depth</button><button type="button" data-mode="diff" aria-pressed="false">Difference from exact</button></div>
   </div>
@@ -132,7 +131,8 @@ def viewer_page(layout, index: list[dict]) -> str:
   <p class="small muted vw-stale-note" id="vw-stale-note" hidden></p>
   <div class="vw-maps" id="vw-maps"></div>
 </section>
-<section class="section" id="vw-conv-sec" hidden>
+<!--VW-SPLIT-->
+<section class="section vw-sec" id="vw-conv-sec" hidden>
   <h2>Does the error shrink on finer grids?</h2>
   <p class="muted small" id="vw-conv-note">Each line is one model: its error against the exact answer on each grid it ran, from coarse (right) to fine (left). Both axes are logarithmic, so a steady slope means the error shrinks at a steady rate. Lines at least as steep as the dashed guide shrink fast enough. Point at a line or a row to pick it out.</p>
   <p class="small vw-1d" id="vw-1d" hidden></p>
@@ -140,7 +140,4 @@ def viewer_page(layout, index: list[dict]) -> str:
   <svg id="vw-conv" class="chart" viewBox="0 0 1000 420" role="img" aria-label="Error against grid spacing for each model"></svg>
   <div class="table-scroll" style="margin-top:12px"><table class="data" id="vw-table"><thead><tr><th>Model</th><th class="num">Difference from the right answer</th><th class="num">Rate the error shrinks</th><th>Likely range (90 %)</th><th>Shrinking as designed?</th></tr></thead><tbody></tbody></table></div>
 </section>
-</div>
-<script type="application/json" id="vw-index">{json.dumps(dict(tests=index, first=first))}</script>"""
-    return layout("Results viewer", body, "viewer.html", scripts='<script src="static/viewer.js" defer></script>',
-                  description="Compare every model's result on a benchmark test: depth maps, differences from the exact answer and grid convergence.")
+<script type="application/json" id="vw-index">{json.dumps(dict(tests=[t for t in index if not fixed or t["sid"] == fixed], first=first, fixed=fixed, base=base))}</script>"""

@@ -3,6 +3,7 @@
 (function () {
   "use strict";
   var IDX = JSON.parse(document.getElementById("nv-index").textContent);
+  var BASE = IDX.base || "", FIXED = IDX.fixed || null;  // on a test page the map is pinned to that test
   function scoreChip(sc) { return sc ? '<span class="vw-chip-v score ' + sc.k + '">' + esc(sc.l) + '</span>' : ''; }
   function $(id) { return document.getElementById(id); }
   var testSel = $("nv-test"), engines = $("nv-engines"), modeBox = $("nv-mode"), flowBox = $("nv-flow"), dl = $("nv-dl"), summary = $("nv-summary");
@@ -643,7 +644,9 @@
       if (timer) { stop(); start(); }
     });
   });
+  function onScreen(el) { if (!el) return false; var r = el.getBoundingClientRect(); return r.bottom > 80 && r.top < window.innerHeight - 80; }  // keys act only on a player you can see
   document.addEventListener("keydown", function (e) {
+    if (!onScreen($("nv-canvas"))) return;
     if (!cur || cur.t.length < 2 || paneMap.hidden || e.altKey || e.ctrlKey || e.metaKey) return;
     var tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "select" || tag === "textarea" || (tag === "button" && e.key === " ")) return;
@@ -814,12 +817,12 @@
 
   // ── loading a test ─────────────────────────────────────────────────────────
   function renderDownloads() {
-    var h = '<a class="btn primary" href="' + esc(D.inp.url) + '" download>Download ' + esc(D.inp.name) + ' <span class="nv-kb">' + kb(D.inp.bytes) + "</span></a>";
-    h += '<a class="btn" href="' + esc(D.case_zip) + '" download>Whole test (.zip)</a>';
-    h += '<a class="btn ghost" href="tests/' + esc(D.sid) + '.html">Test page →</a>';
+    var h = '<a class="btn primary" href="' + esc(BASE + D.inp.url) + '" download>Download ' + esc(D.inp.name) + ' <span class="nv-kb">' + kb(D.inp.bytes) + "</span></a>";
+    h += '<a class="btn" href="' + esc(BASE + D.case_zip) + '" download>Whole test (.zip)</a>';
+    if (!FIXED) h += '<a class="btn ghost" href="tests/' + esc(D.sid) + '.html">Test page →</a>';
     dl.innerHTML = h;
     var f = "Drawn from " + esc(D.inp.name) + ", " + esc(D.inp.source) + (N && N.laidOut ? ". The file has no map coordinates, so the network is laid out by distance along the pipes" : "") + ".";
-    if (D.zips.length) f += " The files each engine ran: " + D.zips.map(function (z) { return '<a href="' + esc(z.url) + '" download>' + esc(z.label) + "</a>"; }).join(" · ") + ".";
+    if (D.zips.length) f += " The files each engine ran: " + D.zips.map(function (z) { return '<a href="' + esc(BASE + z.url) + '" download>' + esc(z.label) + "</a>"; }).join(" · ") + ".";
     foot.innerHTML = symbolsHtml() + '<span class="nv-src-note">' + f + "</span>";
   }
   function renderSummary() {
@@ -832,9 +835,9 @@
   function load(sid, focus) {
     stop();
     selected = null; side.innerHTML = '<p class="muted small">Loading…</p>';
-    fetch("data/network/" + encodeURIComponent(sid) + ".json").then(function (r) { return r.json(); }).then(function (d) {
+    fetch(BASE + "data/network/" + encodeURIComponent(sid) + ".json").then(function (r) { return r.json(); }).then(function (d) {
       D = d;
-      return fetch(d.inp.url).then(function (r) { return r.text(); });
+      return fetch(BASE + d.inp.url).then(function (r) { return r.text(); });
     }).then(function (text) {
       P = parseInp(text); N = buildNet(D.kind);
       ref = D.results.filter(function (r) { return r.role !== "model"; })[0] || null;
@@ -851,10 +854,10 @@
       else { var d0 = pickDefault(); if (d0) select(d0, "auto"); else renderSide(); }
     }).catch(function (e) { side.innerHTML = '<p class="small">Could not load this test: ' + esc(e.message || e) + "</p>"; });
   }
-  testSel.addEventListener("change", function () { try { history.replaceState(null, "", "#" + testSel.value); } catch (e) { /* ignore */ } load(testSel.value); });
+  if (!FIXED) testSel.addEventListener("change", function () { try { history.replaceState(null, "", "#" + testSel.value); } catch (e) { /* ignore */ } load(testSel.value); });
 
-  var hash = decodeURIComponent((location.hash || "").slice(1)), start = IDX.first, focus = null;
-  if (hash) {
+  var hash = decodeURIComponent((location.hash || "").slice(1)), start = FIXED || IDX.first, focus = null;
+  if (hash && (!FIXED || hash.indexOf(FIXED + ":") === 0)) {
     var parts = hash.split(":");
     if (IDX.tests.some(function (t) { return t.sid === parts[0]; })) { start = parts[0]; if (parts.length > 2) focus = parts.slice(1).join(":"); }
   }

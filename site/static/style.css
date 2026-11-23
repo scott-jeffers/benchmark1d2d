@@ -999,3 +999,16 @@ details.older > summary { cursor: pointer; font-weight: 600; margin: 12px 0; col
   .vw-map figcaption .vw-zoom { order: 3; margin-left: auto; }
   .vw-map figcaption .sw { order: 0; }
 }
+
+/* ── one page per test: embedded viewers ───────────────────────────── */
+.case-what { max-width: 75ch; color: var(--ink-3); margin: 10px 0 0; }
+.case-live { padding-top: 8px; }
+.case-live > h2, .case-live .vw-sec > .head-row h2 { font-size: 26px; }
+.case-live .vw-sec { padding-top: 0; }
+.case-live .vw-pick.cv-pick { margin-top: 0; }
+.vw-embed .vw-sec { padding-top: 32px; }
+.vw-embed .vw-sec h2 { font-size: 26px; }
+.vw-embed #vw-table, .vw-embed .table-scroll:has(#vw-table) { display: none; }  /* the results table above already holds these numbers */
+.nv-embed .nv-bar { margin-top: 0; }
+.nv-embed .nv-bar label[hidden] { display: none; }
+.tb .lb-cell { white-space: nowrap; }
