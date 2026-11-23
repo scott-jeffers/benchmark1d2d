@@ -16,6 +16,7 @@ A run is **flagged** when its engine reports
 
 from __future__ import annotations
 
+import math
 import re
 from pathlib import Path
 
@@ -123,9 +124,13 @@ def hecras_report(plan_hdf: str | Path | None, ras_exe: str | Path | None = None
                         for k, v in f[grp].attrs.items():
                             if "Error" in k and "Percent" in k:
                                 try:
-                                    out.setdefault("volume_error_pct", float(_attr(v)))
+                                    ve = float(_attr(v))
                                 except (TypeError, ValueError):
-                                    pass
+                                    continue
+                                if math.isfinite(ve):
+                                    out.setdefault("volume_error_pct", ve)
+                                else:  # HEC-RAS wrote NaN: say so rather than put a NaN in a signed card
+                                    out.setdefault("volume_error_note", f"HEC-RAS reported {k} as {_attr(v)}")
         except Exception as exc:  # noqa: BLE001 - a report is extra; never fail a run over it
             out["read_error"] = f"{type(exc).__name__}: {exc}"[:200]
     if len(out) <= 1:
