@@ -72,7 +72,7 @@ def runs_for(s: dict, a: argparse.Namespace) -> list[tuple[list[str], Path]]:
         c = pick(list(rh.CASES))
         eq = "em" if base == "hecras-em" else "elm"
         if c:
-            out.append(([py, "scripts/run_hecras_2d.py", "--accept-hec-terms", "--equations", eq, *c], REPO / "out" / "hecras2d" / eq))
+            out.append(([py, "scripts/run_hecras_2d.py", "--accept-hec-terms", *c, "--equations", eq], REPO / "out" / "hecras2d" / eq))
     elif base == "hydronet-fvm":
         import run_hydronet as hn
 
