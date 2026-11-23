@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0.0",
+  "base": "hecras-em",
+  "title": "dam-break finer time step",
+  "proposed_by": "Benchmark1D2D maintainers (expert set-up)",
+  "tier": "T2",
+  "tests": [
+    "A1F-010"
+  ],
+  "settings": {
+    "Computation Time Step Max Courant": "0.25",
+    "Computation Time Step Min Courant": "0.1",
+    "UNET D2 Z Tol": "0.001",
+    "UNET D2 Volume Tol": "0.001",
+    "UNET D2 Max Iterations": "40"
+  },
+  "reason": "The dam-break set-up with the Courant cap halved again (0.25, never below 0.1), to see whether the remaining lag of the SWE-EM front on a dry bed still shrinks with the time step or has reached what the scheme and mesh give."
+}
