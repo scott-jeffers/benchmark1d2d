@@ -507,6 +507,43 @@ def read_strip(hdf: Path, ghdf: Path, t_end: float, x0: float, xmin: float, xmax
 CASES = {"A1F-011": run_dam_break, "A1F-010": run_dam_break}
 
 
+def _report_nonfinite(m, paths, solver) -> None:
+    """Say where a NaN came from when a score card cannot be signed."""
+    import math
+
+    import pyarrow.parquet as pq
+
+    def walk(o, at):
+        if isinstance(o, float) and not math.isfinite(o):
+            log(f"    non-finite value at {at}: {o}")
+        elif isinstance(o, dict):
+            for k, v in o.items():
+                walk(v, f"{at}.{k}")
+        elif isinstance(o, (list, tuple)):
+            for i, v in enumerate(o):
+                walk(v, f"{at}[{i}]")
+
+    walk(solver, "solver")
+    from benchmark1d2d.scoring import scorecard as sc
+    from benchmark1d2d.scoring.scorer import score_case
+
+    real = sc.canonical_json
+    sc.canonical_json = lambda o, **kw: json.dumps(o, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    try:
+        walk(score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=__import__("benchmark1d2d.signing", fromlist=["x"]).private_key(), solver=solver), "card")
+    except Exception as exc:  # noqa: BLE001
+        log(f"    could not rebuild the card to look: {exc}")
+    finally:
+        sc.canonical_json = real
+    for p in paths:
+        md = pq.read_metadata(p).metadata or {}
+        for k, v in md.items():
+            try:
+                walk(json.loads(v), f"{Path(p).name}:{k.decode()}")
+            except Exception:  # noqa: BLE001
+                pass
+
+
 def main() -> int:
     from run_hecras import accept_terms, find_ras_exe
 
@@ -560,7 +597,11 @@ def main() -> int:
                 log(f"  {label} {tid} dx={dx}: {time.perf_counter() - t0:.0f}s")
             if len(paths) < len(levels) or len(paths) < 2:
                 continue
-            card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)
+            try:
+                card = score_case(m, paths[-1], refinement_results=paths, timestamp=TS, private_key=key, solver=solver)
+            except ValueError:  # a NaN somewhere: say where, then fail as before
+                _report_nonfinite(m, paths, solver)
+                raise
             (out / f"{m['test_id']}.scorecard.json").write_text(json.dumps(card, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
             log(f"{card.get('verdict', 'pass' if card['passed'] else 'fail').upper()} {m['test_id']} ({solver['name']})")
             for r in card["criteria_results"]:

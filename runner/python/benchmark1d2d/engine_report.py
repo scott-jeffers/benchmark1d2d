@@ -135,6 +135,9 @@ def hecras_report(plan_hdf: str | Path | None, ras_exe: str | Path | None = None
             out["read_error"] = f"{type(exc).__name__}: {exc}"[:200]
     if len(out) <= 1:
         return None
+    for k, v in list(out.items()):  # a NaN or infinity cannot go into a signed card
+        if isinstance(v, float) and not math.isfinite(v):
+            out[k] = str(v)
     ve = out.get("volume_error_pct")
     if ve is not None and abs(ve) > MAX_CONTINUITY:
         out["flagged"], out["flag_reason"] = True, f"volume accounting error {ve:+g} %"
