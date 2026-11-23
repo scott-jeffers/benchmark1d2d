@@ -321,7 +321,7 @@ def register_setup(solver: dict) -> str | None:
     if key not in SOLVER:
         who = st["proposed_by"]
         entry = dict(key=key, name=base["name"] if base else solver["name"],
-                     sub=f"set-up “{st['title']}” by {who}", kind="setup", base=base_key,
+                     sub=(f"{base['sub']} · " if base else "") + f"set-up “{st['title']}”", kind="setup", base=base_key,
                      color=(base or {}).get("color", "#5D6D7E"),
                      what=(f"{base['name'] if base else solver['name']} {base['sub'] if base else ''}, with the set-up “{st['title']}” proposed by {who}"
                            + (" following the developer's published guidance" if st.get("tier") == "T1" else "")
@@ -1743,6 +1743,185 @@ def _conv_cell(c: dict) -> str:
     return f'<td class="num">{esc(nice(order, 2))}</td><td>{esc(word)}</td>'
 
 
+def setup_spec(m: dict) -> dict | None:
+    """The test's SETUP.md (what to build, in plain words), split into its lead and its sections."""
+    f = m["_case_dir"] / "SETUP.md"
+    if not f.is_file():
+        return None
+    text = f.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    if lines and lines[0].startswith("# "):
+        lines = lines[1:]
+    lead, sections, cur = [], [], None
+    for ln in lines:
+        if ln.startswith("## "):
+            cur = [ln[3:].strip(), []]
+            sections.append(cur)
+        elif cur is None:
+            lead.append(ln)
+        else:
+            cur[1].append(ln)
+    words = {"Build": "Build", "Start": "Starting state", "Boundaries": "Boundaries", "Run": "Run and report"}
+    return {"lead": H.md("\n".join(lead).strip(), source=f) if "".join(lead).strip() else "",
+            "sections": [(words.get(t, t), H.md("\n".join(b).strip(), source=f)) for t, b in sections if "".join(b).strip()]}
+
+
+def test_section(m: dict, sid: str, st: dict) -> str:
+    """The test itself: what it is, why it matters, how to set it up, what is checked and against what."""
+    spec = setup_spec(m)
+    kind = (m.get("reference") or {}).get("kind")
+    truth = {"analytic": "An exact mathematical solution", "exact_states": "Exact end states, from conservation of water",
+             "intercomparison": "Known end states that follow from the inputs", "measured": "Laboratory or field measurements",
+             "pinned_engine": "The same file run in a pinned reference engine"}.get(kind, "")
+    src = _source_short(m)
+    levels = (m["simulation"].get("mesh_refinement") or {}).get("levels") or []
+    grid = (f"Run on {len(levels)} grids, {nice(max(levels), 3)} m down to {nice(min(levels), 3)} m; the checks are scored on the finest, "
+            "and the error should shrink as the grid gets finer." if len(levels) > 1 else "")
+    must = "".join(f"<li>{esc(x)}</li>" for x in st["must"])
+    if spec:
+        steps = "".join(f'<div class="td-step"><h4>{esc(t)}</h4><div class="prose">{b}</div></div>' for t, b in spec["sections"])
+        build = (f'<h3>How to set it up</h3>{steps}'
+                 f'<p class="small muted">Everything named here is in the test download, with the exact answer and the scoring.</p>')
+        lead = spec["lead"] or f"<p>{esc(st['what'])}</p>"
+    else:
+        build = (f'<h3>How to set it up</h3><p>The full specification is in the <a href="{TREE}{esc(m["_rel"])}">test files</a>. '
+                 f'This test is still a draft, so its plain-language set-up has not been written yet.</p>')
+        lead = f"<p>{esc(st['what'])}</p>"
+    links = [f'<a class="btn primary sm" href="../data/cases/{sid}.zip" download>Download the test (.zip)</a>']
+    if (H.DIST / "data" / "check" / f"{sid}.json").exists():
+        links.append(f'<a class="btn ghost sm" href="../score.html#{sid}">Check your own results</a>')
+    return f"""<section class="section test-def" id="test">
+  <h2>The test</h2>
+  <div class="td-grid">
+    <div class="td-main">
+      <div class="td-lead">{lead}</div>
+      {f'<p class="td-why"><b>Why it matters.</b> {esc(st["why"])}</p>' if st.get("why") else ''}
+      {build}
+    </div>
+    <aside class="td-side">
+      <h3>A model passes if it can</h3><ul class="td-must">{must}</ul>
+      {f'<p class="small muted">{esc(grid)}</p>' if grid else ''}
+      <h3>Compared with</h3><p>{esc(truth)}{(" · " + esc(src)) if src else ""}</p>
+      <div class="btns">{"".join(links)}</div>
+    </aside>
+  </div>
+</section>"""
+
+
+TIER_SHORT = {"T0": "Defaults", "T1": "Developer's guidance", "T2": "Expert set-up"}
+TIER_GROUP = {"T0": ("Out of the box", "Each engine's own defaults, plus only what the test defines."),
+              "T1": ("Following the developer's guidance", "Changes the developer's own published guidance recommends for this kind of flow."),
+              "T2": ("Expert set-ups", "Settings chosen by someone who knows the software: the maintainers or anyone who proposes one. Shown beside the defaults, never in their place.")}
+
+
+def result_detail(m: dict, sid: str, k: str, card: dict) -> str:
+    """One model's result, opened: how it was modelled, its checks, and the files to check it."""
+    import approach as _ap
+    import recipes
+
+    s = SOLVER[k]
+    how = _ap.approach(k if s["kind"] != "setup" else s.get("base"), sid)
+    extra = ""
+    st_ = (card.get("solver") or {}).get("setup")
+    if st_:
+        ch = ", ".join(f"{c['setting']} {c['value']}" + (f" (was {c['was']})" if c.get("was") else "") for c in st_.get("changes", []))
+        f_ = H.ROOT / "setups" / st_["slug"] / "setup.json"
+        reason = json.loads(f_.read_text(encoding="utf-8")).get("reason", "") if f_.is_file() else ""
+        extra = (f'<p><b>What the set-up changes.</b> {esc(ch)}.{(" " + esc(reason)) if reason else ""} '
+                 f'<span class="muted">Proposed by {esc(st_["proposed_by"])}.</span></p>')
+    else:
+        rows = settings_rows(k, sid)
+        if rows:
+            extra = (f'<details class="rd-settings"><summary>Settings changed from the engine\'s defaults</summary><div class="table-scroll"><table class="data small-table">'
+                     f'<thead><tr><th>Setting</th><th>Value</th><th>Default</th><th>Why</th></tr></thead><tbody>{rows}</tbody></table></div></details>')
+    if not how and s["kind"] == "submitted":
+        how = "Run and set up by the submitter. " + esc(((card.get("solver") or {}).get("adapter") or "").split("; ", 1)[-1])
+    checks = "".join(
+        f'<tr class="{"" if ck["gating"] else "rd-info"}"><td>{esc(ck["label"])}</td><td>{_check_value(ck)}</td><td class="muted">{esc(ck["limit"])}</td></tr>'
+        for ck in checks_for(m, card))
+    note = NOTES.get((sid, k), "")
+    flag = engine_line(card) if ((card.get("run") or {}).get("engine") or {}).get("flagged") else ""
+    # the files to check it, on one line
+    z, o = INPUT_ZIPS.get((sid, k)), OUTPUT_ZIPS.get((sid, k))
+    files = []
+    if z:
+        files.append(f'<a href="../{esc(z[0])}" download>Model files</a> <span class="muted">({_kb(z[1])})</span>')
+    if o:
+        files.append(f'<a href="{esc(o["url"])}" download>Output files</a> <span class="muted">({_kb(o["bytes"])})</span>')
+    if card.get("_path"):
+        files.append(f'<a href="../data/scorecards/{esc(k)}/{esc(card["_path"].name)}" download>Signed score card</a>')
+    rec = CONFIG.get(k)
+    if rec:
+        files.append(f'<a href="../solvers/{esc(k)}.html#setup">Model page</a>')
+    r = recipes.recipe(k, sid) if s["kind"] not in ("submitted",) else None
+    if r is None and s.get("base"):
+        r = recipes.recipe(s["base"], sid)
+        if r:
+            r = {**r, "run": [f"BENCH_SETUP=setups/{k.removeprefix('setup-')}/setup.json " + line for line in r["run"]]}
+    rerun = ""
+    if r:
+        steps = "\n".join([f"git clone {recipes.REPO_URL} && cd benchmark1d2d", f"git checkout {BUILD_COMMIT[:12] or 'master'}"] + r["install"] + r["run"])
+        rerun = (f'<details class="rd-rerun"><summary>Run it yourself</summary><p class="small">Runs on {esc(r["platform"])}, with '
+                 f'<a href="{REPO_URL}/blob/master/{esc(r["script"])}">{esc(r["script"])}</a>.</p><pre class="code"><code>{esc(steps)}</code></pre></details>')
+    propose = (f'<a href="../setups.html#propose">Propose a better set-up</a>' if k in SETUP_BASES or s.get("base") in SETUP_BASES
+               else f'<a href="../score.html#{esc(sid)}">Submit a better set-up</a>')
+    rt = (card.get("run") or {}).get("wall_seconds")
+    run_txt = (f'{esc(measures.fmt_time(rt))} on the finest grid · {esc(machine_info.summary((card.get("run") or {}).get("machine")))} · '
+               if rt is not None else "")
+    return f"""<div class="rd">
+    <div class="rd-how"><h4>How it was modelled</h4><p>{esc(how) if how else '<span class="muted">Not described.</span>'}</p>{extra}</div>
+    <div class="rd-checks"><h4>Checks</h4><div class="table-scroll"><table class="rd-table"><thead><tr><th>Check</th><th>Result</th><th>Against the limit</th></tr></thead><tbody>{checks}</tbody></table></div>
+    {flag}{f'<p class="note small">{esc(plain_note(note))}</p>' if note else ''}</div>
+    <div class="rd-foot"><span class="small muted">{run_txt}{esc(PROVENANCE[provenance(k, card)][0])}</span>
+      <span class="rd-links">{" · ".join(files + [propose])}</span></div>
+    {rerun}
+  </div>"""
+
+
+def results_section(m: dict, sid: str, runs: dict, order: list[dict], not_yet: str, case_note: str | None) -> str:
+    """Every model's result as one clean list, grouped by how it was set up; each row opens to how it was modelled and its checks."""
+    if not order:
+        return (f'<section class="section" id="models"><h2>Results</h2><p>No model has been scored on this test yet.</p>{not_yet}</section>')
+    groups: dict[str, list[str]] = {}
+    flags = {r["key"]: r.get("flag") for r in order}
+    for r in order:
+        groups.setdefault(tier_of(r["key"]) or "T0", []).append(r["key"])
+    body = []
+    for t in ("T0", "T1", "T2"):
+        keys = groups.get(t) or []
+        if not keys:
+            continue
+        title, what = TIER_GROUP[t]
+        rows = []
+        for k in keys:
+            c, s = runs[k], SOLVER[k]
+            sc = measures.score(c)
+            wc = difference.worst_check(c)
+            where = ""
+            if wc is not None:
+                d_ = {cc["id"]: cc for cc in m["scoring"]["criteria"]}.get(wc["id"], wc)
+                where = check_label({**d_, "threshold": wc.get("threshold", d_.get("threshold", {}))})
+            name = s["name"]
+            sub = s["sub"]
+            flag = ' <span class="rd-flag" title="The engine\'s own report flags this run">engine flag</span>' if flags.get(k) else ""
+            rows.append(f"""<details class="rs-row" id="m-{esc(k)}">
+  <summary><span class="rs-name"><span class="sw" style="background:{esc(s['color'])}"></span><b>{esc(name)}</b> <span class="rs-sub">{esc(sub)}</span>{flag}</span>
+    <span class="rs-score">{score_pill(c)}</span><span class="rs-where">{esc(where)}</span>
+    <span class="rs-time">{esc(measures.fmt_time((c.get("run") or {}).get("wall_seconds")))}</span><span class="rs-chev" aria-hidden="true"></span></summary>
+  {result_detail(m, sid, k, c)}
+</details>""")
+        body.append(f'<div class="rs-group"><div class="rs-group-head"><h3>{esc(title)}</h3><p class="small muted">{esc(what)}</p></div>'
+                    f'<div class="rs-list"><div class="rs-head" aria-hidden="true"><span>Model</span><span>Difference</span><span>Largest in</span><span>Run time</span><span></span></div>{"".join(rows)}</div></div>')
+    return f"""<section class="section" id="models">
+  <div class="head-row"><h2 style="margin:0">Results</h2><div class="pf-tools"><button type="button" class="btn ghost sm" data-open-all="#models details.rs-row">Open all</button><button type="button" class="btn ghost sm" data-close-all="#models details.rs-row">Close all</button></div></div>
+  <p class="muted">The difference is the largest error over the test's accuracy checks, as a percentage of the right answer. Select a model to see how it was built, each check, and the files to verify it.</p>
+  {"".join(body)}
+  {not_yet}
+  {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
+  {sensitivity_html(sid)}
+</section>"""
+
+
 def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_figs: str, evidence: list[dict], extra: list | None = None,
               panels: dict | None = None) -> str:
     """One page per test: the interactive picture first, then every model's result, then the test itself.
@@ -1765,35 +1944,8 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         chart_html = net_html
 
     figure = ("" if net_html else chart_html) or (f'<section class="card">{legacy_figs}</section>' if legacy_figs.strip() else "")
-    must = "".join(f"<li>{esc(x)}</li>" for x in st["must"])
-    story_cards = f"""<section class="story grid">
-  <div class="card"><h2>What happens</h2><p>{esc(st['what'])}</p></div>
-  <div class="card"><h2>Why it matters</h2><p>{esc(st['why'])}</p></div>
-  <div class="card"><h2>A good model must</h2><ul>{must}</ul></div>
-</section>"""
-    # model cards
-    mcards = []
     order = ORDER(runs)
     order = [r for r in order if SOLVER[r["key"]]["kind"] != "suite"] + [r for r in order if SOLVER[r["key"]]["kind"] == "suite"]  # worked examples last
-    for k in [r["key"] for r in order]:
-        c = runs[k]
-        s = SOLVER[k]
-        checks = "".join(f'<div class="check{ {"m": "", "info": " info"}.get(ck["state"], "") }"><div class="k">{esc(ck["label"])}</div>'
-                         f'<div class="v">{_check_value(ck)}</div><div class="lim">{esc(ck["limit"])}</div></div>'
-                         for ck in checks_for(m, c))
-        note = NOTES.get((sid, k), "")
-        name = s["name"] if not k.startswith("lisflood") else f'{s["name"]} {s["sub"].split("·")[-1].strip()}'
-        if s["kind"] == "setup":
-            name = f'{s["name"]} · {s["sub"]}'
-        mcards.append(f"""<details class="model-card" id="m-{k}">
-  <summary class="top"><div><div class="name"><span class="sw" style="background:{s['color']}"></span>{esc(name)} {tier_badge(k)} {provenance_chip(k, c)}</div><div class="what">{esc(s['what'])}</div></div>{score_pill(c)}</summary>
-  {run_line(c)}
-  <div class="checks-grid">{checks}</div>
-  {f'<p class="note">{esc(plain_note(note))}</p>' if note else ''}
-  <p class="note small">Measured with scorer {difference.METHOD_VERSION} · Score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>
-  {share_block(sid, k, c)}
-  {run_block(sid, k, c)}
-</details>""")
     levels = (m["simulation"].get("mesh_refinement") or {}).get("levels") or []
     grid_txt = (f"Each model runs the same inputs on {len(levels)} grids, from {nice(max(levels), 3)} m down to {nice(min(levels), 3)} m cells; the checks are scored on the {nice(min(levels), 3)} m grid, and each card lists the error on every grid."
                 if len(levels) > 1 else "Each model runs the same inputs.")
@@ -1810,52 +1962,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
         missing = list(dict.fromkeys(missing)) + NOT_YET
         not_yet = (f'<div class="notyet"><div><b>Not run yet:</b> {esc(", ".join(missing))}</div>'
                    f'<a href="../score.html#{sid}" style="font-weight:600">Run it and add yours →</a></div>')
-    tb_rows = []
-    sides = {r["key"]: difference.side(runs[r["key"]]) for r in order}
-    has_c = any(v["conservation"] is not None for v in sides.values())
-    has_t = any(v["timing"] is not None for v in sides.values())
-    has_n = any(v["nse"] is not None for v in sides.values())
-    has_g = any((runs[r["key"]].get("convergence_result") or {}).get("errors") for r in order)
-
-    def side_cells(k: str) -> str:
-        v = sides[k]
-        nse = "–" if v["nse"] is None else f'{v["nse"]:.3f}'
-        return ((f'<td class="num">{"–" if v["conservation"] is None else esc(measures.short(v["conservation"]))}</td>' if has_c else "")
-                + (f'<td class="num">{"–" if v["timing"] is None else esc(nice(v["timing"], 3)) + " s"}</td>' if has_t else "")
-                + (f'<td class="num">{nse}</td>' if has_n else ""))
-    for r in order:
-        c = runs[r["key"]]
-        s_ = SOLVER[r["key"]]
-        wc = difference.worst_check(c)
-        why = ""
-        if wc is not None:
-            d_ = {cc["id"]: cc for cc in m["scoring"]["criteria"]}.get(wc["id"], wc)
-            why = check_label({**d_, "threshold": wc.get("threshold", d_.get("threshold", {}))})
-        tb_rows.append(f'<tr><td>{tier_badge(r["key"])}</td>'
-                       f'<td><a href="#m-{esc(r["key"])}"><span class="sw" style="background:{esc(s_["color"])}"></span><b>{esc(s_["name"])}</b> <span class="lb-sub">{esc(s_["sub"])}</span></a></td>'
-                       f'<td class="num"><span class="lb-cell {measures.klass(r["score"])}">{esc(measures.short(r["score"]))}</span></td>'
-                       f'<td class="tb-why">{esc(why)}{(" · <b>" + esc(r["flag"] if HOLD(r["key"]) else "the engine flags this run") + "</b>") if r.get("flag") else ""}</td>{side_cells(r["key"])}'
-                       + (_conv_cell(c) if has_g else "") + f'<td class="num">{esc(measures.fmt_time((c.get("run") or {}).get("wall_seconds")))}</td></tr>')
-    tboard = ('<div class="table-scroll"><table class="tb"><thead><tr><th>Set-up</th><th>Model</th><th class="num">Difference</th>'
-              '<th>Largest difference in</th>' + ('<th class="num" title="Largest mass, continuity or storage balance error">Mass error</th>' if has_c else '')
-              + ('<th class="num" title="Largest arrival or peak-time error">Timing</th>' if has_t else '')
-              + ('<th class="num" title="Lowest Nash-Sutcliffe efficiency (1 is perfect)">NSE</th>' if has_n else '')
-              + ('<th class="num" title="Observed order of convergence across the grids">Rate the error shrinks</th><th>Shrinking as designed?</th>' if has_g else '')
-              + '<th class="num">Run time</th></tr></thead><tbody>' + "".join(tb_rows) + "</tbody></table></div>") if len(tb_rows) > 1 else ""
-    if mcards:
-        models = f"""<section class="section" style="padding-bottom:0" id="models">
-  <h2>How models did</h2>
-  <p class="muted">Listed by configuration tier (T0 out of the box, T1 documented guidance, T2 expert), not by result. Each difference is the largest percent difference from the right answer over the test's accuracy checks; mass error, timing and NSE are shown beside it, not folded in. Each model's set-up is on its model page. {esc(grid_txt)}</p>
-  {tboard}
-  {sensitivity_html(sid)}
-  {f'<p class="callout">{esc(case_note)}</p>' if case_note else ''}
-  <div class="head-row" style="margin-top:28px"><h3 style="margin:0">Each model in detail</h3><div class="pf-tools"><button type="button" class="btn ghost sm" data-open-all=".models details.model-card">Open all</button><button type="button" class="btn ghost sm" data-close-all=".models details.model-card">Close all</button></div></div>
-  <p class="muted small">Select a model for its checks, run details, settings and score card.</p>
-  <div class="models">{''.join(mcards)}{not_yet}</div>
-</section>"""
-    else:
-        models = f"""<section class="section" style="padding-bottom:0" id="models"><h2>How models did</h2>
-  <p>No model has been scored on this test yet.</p>{not_yet}</section>"""
+    models = results_section(m, sid, runs, order, not_yet, case_note)
     # convergence + status
     conv = "" if panels.get("conv") else conv_chart(m, runs)
     cards_for = list(runs.values()) + list(evidence or [])
@@ -1940,7 +2047,6 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     <div class="chip-row">{_tags(m)}</div>
     <h1>{esc(st['name'])}</h1>
     <p class="lede">{esc(st['question'])}</p>
-    {f'<p class="case-what">{esc(st["what"])}</p>' if panels.get("maps") or panels.get("network") or panels.get("coupled") else ""}
   </div>
   <div class="case-id">Test {esc(sid)}<br>{esc(_source_short(m))}<br>Version {esc(m['case_version'])}</div>
 </header>"""
@@ -1959,10 +2065,9 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
     live = "".join(panels.get(k, "") for k in ("coupled", "network", "maps"))
     if live:  # the interactive picture replaces the sketch and the network thumbnail
         top = f'<section class="section case-live" id="see">{live}</section>' + (f'<section class="section" style="padding-bottom:0"><h2>Along a line</h2>{figure}</section>' if figure and panels.get("maps") else figure)
-        about = f'<section class="section" id="about"><h2>About this test</h2>{story_cards}</section>'
-        body = f'<div class="wrap">{head}{top}{netsec}{models}{conv_live}{split}{about}{data_card_html(m)}{tech}</div>{chart_data}'
+        body = f'<div class="wrap">{head}{test_section(m, sid, st)}{top}{data_card_html(m)}{netsec}{models}{conv_live}{split}{tech}</div>{chart_data}'
     else:
-        body = f'<div class="wrap">{head}{art}{model_file_card(m)}{figure}{story_cards}{data_card_html(m)}{netsec}{models}{conv_live}{split}{tech}</div>{chart_data}'
+        body = f'<div class="wrap">{head}{test_section(m, sid, st)}{art}{model_file_card(m)}{figure}{data_card_html(m)}{netsec}{models}{conv_live}{split}{tech}</div>{chart_data}'
     scripts = ('<script src="../static/chart.js" defer></script>' if chart_html else "") + panels.get("scripts", "")
     return layout(st["name"], body, "results.html", depth=1, description=st["question"], scripts=scripts, math=True,
                   og_image=f"assets/og/{sid}.png", path=f"tests/{sid}.html")

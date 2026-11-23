@@ -5,10 +5,14 @@ Suite releases are independent of schema semver (`schemas/v1`).
 
 ## [Unreleased]
 
+- **Clearer test pages.**
+    - **The test comes first:** what it is, why it matters, and how to set it up (build, starting state, boundaries, run and report), with what a model must do to pass, what it is compared with, and the download.
+    - **How each model was built:** every result now says how that software was set up for this test (mesh, boundaries, friction, solver options, and what a proposed set-up changes).
+    - **Simpler results:** one list grouped by out of the box, developer's guidance and expert set-ups, one line per model. Open a line for how it was modelled, its checks, and its files (model, output, signed score card, run it yourself). The separate results table, the repeated model cards and the share and embed boxes are gone.
 - **Expert set-ups: getting every model to work well** ([explanations](docs/review/expert_setups.md)). Every result over 5 % was checked for a better set-up. Where one exists it is published as a proposed set-up beside the suite's own result:
     - **SWMM 5.2.4, SWMM 5.1.15, OpenSWMM dynamic wave**: the dynamic-wave iteration converged (30 trials and 0.01 mm, or 50 trials and 0.001 mm). The subcritical bump goes from 174–236 % to 0.08 %; the hydraulic jump and dam breaks improve too.
     - **OpenSWMM 1D/2D**: the mesh vertex at the gully raised to the grate's crest. A12-011 goes from 23.7 % to passing every check.
-    - **Landlab**: a 1 µm wet film instead of 1 mm. The lake at rest goes from 13.3 % to 0.001 %.
+    - **Landlab**: a 1 µm wet film instead of its default 0.01 mm. The lake at rest goes from 13.3 % to 0.001 %.
     - **LISFLOOD-FP ACC**: q-centred diffusion and a smaller step on the bumps, a fifth to a half less error.
     - **HEC-RAS 2D SWE-EM**: a smaller time step and tighter tolerances cut the dry-bed front's lag from 58 m to 10 m (15.4 % → 2.7 %). SWE-ELM does not change, so that error comes from its equations.
     - Set-ups can now be proposed for HEC-RAS 2D, Landlab, OpenSWMM 1D/2D and HydroNet's finite-volume solver.
