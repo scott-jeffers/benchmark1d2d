@@ -56,6 +56,17 @@ EVIDENCE_OF_CLASS = {
     "stress": "comparison",
 }
 
+# HydroCouple openswmm.engine.benchmarks reference classes (docs/concepts/grading.html)
+# mapped onto the three kinds, so results can move between the two suites.
+HYDROCOUPLE_CLASS = {
+    "analytic": "verification",
+    "manufactured": "verification",
+    "observed": "validation",
+    "external_reference": "comparison",
+    "blessed_baseline": "comparison",
+    "self_consistency": "comparison",
+}
+
 # Capability groups, in the order the profiles show them. ``engineer`` is the
 # plain-language line at the top of each group: what evidence in this group
 # tells a practising engineer.
@@ -87,6 +98,10 @@ CAPABILITIES = {
     "urban_surface": {
         "name": "Flow around buildings",
         "engineer": "Depths and velocities where streets and buildings steer the flow.",
+    },
+    "structures": {
+        "name": "Bridges, culverts and weirs",
+        "engineer": "Head losses and afflux at hydraulic structures in rivers and channels.",
     },
     "pipe_hydraulics": {
         "name": "Partly full and surcharged pipes",

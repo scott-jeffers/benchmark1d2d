@@ -62,6 +62,24 @@ def _cell(results: list[dict], pages, depth: int) -> str:
     return f'<td><ul class="pf-list">{items}</ul></td>'
 
 
+CENSUS: dict[str, str] = {}  # model key -> one line on the real-world corpus census (set by page())
+
+
+def census_line(census) -> dict[str, str]:
+    """EPA SWMM 5.2.4's census over the HydroCouple corpus, as a robustness line for its profile (comparison evidence)."""
+    if census is None or not len(census):
+        return {}
+    st = census["status"].value_counts().to_dict()
+    n = len(census)
+    ran = int(st.get("ran", 0))
+    bad_c = int(((census["status"] == "ran") & (census["continuity_routing_pct"].abs() > 5)).sum()) if "continuity_routing_pct" in census else 0
+    line = (f"Real-world models: of {n:,} SWMM models in the HydroCouple corpus, {ran:,} run cleanly, "
+            f"{int(st.get('input_error', 0)):,} stop on input errors in the model files (older-version syntax, missing rainfall files: the corpus's issue, not the engine's), "
+            f"{int(st.get('timeout', 0)):,} exceed the census time limit, and {int(st.get('engine_error', 0)) + int(st.get('harness_error', 0))} fail in the engine or harness. "
+            f"{bad_c} of those that run report a flow-routing continuity error beyond ±5 %. Comparison evidence: robustness, not accuracy.")
+    return {"swmm524": line}
+
+
 def model_profile(key: str, all_rows: list[dict], pages, depth: int = 0) -> str:
     mine = [r for r in all_rows if r["model"] == key]
     s = pages.SOLVER[key]
@@ -82,12 +100,16 @@ def model_profile(key: str, all_rows: list[dict], pages, depth: int = 0) -> str:
             f'<p class="muted small">{esc(s["what"])}. <a href="{up}solvers/{esc(key)}.html">How it was set up, and every result →</a></p>'
             + (f'<div class="table-scroll"><table class="data pf"><thead><tr><th>Capability</th>{head}</tr></thead><tbody>{"".join(body_rows)}</tbody></table></div>'
                if body_rows else '<p>No results yet.</p>')
-            + none_line + '</section>')
+            + none_line
+            + (f'<p class="small"><a href="{up}corpus.html">{esc(CENSUS[key])}</a></p>' if key in CENSUS else "")
+            + '</section>')
 
 
-def page(manifests: list[dict], runs: dict, pages) -> tuple[str, str, str]:
+def page(manifests: list[dict], runs: dict, pages, census=None) -> tuple[str, str, str]:
     """(profiles.html, profiles.json, profiles.csv)."""
     esc = pages.esc
+    CENSUS.clear()
+    CENSUS.update(census_line(census))
     all_rows = rows(manifests, runs, pages)
     keys = pages.SOLVERS_ORDER({r["model"] for r in all_rows})
     toc, sections = [], []

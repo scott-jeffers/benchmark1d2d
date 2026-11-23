@@ -232,6 +232,20 @@ STORIES: dict[str, dict] = {
         why="Which street carries the water decides which houses flood; flow partition at crossroads is hard to get right.",
         must=["split the outflow between the outlets within 2.5 points", "get the inlet depths within 5 mm"],
     ),
+    "A1F-300": dict(
+        name="EA river benchmark profiles", group="rivers",
+        question="Does a river model reproduce the exact quasi-steady profiles and monoclinal wave of the Environment Agency's benchmark?",
+        what="The analytical tests of the EA's 2004 benchmark of river modelling software: five quasi-steady profiles and a monoclinal flood wave.",
+        why="The UK benchmark engineers already know, with exact answers.",
+        must=["match the profiles within 1 cm", "converge as the grid is refined"],
+    ),
+    "A1F-310": dict(
+        name="Bridge afflux", group="rivers",
+        question="Does a model predict how much a bridge raises the water upstream?",
+        what="Laboratory measurements of the upstream rise caused by a bridge, at four flows, from the EA's 2004 river benchmark.",
+        why="Bridge afflux sets flood levels upstream of crossings and is a routine design check.",
+        must=["get the afflux within 1 cm at all four flows", "model the bridge from its geometry, not a fitted loss"],
+    ),
     "A2F-001": dict(
         name="Malpasset dam failure, 1959", group="floods2d",
         question="Does a model reproduce a real dam-break disaster?",

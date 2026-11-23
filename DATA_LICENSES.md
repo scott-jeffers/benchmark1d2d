@@ -22,6 +22,7 @@ be promoted to `candidate` or `frozen` until a real license is recorded.
 | `public-domain-USGS` | USGS publications used as data: Barnes (1967) WSP 1849, Roughness characteristics of natural channels — A1F-200 | US Government work, public domain | https://doi.org/10.3133/wsp1849 |
 | `TBD-confirm` | USGS data releases for A2F-010 (North Carolina 2016, doi:10.5066/F75X276T) and A2F-020 (Ellicott City 2016/2018) | Expected public domain (US Government work); the use constraints in each release's metadata still to be read and recorded | https://doi.org/10.5066/F75X276T ; https://doi.org/10.3133/fs20213025 |
 | `TBD-confirm` | University of Liège laboratory urban-flooding datasets (Li et al. 2022, Sci. Data) — A2L-030 | Repository licence still to be confirmed | https://doi.org/10.1038/s41597-022-01282-w |
+| `TBD-confirm` | Environment Agency R&D Technical Report W5-105 (2004) river benchmarks, Tests A, F and J, as transcribed by the HydroCouple OpenSWMM benchmarks corpus (public-domain transcription; the report's own reuse terms are unverified) — A1F-300, A1F-310 | Reuse terms of the 2004 EA report to be confirmed (possibly the Open Government Licence) | Environment Agency R&D publications |
 | `synthetic-internal` | Synthetic Track B fixtures used in unit tests | Internal test data; not for certification | `schemas/v1/tests/` |
 | `public-domain-EPA` | EPA SWMM 5.2.4 / EPANET 2.2 engines and EPA example networks (e.g. EPANET Net1) | Public domain (US government work) | https://github.com/USEPA/Stormwater-Management-Model/releases/tag/v5.2.4 |
 

@@ -81,3 +81,46 @@ limit (all 78 XL models fail: 42 input errors, 35 timeouts, 1 engine error), and
 beyond ±5 % and are excluded from tiers, because a non-conserving reference cannot anchor
 parity. These lists are worth sending upstream; the index (`corpus_index.parquet`, `status`,
 `error_codes`, `continuity_*`) has every row.
+
+## How the two suites fit together (reviewed 23 November 2026)
+
+HydroCouple's suite is a regression and verification harness for SWMM-compatible
+engines, run by the OpenSWMM developers. It gates OpenSWMM 6 against their own
+legacy 5.3.0 build across the whole corpus. Benchmark1d2d is the multi-engine
+evidence layer: it publishes what verification, validation and comparison
+evidence says about each tool, compares against pinned EPA builds, and records
+how each model was set up.
+
+The two suites divide the work rather than compete:
+
+- HydroCouple answers "did this engine build change?" for one engine family at corpus scale.
+- Benchmark1d2d answers "what evidence is there that this tool, set up this way, is right?" across engines.
+
+**Reference classes.** HydroCouple's classes map onto the three kinds of
+evidence through `benchmark1d2d.evidence.HYDROCOUPLE_CLASS`:
+
+| HydroCouple class | Kind of evidence |
+| --- | --- |
+| `analytic`, `manufactured` | verification |
+| `observed` | validation |
+| `external_reference`, `blessed_baseline`, `self_consistency` | comparison |
+
+**Taken from HydroCouple:**
+
+- Its corpus, as a robustness check under comparison evidence. EPA SWMM's census line now appears on its evidence profile. Input errors in model files are reported as corpus issues, never as engine results, and only public-domain models enter tiers.
+- The Rubinato et al. (2017) steady exchange table, as A12-001's reference (CC BY 4.0, spot-checked against the paper).
+- The EA W5-105 river benchmarks, as drafts A1F-300 (exact profiles) and A1F-310 (measured bridge afflux), pending the report's reuse terms.
+- Reporting conventions:
+    - run-time medians, 90th percentiles and tail counts
+    - a bit-identical class above tolerance-based parity
+    - results saved as each run finishes
+
+**Not taken:** pass/fail verdicts on fixed tolerances as public evidence,
+colour-threshold badges, and counting measured data as regression.
+
+**Offered back:**
+
+- configuration tiers and the automatic defaults audit
+- pinned EPA reference builds
+- content-hashed inputs
+- JSON-Schema validation

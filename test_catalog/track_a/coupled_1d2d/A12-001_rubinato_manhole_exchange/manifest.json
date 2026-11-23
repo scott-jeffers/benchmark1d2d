@@ -10,11 +10,12 @@
     "coupled_exchange"
   ],
   "data_card": {
-    "measured": "Pressure, flow rate and depth in the University of Sheffield facility linking a 4 m × 8.2 m floodplain to a pipe network through a manhole, for a range of flows and manhole-lid configurations.",
-    "method": "Laboratory facility instrumentation described in the CoUDlabs data report (Zenodo 10683906).",
-    "uncertainty": "To be taken from the data report before promotion.",
+    "measured": "Steady exchange discharge, surface depth and pipe head for 36 conditions in four scenarios (S1 surface-to-sewer without surcharge, S2 surface-to-sewer with the pipe surcharged, S3 and S4 sewer-to-surface), in the University of Sheffield facility linking an 8 m x 4 m floodplain to a pipe network through a 0.24 m manhole (Rubinato et al. 2017, Table 2).",
+    "method": "Electromagnetic flowmeters checked against volumetric tank readings; pressure transducers 0.35 m (sewer) and 0.46 m (surface) from the manhole centre.",
+    "uncertainty": "Transducer calibration error 0.109 mm (surface) and 0.72 mm (sewer). No numeric flowmeter accuracy is given; the paper's nf column gives the variation of the exchange flow.",
     "known_issues": [
-      "The open dataset (CoUDlabs, 2024) studies manhole-lid effects on surcharge; the case must be built from that dataset, not from the 2017 paper's figures."
+      "Rows marked '–' in the paper are blank here: S1 has no pipe head, S4 no surface depth (dry floodplain).",
+      "The surcharge percentage for S2 is negative in the transcription (surface-to-sewer flow); the sign follows the HydroCouple transcription."
     ],
     "exercises": "Water leaving a surcharged sewer through a manhole onto a surface and spreading: the exchange flow and the head loss at the manhole.",
     "cannot_tell": "The exchange coefficient is partly a calibration choice; a match shows the coupling can be tuned to the rig, not that it transfers to other manhole geometries."
@@ -61,7 +62,7 @@
       }
     ],
     "license": "CC-BY-4.0",
-    "adaptation_notes": "Open data now available: CoUDlabs dataset on Zenodo (record 10683906, CC BY 4.0: combination.xlsx, raw_data.zip, data report). The case is to be rebuilt from it."
+    "adaptation_notes": "Reference: Table 2 (36 steady exchange measurements, scenarios S1-S4) and the rig geometry (section 3.1, Figs 1-2) of Rubinato et al. (2017), an open-access article under CC BY 4.0. Transcribed by the HydroCouple OpenSWMM benchmarks project (corpus/rubinato-2017, commit 3f490b5, public domain); spot-checked here against the published table. The CoUDlabs dataset (Zenodo 10683906, CC BY 4.0) from the same facility adds raw series. Still to build: the rig model inputs (mesh, inflows, outfall stage)."
   },
   "inputs": [
     {
@@ -69,22 +70,22 @@
       "role": "coupling",
       "format": "json",
       "pending": {
-        "reason": "Build the rig geometry and the steady exchange cases from the CoUDlabs dataset (Zenodo 10683906, CC BY 4.0): raw_data.zip and combination.xlsx.",
-        "obtain_from": "https://zenodo.org/records/10683906"
+        "reason": "Build the rig model from reference/rig_geometry.yaml: 8 m x 4 m floodplain at slope 0.001 and n 0.009, 0.24 m manhole, 0.075 m pipe; one steady run per Table 2 row.",
+        "obtain_from": "reference/rig_geometry.yaml; Rubinato et al. (2017) section 3.1"
       }
     }
   ],
   "reference": {
     "kind": "measured",
-    "data_path": "reference/measurements.parquet",
+    "data_path": "reference/steady_exchange.csv",
+    "availability": "available",
     "uncertainty": {
-      "type": "relative",
-      "value": 0.05,
-      "units": "1",
-      "notes": "Draft placeholder uncertainty; replace with published gauge error."
+      "type": "absolute",
+      "value": 0.00072,
+      "units": "m",
+      "notes": "Transducer calibration error from the paper: 0.109 mm for the surface transducer and 0.72 mm for the sewer transducer (the larger is used here). Discharge accuracy is not given numerically; the nf column (eq. 6) is the paper's exchange-flow variation and bounds the exchange discharge."
     },
-    "include_measurement_uncertainty": true,
-    "availability": "open_to_convert"
+    "include_measurement_uncertainty": true
   },
   "simulation": {
     "t_end": 300.0,
@@ -98,27 +99,28 @@
     "criteria": [
       {
         "id": "exchange_Q",
-        "metric": "NSE",
+        "metric": "relative_peak",
         "variable": "Q",
-        "threshold": {
-          "op": ">=",
-          "value": 0.7,
-          "units": "1"
-        },
-        "gating": true,
-        "rationale": "NSE on manhole exchange discharge ≥ 0.7 vs laboratory."
-      },
-      {
-        "id": "surface_h",
-        "metric": "peak_error",
-        "variable": "h",
+        "aggregate": "median",
         "threshold": {
           "op": "abs<=",
-          "value": 5.0,
+          "value": 10.0,
           "units": "%"
         },
         "gating": true,
-        "rationale": "Surface depth peak within 5% of lab gauges."
+        "rationale": "Median relative error in steady exchange discharge over the 36 rows of Table 2, within 10 %. Written before any run; the paper's own exchange-flow variation (nf) is a few percent of Qe."
+      },
+      {
+        "id": "surface_h",
+        "metric": "Linf",
+        "variable": "h",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.001,
+          "units": "m"
+        },
+        "gating": false,
+        "rationale": "Surface depth hs at the transducer within 1 mm for the surface-flow scenarios; reported, not counted, until a model reports depth at the transducer position."
       }
     ],
     "pass_rule": "all_gating"

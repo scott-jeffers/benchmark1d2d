@@ -794,6 +794,7 @@ def parity_section(parity: list[tuple[dict, pd.DataFrame]]) -> str:
         tables.append(f"""<h3>{esc(cand)}, {esc(names.get(summ['tier'], summ['tier']).lower())}: largest differences</h3>
 <div class="table-scroll"><table class="data"><thead><tr><th>Model</th><th class=num>Worst</th><th>Peak depth (worst node)</th><th>Volume (worst link)</th></tr></thead><tbody>{trs or '<tr><td colspan=4>No differences.</td></tr>'}</tbody></table></div>{err_txt}""")
     bars = hbars("Each candidate against EPA SWMM 5.2.4: worst element per model", rows, unit=" models")
+    perf = runtime_table(parity)
     cands = sorted({summ["candidate"] for summ, _ in parity})
     v6 = "".join(PARITY_FINDINGS.get(c, "") for c in ("openswmm-6", "hydra") if c in cands)
     return f"""<section id="parity"><h2>Does another engine match SWMM 5.2.4?</h2>
@@ -806,8 +807,35 @@ def parity_section(parity: list[tuple[dict, pd.DataFrame]]) -> str:
   {v6}<div class="finding"><b>A difference is not a defect.</b> Track B says how far a candidate is from the reference engine, not which one is right. Whether 5.2.4 is physically better is a Track A question.</div>
 </div>
 {''.join(tables)}
+{perf}
 <p class="small">The self-check (5.2.4 scored against itself) must give exactly 0 on every PR-tier model; CI runs it on every pull request.</p>
 </section>"""
+
+
+def runtime_table(parity: list[tuple[dict, pd.DataFrame]]) -> str:
+    """Run time as distributions, not single numbers: median, 90th percentile, total, slow runs, and the
+    candidate/reference ratio where either took at least 1 s (convention from HydroCouple's dashboard).
+    Shared CI runners are noisy, so these are context for engine developers, never evidence of accuracy."""
+    trs = []
+    names = {"pr": "PR", "nightly": "nightly", "release": "release", "bellinge": "Bellinge"}
+    for summ, df in parity:
+        both = df.dropna(subset=["ref_runtime_s", "cand_runtime_s"]) if {"ref_runtime_s", "cand_runtime_s"} <= set(df.columns) else df.iloc[0:0]
+        if len(both) < 5:
+            continue
+        r, c = both["ref_runtime_s"], both["cand_runtime_s"]
+        big = both[(r >= 1) | (c >= 1)]
+        ratio = (big["cand_runtime_s"] / big["ref_runtime_s"]).median() if len(big) else float("nan")
+        cand = CANDIDATE_NAMES.get(summ["candidate"], summ["candidate"])
+        trs.append(f"<tr><td>{esc(cand)}, {esc(names.get(summ['tier'], summ['tier']))} ({len(both)})</td>"
+                   f"<td class=num>{r.median():.2f} s / {c.median():.2f} s</td><td class=num>{r.quantile(.9):.1f} s / {c.quantile(.9):.1f} s</td>"
+                   f"<td class=num>{r.sum() / 60:.1f} / {c.sum() / 60:.1f} min</td><td class=num>{int((r >= 30).sum())} / {int((c >= 30).sum())}</td>"
+                   f"<td class=num>{'–' if ratio != ratio else f'{ratio:.2f}'}</td></tr>")
+    if not trs:
+        return ""
+    return ('<h3>Run time: reference / candidate</h3><div class="table-scroll"><table class="data"><thead><tr><th>Candidate, tier (models)</th>'
+            '<th class=num>Median</th><th class=num>90th percentile</th><th class=num>Total</th><th class=num>Runs ≥ 30 s</th>'
+            '<th class=num>Median ratio, runs ≥ 1 s</th></tr></thead><tbody>' + "".join(trs) + '</tbody></table></div>'
+            '<p class="small muted">Measured on shared CI runners, one model at a time. Context for engine developers, not evidence about accuracy.</p>')
 
 
 EPANET_PARITY_NAMES = {"hydra": "Hydra 17 water distribution, its defaults",
@@ -1346,7 +1374,7 @@ def main() -> int:
     out_pages["network.html"] = netresults.page(pages.layout, netindex)
     import profilepage
 
-    out_pages["profiles.html"], pf_json, pf_csv = profilepage.page(manifests, runs, pages)
+    out_pages["profiles.html"], pf_json, pf_csv = profilepage.page(manifests, runs, pages, census)
     out_pages["rankings.html"] = pages.redirect("profiles.html")  # the leaderboard was retired in protocol 4.0
     (DIST / "data").mkdir(exist_ok=True)
     (DIST / "data" / "profiles.json").write_text(pf_json, encoding="utf-8")

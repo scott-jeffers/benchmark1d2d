@@ -776,6 +776,11 @@ def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
     s = SOLVER[key]
     mine = [(m, runs[m["test_id"]][key]) for m in manifests if key in (runs.get(m["test_id"]) or {})]
     standing = f'Ran <b>{len(mine)}</b> test{"s" if len(mine) != 1 else ""}. <a href="../profiles.html#p-{esc(key)}">Its evidence profile →</a>'
+    walls = sorted(w for w in (((c_.get("run") or {}).get("wall_seconds")) for _, c_ in mine) if isinstance(w, (int, float)))
+    if len(walls) >= 3:
+        p90 = walls[min(len(walls) - 1, int(round(0.9 * (len(walls) - 1))))]
+        standing += (f' <span class="muted small">Run time on the finest grids: median {esc(measures.fmt_time(walls[len(walls) // 2]))}, '
+                     f'90th percentile {esc(measures.fmt_time(p90))}, total {esc(measures.fmt_time(sum(walls)))} (shared CI runners; context, not evidence).</span>')
     versions = sorted({(c.get("solver") or {}).get("name", "") for _, c in mine})
     rows = []
     for m, c in mine:

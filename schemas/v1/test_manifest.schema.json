@@ -93,6 +93,7 @@
           "flood_waves",
           "inundation",
           "urban_surface",
+          "structures",
           "pipe_hydraulics",
           "storage_structures",
           "controls",
