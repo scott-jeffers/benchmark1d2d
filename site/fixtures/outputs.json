@@ -1,0 +1,11 @@
+{
+ "A1F-001": {
+  "swmm524": {
+   "bytes": 683682,
+   "date": "2026-11-23",
+   "run": 45229046250,
+   "sha256": "6e52962268e4e24cb9fb10230b52c9c6e5544c9aac32577f72425dc881829450",
+   "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.swmm524.outputs.zip"
+  }
+ }
+}

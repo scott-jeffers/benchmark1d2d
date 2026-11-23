@@ -12,7 +12,7 @@
   "changed_from_default": [
     {
       "setting": "HEAD_TOLERANCE",
-      "value": 0.0005,
+      "value": "0.0005 (A1D-001, A1D-002, A1D-003, A1D-004, A1D-005, A1F-010, A1F-011, A1F-020, A1F-040, A1F-041, A1F-042, A1F-043); 1e-05 (A1F-001)",
       "default": 0.001524,
       "reason": "The harness writes 0.0005 m on every case, tighter than SWMM's default (0.005 ft, 0.0015 m); the converged variants tighten it to 0.00001 m (review finding F1).",
       "source": "Default from USEPA/Stormwater-Management-Model v5.2.4: src/solver/project.c setDefaults(), src/solver/dynwave.c",
@@ -30,6 +30,18 @@
         "A1F-041",
         "A1F-042",
         "A1F-043"
+      ],
+      "required_by_case": false,
+      "selects_method": false
+    },
+    {
+      "setting": "MAX_TRIALS",
+      "value": 30,
+      "default": 8,
+      "reason": "The converged variants allow 20 trials so the dynamic-wave iteration converges on short conduits (review finding F1).",
+      "source": "Default from USEPA/Stormwater-Management-Model v5.2.4: src/solver/project.c setDefaults(), src/solver/dynwave.c",
+      "cases": [
+        "A1F-001"
       ],
       "required_by_case": false,
       "selects_method": false
@@ -96,6 +108,18 @@
         "A1F-043"
       ],
       "required_by_case": true,
+      "selects_method": false
+    },
+    {
+      "setting": "VARIABLE_STEP",
+      "value": 0.5,
+      "default": 0.75,
+      "reason": "SWMM 5.1.15 defaults to a fixed step; the harness writes 5.2.4's default variable step (0.75) so both releases run the same model file.",
+      "source": "Default from USEPA/Stormwater-Management-Model v5.2.4: src/solver/project.c setDefaults(), src/solver/dynwave.c",
+      "cases": [
+        "A1F-001"
+      ],
+      "required_by_case": false,
       "selects_method": false
     }
   ],
