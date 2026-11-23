@@ -216,6 +216,9 @@ def main() -> int:
         paths = []
         for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
             t0 = time.perf_counter()
+            from benchmark1d2d import keep
+
+            keep.script_model("landlab", tid, float(dx), CASES[tid], {"landlab": __import__("landlab").__version__, "builder": CASES[tid].__name__})
             cols = CASES[tid](m, float(dx), tid)
             paths.append(write_results_parquet(OUT / f"{m['test_id']}_dx{dx:g}.parquet", cols, wall_seconds=time.perf_counter() - t0))
             print(f"  {tid} dx={dx}: {time.perf_counter() - t0:.1f}s", flush=True)

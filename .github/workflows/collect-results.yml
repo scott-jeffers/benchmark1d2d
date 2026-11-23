@@ -8,7 +8,7 @@ name: Collect results
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: ["Open-source solvers", "Slow runs", "HEC-RAS", "Nightly", "Track A", "Bellinge parity"]
+    workflows: ["Open-source solvers", "Slow runs", "HEC-RAS", "Nightly", "Track A", "Bellinge parity", "Proposed set-ups", "Owner-run solvers"]
     types: [completed]
     branches: [master]
 

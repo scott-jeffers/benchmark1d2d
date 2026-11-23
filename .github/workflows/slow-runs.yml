@@ -65,6 +65,7 @@ jobs:
             out/lisflood/*/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   anuga-ea:
     name: ANUGA 4.0.1 on EA Tests 2 and 5 and the SWASHES bump
@@ -100,6 +101,7 @@ jobs:
             out/anuga/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   telemac-ea:
     name: openTELEMAC-2D on EA Tests 2 and 5
@@ -137,6 +139,7 @@ jobs:
             out/telemac/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   hydronet-pinn:
     name: HydroNet FVM-PINN on the dam breaks
@@ -180,4 +183,5 @@ jobs:
             out/hydronet/*/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 

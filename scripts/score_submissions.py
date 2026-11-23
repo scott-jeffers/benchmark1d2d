@@ -71,7 +71,8 @@ def score_folder(folder: Path, key) -> tuple[list[str], list[str]]:
         return [], [f"{folder.name}: {e}" for e in errs]
     solver = {"name": f"{sub['solver']['name']} {sub['solver']['version']}", "version": sub["solver"]["version"],
               "adapter": "submitted results" + (f"; options: {sub['solver']['options']}" if sub["solver"].get("options") else ""),
-              "submitted_by": sub["submitted_by"] + (f" (GitHub: {sub['github_user']})" if sub.get("github_user") else "")}
+              "submitted_by": sub["submitted_by"] + (f" (GitHub: {sub['github_user']})" if sub.get("github_user") else ""),
+              "model_files": bool(sub.get("model_files")) and (folder / sub["model_files"]).is_file()}
     out = OUT / folder.name
     out.mkdir(parents=True, exist_ok=True)
     lines.append(f"### {sub['solver']['name']} {sub['solver']['version']} — submitted by {sub['submitted_by']}"

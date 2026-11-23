@@ -63,6 +63,87 @@
           "type": "string",
           "minLength": 1,
           "description": "Organisation that ran the solver and submitted the results (vendor submissions, scored by the suite from submissions/). Absent when the suite ran the solver itself."
+        },
+        "setup": {
+          "type": "object",
+          "description": "A set-up proposed by someone other than the suite (setups/<slug>/setup.json): the suite applied these settings to its own model files and re-ran the solver. Absent for the suite's own set-ups.",
+          "required": [
+            "slug",
+            "title",
+            "proposed_by",
+            "tier",
+            "changes"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "slug": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "proposed_by": {
+              "type": "string"
+            },
+            "github_user": {
+              "type": "string"
+            },
+            "tier": {
+              "type": "string",
+              "enum": [
+                "T1",
+                "T2"
+              ]
+            },
+            "guidance_source": {
+              "type": "string"
+            },
+            "changes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "setting",
+                  "value"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "setting": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  },
+                  "was": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "file": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "run_by": {
+          "type": "string",
+          "enum": [
+            "suite",
+            "owner",
+            "submitter"
+          ],
+          "description": "Where the solver ran: 'suite' on the suite's own CI machines, 'owner' on a machine of the software's owner through the suite's workflow (a self-hosted runner), 'submitter' by whoever submitted the results files. Absent means 'suite', or 'submitter' when submitted_by is set."
+        },
+        "runner": {
+          "type": "string",
+          "description": "For run_by 'owner': the self-hosted runner's label and the workflow run that produced the card."
+        },
+        "model_files": {
+          "type": "boolean",
+          "description": "For submitted results: whether the submission included the model files (inputs and outputs), so anyone with the software can check them."
         }
       }
     },

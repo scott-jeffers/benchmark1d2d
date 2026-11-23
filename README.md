@@ -49,9 +49,13 @@ engine's default, with the reason:
 - **T1 · Documented guidance:** only changes the developer's own guidance recommends, each with its source.
 - **T2 · Expert:** any setting, chosen by a named person or group.
 
-Results are always shown with their tier. Think a better set-up exists?
-Submit it: CI reruns it, and if it does better across its capability group it
-becomes the T2 shown.
+Results are always shown with their tier and with who ran them. Every result
+publishes its settings, the model files the solver read and what it wrote
+("Check this result"), so anyone who knows the software can judge the set-up.
+Think a better set-up exists? [Propose it](https://scott-jeffers.github.io/benchmark1d2d/setups.html):
+the suite re-runs the model with your settings and shows the result beside its
+own, under your name. Software the suite cannot run can be run on its owner's
+machine through the suite's workflow ([guide](docs/owner-runner.md)).
 
 **The measures of one result** are unchanged from scoring method 3.0 §1–2:
 

@@ -18,6 +18,7 @@ import csv
 import hashlib
 import io
 import json
+import re
 import shutil
 import sys
 import zipfile
@@ -1232,7 +1233,7 @@ def main() -> int:
     args = ap.parse_args()
     suite_dirs = ["site/fixtures/scorecards", "out/track_b", "out/vertical_slice", "out/networks", "out/demo_2d"]
     production_dirs = ["site/fixtures/telemac", "site/fixtures/hecras", "site/fixtures/hecras66", "site/fixtures/anuga", "site/fixtures/geoclaw",
-                       "site/fixtures/lisflood", "site/fixtures/hecras2d", "site/fixtures/hecras66_2d", "site/fixtures/openswmm", "site/fixtures/swmm_track_a", "out/openswmm", "out/swmm_track_a", "site/fixtures/hydronet", "out/hydronet", "site/fixtures/hydra", "out/hydra", "out/hydra_networks", "site/fixtures/coupled", "out/coupled", "out/submitted", "site/fixtures/tsnet", "out/tsnet", "site/fixtures/basilisk", "out/basilisk", "site/fixtures/landlab", "out/landlab", "site/fixtures/wntr", "out/wntr", "out/openswmm_fv", "out/telemac", "out/hecras", "out/hecras2d", "out/hecras66", "out/hecras66_2d", "out/anuga", "out/geoclaw", "out/lisflood"]
+                       "site/fixtures/lisflood", "site/fixtures/hecras2d", "site/fixtures/hecras66_2d", "site/fixtures/openswmm", "site/fixtures/swmm_track_a", "out/openswmm", "out/swmm_track_a", "site/fixtures/hydronet", "out/hydronet", "site/fixtures/hydra", "out/hydra", "out/hydra_networks", "site/fixtures/coupled", "out/coupled", "out/submitted", "site/fixtures/tsnet", "out/tsnet", "site/fixtures/basilisk", "out/basilisk", "site/fixtures/landlab", "out/landlab", "site/fixtures/wntr", "out/wntr", "out/openswmm_fv", "out/telemac", "out/hecras", "out/hecras2d", "out/hecras66", "out/hecras66_2d", "out/anuga", "out/geoclaw", "out/lisflood", "site/fixtures/setups", "out/setups", "site/fixtures/owner", "out/owner"]
     score_dirs = [Path(p) for p in (args.scorecards or suite_dirs)]
     result_dirs = [Path(p) for p in (args.results or ["out/vertical_slice", "out/networks", "out/demo_2d"])]
     score_dirs = [p if p.is_absolute() else ROOT / p for p in score_dirs]
@@ -1277,6 +1278,37 @@ def main() -> int:
         (DIST / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(zp, DIST / rel)
         pages.INPUT_ZIPS[(zp.parent.name, zp.stem)] = (rel.as_posix(), zp.stat().st_size)
+    for zp in sorted((SITE / "fixtures" / "owner").glob("*/*.inputs.zip")) + sorted((ROOT / "submissions").glob("*/model_files.zip")):
+        # model files sent with an owner-run or submitted result (the owner-run workflow, or a submission's model_files.zip)
+        sid = zp.name.split(".")[0] if zp.name.endswith(".inputs.zip") else None
+        if zp.name == "model_files.zip":
+            try:
+                sub_ = json.loads((zp.parent / "submission.json").read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            key = "sub-" + re.sub(r"[^a-z0-9]+", "-", f"{sub_['solver']['name']} {sub_['solver']['version']}".lower()).strip("-")
+            for case in sub_.get("cases", []):
+                rel = Path("data") / "inputs" / case["test_id"] / f"{key}.zip"
+                (DIST / rel).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(zp, DIST / rel)
+                pages.INPUT_ZIPS[(case["test_id"], key)] = (rel.as_posix(), zp.stat().st_size)
+            continue
+        card = next(iter(sorted(zp.parent.glob(f"{sid}_*.scorecard.json"))), None)
+        if sid and card:
+            name = json.loads(card.read_text(encoding="utf-8"))["solver"]["name"]
+            key = "sub-" + re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+            rel = Path("data") / "inputs" / sid / f"{key}.zip"
+            (DIST / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(zp, DIST / rel)
+            pages.INPUT_ZIPS[(sid, key)] = (rel.as_posix(), zp.stat().st_size)
+    _oi = SITE / "fixtures" / "outputs.json"  # what each solver wrote, published as release files (scripts/collect_results.py)
+    if _oi.is_file():
+        for _sid, _by in json.loads(_oi.read_text(encoding="utf-8")).items():
+            for _k, _rec in _by.items():
+                pages.OUTPUT_ZIPS[(_sid, _k)] = _rec
+    from benchmark1d2d import setups as _setups
+
+    pages.SETUP_BASES = set(_setups.BASES)
     import netresults
 
     deferred_cases: list[tuple] = []  # test pages are built last, once every viewer's data exists
@@ -1294,6 +1326,7 @@ def main() -> int:
         "score.html": pages.score_page(manifests, checkable),
         "how-it-works.html": pages.how_page(manifests, runs),
         "about.html": pages.about_page(manifests, runs),
+        "setups.html": pages.setups_page(runs),
         "catalog.html": pages.redirect("results.html"),
         "corpus.html": corpus_page(index, census, parity),
         "reports.html": reports_page(manifests, cards, evidence),

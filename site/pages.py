@@ -165,14 +165,14 @@ def config_block(key: str, depth: int = 1) -> str:
              f'<tbody>{rows}</tbody></table></div>') if rows else '<p class="small">No setting is listed as changed from the engine\'s default.</p>'
     up = "../" * depth
     src = f'{BLOB}configurations/{esc(key)}.json'
-    return (f'<section class="section config"><h2>How it was set up</h2>'
+    return (f'<section class="section config" id="setup"><h2>How it was set up</h2>'
             f'<p>{tier_badge(key)} <span class="muted">{esc(what)} Set by: {esc(rec["set_by"])}. '
             f'Engine: {esc(rec["engine"]["name"])} {esc(rec["engine"]["version"])}'
             f'{(" (" + esc(rec["engine"]["pin"]) + ")") if rec["engine"].get("pin") else ""}.</span></p>'
             f'<h3>Settings changed from the engine\'s default</h3>{table}'
             f'<p class="small muted">{esc(config_records.AUDIT[rec["defaults_audit"]])} '
             f'{esc(rec.get("notes", ""))} <a href="{src}">Configuration record</a> · '
-            f'<a href="{up}score.html">Think a better set-up exists? Submit it: CI reruns it and, if it does better across the whole group of tests, it becomes the T2 shown.</a></p></section>')
+            f'<a href="{up}setups.html#propose">Think a better set-up exists? Propose it: the suite re-runs it and shows it beside this one, under your name.</a></p></section>')
 
 
 def score_pill(card: dict | None) -> str:
@@ -293,15 +293,53 @@ def register_submitted(solver: dict) -> str:
     key = "sub-" + _re.sub(r"[^a-z0-9]+", "-", f"{solver['name']}".lower()).strip("-")
     if key not in SOLVER:
         n = sum(1 for s in SOLVERS if s["kind"] == "submitted")
-        entry = dict(key=key, name=solver["name"], sub=f"submitted by {solver['submitted_by']}", kind="submitted",
+        owner = solver.get("run_by") == "owner"
+        entry = dict(key=key, name=solver["name"], sub=f"{'run by' if owner else 'submitted by'} {solver['submitted_by']}", kind="submitted",
                      color=SUBMITTED_COLORS[n % len(SUBMITTED_COLORS)],
-                     what=(f"{solver['name']}, run by {solver['submitted_by']} and submitted as results files; "
+                     what=(f"{solver['name']}, run on {solver['submitted_by']}'s own machine through the suite's workflow, "
+                           "and scored by the suite with the same scorer as every other run" if owner else
+                           f"{solver['name']}, run by {solver['submitted_by']} and submitted as results files; "
                            "scored by the suite with the same scorer as every other run"))
         SOLVERS.append(entry)
         SOLVER[key] = entry
         CONFIG[key] = config_records.for_submission(
             {"solver": solver, "submitted_by": solver.get("submitted_by"), "tier": solver.get("tier"),
              "changed_from_default": solver.get("changed_from_default")}, key)
+    return key
+
+
+def register_setup(solver: dict) -> str | None:
+    """A column for a set-up someone proposed for one of the suite's models, re-run by the suite (benchmark1d2d.setups)."""
+    import re as _re
+
+    st = solver["setup"]
+    if st["slug"].startswith("_"):
+        return None  # worked examples run in CI but are not shown
+    base_key = solver_key(_re.sub(r" · set-up “.*”$", "", solver["name"]))
+    base = SOLVER.get(base_key or "")
+    key = "setup-" + _re.sub(r"[^a-z0-9]+", "-", st["slug"].lower()).strip("-")
+    if key not in SOLVER:
+        who = st["proposed_by"]
+        entry = dict(key=key, name=base["name"] if base else solver["name"],
+                     sub=f"set-up “{st['title']}” by {who}", kind="setup", base=base_key,
+                     color=(base or {}).get("color", "#5D6D7E"),
+                     what=(f"{base['name'] if base else solver['name']} {base['sub'] if base else ''}, with the set-up “{st['title']}” proposed by {who}"
+                           + (" following the developer's published guidance" if st.get("tier") == "T1" else "")
+                           + "; the suite applied the settings to its own model files and re-ran it"))
+        SOLVERS.append(entry)
+        SOLVER[key] = entry
+        brec = CONFIG.get(base_key or "", {})
+        CONFIG[key] = {
+            "schema_version": "1.0.0", "key": key, "engine": brec.get("engine", {"name": solver["name"], "version": solver.get("version", "")}),
+            "tier": st.get("tier", "T2"), "set_by": who + (f" (GitHub {st['github_user']})" if st.get("github_user") else ""),
+            "changed_from_default": [
+                {"setting": c["setting"], "value": c["value"], "default": c.get("was"),
+                 "reason": f"Proposed set-up “{st['title']}”" + (f"; the suite's own set-up uses {c['was']}" if c.get("was") else ""),
+                 **({"source": st["guidance_source"]} if st.get("guidance_source") else {})}
+                for c in st["changes"]] + [ch for ch in brec.get("changed_from_default", []) if ch["setting"] not in {c["setting"] for c in st["changes"]}],
+            "defaults_audit": brec.get("defaults_audit", "pending"),
+            "notes": f"Proposed in setups/{st['slug']}/setup.json; the suite re-runs it with the same runner as {base_key}.",
+        }
     return key
 
 
@@ -318,7 +356,9 @@ def load_runs(dirs: list[Path]) -> dict[str, dict[str, dict]]:
                 c = json.loads(p.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
                 continue
-            if (c.get("solver") or {}).get("submitted_by"):
+            if (c.get("solver") or {}).get("setup"):
+                k = register_setup(c["solver"])  # checked first: its name starts with the base model's
+            elif (c.get("solver") or {}).get("submitted_by"):
                 if any(part.startswith("_") for part in p.parts[-3:]):
                     continue  # worked examples are scored in CI, not shown
                 k = register_submitted(c["solver"])
@@ -467,9 +507,9 @@ def _margin_span(ck: dict) -> str:
     return f' · <span class="mg">{esc(t)}</span>' if t else ""
 
 
-# Sensitivity envelopes (scripts/sensitivity_swmm.py): model key -> its file, loaded once.
+# Sensitivity envelopes (scripts/sensitivity_swmm.py, scripts/sensitivity.py): model key -> its file, loaded once.
 SENSITIVITY: dict[str, dict] = {}
-for _p in sorted((Path(__file__).parent / "fixtures" / "sensitivity").glob("*.json")):
+for _p in sorted(p for p in (Path(__file__).parent / "fixtures" / "sensitivity").glob("*.json") if not p.name.endswith(".partial.json")):
     try:
         _d = json.loads(_p.read_text(encoding="utf-8"))
         SENSITIVITY[_d["model"]] = _d
@@ -494,10 +534,12 @@ def sensitivity_html(sid: str) -> str:
             f'<p>Across {len(e["variants"])} set-ups a competent user could choose (one option changed at a time from the published one), '
             f'the result ranges from <b>{esc(measures.short(e["low"]))}</b> ({esc(d["variants"].get(e["low_variant"], e["low_variant"]))}) '
             f'to <b>{esc(measures.short(e["high"]))}</b> ({esc(d["variants"].get(e["high_variant"], e["high_variant"]))}). '
-            f'Geometry, boundaries, friction, grid and routing step stay the test\'s own.</p>'
+            f'{"<b>The set-up matters here as much as the software.</b> " if (e["high"] or 0) > 2 * max(e["low"] or 0, 0.5) else "The set-up moves this result little. "}'
+            f'Geometry, boundaries, friction and grid stay the test\'s own.</p>'
             f'<details><summary>Every set-up</summary><div class="table-scroll"><table class="tb"><thead><tr><th>Set-up</th><th class="num">Difference</th><th></th></tr></thead>'
             f'<tbody>{rows}</tbody></table></div></details>'
-            f'<p class="small muted">Run {esc(d.get("date", ""))} with {esc(d.get("engine", ""))} by <a href="{BLOB}{esc(d.get("script", ""))}">{esc(d.get("script", ""))}</a>.</p></section>')
+            f'<p class="small muted">Run {esc(d.get("date", ""))}{(" with " + esc(d["engine"])) if d.get("engine") else ""} by <a href="{BLOB}{esc(d.get("script", ""))}">{esc(d.get("script", ""))}</a>. '
+            f'Think a set-up outside this range would do better? <a href="../setups.html#propose">Propose it</a>.</p></section>')
     return "".join(out)
 
 
@@ -660,7 +702,7 @@ CASE_NOTES = {
 # ── layout ──────────────────────────────────────────────────────────────────
 
 NAV = [("profiles.html", "Evidence"), ("results.html", "Tests &amp; results"), ("score.html", "Score your model"), ("how-it-works.html", "How it works"), ("about.html", "About")]
-FOOT = [("about.html", "About and how to cite"), ("news.html", "What's new"), ("profiles.html", "Evidence profiles"), ("solvers.html", "Models"), ("compare.html", "Side by side"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
+FOOT = [("about.html", "About and how to cite"), ("setups.html", "Proposed set-ups"), ("news.html", "What's new"), ("profiles.html", "Evidence profiles"), ("solvers.html", "Models"), ("compare.html", "Side by side"), ("corpus.html", "SWMM corpus"), ("reports.html", "Reports and audit"), ("downloads.html", "Downloads"),
         ("method.html", "Method"), ("get-started.html", "Command line")]
 LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 2 11 14 17 8 S27 2 33 8" fill="none" stroke-width="3" stroke-linecap="round"/>'
         '<path class="b" d="M1 18 H33" stroke-width="3" stroke-linecap="round"/></svg>')
@@ -784,7 +826,8 @@ KIND_WORDS = {"production": "Production software, installed from its official so
               "research": "Research code, run with the settings of its own examples.",
               "suite": "A worked example that ships with the suite.",
               "compat": "Scored for compatibility with the current release, not for physics.",
-              "submitted": "Run by others and submitted as results files; scored by the suite with the same scorer as every other run."}
+              "submitted": "Run by others and submitted as results files; scored by the suite with the same scorer as every other run.",
+              "setup": "A set-up proposed by someone who knows this software, applied by the suite to its own model files and re-run on the suite's machines."}
 
 
 def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
@@ -885,8 +928,8 @@ document.getElementById('cmp-swap').addEventListener('click',function(){var t=A.
 
 def solvers_index(manifests: list[dict], runs: dict) -> str:
     keys = SOLVERS_ORDER({k for v in runs.values() for k in v})
-    groups = [("production", "Production software"), ("submitted", "Submitted results"), ("research", "Research codes"),
-              ("suite", "Worked examples"), ("compat", "Compatibility")]
+    groups = [("production", "Production software"), ("setup", "Proposed set-ups, re-run by the suite"), ("submitted", "Submitted results"),
+              ("research", "Research codes"), ("suite", "Worked examples"), ("compat", "Compatibility")]
     out = []
     for kind, title in groups:
         ks = [k for k in keys if SOLVER[k]["kind"] == kind]
@@ -1160,7 +1203,15 @@ def test_gallery(manifests: list[dict], runs: dict, drafts_need=None) -> str:
 
 
 def SOLVERS_ORDER(keys) -> list[str]:
-    return [s["key"] for s in SOLVERS if s["key"] in keys]
+    """Registry order; a proposed set-up comes straight after the model it starts from."""
+    out = [s["key"] for s in SOLVERS if s["key"] in keys and s["kind"] != "setup"]
+    for s in SOLVERS:
+        if s["key"] in keys and s["kind"] == "setup":
+            i = out.index(s["base"]) + 1 if s.get("base") in out else len(out)
+            while i < len(out) and SOLVER[out[i]]["kind"] == "setup" and SOLVER[out[i]].get("base") == s.get("base"):
+                i += 1
+            out.insert(i, s["key"])
+    return out
 
 
 # ── tests and results ───────────────────────────────────────────────────────
@@ -1423,32 +1474,101 @@ def compare_chart(m: dict, runs: dict, exact: dict | None, profiles: dict) -> tu
 
 BUILD_COMMIT = ""   # set by build.py: the commit the site was built from
 INPUT_ZIPS: dict = {}  # (sid, key) -> (published path, bytes), set by build.py
+SETUP_BASES: set = set()  # model keys the suite can re-run with a proposed set-up (benchmark1d2d.setups), set by build.py
+
+
+OUTPUT_ZIPS: dict = {}  # (sid, key) -> {"url", "bytes", "sha256", "date"}: what the solver wrote, as release files (set by build.py)
+
+
+def _kb(n: int) -> str:
+    return f"{nice(n / 1e6, 2)} MB" if n >= 1e6 else f"{nice(n / 1024, 2)} KB"
+
+
+def _value_for(value, sid: str) -> str:
+    """A setting's value on one test, from a per-test list such as "0.001 (A1F-001, A1F-010); 0.01 (A1D-001)"."""
+    import re as _re
+
+    text = str(value)
+    for val, tests in _re.findall(r"([^;()]+?)\s*\(([^)]*)\)", text):
+        if sid in [t.strip() for t in tests.split(",")]:
+            return val.strip()
+    return text
+
+
+def settings_rows(key: str, sid: str) -> str:
+    """The settings changed from the engine's default that apply to this test, as table rows."""
+    rec = CONFIG.get(key) or {}
+    rows = []
+    for ch in rec.get("changed_from_default", []):
+        if ch.get("cases") and sid not in ch["cases"]:
+            continue
+        why = ("Required by the case. " if ch.get("required_by_case") else "Selects the method tested. " if ch.get("selects_method") else "") + ch.get("reason", "")
+        rows.append(f'<tr><td><code>{esc(ch["setting"])}</code></td><td>{esc(_value_for(ch["value"], sid))}</td>'
+                    f'<td>{esc("" if ch.get("default") is None else ch["default"])}</td><td>{esc(why)}</td></tr>')
+    return "".join(rows)
 
 
 def run_block(sid: str, k: str, card: dict, up: str = "../") -> str:
-    """How this result was produced, and how to produce it again."""
+    """Everything needed to check this result: the settings, the files the solver read and wrote, the score card, and how to re-run it."""
     import recipes
 
-    r = recipes.recipe(k, sid)
-    if not r:
-        return ""
+    r = recipes.recipe(k, sid) if SOLVER.get(k, {}).get("kind") not in ("submitted",) else None
+    base = SOLVER.get(k, {}).get("base")
+    if r is None and base:  # a proposed set-up: the base model's runner, with the set-up file
+        r = recipes.recipe(base, sid)
+        if r:
+            slug = k.removeprefix("setup-")
+            r = {**r, "run": [f"BENCH_SETUP=setups/{slug}/setup.json " + line for line in r["run"]]}
+    rec = CONFIG.get(k) or {}
+    prov = provenance(k, card)
     ver = (card.get("solver") or {}).get("version") or ""
     commit = BUILD_COMMIT[:12] or "master"
-    clone = [f"git clone {recipes.REPO_URL} && cd benchmark1d2d", f"git checkout {commit}"]
-    steps = "\n".join(clone + r["install"] + r["run"])
     z = INPUT_ZIPS.get((sid, k))
-    files = (f'<p class="small"><a href="{up}{esc(z[0])}" download>The model files the suite wrote for this run (.zip, {nice(z[1] / 1024, 2)} KB)</a>: '
-             'the exact inputs the solver read (one folder per grid, where the test has several), with their SHA-256.</p>' if z else
-             '<p class="small muted">The model files for this run will be published with its next run.</p>')
-    note = f'<p class="small">{esc(r["note"])}</p>' if r.get("note") else ""
-    return (f'<details class="share run-it"><summary>Run it yourself</summary>'
-            f'<p class="small">{esc(card.get("solver", {}).get("name", ""))}{f" · version {esc(ver)}" if ver and ver not in card.get("solver", {}).get("name", "") else ""} · '
-            f'runs on {esc(r["platform"])} · produced by <a href="{REPO_URL}/blob/master/{esc(r["script"])}">{esc(r["script"])}</a> '
-            f'in <a href="{REPO_URL}/blob/master/.github/workflows/{esc(r["workflow"])}">{esc(r["workflow"])}</a>.</p>'
-            f'<pre class="code"><code>{esc(steps)}</code></pre>{files}{note}'
-            f'<p class="small">The test itself (inputs, exact answer, checks): <a href="{up}data/cases/{esc(sid)}.zip" download>{esc(sid)}.zip</a>. '
-            f'Check the score card with <code>benchmark1d2d verify-card</code>: its signature by the suite\'s public development key '
-            f'shows the card has not changed since it was written, not who wrote it.</p></details>')
+    o = OUTPUT_ZIPS.get((sid, k))
+    rows = settings_rows(k, sid)
+    tier = rec.get("tier")
+    submitted = prov in ("owner", "submitted_files", "submitted")
+    if submitted:
+        opts = ((card.get("solver") or {}).get("adapter") or "").split("; ", 1)
+        said = opts[1].removeprefix("options: ").removeprefix("settings: ") if len(opts) > 1 else ""
+        settings = (f'<li><b>Settings.</b> {tier_badge(k)} As the submitter describes them: {esc(said) if said else "<span class=muted>not described</span>"}.'
+                    f'{" The model files below hold the full set-up." if z else ""}</li>')
+    else:
+        settings = (f'<li><b>Settings.</b> {tier_badge(k)} '
+                    + (f'Changed from the engine\'s default for this test:</li></ul><div class="table-scroll"><table class="data small-table"><thead><tr><th>Setting</th><th>Value</th><th>Default</th><th>Why</th></tr></thead><tbody>{rows}</tbody></table></div><ul class="check-list">'
+                       if rows else "Every setting is the engine's own default, apart from what the test itself defines (geometry, boundaries, friction, grid).</li>")
+                    + f'<li class="small muted">{esc(config_records.AUDIT.get(rec.get("defaults_audit", ""), ""))} '
+                      f'<a href="{BLOB}configurations/{esc(k)}.json">Full configuration record (.json)</a> · <a href="{up}solvers/{esc(k)}.html#setup">how this model is set up on every test</a></li>') if rec else ""
+    if submitted:
+        inputs = (f'<li><b>Model files.</b> <a href="{up}{esc(z[0])}" download>Model files (.zip, {_kb(z[1])})</a>: what the submitter\'s software read (<code>model/</code>) and wrote (<code>output/</code>), with their SHA-256.</li>'
+                  if z else '<li><b>Model files.</b> <span class="muted">None were sent with these results, so they cannot be checked from here.</span></li>')
+    else:
+        inputs = (f'<li><b>What the solver read.</b> <a href="{up}{esc(z[0])}" download>Model files (.zip, {_kb(z[1])})</a>: the exact input files, one folder per grid where the test has several, with their SHA-256.</li>'
+                  if z else '<li><b>What the solver read.</b> <span class="muted">The model files are published with this model\'s next run.</span></li>')
+    outputs = "" if submitted and not o else (f'<li><b>What the solver wrote.</b> <a href="{esc(o["url"])}" download>Output files (.zip, {_kb(o["bytes"])})</a>: its own output files as written, and the results file the scorer read{(", from the run of " + esc(o["date"])) if o.get("date") else ""}.</li>'
+               if o else '<li><b>What the solver wrote.</b> <span class="muted">The output files are published with this model\'s next run.</span></li>')
+    sc = (f'<li><b>The score card.</b> <a href="{up}data/scorecards/{esc(k)}/{esc(card["_path"].name)}" download>{esc(card["_path"].name)}</a>, signed; check it with <code>benchmark1d2d verify-card</code>. '
+          f'The test itself (inputs, exact answer, checks): <a href="{up}data/cases/{esc(sid)}.zip" download>{esc(sid)}.zip</a>.</li>') if card.get("_path") else ""
+    rerun = ""
+    if r:
+        steps = "\n".join([f"git clone {recipes.REPO_URL} && cd benchmark1d2d", f"git checkout {commit}"] + r["install"] + r["run"])
+        rerun = (f'<p class="small"><b>Run it again.</b> {esc(card.get("solver", {}).get("name", ""))}{f" · version {esc(ver)}" if ver and ver not in card.get("solver", {}).get("name", "") else ""} · '
+                 f'runs on {esc(r["platform"])} · produced by <a href="{REPO_URL}/blob/master/{esc(r["script"])}">{esc(r["script"])}</a> '
+                 f'in <a href="{REPO_URL}/blob/master/.github/workflows/{esc(r["workflow"])}">{esc(r["workflow"])}</a>.</p>'
+                 f'<pre class="code"><code>{esc(steps)}</code></pre>' + (f'<p class="small">{esc(r["note"])}</p>' if r.get("note") else ""))
+    propose = (f'<p class="small propose"><b>Know this software well?</b> If a different set-up would do better, '
+               f'<a href="{up}setups.html#propose">propose it</a>: the suite re-runs it and shows it beside this result under your name.</p>'
+               if k in SETUP_BASES else
+               f'<p class="small propose"><b>Know this software well?</b> If a different set-up would do better, run it yourself and '
+               f'<a href="{up}score.html#{esc(sid)}">publish the result with your model files</a>; it is shown beside this one under your name.</p>')
+    if prov in ("owner", "submitted_files", "submitted"):
+        propose = ('<p class="small propose"><b>Know this software well?</b> Run the test with a different set-up and '
+                   f'<a href="{up}score.html#{esc(sid)}">publish it with your model files</a>; it is shown beside this one under your name.</p>')
+    who = f'<p class="small">{provenance_chip(k, card)} {esc(PROVENANCE[prov][1])}</p>'
+    return (f'<details class="share run-it check-it" open><summary>Check this result</summary>{who}'
+            f'<p class="small">Everything someone who knows {esc(SOLVER[k]["name"])} needs to judge whether it was set up well, and to try a better set-up.</p>'
+            f'<ul class="check-list">{settings}{inputs}{outputs}{sc}</ul>{rerun}{propose}</details>')
+
 
 
 def share_block(sid: str, k: str, card: dict) -> str:
@@ -1561,6 +1681,8 @@ def conv_chart(m: dict, runs: dict) -> str:
             fill = "var(--sheet)" if s["kind"] == "suite" else col
             out.append(f'<circle cx="{px(x):.1f}" cy="{py(y):.1f}" r="4" fill="{fill}" stroke="{col}" stroke-width="2"/>')
         name = s["name"] if not k.startswith("lisflood") else f'{s["name"]} {s["sub"].split("·")[-1].strip()}'
+        if s["kind"] == "setup":
+            name = f'{s["name"]} · {s["sub"]}'
         legend.append(f'<span><span class="sw" style="background:{col};width:14px;height:4px"></span>{esc(name)} · rate {nice(p, 2) if p is not None else "n/a"}</span>')
     svg = f'<svg viewBox="0 0 {W} {Hh}" role="img" aria-label="Average error against grid size for each model, on log scales" style="width:100%;height:auto;display:block">{"".join(out)}</svg>'
     return svg + f'<div class="keyrow">{"".join(legend)}</div>'
@@ -1661,14 +1783,16 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
                          for ck in checks_for(m, c))
         note = NOTES.get((sid, k), "")
         name = s["name"] if not k.startswith("lisflood") else f'{s["name"]} {s["sub"].split("·")[-1].strip()}'
+        if s["kind"] == "setup":
+            name = f'{s["name"]} · {s["sub"]}'
         mcards.append(f"""<details class="model-card" id="m-{k}">
-  <summary class="top"><div><div class="name"><span class="sw" style="background:{s['color']}"></span>{esc(name)} {tier_badge(k)}</div><div class="what">{esc(s['what'])}</div></div>{score_pill(c)}</summary>
+  <summary class="top"><div><div class="name"><span class="sw" style="background:{s['color']}"></span>{esc(name)} {tier_badge(k)} {provenance_chip(k, c)}</div><div class="what">{esc(s['what'])}</div></div>{score_pill(c)}</summary>
   {run_line(c)}
   <div class="checks-grid">{checks}</div>
   {f'<p class="note">{esc(plain_note(note))}</p>' if note else ''}
   <p class="note small">Measured with scorer {difference.METHOD_VERSION} · Score card: <a href="../data/scorecards/{k}/{esc(c['_path'].name)}" download>{esc((c.get('solver') or {}).get('name', ''))}</a></p>
   {share_block(sid, k, c)}
-  {run_block(sid, k, c) if m["track"] == "A" else ""}
+  {run_block(sid, k, c)}
 </details>""")
     levels = (m["simulation"].get("mesh_refinement") or {}).get("levels") or []
     grid_txt = (f"Each model runs the same inputs on {len(levels)} grids, from {nice(max(levels), 3)} m down to {nice(min(levels), 3)} m cells; the checks are scored on the {nice(min(levels), 3)} m grid, and each card lists the error on every grid."
@@ -1921,6 +2045,9 @@ def score_page(manifests: list[dict], checkable: list[dict]) -> str:
       <label class="nv-field">Licence for the results
         <select name="licence"><option value="CC-BY-4.0">CC BY 4.0 (credit to you)</option><option value="CC0-1.0">CC0 (no conditions)</option></select></label>
       <label class="nv-field sc-wide">Settings you used <textarea name="settings" rows="3" required placeholder="scheme, time step, wet/dry depth… what a user would need to repeat the run"></textarea></label>
+      <label class="nv-field sc-wide">Your model files <span class="small muted">(recommended)</span>
+        <input type="file" name="model" id="sc-model" multiple>
+        <span class="small muted">The project, control and input files your software read, and its output files if you can. They are published with your results, so anyone with the software can check your set-up; without them the result is labelled <i>results only</i>. Up to 20 MB in all; for a whole folder, zip it first.</span></label>
       <label class="sc-check sc-wide"><input type="checkbox" name="consent" required> I ran this test myself (or for the organisation above) and the results may be published.</label>
       <div class="btns sc-wide"><button class="btn primary" type="submit">Make the file and open the form</button></div>
     </form>
@@ -1975,7 +2102,7 @@ def about_page(manifests: list[dict], runs: dict) -> str:
     <ul>
       <li><b>Not a ranking.</b> No model is scored overall, and no number is combined across tests.</li>
       <li><b>Not a certification.</b> A good result on these tests does not make a model fit for your project; it is evidence for your engineering judgement.</li>
-      <li><b>Not the last word on settings.</b> Each result says how the model was set up. Anyone can send a better set-up, and it is run and shown beside the others.</li>
+      <li><b>Not the last word on settings.</b> Each result publishes its settings and model files. Anyone can <a href="setups.html">propose a better set-up</a>; it is run and shown beside the others, under their name.</li>
     </ul></div>
   <div class="card"><h2>Where the evidence is thin</h2>
     <ul>
@@ -1998,6 +2125,66 @@ def about_page(manifests: list[dict], runs: dict) -> str:
 </div>"""
     return layout("About", body, "about.html",
                   description="Who runs Benchmark1D2D, how it stays neutral, what it is not, where the evidence is thin, and how to cite it.")
+
+
+def setups_page(runs: dict) -> str:
+    """How to propose a better set-up, and every set-up proposed so far with its results."""
+    import json as _json
+
+    from benchmark1d2d import setups as _setups
+
+    rows = []
+    for f in sorted((H.ROOT / "setups").glob("*/setup.json")):
+        if f.parent.name.startswith("_"):
+            continue
+        try:
+            st = _json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        key = "setup-" + f.parent.name
+        res = [(tid, c) for tid, by in runs.items() for k, c in by.items() if k == key]
+        base = SOLVER.get(st["base"], {})
+        sets = ", ".join(f"{k} {v}" for k, v in st["settings"].items())
+        links = " ".join(f'<a href="tests/{esc(sid_of(tid))}.html#m-{esc(key)}">{esc(sid_of(tid))} <span class="lb-cell {measures.klass(measures.score(c))}">{esc(measures.short(measures.score(c)))}</span></a>'
+                         for tid, c in sorted(res))
+        rows.append(f'<tr><td><b>{esc(st["title"])}</b><div class="small muted">{esc(st["proposed_by"])}'
+                    f'{(" · GitHub " + esc(st["github_user"])) if st.get("github_user") else ""}{" · developer" if st.get("developer") else ""}</div></td>'
+                    f'<td>{esc(base.get("name", st["base"]))} <span class="muted">{esc(base.get("sub", ""))}</span></td>'
+                    f'<td><span class="tier-chip">{esc(st.get("tier", "T2"))}</span></td><td><code>{esc(sets)}</code><div class="small muted">{esc(st["reason"])}</div></td>'
+                    f'<td>{links or "<span class=muted>running or not run yet</span>"}</td></tr>')
+    table = ('<div class="table-scroll"><table class="data"><thead><tr><th>Set-up</th><th>Starts from</th><th>Tier</th><th>Settings and why</th><th>Results</th></tr></thead>'
+             f'<tbody>{"".join(rows)}</tbody></table></div>') if rows else '<p class="muted">No set-up has been proposed yet. Be the first.</p>'
+    bases = "".join(f"<li>{esc(SOLVER[k]['name'])} <span class=muted>{esc(SOLVER[k]['sub'])}</span>: "
+                    f"{ {'swmm': 'keywords in the [OPTIONS] section of the .inp', 'telemac': 'keywords of the steering file (KEYWORD = value)', 'lisflood': 'keywords of the .par file'}[fmt] }</li>"
+                    for k, fmt in _setups.BASES.items() if k in SOLVER)
+    body = f"""<div class="wrap">
+<section class="page-head">
+  <h1>Proposed set-ups</h1>
+  <p class="lede">A result here is only as good as the model behind it. If you know a solver well and think the suite set it up badly, propose a better set-up: the suite re-runs the model with your settings on its own machines and shows the result beside its own, under your name.</p>
+</section>
+<section class="section grid two">
+  <div class="card"><h2>How it works</h2><ol>
+    <li>Open a test's <b>Check this result</b> box to see the model's settings, the exact files the solver read and what it wrote.</li>
+    <li><a href="{REPO_URL}/issues/new?template=propose-setup.yml">Propose a set-up</a>: the model it starts from, the settings to change, the tests, and why.</li>
+    <li>A bot checks it, saves it in <code>setups/</code> and re-runs the model. Results appear on each test page, usually within the hour.</li>
+    <li>Your result is shown <b>beside</b> the suite's own, never in its place, and nobody approves or holds it back. It is re-run weekly, so it follows new engine versions.</li>
+  </ol></div>
+  <div class="card"><h2>The rules</h2><ul>
+    <li>Only solver settings can change. What the test defines (geometry, boundaries, friction, the grid, the end time) stays fixed, so every set-up solves the same problem.</li>
+    <li><b>T2</b>, an expert's choice, is shown with your name. <b>T1</b> is exactly the developer's own published guidance and must say where that guidance is.</li>
+    <li>Developers are invited to propose their recommended set-up for their own software at any time; it is marked as theirs.</li>
+    <li>Software the suite cannot run itself: run the test and <a href="score.html">publish your results with your model files</a>, or <a href="{BLOB}docs/owner-runner.md">run it on your own machine through the suite's workflow</a>.</li>
+  </ul></div>
+</section>
+<section class="section" id="propose"><div class="head-row"><h2 style="margin:0">Set-ups proposed so far</h2>
+  <a class="btn primary" href="{REPO_URL}/issues/new?template=propose-setup.yml">Propose a set-up</a></div>
+  {table}
+</section>
+<section class="section"><h2>Models the suite can re-run with your settings</h2><ul>{bases}</ul>
+  <p class="small muted">More engines follow as their runners learn to apply settings. For any other model, the <a href="score.html">Score your model</a> page takes results you ran yourself.</p></section>
+</div>"""
+    return layout("Proposed set-ups", body, "setups.html",
+                  description="Propose a better set-up for one of the suite's models: it is re-run on the suite's machines and shown beside the suite's own result, under your name.")
 
 def how_page(manifests: list[dict], runs: dict) -> str:
     from benchmark1d2d.catalog.promotion import next_stage as _next_stage
@@ -2036,6 +2223,16 @@ def how_page(manifests: list[dict], runs: dict) -> str:
     <div class="card"><h3>SWMM and EPANET</h3><p>Pinned releases (SWMM 5.2.4, EPANET 2.2) define the compatibility answers; a second build of each checks the answer does not depend on the compiler.</p></div>
   </div>
 </section>
+<section class="section tight" id="modeller">
+  <h2>Is it the software, or the modeller?</h2>
+  <p>A result is only as good as the model behind it, and someone who knows a program well might set it up better than the suite did. The suite does not ask you to trust its set-ups; it makes every one checkable and challengeable.</p>
+  <div class="grid">
+    <div class="card"><h3>Check any result</h3><p>Every result's <b>Check this result</b> box gives the settings changed from the engine's defaults and why, the exact files the solver read, what it wrote, the signed score card and the commands to run it again.</p></div>
+    <div class="card"><h3>Propose a better set-up</h3><p>For SWMM, OpenSWMM, TELEMAC and LISFLOOD-FP, <a href="setups.html">propose different settings</a>: the suite re-runs the model with them on its own machines and shows the result beside its own, under your name. Developers are invited to send their own recommended set-ups.</p></div>
+    <div class="card"><h3>See how much the set-up matters</h3><p>Each model is re-run with one documented option changed at a time. Where the range is wide, the test page says the set-up matters as much as the software; where it is narrow, the set-up is not the story.</p></div>
+  </div>
+  <p class="small muted" style="margin-top:12px">Every result is labelled with who ran it: the suite, a proposed set-up run by the suite, the software's owner on their own machine, or a submitter (with or without model files). Software the suite cannot run can join through its owner's machine; see the <a href="{REPO_URL}/blob/master/docs/owner-runner.md">guide</a>.</p>
+</section>
 <section class="section tight">
   <h2>How tests grow up</h2>
   <div class="grid narrow">
@@ -2071,16 +2268,44 @@ def redirect(to: str) -> str:
             f'<link rel="canonical" href="{esc(to)}"><p>This page moved to <a href="{esc(to)}">{esc(to)}</a>.</p>')
 
 
+PROVENANCE = {
+    "suite": ("Run by the suite", "Installed from the official source and run on the suite's own machines; anyone can re-run it with the steps under Check this result."),
+    "setup": ("Proposed set-up, run by the suite", "Someone who knows this software proposed the settings; the suite applied them to its own model files and ran it on its own machines."),
+    "owner": ("Run on the owner's machine", "Run by the software's owner on their own licensed machine, through the suite's workflow, which sent the test, scored the results and recorded the run."),
+    "submitted_files": ("Submitted, with model files", "Run by the submitter and scored by the suite; the model files are published, so anyone with a licence can check it."),
+    "submitted": ("Submitted results only", "Run by the submitter and scored by the suite; no model files were published, so it cannot be re-run from here."),
+}
+
+
+def provenance(key: str, card: dict | None = None) -> str:
+    """Who ran a result, and whether anyone can check it: one of PROVENANCE's keys."""
+    kind = SOLVER.get(key, {}).get("kind")
+    solver = (card or {}).get("solver") or {}
+    if kind == "setup":
+        return "setup"
+    if solver.get("run_by") == "owner":
+        return "owner"
+    if kind == "submitted":
+        return "submitted_files" if solver.get("model_files") else "submitted"
+    return "suite"
+
+
+def provenance_chip(key: str, card: dict | None = None) -> str:
+    p = provenance(key, card)
+    label, why = PROVENANCE[p]
+    return f'<span class="prov prov-{p}" title="{esc(why)}">{esc(label)}</span>'
+
+
 def HOLD(key: str) -> str | None:  # noqa: N802 - a constant-like rule
     """Why a result carries a label: a submitted results file that the suite's CI has not reproduced (review F4)."""
     if SOLVER.get(key, {}).get("kind") == "submitted":
-        return "submitted results file, not reproduced by the suite's CI"
+        return "not run on the suite's machines"
     return None
 
 
 def ORDER(runs_on_test: dict) -> list[dict]:  # noqa: N802
     """The results on one test, by configuration tier and then the model registry's order (never by score)."""
-    return measures.rows_for_test(runs_on_test, [s_["key"] for s_ in SOLVERS], tier_of=tier_of, hold=HOLD)
+    return measures.rows_for_test(runs_on_test, SOLVERS_ORDER({s_["key"] for s_ in SOLVERS}), tier_of=tier_of, hold=HOLD)
 
 
 # Who makes each model and how it is licensed (shown on the evidence profiles)

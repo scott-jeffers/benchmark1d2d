@@ -471,6 +471,10 @@
     });
     var sub = { schema_version: "1.0.0", solver: { name: get("software"), version: get("version"), options: get("settings") }, submitted_by: get("org"),
       date: new Date().toISOString().slice(0, 10), results_licence: get("licence"), cases: [{ test_id: t.sid, case_version: t.version, results: names }] };
+    var mfiles = Array.prototype.slice.call((document.getElementById("sc-model") || {}).files || []), mbytes = 0;
+    mfiles.forEach(function (mf) { mbytes += mf.size; });
+    if (mbytes > 20 * 1024 * 1024) { alert("The model files come to " + (mbytes / 1048576).toFixed(0) + " MB, over the 20 MB limit. Leave out large outputs, or publish them elsewhere and give the link under Settings."); return; }
+    mfiles.forEach(function (mf) { z.file("model/" + mf.name.replace(/[^\w.\-]/g, "_"), mf); });
     z.file("submission.json", JSON.stringify(sub, null, 2));
     var slug = (get("software") + "-" + t.sid).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     z.generateAsync({ type: "blob" }).then(function (blob) {
@@ -480,7 +484,7 @@
         licence: get("licence") === "CC0-1.0" ? "CC0 (no conditions)" : "CC BY 4.0 (credit to you)" });
       var url = IDX.repo + "/issues/new?" + q.toString();
       var sent = document.getElementById("sc-sent");
-      sent.innerHTML = "<b>Almost done.</b> <b>" + esc(slug) + ".zip</b> has downloaded. <a href=\"" + esc(url) + "\" target=\"_blank\" rel=\"noopener\">Open the GitHub form</a> (it opens filled in), drag the zip into its <b>Files</b> box and press <b>Submit</b>. A free GitHub account is needed; the bot replies with your scores within minutes.";
+      sent.innerHTML = "<b>Almost done.</b> <b>" + esc(slug) + ".zip</b> has downloaded" + (mfiles.length ? " with your " + mfiles.length + " model file" + (mfiles.length > 1 ? "s" : "") : " (no model files: the result will be labelled results only)") + ". <a href=\"" + esc(url) + "\" target=\"_blank\" rel=\"noopener\">Open the GitHub form</a> (it opens filled in), drag the zip into its <b>Files</b> box and press <b>Submit</b>. A free GitHub account is needed; the bot replies with your scores within minutes.";
       sent.hidden = false;
       window.open(url, "_blank", "noopener");
     });

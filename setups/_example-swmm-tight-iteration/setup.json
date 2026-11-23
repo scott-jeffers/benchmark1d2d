@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "base": "swmm524",
+  "title": "tighter iteration",
+  "proposed_by": "Benchmark1D2D maintainers (worked example)",
+  "tier": "T2",
+  "tests": ["A1F-001"],
+  "settings": {"HEAD_TOLERANCE": "0.00001", "MAX_TRIALS": "30", "VARIABLE_STEP": "0.5"},
+  "reason": "A worked example of a proposed set-up: a tighter head tolerance and more trials, so SWMM's dynamic-wave iteration converges on the short conduits of the channel tests. Folders starting with an underscore are run in CI but not shown on the site."
+}

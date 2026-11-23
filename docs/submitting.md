@@ -34,6 +34,35 @@ https://scott-jeffers.github.io/benchmark1d2d/score.html
 To fix something, attach a corrected sheet in a comment on the same issue: the
 bot scores it again.
 
+## Send your model files too
+
+Results alone can be scored but not checked. Add the files your software read
+(project, control, mesh and boundary files) and, if you can, what it wrote, so
+anyone with the same software can judge your set-up:
+
+* on the Score page, pick them under **Your model files** before you press
+  *Make the file*; or
+* in a zip you make yourself, put them in a `model/` folder (what the software
+  read) and an `output/` folder (what it wrote), beside the results sheets.
+
+They are published with your results (up to 20 MB). Results without them are
+labelled *submitted results only*.
+
+## Software the suite cannot run
+
+If your licence lets you run the tests but not let others run your software,
+run them on your own machine through the suite's workflow: register a GitHub
+self-hosted runner and add a job to `owner-run.yml`. The suite sends each
+test, your command runs your model, and the suite scores and publishes the
+result as *run on the owner's machine*. See [owner-runner.md](owner-runner.md).
+
+## Think the suite set a model up badly?
+
+For SWMM, OpenSWMM, TELEMAC and LISFLOOD-FP, the suite can re-run its own
+model with your settings: use the *Propose a better set-up* issue form, or add
+`setups/<slug>/setup.json` in a pull request. The result is shown beside the
+suite's own, under your name. See the [Proposed set-ups](https://scott-jeffers.github.io/benchmark1d2d/setups.html) page.
+
 ## What happens next
 
 * Results are published under the licence you choose (CC BY 4.0 or CC0).

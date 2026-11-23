@@ -198,11 +198,15 @@ def run_level(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
         (d / "t2d.cas").write_text(STEERING.format(title=tid, t_end=t_end))
         from benchmark1d2d import keep
 
+        from benchmark1d2d import setups
+
+        setups.apply("telemac", tid, d)  # a proposed set-up (BENCH_SETUP) changes its settings here
         keep.inputs("telemac", tid, d, dx)
         proc = subprocess.run([py, str(Path(env["HOMETEL"]) / "scripts/python3/telemac2d.py"), "t2d.cas"],
                               cwd=d, env=env, capture_output=True, text=True, timeout=3600)
         if proc.returncode != 0 or not (d / "res.slf").is_file():
             raise RuntimeError(f"TELEMAC failed on {tid} dx={dx}:\n{proc.stdout[-3000:]}\n{proc.stderr[-2000:]}")
+        keep.outputs("telemac", tid, d, dx)  # res.slf and the listing (Check this result)
         t, vals = read_selafin_last(d / "res.slf")
     centre = np.arange(nx + 1) + mid0  # middle row of nodes
     hv = next(v for k, v in vals.items() if k.startswith("WATER DEPTH"))
@@ -429,11 +433,15 @@ def run_level_2d(tid: str, m: dict, dx: float, env: dict, py: str) -> dict:
                                    .replace("FINITE VOLUME SCHEME = 1", f"FINITE VOLUME SCHEME = {scheme}"))
         from benchmark1d2d import keep
 
+        from benchmark1d2d import setups
+
+        setups.apply("telemac", tid, d)  # a proposed set-up (BENCH_SETUP) changes its settings here
         keep.inputs("telemac", tid, d, dx)
         proc = subprocess.run([py, str(Path(env["HOMETEL"]) / "scripts/python3/telemac2d.py"), "t2d.cas"],
                               cwd=d, env=env, capture_output=True, text=True, timeout=7200)
         if proc.returncode != 0 or not (d / "res.slf").is_file():
             raise RuntimeError(f"TELEMAC failed on {tid} dx={dx}:\n{proc.stdout[-3000:]}\n{proc.stderr[-2000:]}")
+        keep.outputs("telemac", tid, d, dx)  # res.slf and the listing (Check this result)
         t, vals = read_selafin_last(d / "res.slf")
     hv = next(v for k, v in vals.items() if k.startswith("WATER DEPTH"))
     uv = next(v for k, v in vals.items() if k.startswith("VELOCITY U"))
@@ -560,11 +568,15 @@ def run_ea(tid: str, m: dict, env: dict, py: str) -> tuple[dict, float | None]:
         (d / "t2d.cas").write_text(cas)
         from benchmark1d2d import keep
 
+        from benchmark1d2d import setups
+
+        setups.apply("telemac", tid, d)  # a proposed set-up (BENCH_SETUP) changes its settings here
         keep.inputs("telemac", tid, d, dx)
         proc = subprocess.run([py, str(Path(env["HOMETEL"]) / "scripts/python3/telemac2d.py"), "t2d.cas"],
                               cwd=d, env=env, capture_output=True, text=True, timeout=6 * 3600)
         if proc.returncode != 0 or not (d / "res.slf").is_file():
             raise RuntimeError(f"TELEMAC failed on {tid}:\n{proc.stdout[-3000:]}\n{proc.stderr[-2000:]}")
+        keep.outputs("telemac", tid, d, dx)  # res.slf and the listing (Check this result)
         for t, vals in iter_selafin(d / "res.slf"):
             hv = next(v for k, v in vals.items() if k.startswith("WATER DEPTH"))
             uv = next(v for k, v in vals.items() if k.startswith("VELOCITY U"))

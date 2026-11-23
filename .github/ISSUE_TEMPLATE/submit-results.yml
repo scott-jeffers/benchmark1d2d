@@ -1,5 +1,5 @@
 name: Submit results
-description: Send the results of a test you ran in your own software. A bot scores them and replies; a maintainer then publishes them.
+description: Send the results of a test you ran in your own software. A bot scores them, replies, and publishes them if they score without problems.
 title: "Results: "
 labels: [submission]
 body:

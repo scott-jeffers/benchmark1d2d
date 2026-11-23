@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scott-jeffers.github.io/benchmark1d2d/schemas/v1/setup.schema.json",
+  "title": "Benchmark1D2D proposed set-up",
+  "description": "A set-up proposed by someone who knows a solver well: the suite applies these settings to its own model files for the base model and re-runs it. The result is shown beside the suite's own, under the proposer's name, never in its place. One file per set-up at setups/<slug>/setup.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "base", "title", "proposed_by", "settings", "reason"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "slug": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,60}$", "description": "Defaults to the folder name."},
+    "base": {"type": "string", "description": "The suite's model key the set-up starts from (see benchmark1d2d.setups.BASES)."},
+    "title": {"type": "string", "minLength": 3, "maxLength": 60, "description": "A short name shown beside the result, e.g. 'tighter head tolerance'."},
+    "proposed_by": {"type": "string", "minLength": 2, "maxLength": 120, "description": "Person or organisation, as it should appear on the site."},
+    "github_user": {"type": "string", "pattern": "^[A-Za-z0-9-]{1,39}$", "description": "Set by the intake bot from the account that proposed it."},
+    "tier": {"enum": ["T1", "T2"], "default": "T2", "description": "T1: exactly what the developer's own published guidance recommends (guidance_source required). T2: an expert's choice."},
+    "guidance_source": {"type": "string", "description": "For T1: the developer's published guidance this set-up follows (a URL or a document and section)."},
+    "developer": {"type": "boolean", "default": false, "description": "Proposed by the software's own developer."},
+    "tests": {"oneOf": [{"const": "all"}, {"type": "array", "items": {"type": "string", "pattern": "^[A-Z0-9-]+$"}, "minItems": 1}], "default": "all"},
+    "settings": {"type": "object", "minProperties": 1, "maxProperties": 20, "additionalProperties": {"type": ["string", "number", "boolean"]},
+                 "description": "Setting name -> value, as the solver's input file spells it."},
+    "reason": {"type": "string", "minLength": 10, "maxLength": 2000, "description": "Why these settings: what they fix and when an engineer would use them."},
+    "date": {"type": "string", "format": "date"}
+  }
+}

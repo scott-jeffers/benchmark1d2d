@@ -153,6 +153,10 @@
       "type": "string",
       "pattern": "^[A-Za-z0-9-]{1,39}$",
       "description": "GitHub account that sent the submission (set by the intake bot, not by the submitter). Shown on the site beside submitted_by."
+    },
+    "model_files": {
+      "type": "string",
+      "description": "A zip in the submission folder with the model files the solver read (model/) and what it wrote (output/), so anyone with the software can check the result."
     }
   }
 }

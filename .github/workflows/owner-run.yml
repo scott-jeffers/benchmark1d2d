@@ -1,0 +1,48 @@
+name: Owner-run solvers
+
+# Runs tests on a software owner's own machine (a GitHub self-hosted runner
+# that holds their licence) and scores the results with the suite's scorer.
+# The licence never leaves that machine; score cards are marked "run on the
+# owner's machine" and collected like any other run. See docs/owner-runner.md.
+#
+# Each owner adds one job below (or a matrix row) naming the runner label they
+# registered, their software, and the command that runs their model. The
+# command runs in the unpacked test kit and gets {test}, {kit} (inputs, model
+# files to start from, results sheets), {results} (the sheets to fill in) and
+# {repo} (this repository's checkout).
+on:
+  workflow_dispatch:
+    inputs:
+      owner:
+        description: "Which owner's job to run (matches a job id below), or 'all'"
+        default: all
+  schedule:
+    - cron: "41 4 * * 6"  # weekly, Saturday 04:41 UTC: follows catalog and engine changes
+
+permissions:
+  contents: read
+
+jobs:
+  # ── one job per owner; copy this block. The example runs the suite's own demo solver ──
+  example:
+    if: github.event_name == 'workflow_dispatch' && (inputs.owner == 'example' || inputs.owner == 'all')
+    runs-on: ubuntu-latest  # an owner uses their runner's label here, e.g. [self-hosted, windows, tuflow]
+    env:
+      OWNER_COMMAND: "python {repo}/scripts/owner_example.py {test} {kit} {results}"
+      OWNER_SETTINGS: "the suite's demo 1D solver, first-order finite volume, CFL 0.5"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -q -e ".[dev,site]"
+      - name: Run and score on this machine
+        run: python scripts/run_owner.py --software "Owner-run example" --version "0.1.0" --organisation "Benchmark1D2D (worked example)" A1F-011
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: owner-example
+          path: |
+            out/owner/*/*.scorecard.json
+            out/owner/*/*.inputs.zip
+            out/owner/*/*.outputs.zip

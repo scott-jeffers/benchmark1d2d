@@ -346,11 +346,15 @@ def main() -> int:
                     links, centres, keep = CASES[tid](m, float(dx), ENGINES[engine]["routing"], inp)
                     from benchmark1d2d import keep as kept
 
+                    from benchmark1d2d import setups
+
+                    setups.apply(engine, tid, td)  # a proposed set-up (BENCH_SETUP) changes its settings here
                     kept.inputs(engine, tid, td, dx, files=["m.inp"])
                     try:
                         o, version = run_engine(base, inp, td, args.openswmm_python)
                         h, u, t_last = read_links(o, links, t_end)
                         rep = swmm_report(td / "m.rpt")
+                        kept.outputs(engine, tid, td, dx)  # the .out and .rpt SWMM wrote (Check this result)
                     except Exception as exc:  # noqa: BLE001 - an engine that cannot run a case is a finding
                         print(f"  {engine} {tid} dx={dx}: did not run: {str(exc)[-600:]}")
                         failed += 1

@@ -19,7 +19,7 @@ from datetime import date
 
 from benchmark1d2d import evidence as ev
 
-KIND_GROUPS = [("production", "Production software"), ("submitted", "Submitted results"), ("research", "Research codes"),
+KIND_GROUPS = [("production", "Production software"), ("setup", "Proposed set-ups, re-run by the suite"), ("submitted", "Submitted results"), ("research", "Research codes"),
                ("suite", "Worked examples"), ("compat", "Previous releases and compatibility")]
 
 

@@ -316,6 +316,7 @@ def main() -> int:
             hdf = run_plan(folder, ras_exe)
             ws = read_steady_ws(hdf)
             rep = hecras_report(hdf, ras_exe)
+            keep.outputs(f"hecras{TAG}", tid, folder, dx)  # the plan HDF and logs (Check this result)
             missing = [r for r in built["rs"] if r not in ws]
             if missing:
                 raise RuntimeError(f"results lack stations {missing[:5]}; have {list(ws)[:5]}")

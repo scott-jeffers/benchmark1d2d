@@ -101,6 +101,7 @@ def build_scorecard(
             "version": solver["version"],
             "adapter": solver["adapter"],
             **({"submitted_by": solver["submitted_by"]} if solver.get("submitted_by") else {}),
+            **{k: solver[k] for k in ("setup", "run_by", "runner", "model_files") if solver.get(k) is not None},
         },
         "catalog_version": catalog_version,
         "timestamp": timestamp,

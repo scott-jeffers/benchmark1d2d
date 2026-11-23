@@ -169,11 +169,22 @@ takes it from there.
    (`make_reference.py --check`).
 4. **Publish.** The site and its data exports are rebuilt from the cards, with
    no manual publishing step.
-5. **Challenge.** Anyone may submit a configuration. CI reruns it from the
-   pinned install. If it does better across its whole capability group, with no
-   per-case tuning, it becomes the T2 shown, and the history is kept. Results
-   files that CI has not reproduced are shown with that label. There is no
-   notice period and no embargo.
+5. **Challenge.** Anyone may propose a set-up for a model the suite can re-run
+   (`setups/<slug>/setup.json`; schema `schemas/v1/setup.schema.json`). CI
+   applies it to the suite's own model files, reruns it from the pinned install
+   weekly, and shows it **beside** the suite's own result under the proposer's
+   name, never in its place: the site keeps every set-up visible rather than
+   picking one, consistent with §2 (no rankings). Only solver settings may
+   change; what the case defines stays fixed. A set-up that follows the
+   developer's published guidance, with its source, is T1; any other is T2.
+   For software the suite cannot run, the owner may run the tests on their own
+   machine through the suite's workflow, or submit results with their model
+   files. Every result is labelled with who ran it and whether its model files
+   are published. There is no notice period and no embargo.
+6. **Check.** Every result publishes the settings changed from the engine's
+   defaults, the model files the solver read, what it wrote, the signed score
+   card and the commands to run it again, so anyone who knows the software can
+   judge the set-up.
 
 Only three decisions are left to people. None of them is on the publishing
 path. They are listed in [GOVERNANCE.md](../../GOVERNANCE.md).

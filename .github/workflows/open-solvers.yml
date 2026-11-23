@@ -63,6 +63,7 @@ jobs:
             out/anuga/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   coupled:
     name: SWMM 5.2.4 + ANUGA 4.0.1 (coupled 1D/2D)
@@ -97,6 +98,7 @@ jobs:
             out/coupled/*/*.replay.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   openswmm-coupled:
     name: OpenSWMM 6 (its own coupled 1D/2D)
@@ -127,6 +129,7 @@ jobs:
             out/coupled/*/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   geoclaw:
     name: GeoClaw 5.9.2
@@ -168,6 +171,7 @@ jobs:
             out/geoclaw/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   lisflood:
     name: LISFLOOD-FP 8.3 (FV1, DG2, ACC)
@@ -224,6 +228,7 @@ jobs:
             out/lisflood/*/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   hydronet:
     name: HydroNet finite volume (Penn State)
@@ -267,6 +272,7 @@ jobs:
             out/hydronet/*/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   basilisk:
     name: Basilisk Saint-Venant (source snapshot)
@@ -302,6 +308,7 @@ jobs:
             out/basilisk/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
 
   landlab:
     name: Landlab 2.11.0 OverlandFlow
@@ -330,3 +337,4 @@ jobs:
             out/landlab/*.scorecard.json
             out/curves/**/*.curve.json
             out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip

@@ -83,8 +83,13 @@ def download(url: str) -> bytes:
     return data
 
 
+MODEL_DIRS = ("model", "output")  # folders in a submission zip that hold the model files and the solver's outputs
+MAX_MODEL_BYTES = 20 * 1024 * 1024  # kept in the repository and on the site, like the suite's own model files
+
+
 def unpack(blobs: list[tuple[str, bytes]], dest: Path) -> dict | None:
-    """Results sheets (flattened, safe names) into dest; returns submission.json if one came with them."""
+    """Results sheets (flattened, safe names) into dest, model files into dest/model_files/;
+    returns submission.json if one came with them."""
     sub = None
     for name, data in blobs:
         if name.lower().endswith(".zip"):
@@ -97,6 +102,13 @@ def unpack(blobs: list[tuple[str, bytes]], dest: Path) -> dict | None:
                     total += zi.file_size
                     if total > 4 * MAX_BYTES:
                         raise ValueError("the zip unpacks to more than 240 MB")
+                    parts = [x for x in Path(zi.filename).parts if x not in ("", ".")]
+                    top = next((i for i, x in enumerate(parts) if x.lower() in MODEL_DIRS), None)
+                    if top is not None and ".." not in parts:  # model files and outputs, kept with their folders
+                        target = dest / "model_files" / Path(*[re.sub(r"[^\w.\-]", "_", x) for x in parts[top:]])
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.write_bytes(z.read(zi))
+                        continue
                     if base == "submission.json":
                         sub = json.loads(z.read(zi).decode("utf-8"))
                     elif base.lower().endswith(KEEP) and not base.lower().endswith(".txt"):
@@ -178,7 +190,7 @@ def main() -> int:
             blobs = ([(p.name, p.read_bytes()) for p in args.local_files] if args.local_files
                      else [(u.rsplit("/", 1)[-1], download(u)) for u in urls])
             sub = unpack(blobs, tmp) or {}
-            sheets = sorted(p for p in tmp.iterdir() if p.suffix.lower() in (".csv", ".parquet"))
+            sheets = sorted(p for p in tmp.iterdir() if p.is_file() and p.suffix.lower() in (".csv", ".parquet"))
             if not sheets:
                 raise ValueError("the attachment holds no results sheets (.csv or .parquet).")
             software = field(f, "software") or (sub.get("solver") or {}).get("name", "")
@@ -230,6 +242,17 @@ def main() -> int:
             for c in cases:
                 for name in c["results"]:
                     shutil.copy2(tmp / name, stage / name)
+            mf = tmp / "model_files"
+            if mf.is_dir() and any(mf.rglob("*")):
+                from export_inputs import zip_folder
+
+                size = zip_folder(mf, stage / "model_files.zip")
+                if size > MAX_MODEL_BYTES:
+                    (stage / "model_files.zip").unlink()
+                    notes.append(f"the model files are {size / 1e6:.0f} MB, over the {MAX_MODEL_BYTES / 1e6:.0f} MB limit; publish them elsewhere "
+                                 "(Zenodo, a release) and give the link in the settings")
+                else:
+                    submission["model_files"] = "model_files.zip"
             (stage / "submission.json").write_text(json.dumps(submission, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
             ss.SUBMISSIONS, ss.OUT = stage.parent, tmp / "cards"
             lines, problems = ss.score_folder(stage, ss._key())
@@ -243,7 +266,10 @@ def main() -> int:
             else:
                 reply += [f"No problems found, so the results are published automatically, marked *submitted by {org}*"
                           + (f" (sent from GitHub account {author})" if author else "") + f", under {licence}. "
-                          "They are shown as submitted results: the suite scored your files but did not re-run your software."]
+                          "They are shown as submitted results: the suite scored your files but did not re-run your software. "
+                          + ("Your model files are published with them, so anyone with the software can check the result." if submission.get("model_files") else
+                             "**No model files came with them**, so they are labelled *results only*. To let others check them, add a `model/` folder "
+                             "(the files your software read) and an `output/` folder (what it wrote) to the zip and comment with it here.")]
             if args.publish and not problems:
                 if folder.is_dir():
                     shutil.rmtree(folder)

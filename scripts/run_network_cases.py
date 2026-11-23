@@ -178,6 +178,7 @@ def tracer(case_dir: Path, dx: float) -> dict:
 
         kept.inputs("epanet22", "A1P-030", Path(td), f"dx{dx:g}", files=["model.inp"])
         res = wntr.sim.EpanetSimulator(wntr.network.WaterNetworkModel(str(inp))).run_sim(file_prefix=str(Path(td) / "run"), version=2.2)
+        kept.outputs("epanet22", "A1P-030", Path(td), f"dx{dx:g}")
     q = res.node["quality"]
     t_end = float(q.index.max())
     c = q.loc[t_end, nodes].to_numpy(float) * 1000.0  # WNTR reports mg/L as kg/m³; the source is 1 mg/L

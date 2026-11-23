@@ -291,6 +291,7 @@ def compute(folder: Path, ras_exe: Path, plan: str, timeout: float) -> Path | No
     except Exception as exc:  # noqa: BLE001
         log(f"    compute_plan({plan}) raised {type(exc).__name__}: {exc}"[:1500])
     hdf = next(iter(sorted(folder.glob(f"*.p{plan}.hdf"))), None)
+    keep.outputs(f"hecras{TAG}-em" if folder.parent.name == "em" else f"hecras{TAG}", tid, folder, float(lvl) if lvl else None)
     return hdf
 
 

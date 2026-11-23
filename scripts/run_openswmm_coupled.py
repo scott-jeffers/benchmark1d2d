@@ -100,6 +100,7 @@ def main() -> int:
             from benchmark1d2d import keep
 
             keep.inputs(model_key, tid, work, files=["model.inp"])
+            keep.outputs(model_key, tid, work)
             ver = rec["version"]
             sol = {"name": f"OpenSWMM Engine v6 1D/2D ({what}) {ver}", "version": ver,
                    "adapter": f"OpenSWMM's own 1D/2D coupling, defaults; vertex-coupled manholes; {what}"}

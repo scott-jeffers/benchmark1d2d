@@ -1,0 +1,185 @@
+name: Proposed set-ups
+
+# Re-run each proposed set-up (setups/<slug>/setup.json) with its base model's
+# own runner: the suite applies the proposed settings to the model files it
+# writes and runs the solver on its own machines (scripts/run_setup.py). The
+# result collector files the cards under site/fixtures/setups/ and the site
+# shows each beside the suite's own result, under the proposer's name. Nobody
+# approves a set-up: one that passes the checks in benchmark1d2d.setups runs.
+on:
+  push:
+    branches: [master]
+    paths: ["setups/**"]
+  pull_request:
+    paths: ["setups/**"]
+  schedule:
+    - cron: "17 3 * * 0"  # weekly, so every set-up follows new engine versions
+  workflow_dispatch:
+    inputs:
+      setups:
+        description: "Set-up folders to run (space-separated); empty runs all"
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  BENCH_KEEP_INPUTS: out/inputs  # the model files each set-up wrote, published like the suite's own
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      setups: ${{ steps.pick.outputs.setups }}
+      families: ${{ steps.pick.outputs.families }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -q -e ".[dev]"
+      - id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          WANTED: ${{ github.event.inputs.setups }}
+          BEFORE: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$WANTED" ]; then list="$WANTED"
+          elif [ "$EVENT" = "push" ] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            list=$(git diff --name-only "$BEFORE" HEAD -- setups | awk -F/ 'NF>2{print "setups/"$2}' | sort -u | tr '\n' ' ')
+          elif [ "$EVENT" = "pull_request" ]; then
+            list=$(git diff --name-only "$BASE_SHA" HEAD -- setups | awk -F/ 'NF>2{print "setups/"$2}' | sort -u | tr '\n' ' ')
+          else list=$(ls -d setups/*/ 2>/dev/null | sed 's#/$##' | tr '\n' ' '); fi
+          keep=""; for d in $list; do [ -f "$d/setup.json" ] && keep="$keep $d"; done
+          echo "setups=$keep" >> "$GITHUB_OUTPUT"
+          fams=$( [ -n "$keep" ] && python scripts/run_setup.py --list-families $keep || true )
+          echo "families=$fams" >> "$GITHUB_OUTPUT"
+          echo "Set-ups: $keep; engine families: $fams" >> "$GITHUB_STEP_SUMMARY"
+      - name: Check every set-up (schema, a base the suite can re-run, solver settings only)
+        run: |
+          python - <<'PY'
+          import json, sys, pathlib
+          sys.path.insert(0, "runner/python")
+          from benchmark1d2d import setups
+          bad = 0
+          for f in sorted(pathlib.Path("setups").glob("*/setup.json")):
+              p = setups.check(json.loads(f.read_text(encoding="utf-8")))
+              print(f"{f}: {'ok' if not p else '; '.join(p)}")
+              bad += bool(p)
+          sys.exit(1 if bad else 0)
+          PY
+
+  swmm:
+    needs: plan
+    if: contains(needs.plan.outputs.families, 'swmm')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        id: py310
+        with:
+          python-version: "3.10"
+      - run: ${{ steps.py310.outputs.python-path }} -m pip install -q "swmm-toolkit==0.10.0"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install -q -e ".[dev,engines]"
+          python -m venv "$RUNNER_TEMP/openswmm"
+          "$RUNNER_TEMP/openswmm/bin/python" -m pip install -q "openswmm==6.0.0a4.dev1" numpy
+      - name: Re-run the SWMM-family set-ups
+        run: |
+          python scripts/run_setup.py ${{ needs.plan.outputs.setups }} --family swmm \
+            --openswmm-python "$RUNNER_TEMP/openswmm/bin/python" --swmm51-python "${{ steps.py310.outputs.python-path }}"
+      - name: Zip the model files and outputs
+        if: always()
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: setups-swmm
+          path: |
+            out/setups/*/*.scorecard.json
+            out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
+
+  telemac:
+    needs: plan
+    if: contains(needs.plan.outputs.families, 'telemac')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -q -e ".[dev]"
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: telemac
+          create-args: -c conda-forge opentelemac=v9.1.1 python=3.12
+          init-shell: none
+      - name: Re-run the TELEMAC set-ups
+        run: |
+          python scripts/fetch_inputs.py
+          python scripts/run_setup.py ${{ needs.plan.outputs.setups }} --family telemac --telemac-prefix "$MAMBA_ROOT_PREFIX/envs/telemac"
+      - name: Zip the model files and outputs
+        if: always()
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: setups-telemac
+          path: |
+            out/setups/*/*.scorecard.json
+            out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
+
+  lisflood:
+    needs: plan
+    if: contains(needs.plan.outputs.families, 'lisflood')
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      LF_URL: https://zenodo.org/api/records/13121119/files/LISFLOOD-FP-8.3.zip/content
+      LF_MD5: abaa2e41b58f6c7df4443274bf130d4a
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update -q && sudo apt-get install -y -q libnetcdf-dev libnuma-dev
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/lisflood-src.zip
+          key: lisflood-8.3-src-v1
+      - name: Download (pinned checksum) and build
+        run: |
+          zip="$RUNNER_TEMP/lisflood-src.zip"
+          for i in 1 2 3 4 5 6 7 8; do
+            echo "$LF_MD5  $zip" | md5sum -c --status - 2>/dev/null && break
+            curl -fsSL --retry 3 --retry-all-errors -C - -o "$zip" "$LF_URL" || sleep 5
+          done
+          echo "$LF_MD5  $zip" | md5sum -c -
+          unzip -q "$zip" -d "$RUNNER_TEMP/lf"
+          src=$(dirname "$(find "$RUNNER_TEMP/lf" -path '*/source/CMakeLists.txt' | head -1)")
+          cmake -S "$src" -B "$RUNNER_TEMP/lf/build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/lf/build" -j4 --target lisflood
+      - name: Re-run the LISFLOOD-FP set-ups
+        run: |
+          python -m pip install -q -e ".[dev]"
+          python scripts/fetch_inputs.py
+          python scripts/run_setup.py ${{ needs.plan.outputs.setups }} --family lisflood --lisflood-exe "$RUNNER_TEMP/lf/build/lisflood"
+      - name: Zip the model files and outputs
+        if: always()
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: setups-lisflood
+          path: |
+            out/setups/*/*.scorecard.json
+            out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip

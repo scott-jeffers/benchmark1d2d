@@ -103,6 +103,7 @@ def run(m: dict, dx: float, td: Path, tsnet_python: str) -> dict:
                        capture_output=True, text=True, cwd=td)
     if p.returncode != 0 or not out.is_file():
         raise RuntimeError((p.stdout + p.stderr)[-1500:])
+    keep.outputs("tsnet", m["test_id"].split("_")[0], td, f"dx{dx:g}")
     r = json.loads(out.read_text())
     return {"t": r["t"], "x": np.linspace(0.0, L, len(nodes)), "p": rho * G * np.asarray(r["head"]), "u": np.asarray(r["u"])}
 

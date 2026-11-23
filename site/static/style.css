@@ -1012,3 +1012,24 @@ details.older > summary { cursor: pointer; font-weight: 600; margin: 12px 0; col
 .nv-embed .nv-bar { margin-top: 0; }
 .nv-embed .nv-bar label[hidden] { display: none; }
 .tb .lb-cell { white-space: nowrap; }
+
+/* ── who ran a result, and whether anyone can check it ─────────────── */
+.prov { display: inline-block; font-size: 12px; font-weight: 600; line-height: 1.3; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-2); background: var(--sheet); vertical-align: 2px; white-space: nowrap; }
+.prov-suite { border-color: color-mix(in srgb, var(--water) 45%, var(--rule)); color: var(--water-ink); }
+.prov-setup { border-color: color-mix(in srgb, var(--violet) 55%, var(--rule)); color: var(--ink); }
+.prov-owner { border-color: color-mix(in srgb, var(--bed) 60%, var(--rule)); color: var(--ink); }
+.prov-submitted_files { border-style: dashed; color: var(--ink); }
+.prov-submitted { border-style: dashed; color: var(--ink-2); background: transparent; }
+.check-it .check-list { margin: 8px 0 6px; padding-left: 18px; display: grid; gap: 6px; font-size: 14.5px; }
+.check-it .small-table { font-size: 13.5px; margin: 6px 0 10px; }
+.check-it .propose { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rule-2); }
+details.model-card > summary.top { flex-wrap: wrap; min-width: 0; }
+details.model-card > summary.top > div { min-width: 0; flex: 1 1 220px; }
+details.model-card .name { flex-wrap: wrap; row-gap: 4px; }
+details.model-card { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  details.model-card > summary { padding: 14px 14px; }
+  details.model-card > :not(summary) { margin-left: 14px; margin-right: 14px; }
+  .check-it .small-table th:nth-child(3), .check-it .small-table td:nth-child(3) { display: none; }  /* the default column; the why says it */
+  .check-it .check-list { padding-left: 14px; }
+}

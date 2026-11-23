@@ -390,6 +390,9 @@ def main(argv: list[str]) -> int:
                 cwd = os.getcwd()
                 os.chdir(td)  # ANUGA may drop scratch files in the working directory
                 try:
+                    from benchmark1d2d import keep
+
+                    keep.script_model("anuga", tid, float(dx), CASES[tid], {"anuga": getattr(anuga, "__version__", ""), "builder": CASES[tid].__name__})
                     cols = CASES[tid](m, float(dx), tid)
                 finally:
                     os.chdir(cwd)

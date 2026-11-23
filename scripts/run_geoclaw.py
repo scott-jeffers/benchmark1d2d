@@ -150,6 +150,7 @@ def run_case(exe: Path, claw: Path, rdir: Path, xlo, xhi, ylo, yhi, dx, bed, eta
     proc = subprocess.run([str(exe)], cwd=rdir, capture_output=True, text=True)
     if proc.returncode != 0 or not (rdir / "fort.q0001").is_file():
         raise RuntimeError(f"xgeoclaw failed in {rdir}:\n{proc.stdout[-3000:]}\n{proc.stderr[-2000:]}")
+    keep.outputs("geoclaw", rdir.name.rsplit("_dx", 1)[0], rdir, dx)  # GeoClaw's fort.* output (Check this result)
     return read_final(rdir, nx, ny, xlo, ylo)
 
 

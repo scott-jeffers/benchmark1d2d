@@ -195,6 +195,9 @@ def main() -> int:
                 write_inp(net, td / "m.inp", ENGINES[engine]["routing"])
                 from benchmark1d2d import keep
 
+                from benchmark1d2d import setups
+
+                setups.apply(engine, tid, td)  # a proposed set-up (BENCH_SETUP) changes its settings here
                 keep.inputs(engine, tid, td, files=["m.inp"])
                 try:
                     t0 = time.perf_counter()
@@ -204,6 +207,7 @@ def main() -> int:
                     from benchmark1d2d.engine_report import swmm_report
 
                     rep = swmm_report(td / "m.rpt")
+                    keep.outputs(engine, tid, td)  # the .out and .rpt the engine wrote (Check this result)
                 except Exception as exc:  # noqa: BLE001 - an engine that cannot run a case is a finding
                     print(f"  {engine} {tid}: did not run: {str(exc)[-600:]}")
                     continue
