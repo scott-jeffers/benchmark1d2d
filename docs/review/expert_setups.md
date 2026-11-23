@@ -8,7 +8,7 @@ proposed set-up in `setups/`, re-run by the suite and shown **beside** the suite
 The numbers are the score: the largest error over a test's checks, as a percentage of its
 accuracy band (100 % = at the edge of the band). "Before" is the published suite result;
 "after" is the set-up re-run by `setups.yml` in CI, with the same runners and the same engine
-versions (SWMM-family numbers are from local runs of the same runner until CI publishes its own).
+versions. The CI runs gave the same numbers as the local runs.
 
 ## What was changed, and why it works
 
@@ -36,8 +36,7 @@ to 0.15 %.
 | A1D-003 | 0.33 / 0.33 | 0.33 | **0.04** |
 
 The subcritical bump goes from a large failure to an essentially exact answer. Neither set-up
-wins everywhere, so both are published. SWMM 5.1.15 gets the same two set-ups; it could not be
-run locally (it needs Python 3.10), so its numbers come from CI.
+wins everywhere, so both are published. SWMM 5.1.15 gets the same two set-ups and, in CI, gives the same numbers as SWMM 5.2.4.
 
 **What does not get fixed.** The transcritical bumps (A1F-041, A1F-042) improve but stay well
 outside the band at every setting tried, including a free outfall, variable steps and damping.
