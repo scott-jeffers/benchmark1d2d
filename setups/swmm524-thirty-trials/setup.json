@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "base": "swmm524",
+  "title": "converged iteration, 30 trials",
+  "proposed_by": "Benchmark1D2D maintainers (expert set-up)",
+  "tier": "T2",
+  "tests": "all",
+  "settings": {
+    "MAX_TRIALS": "30",
+    "HEAD_TOLERANCE": "0.00001"
+  },
+  "reason": "EPA SWMM 5.2.4's dynamic-wave solver iterates each time step until the head at every node changes by less than HEAD_TOLERANCE, giving up after MAX_TRIALS. The suite's harness uses 8 trials and 0.0005 m, and on the channel tests' 5 cm conduits that is not enough: on the subcritical bump (A1F-040) 46 % of steps end unconverged and the water level drifts 0.8 m. With up to 30 trials and a 0.01 mm tolerance the iteration converges (0.15 % of steps unconverged) and the bump is matched to about 1 mm. The suite's own 'converged' variant uses 20 trials, which is still too few on the finest grid."
+}

@@ -39,7 +39,7 @@ def test_check_rejects_test_settings_unknown_bases_and_bad_values() -> None:
     assert any("defined by the test" in p for p in setups.check({**base, "base": "swmm524", "settings": {"FLOW_ROUTING": "KINWAVE"}}))
     assert any("defined by the test" in p for p in setups.check({**base, "base": "lisflood-acc", "settings": {"DEMfile": "x.asc"}}))
     assert any("defined by the test" in p for p in setups.check({**base, "base": "telemac", "settings": {"EQUATIONS": "'SAINT-VENANT FE'"}}))
-    assert any("can re-run" in p for p in setups.check({**base, "base": "hecras", "settings": {"x": "1"}}))
+    assert any("can re-run" in p for p in setups.check({**base, "base": "hydra-uds", "settings": {"x": "1"}}))
     assert any("one simple value" in p for p in setups.check({**base, "base": "swmm524", "settings": {"HEAD_TOLERANCE": "1\n[JUNCTIONS]"}}))
     assert any("guidance_source" in p for p in setups.check({**base, "base": "swmm524", "tier": "T1", "settings": {"MAX_TRIALS": "20"}}))
 
@@ -143,3 +143,27 @@ def test_collector_files_setup_and_owner_cards_apart() -> None:
     assert collect_results.route({"solver": {"name": "EPA SWMM 5.2.4 · set-up “x”", "setup": {"slug": "jane-tight"}}}) == "setups/jane-tight"
     assert collect_results.route({"solver": {"name": "TUFLOW HPC 2025", "run_by": "owner"}}) == "owner/tuflow-hpc-2025"
     assert collect_results.route({"solver": {"name": "EPA SWMM 5.2.4"}}) == "swmm_track_a/swmm524"
+
+
+def test_kwargs_setups_for_models_built_in_python(tmp_path, monkeypatch):
+    """Landlab, OpenSWMM 1D/2D and HydroNet set-ups pass only the solver arguments the suite lists, with their types."""
+    import json
+
+    from benchmark1d2d import setups
+
+    base = {"schema_version": "1.0.0", "title": "a set-up", "proposed_by": "someone", "reason": "a reason long enough"}
+    assert setups.check({**base, "base": "landlab", "settings": {"h_init": "0.000001"}}) == []
+    assert setups.check({**base, "base": "landlab", "settings": {"mannings_n": "0.01"}})  # the test defines roughness
+    assert setups.check({**base, "base": "landlab", "settings": {"h_init": "thin"}})
+    assert setups.check({**base, "base": "openswmm-2d", "settings": {"crest_at_vertex": "maybe"}})
+    d = tmp_path / "landlab-x"
+    d.mkdir()
+    (d / "setup.json").write_text(json.dumps({**base, "base": "landlab", "tests": ["A1F-043"], "settings": {"h_init": "1e-6", "steep_slopes": "no"}}))
+    monkeypatch.setenv("BENCH_SETUP", str(d / "setup.json"))
+    monkeypatch.setattr(setups, "_SETUP", None, raising=False)
+    monkeypatch.setattr(setups, "APPLIED", {}, raising=False)
+    assert setups.kwargs("landlab", "A1F-043_lake") == {"h_init": 1e-6, "steep_slopes": False}
+    assert setups.kwargs("landlab", "A1F-010_ritter") == {}
+    assert setups.kwargs("hydronet-fvm", "A1F-043_lake") == {}
+    card = setups.decorate({"name": "Landlab 2.11.0 OverlandFlow"}, "A1F-043_lake")
+    assert card["setup"]["slug"] == "landlab-x" and {c["setting"] for c in card["setup"]["changes"]} == {"h_init", "steep_slopes"}

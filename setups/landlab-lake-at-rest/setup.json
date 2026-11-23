@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "base": "landlab",
+  "title": "thinner wet-cell film",
+  "proposed_by": "Benchmark1D2D maintainers (expert set-up)",
+  "tier": "T2",
+  "tests": ["A1F-043"],
+  "settings": {"h_init": "0.000001"},
+  "reason": "Landlab's OverlandFlow puts a film of h_init (default 0.001 m) on every cell so its flux formula never divides by zero. On a lake at rest over a bump, the dry crest of the bump carries that 1 mm film and drives a spurious flow that never settles. A 1 µm film keeps the formula well defined and removes the spurious flow; the other tests are not changed by it."
+}

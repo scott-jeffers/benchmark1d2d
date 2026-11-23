@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "base": "openswmm-2d",
+  "title": "surface vertex at the grate's crest",
+  "proposed_by": "Benchmark1D2D maintainers (expert set-up)",
+  "tier": "T2",
+  "tests": ["A12-010", "A12-011", "A12-012"],
+  "settings": {"crest_at_vertex": "true"},
+  "reason": "OpenSWMM v6 couples each manhole to one mesh vertex and lets water through an orifice law whenever the surface stands above the node's head. With the vertex at yard level the gully keeps draining below its crest (A12-011 ends 1.2 cm under the 5 cm lip, with 4 % more water out than can leave). Raising that one vertex to the grate's crest makes the lip part of the surface, so ponded water below the crest stays on the yard, as it does in the real gully."
+}

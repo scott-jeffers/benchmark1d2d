@@ -282,6 +282,9 @@ def compute(folder: Path, ras_exe: Path, plan: str, timeout: float) -> Path | No
     from benchmark1d2d import keep
 
     tid, _, lvl = folder.name.partition("_dx")
+    from benchmark1d2d import setups
+
+    setups.apply(f"hecras{TAG}-em" if folder.parent.name == "em" else f"hecras{TAG}", tid, folder)  # a proposed set-up (BENCH_SETUP)
     keep.inputs(f"hecras{TAG}-em" if folder.parent.name == "em" else f"hecras{TAG}", tid, folder, float(lvl) if lvl else None)
 
     ras = init_ras_project(folder, str(ras_exe))

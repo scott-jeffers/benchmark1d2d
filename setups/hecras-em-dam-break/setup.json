@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "base": "hecras-em",
+  "title": "dam-break time step and tolerances",
+  "proposed_by": "Benchmark1D2D maintainers (expert set-up)",
+  "tier": "T2",
+  "tests": ["A1F-010", "A1F-011"],
+  "settings": {
+    "Computation Time Step Max Courant": "0.5",
+    "Computation Time Step Min Courant": "0.2",
+    "UNET D2 Z Tol": "0.001",
+    "UNET D2 Volume Tol": "0.001",
+    "UNET D2 Max Iterations": "40"
+  },
+  "reason": "For a sudden dam break HEC's 2D guidance is the full-momentum SWE-EM equations with a Courant number at or below 1. This halves the largest Courant number the adaptive step may reach (0.5, never below 0.2) so the front is resolved in more steps, and tightens the 2D water-surface and volume iteration tolerances from 0.01 to 0.001 (with up to 40 iterations), which matter on a thin advancing front."
+}

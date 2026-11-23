@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "base": "lisflood-acc",
+  "title": "q-centred diffusion and a smaller time step on the bumps",
+  "proposed_by": "Benchmark1D2D maintainers (expert set-up)",
+  "tier": "T2",
+  "tests": ["A1F-040", "A1F-041", "A1F-042"],
+  "settings": {"theta": "0.7", "cfl": "0.3"},
+  "reason": "LISFLOOD-FP's ACC solver drops the advection term of the momentum equation, so flow over a bump, where the velocity changes along the channel, is outside what it is built for; the developers point to FV1 or DG2 for such flow. Within ACC, the q-centred weighting theta = 0.7 (de Almeida et al., 2012; the default 1 adds no diffusion) damps the oscillations that grow over the crest, and a Courant number of 0.3 instead of 0.7 keeps the step small where the flow speeds up. The error falls by roughly 40 % on all three bumps; it does not reach the accuracy band, because the missing term is structural."
+}

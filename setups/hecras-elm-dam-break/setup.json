@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0.0",
+  "base": "hecras",
+  "title": "dam-break time step and tolerances",
+  "proposed_by": "Benchmark1D2D maintainers (expert set-up)",
+  "tier": "T2",
+  "tests": ["A1F-010", "A1F-011"],
+  "settings": {
+    "Computation Time Step Max Courant": "0.5",
+    "Computation Time Step Min Courant": "0.2",
+    "UNET D2 Z Tol": "0.001",
+    "UNET D2 Volume Tol": "0.001",
+    "UNET D2 Max Iterations": "40"
+  },
+  "reason": "The same time-step and tolerance changes as the SWE-EM set-up, on HEC-RAS's default SWE-ELM equations, to show how much of the dam-break front error comes from the time step and tolerances and how much from the equation set."
+}
