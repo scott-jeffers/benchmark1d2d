@@ -24,6 +24,12 @@ body:
         - lisflood-fv1 (LISFLOOD-FP 8.3, FV1)
         - lisflood-dg2 (LISFLOOD-FP 8.3, DG2)
         - lisflood-acc (LISFLOOD-FP 8.3, ACC)
+        - hecras (HEC-RAS 7.0.1 2D, SWE-ELM)
+        - hecras-em (HEC-RAS 7.0.1 2D, SWE-EM)
+        - landlab (Landlab 2.11 OverlandFlow)
+        - openswmm-2d (OpenSWMM Engine v6 1D/2D, two triangles per square)
+        - openswmm-2d-x (OpenSWMM Engine v6 1D/2D, four triangles per square)
+        - hydronet-fvm (HydroNet Roe finite volume)
     validations:
       required: true
   - type: input

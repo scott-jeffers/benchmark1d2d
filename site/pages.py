@@ -2155,12 +2155,13 @@ def setups_page(runs: dict) -> str:
     table = ('<div class="table-scroll"><table class="data"><thead><tr><th>Set-up</th><th>Starts from</th><th>Tier</th><th>Settings and why</th><th>Results</th></tr></thead>'
              f'<tbody>{"".join(rows)}</tbody></table></div>') if rows else '<p class="muted">No set-up has been proposed yet. Be the first.</p>'
     bases = "".join(f"<li>{esc(SOLVER[k]['name'])} <span class=muted>{esc(SOLVER[k]['sub'])}</span>: "
-                    f"{ {'swmm': 'keywords in the [OPTIONS] section of the .inp', 'telemac': 'keywords of the steering file (KEYWORD = value)', 'lisflood': 'keywords of the .par file'}[fmt] }</li>"
+                    f"{ {'swmm': 'keywords in the [OPTIONS] section of the .inp', 'telemac': 'keywords of the steering file (KEYWORD = value)', 'lisflood': 'keywords of the .par file', 'hecras': 'keys of the plan file (Key=value), such as the Courant limits and the 2D iteration tolerances'}.get(fmt) or 'the solver arguments ' + ', '.join(sorted(_setups.KWARGS.get(k, {}))) }</li>"
                     for k, fmt in _setups.BASES.items() if k in SOLVER)
     body = f"""<div class="wrap">
 <section class="page-head">
   <h1>Proposed set-ups</h1>
   <p class="lede">A result here is only as good as the model behind it. If you know a solver well and think the suite set it up badly, propose a better set-up: the suite re-runs the model with your settings on its own machines and shows the result beside its own, under your name.</p>
+  <p>The maintainers have proposed expert set-ups of their own wherever a model's defaults struggled. <a href="{BLOB}docs/review/expert_setups.md">What each one changes, why it works, and where no setting helps</a>.</p>
 </section>
 <section class="section grid two">
   <div class="card"><h2>How it works</h2><ol>

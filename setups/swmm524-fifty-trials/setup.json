@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "base": "swmm524",
+  "title": "tightest iteration, 50 trials",
+  "proposed_by": "Benchmark1D2D maintainers (expert set-up)",
+  "tier": "T2",
+  "tests": "all",
+  "settings": {
+    "MAX_TRIALS": "50",
+    "HEAD_TOLERANCE": "0.000001"
+  },
+  "reason": "The same idea pushed further: up to 50 trials and a 0.001 mm head tolerance. On EPA SWMM 5.2.4 this does best on the wet-bed dam break (A1F-011), the hydraulic jump (A1F-020) and the steady channel A1D-003, but slightly worse than 30 trials on the dry-bed dam break. Both set-ups are published so the trade-off is visible."
+}

@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import sys
 from datetime import timedelta
 from pathlib import Path
@@ -105,6 +106,9 @@ def mesh(spec: dict, style: str = "cross"):
     return vx, vy, bed(spec, vx, vy), tris, sides
 
 
+CREST_AT_VERTEX = bool(os.environ.get("OPENSWMM_CREST_AT_VERTEX"))  # a set-up choice (see run_openswmm_coupled.py)
+
+
 def write_model(case_dir: Path, work: Path) -> tuple[Path, dict]:
     from run_drainage_cases import write_inp
 
@@ -131,6 +135,8 @@ def write_model(case_dir: Path, work: Path) -> tuple[Path, dict]:
     L += ["", "[2D_VERTEX_NODE_MAP]", ";;VERTEX NODE CD AREA"]
     for mh in spec["manholes"]:
         v = int(np.argmin(np.hypot(vx - mh["x"], vy - mh["y"])))
+        if CREST_AT_VERTEX and mh["crest"] > vz[v] + 1e-9:  # the grate's lip: no water enters below the crest
+            L = [ln if not ln.startswith(f"{vx[v]:.6f} {vy[v]:.6f} ") else f"{vx[v]:.6f} {vy[v]:.6f} {mh['crest']:.6f}" for ln in L]
         assert math.hypot(vx[v] - mh["x"], vy[v] - mh["y"]) < 1e-6, f"manhole {mh['id']} is not on a mesh vertex"
         L.append(f"{v} {mh['id']} {mh['co']:g} {mh['area']:.6f}")
     bcs = []

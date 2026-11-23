@@ -47,6 +47,7 @@ from benchmark1d2d.clock import run_timestamp  # noqa: E402
 TS = run_timestamp()  # when this run happened (BENCH_TIMESTAMP pins it)
 G = 9.81
 H_DRY = 1.0e-4
+SET: dict = {}  # keyword arguments of a proposed set-up for the test being run
 CFL = 0.3
 
 # HydroNet's 1D dam-break example recipe (examples/FVM_PINN/dam_break_1d/fvm_pinn_config.yaml)
@@ -153,10 +154,11 @@ def run_fvm(mesh, h0, u0, v0, wse_still, t_end):
     md["bc_ghost"] = {}
     h0t = torch.tensor(h0, dtype=torch.float64)
     Q0 = torch.stack([h0t - h_still, h0t * torch.tensor(u0), h0t * torch.tensor(v0)], dim=-1)
-    _, Q = run_fvm_rk2(Q0, md, h_still, [0.0, t_end], cfl=CFL, h_dry=H_DRY)
+    cfl, h_dry = SET.get("cfl", CFL), SET.get("h_dry", H_DRY)  # a proposed set-up may change them (BENCH_SETUP)
+    _, Q = run_fvm_rk2(Q0, md, h_still, [0.0, t_end], cfl=cfl, h_dry=h_dry)
     q = Q[-1].numpy()
     h = np.maximum(q[:, 0] + h_still.numpy(), 0.0)
-    wet = h > H_DRY
+    wet = h > h_dry
     u = np.where(wet, q[:, 1] / np.where(wet, h, 1.0), 0.0)
     v = np.where(wet, q[:, 2] / np.where(wet, h, 1.0), 0.0)
     return h, u, v
@@ -223,13 +225,18 @@ def main() -> int:
         for tid in args.cases:
             m = load_manifest(tid, repo=REPO)
             paths = []
+            from benchmark1d2d import setups
+
+            SET.clear()
+            if mode == "fvm":
+                SET.update(setups.kwargs("hydronet-fvm", tid))
             for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
                 t0 = time.perf_counter()
                 mesh, h0, u0, v0, wse, t_end, kind = setup(m, tid, float(dx))
                 from benchmark1d2d import keep
 
                 keep.script_model(f"hydronet-{mode}", tid, float(dx), run_fvm if mode == "fvm" else run_pinn,
-                                  {"mode": mode, "epochs": getattr(args, "epochs", None), "h_dry": H_DRY, "t_end": t_end, "setup": "setup() in run_hydronet.py"})
+                                  {"mode": mode, "epochs": getattr(args, "epochs", None), "h_dry": SET.get("h_dry", H_DRY), "cfl": SET.get("cfl", CFL) if mode == "fvm" else None, "t_end": t_end, "setup": "setup() in run_hydronet.py"})
                 with tempfile.TemporaryDirectory() as td:
                     cwd = os.getcwd()
                     os.chdir(td)

@@ -50,6 +50,7 @@ from benchmark1d2d.clock import run_timestamp  # noqa: E402
 
 TS = run_timestamp()  # when this run happened (BENCH_TIMESTAMP pins it)
 G = 9.80665
+KEEP_TEST = {"id": ""}  # the test being run, for a proposed set-up's keyword arguments
 
 
 class Strip:
@@ -74,7 +75,9 @@ class Strip:
     def run(self, t_end: float, n: float = 0.0, q_in: float | None = None, h_out: float | None = None) -> float:
         from landlab.components import OverlandFlow
 
-        of = OverlandFlow(self.g, mannings_n=n)
+        from benchmark1d2d import setups
+
+        of = OverlandFlow(self.g, mannings_n=n, **setups.kwargs("landlab", KEEP_TEST["id"]))  # a proposed set-up (BENCH_SETUP)
         t = 0.0
         while t < t_end - 1e-9:
             if h_out is not None:
@@ -214,6 +217,7 @@ def main() -> int:
     for tid in args.cases:
         m = load_manifest(tid, repo=REPO)
         paths = []
+        KEEP_TEST["id"] = tid
         for dx in sorted(m["simulation"]["mesh_refinement"]["levels"], reverse=True):
             t0 = time.perf_counter()
             from benchmark1d2d import keep

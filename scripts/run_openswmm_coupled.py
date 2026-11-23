@@ -91,6 +91,10 @@ def main() -> int:
             series = out / f"{m['test_id']}.run.json"
             t0 = time.perf_counter()
             env = {**os.environ, "OPENSWMM_MESH": mesh}
+            from benchmark1d2d import setups
+
+            if setups.kwargs(model_key, tid).get("crest_at_vertex"):  # a proposed set-up (BENCH_SETUP)
+                env["OPENSWMM_CREST_AT_VERTEX"] = "1"
             r = subprocess.run([args.openswmm_python, str(child), str(m["_case_dir"]), str(series), str(work)],
                                env=env, capture_output=True, text=True)
             if r.returncode:

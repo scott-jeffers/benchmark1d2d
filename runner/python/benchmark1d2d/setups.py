@@ -34,8 +34,17 @@ BASES = {
     "swmm524": "swmm", "swmm515": "swmm", "openswmm-dw": "swmm", "openswmm-fv": "swmm",
     "telemac": "telemac",
     "lisflood-fv1": "lisflood", "lisflood-dg2": "lisflood", "lisflood-acc": "lisflood",
+    "hecras": "hecras", "hecras-em": "hecras",  # HEC-RAS 7.0.1 2D (SWE-ELM, SWE-EM): keys of the plan file
+    "landlab": "kwargs",  # Landlab OverlandFlow: keyword arguments of the component (models built in Python)
+    "openswmm-2d": "kwargs", "openswmm-2d-x": "kwargs",
+    "hydronet-fvm": "kwargs",  # HydroNet's Roe finite-volume solver: arguments of run_fvm_rk2  # OpenSWMM v6 1D/2D: choices in how the model is written
 }
-FILES = {"swmm": ("*.inp",), "telemac": ("*.cas",), "lisflood": ("*.par",)}
+# for models built in Python: which keyword arguments of the solver's own API a set-up may pass, with their type
+KWARGS = {"landlab": {"alpha": float, "theta": float, "h_init": float, "steep_slopes": bool},
+          # crest_at_vertex: the mesh vertex a manhole is coupled at is raised to the grate's crest
+          "openswmm-2d": {"crest_at_vertex": bool}, "openswmm-2d-x": {"crest_at_vertex": bool},
+          "hydronet-fvm": {"cfl": float, "h_dry": float}}
+FILES = {"swmm": ("*.inp",), "telemac": ("*.cas",), "lisflood": ("*.par",), "hecras": ("*.p0[0-9]",)}
 # settings that define the test rather than the solver
 PROTECTED = {
     "swmm": {"FLOW_UNITS", "START_DATE", "START_TIME", "END_DATE", "END_TIME", "REPORT_START_DATE", "REPORT_START_TIME",
@@ -46,6 +55,11 @@ PROTECTED = {
     "lisflood": {"dirroot", "resroot", "demfile", "startfile", "bcifile", "bdyfile", "sim_time", "fpfric", "manningfile",
                  "dx", "nrows", "ncols", "saveint", "massint", "startelev", "solver_type", "stagefile", "voutput",
                  "output_precision", "fv1", "dg2", "acceleration"},  # the solver itself is the model, not a setting
+    "hecras": {"Plan Title", "Program Version", "Short Identifier", "Simulation Date", "Geom File", "Flow File", "DSS File",
+               "UNET D2 Name", "Write IC File", "Write IC File at Sim End", "Write IC File at Fixed DateTime", "IC Time",
+               "Output Interval", "Mapping Interval", "Instantaneous Interval", "HDF Write Warmup", "HDF Write Time Slices",
+               "HDF Additional Output Variable", "UNET D2 Equation", "Run HTab", "Run UNet", "Run Sediment", "Run PostProcess",
+               "Run WQNet", "Run RASMapper", "UNET Gravity", "UNET D2 Coriolis"},  # the equation set is the model itself
     "telemac_also": {"EQUATIONS", "GEOMETRY FILE", "PREVIOUS COMPUTATION FILE", "VARIABLES FOR GRAPHIC PRINTOUTS",
                      "GRAPHIC PRINTOUT PERIOD", "LISTING PRINTOUT PERIOD", "INITIAL TIME SET TO ZERO"},
 }
@@ -85,6 +99,17 @@ def check(s: dict) -> list[str]:
     except FileNotFoundError:
         pass
     fmt = BASES.get(s.get("base", ""))
+    if fmt == "kwargs":
+        allowed = KWARGS.get(s["base"], {})
+        for k, v in (s.get("settings") or {}).items():
+            if k not in allowed:
+                out.append(f"{k}: {s['base']} set-ups may set {', '.join(sorted(allowed))}")
+            else:
+                try:
+                    _cast(allowed[k], v)
+                except ValueError:
+                    out.append(f"{k}: give a {allowed[k].__name__}")
+        return out
     if fmt is None:
         out.append(f"base {s.get('base')!r}: the suite can re-run a proposed set-up for {', '.join(sorted(BASES))}")
         return out
@@ -96,6 +121,29 @@ def check(s: dict) -> list[str]:
             out.append(f"{k}: give the setting's name and one simple value")
     if s.get("tier") == "T1" and not s.get("guidance_source"):
         out.append("tier T1 needs guidance_source: where the developer publishes this guidance")
+    return out
+
+
+def _cast(kind, v):
+    if kind is bool:
+        if str(v).lower() in ("true", "yes", "on", "1"):
+            return True
+        if str(v).lower() in ("false", "no", "off", "0"):
+            return False
+        raise ValueError(v)
+    return kind(v)
+
+
+def kwargs(model_key: str, test_id: str) -> dict:
+    """For a model built in Python: the keyword arguments a proposed set-up passes to the solver, recorded like file edits."""
+    if not applies(model_key, test_id):
+        return {}
+    s = load()
+    allowed = KWARGS[model_key]
+    out = {k: _cast(allowed[k], v) for k, v in s["settings"].items()}
+    sid = test_id.split("_")[0]
+    seen = {c["setting"] for c in APPLIED.get(sid, [])}
+    APPLIED.setdefault(sid, []).extend({"setting": k, "value": str(v), "was": None, "file": "(keyword argument)"} for k, v in out.items() if k not in seen)
     return out
 
 
@@ -164,7 +212,24 @@ def _lisflood(text: str, settings: dict) -> tuple[str, list[dict]]:
     return "\n".join(lines) + "\n", changes
 
 
-EDIT = {"swmm": _swmm, "telemac": _telemac, "lisflood": _lisflood}
+def _hecras(text: str, settings: dict) -> tuple[str, list[dict]]:
+    """HEC-RAS plan files: ``Key=value`` lines; a key may appear more than once (the plan's and each 2D area's block)."""
+    lines = text.splitlines()
+    changes = []
+    for k, v in settings.items():
+        key = k.strip()
+        hits = [i for i, ln in enumerate(lines) if ln.split("=", 1)[0].strip() == key]
+        was = lines[hits[0]].split("=", 1)[1].strip() if hits else None
+        if hits:
+            for i in hits:
+                lines[i] = f"{key}= {v} " if lines[i].split("=", 1)[1].startswith(" ") else f"{key}={v}"
+        else:
+            lines.append(f"{key}={v}")
+        changes.append({"setting": key, "value": str(v), "was": was})
+    return "\r\n".join(lines) + "\r\n", changes
+
+
+EDIT = {"swmm": _swmm, "telemac": _telemac, "lisflood": _lisflood, "hecras": _hecras}
 
 
 def apply(model_key: str, test_id: str, folder: str | Path) -> list[dict]:

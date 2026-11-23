@@ -137,6 +137,49 @@ jobs:
             out/inputs_zip/*.inputs.zip
             out/outputs_zip/*.outputs.zip
 
+  python-models:
+    needs: plan
+    if: contains(needs.plan.outputs.families, 'landlab') || contains(needs.plan.outputs.families, 'openswmm-2d') || contains(needs.plan.outputs.families, 'hydronet')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install -q -e ".[dev,engines]" "landlab==2.11.0"
+          python -m venv "$RUNNER_TEMP/openswmm"
+          "$RUNNER_TEMP/openswmm/bin/python" -m pip install -q "openswmm==6.0.0a4.dev1" numpy
+      - name: HydroNet and pyHMT2D at the suite's pinned commits, CPU PyTorch (only for HydroNet set-ups)
+        if: contains(needs.plan.outputs.families, 'hydronet')
+        run: |
+          for r in "HydroNet 0d98ff5dbdd07e8bb56590a4df2b79aebf414a6a" "pyHMT2D 57645ff7af3321a54998f9acb29aa4281380f8e8"; do
+            set -- $r; git init -q "$RUNNER_TEMP/$1"
+            git -C "$RUNNER_TEMP/$1" fetch -q --depth 1 "https://github.com/psu-efd/$1" "$2"
+            git -C "$RUNNER_TEMP/$1" checkout -q FETCH_HEAD
+          done
+          python -m pip install -q torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -q -e "$RUNNER_TEMP/HydroNet"
+          python -m pip install -q -e "$RUNNER_TEMP/pyHMT2D" --no-deps
+      - name: Re-run the Landlab, OpenSWMM 1D/2D and HydroNet set-ups
+        run: |
+          fams="${{ needs.plan.outputs.families }}"
+          for f in landlab openswmm-2d hydronet; do
+            case " $fams " in *" $f "*) python scripts/run_setup.py ${{ needs.plan.outputs.setups }} --family "$f" \
+              --openswmm-python "$RUNNER_TEMP/openswmm/bin/python" --hydronet "$RUNNER_TEMP/HydroNet";; esac
+          done
+      - name: Zip the model files and outputs
+        if: always()
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: setups-python-models
+          path: |
+            out/setups/*/*.scorecard.json
+            out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
+
   lisflood:
     needs: plan
     if: contains(needs.plan.outputs.families, 'lisflood')
@@ -179,6 +222,53 @@ jobs:
         if: always()
         with:
           name: setups-lisflood
+          path: |
+            out/setups/*/*.scorecard.json
+            out/inputs_zip/*.inputs.zip
+            out/outputs_zip/*.outputs.zip
+
+  hecras:
+    needs: plan
+    if: contains(needs.plan.outputs.families, 'hecras')
+    runs-on: windows-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" "ras-commander==0.106.1" h5py psutil pywin32 pillow pythonnet tifffile
+      - uses: actions/cache@v4
+        with:
+          path: .cache/hecras
+          key: hecras-7.0.1-setup-v1
+      - name: Install HEC-RAS 7.0.1 silently
+        shell: pwsh
+        run: |
+          $url = "https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.46/HEC-RAS_701_Setup.exe"
+          New-Item -ItemType Directory -Force .cache/hecras | Out-Null
+          $exe = ".cache/hecras/" + [IO.Path]::GetFileName($url)
+          if (-not (Test-Path $exe)) { Invoke-WebRequest $url -OutFile $exe }
+          $sha = (Get-FileHash $exe -Algorithm SHA256).Hash
+          if ($sha -ne "1FE76297076AA7A13E43191ECC76C3BA152FDC4BBD606FA2C349EEC7DB3CEE73") { throw "HEC-RAS installer hash $sha does not match" }
+          $p = Start-Process -FilePath (Resolve-Path $exe) -ArgumentList '/S', '/v/qn' -Wait -PassThru
+          if (-not (Test-Path "$env:SystemRoot\System32\msvcr100.dll")) { choco install vcredist2010 -y --no-progress | Select-Object -Last 3 }
+      - name: Re-run the HEC-RAS set-ups
+        shell: bash
+        env:
+          PYTHONUTF8: "1"
+        run: python scripts/run_setup.py ${{ needs.plan.outputs.setups }} --family hecras
+      - name: Zip the model files and outputs
+        if: always()
+        shell: bash
+        run: python scripts/export_inputs.py || echo "::warning title=Model files::not zipped"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: setups-hecras
           path: |
             out/setups/*/*.scorecard.json
             out/inputs_zip/*.inputs.zip

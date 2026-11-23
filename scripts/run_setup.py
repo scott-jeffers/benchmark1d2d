@@ -31,7 +31,8 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "runner" / "python"), str(REPO / "scripts")]
 OUT = REPO / "out" / "setups"
 FAMILY = {"swmm": {"swmm524", "swmm515", "openswmm-dw", "openswmm-fv"}, "telemac": {"telemac"},
-          "lisflood": {"lisflood-fv1", "lisflood-dg2", "lisflood-acc"}}
+          "lisflood": {"lisflood-fv1", "lisflood-dg2", "lisflood-acc"}, "hecras": {"hecras", "hecras-em"}, "landlab": {"landlab"}, "openswmm-2d": {"openswmm-2d", "openswmm-2d-x"},
+          "hydronet": {"hydronet-fvm"}}
 
 
 def family_of(base: str) -> str | None:
@@ -65,6 +66,34 @@ def runs_for(s: dict, a: argparse.Namespace) -> list[tuple[list[str], Path]]:
         c = pick(list(rt.CASES) + sorted(rt.CASES_2D))
         if c:
             out.append(([py, "scripts/run_telemac.py", "--telemac-prefix", a.telemac_prefix or os.environ.get("TELEMAC_PREFIX", ""), *c], REPO / "out" / "telemac"))
+    elif base in FAMILY["hecras"]:
+        import run_hecras_2d as rh
+
+        c = pick(list(rh.CASES))
+        eq = "em" if base == "hecras-em" else "elm"
+        if c:
+            out.append(([py, "scripts/run_hecras_2d.py", "--accept-hec-terms", *c, "--equations", eq], REPO / "out" / "hecras2d" / eq))
+    elif base == "hydronet-fvm":
+        import run_hydronet as hn
+
+        c = pick(list(hn.CASES))
+        if c:
+            out.append(([py, "scripts/run_hydronet.py", "--hydronet", a.hydronet or os.environ.get("HYDRONET", ""), *c, "--mode", "fvm"],
+                        REPO / "out" / "hydronet" / "fvm"))
+    elif base == "landlab":
+        import run_landlab as rl2
+
+        c = pick(list(rl2.CASES))
+        if c:
+            out.append(([py, "scripts/run_landlab.py", *c], REPO / "out" / "landlab"))
+    elif base in FAMILY["openswmm-2d"]:
+        import run_openswmm_coupled as oc
+
+        c = pick(list(oc.CASES))
+        mesh = next(k for k, (mk, _) in oc.MESHES.items() if mk == base)
+        if c:
+            out.append(([py, "scripts/run_openswmm_coupled.py", "--openswmm-python", a.openswmm_python or sys.executable, *c, "--mesh", mesh],
+                        REPO / "out" / "coupled" / base))
     elif base.startswith("lisflood-"):
         import run_lisflood as rl
 
@@ -82,6 +111,7 @@ def main() -> int:
     ap.add_argument("--family", choices=list(FAMILY), help="only the set-ups of this engine family")
     ap.add_argument("--list-families", action="store_true")
     ap.add_argument("--openswmm-python")
+    ap.add_argument("--hydronet", help="a HydroNet checkout (for hydronet-fvm set-ups)")
     ap.add_argument("--swmm51-python")
     ap.add_argument("--telemac-prefix")
     ap.add_argument("--lisflood-exe")
