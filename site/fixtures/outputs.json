@@ -72,219 +72,219 @@
   "hydra-uds": {
    "bytes": 15760,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "31042318ee2c4e6e19188f17b7cab0059aafdfeee26ff9ccd1622f951cc6a892",
+   "run": 45256536506,
+   "sha256": "3bde3ff6d128a5869dddac6ed8261e19ec499f9f48f6572e23a4fae0038c5235",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-001.hydra-uds.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 15173,
+   "bytes": 15163,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "9681796a9d6f5f5fd4023786e58dcc5975a9e0d6d05db80cad930b63339ac6ea",
+   "run": 45256536521,
+   "sha256": "ef744b7684c831635743e7ead9e452025e43bb3bb2531c0a6bcddaa854fef9e3",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-001.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 15183,
+   "bytes": 15182,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "20fb882608ce6b61e71848d0eafc767d98a2878674d45771f4ff960830fc1e1e",
+   "run": 45256536506,
+   "sha256": "b4c31c8f8d7cb8e2ba95d1c4a3a17c7859e72448affee47ce7c152e5fbcc9880",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-001.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
-   "bytes": 17275,
+   "bytes": 17273,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "6e33a3abcd4088888ae9ef7ba848ca1b296d38f871c1170ba4ebb245b7588700",
+   "run": 45256536506,
+   "sha256": "af08137a9de40b0c73bf4b52336f87cd97b412770e5c0e9dfce41d19c727636a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-001.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 15102,
+   "bytes": 15138,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "50a132b1bba3834247a7cbbf67eb763c48d95330b4269ee4606b9081df63fa59",
+   "run": 45256536521,
+   "sha256": "da54280192c0d56fea5224c3fb4211371a9dc143e83295ce61bd05342150bc2d",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-001.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 15118,
+   "bytes": 15141,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "ae3c41c42255508f4aab33d33f2b128f33c57f32112601714b93b67d42036a36",
+   "run": 45256536521,
+   "sha256": "e29413686b42fe974e8dcb8ce4c8b36f572b513902bed71e5e93166fcb470e6a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-001.swmm524.outputs.zip"
   }
  },
  "A1D-002": {
   "hydra-uds": {
-   "bytes": 6565,
+   "bytes": 6562,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "0fb252a82e4c48c7ea52487cbf8076cd759b0a75598ed3ba1afc935d2d786fae",
+   "run": 45256536506,
+   "sha256": "771139db1a6908d5a87d5c17c1eb1f4c98181566d63490d44c76766d5bbab895",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-002.hydra-uds.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 6154,
+   "bytes": 6067,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "5da24212dd706eb4e4fa494049e6792d195fe2be6c7f05780a774dd98e66565f",
+   "run": 45256536521,
+   "sha256": "be135fb63b985daaf484aedda40d63d4d22a33e4a00c0acc66a171326ddca6cf",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-002.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
    "bytes": 6162,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "bb100f62876f523e5506652c827f62adf46ff19afd1978051195bd9a3e3d9b2b",
+   "run": 45256536506,
+   "sha256": "6b04042f0af597940fcef45dc7e1ed860a68af437dc0f1c3f6a999d51d3647b3",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-002.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
    "bytes": 6288,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "47c8bebdc433f4d1a8332e55849511ce48e14fb0938fc4c9e2820516d17a0bc0",
+   "run": 45256536506,
+   "sha256": "b1b025592df3a8aeb4bb4af79b92c318911268e64ac71c619edadaa5c7454e21",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-002.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 6114,
+   "bytes": 6081,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "253bc1a80480a118ff317c7ce9b25998928f976f6034c1d5dde0cfeb91767851",
+   "run": 45256536521,
+   "sha256": "497b9edb7f7dac3a30c69a2c4818c9e9258bc27f74ccfe6fc03feb8916d5483c",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-002.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 6148,
+   "bytes": 6101,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "6073658ed7d1423e241d845765974604c5bfd8e74216b15f71864ce35793e79b",
+   "run": 45256536521,
+   "sha256": "cf9cba0acf25ca246a9db90322136390ddc31edf093f73e95fba56ff3579040a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-002.swmm524.outputs.zip"
   }
  },
  "A1D-003": {
   "hydra-uds": {
-   "bytes": 5992,
+   "bytes": 5993,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "0a2699a86a46d769892aedd6bd8480dda47907c3f367e21685c505a0a2b319a0",
+   "run": 45256536506,
+   "sha256": "94ea2b179ea3a1b3b5aee2ca9f7600ca3784992ea8b6c3a4e28cc2b539f1026e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-003.hydra-uds.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 6137,
+   "bytes": 6135,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "e1c7cb49d34ca51fe0529cdfae2e6f6de24f9adf62736cc61a09b05fd2c967ce",
+   "run": 45256536521,
+   "sha256": "b816037849d6f30c99dd190ea07f0054aba9a353407b3c3a8d516533371bb3a6",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-003.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 6147,
+   "bytes": 6145,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "3cd68aa15eceb2d608a8f9c5e1549c644a6688cfa55b8cc6be3ab6620ff30a23",
+   "run": 45256536506,
+   "sha256": "a0ddaca61f3f4d9190d8e8e00c3457b6bde48878c8b7b056a0cca61552cd3a19",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-003.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
    "bytes": 6013,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "790bc928f4608f0270429ac4cc782ad954b835f5ba9cd57c91e68e72bc8df698",
+   "run": 45256536506,
+   "sha256": "08b15ac9d5f3c4f2104bb3f094bc91e8ca83d73dedc9956929ad368e59ce9f21",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-003.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 6025,
+   "bytes": 6024,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "5dafc9e565c2723c7158ba4c3b1431234948578d5a8501f0ab9a35037ebefd58",
+   "run": 45256536521,
+   "sha256": "86b6ce7a438453f9c49c596acd20285da4a0c7dd918c996ed70a956f4afd1341",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-003.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 6052,
+   "bytes": 6051,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "704738411deac229ce2d22405d89a2ddd90eee0c02076b3b07ae03edcb946ae7",
+   "run": 45256536521,
+   "sha256": "41599c12ac6d5133e496eafeba17fcfd4ae3deb36d2efac7e43fb663848c877d",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-003.swmm524.outputs.zip"
   }
  },
  "A1D-004": {
   "hydra-uds": {
-   "bytes": 6407,
+   "bytes": 6405,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "0060c332da562691792f352e576664a7925abcc6cfa7979b421c1f419cf633ef",
+   "run": 45256536506,
+   "sha256": "f82251f3db07d76a9ce1d77fafd521343f8f14db95ba494a1a3354a7637184db",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-004.hydra-uds.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 6480,
+   "bytes": 6477,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "6eeb0f67201c9f6e9e3762638299aa8fbab253125b73d45982b5fd613b55a045",
+   "run": 45256536521,
+   "sha256": "ebee7f29c8e99fef941a24ae6a881876a86014856a60b3ce0b5e337f27072836",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-004.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 6487,
+   "bytes": 6488,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "252cbead48961c6d65e6921133426f11837efeda11c15842e7481df580ee4617",
+   "run": 45256536506,
+   "sha256": "52620e41887d7eabb77db0775e1edc5fa6f0b849a5f4e90d3acead71206e08fb",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-004.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
-   "bytes": 6382,
+   "bytes": 6383,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "a3ac128e32c6a2db3a90dae563e6433f024b0c66ba842d63c51ea103505f0b25",
+   "run": 45256536506,
+   "sha256": "7223e9e38d1384858c1d92d6b4d4d8090e80f95859aa90f2768dabd6d820ea9f",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-004.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 6353,
+   "bytes": 6352,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "c877dcb199fcea13a81eae49bd17133d72f06bb1b5ff7b29e3134a0d5e785d39",
+   "run": 45256536521,
+   "sha256": "98fd5dd1cc048f1b8668639ab9746ea615ccdea1b610d1046aef17a8faffc8e7",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-004.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 6366,
+   "bytes": 6361,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "747c57b1343ff4cd0059337f7998a825738b36f7f45bdd3455b929c0ec2b9fa1",
+   "run": 45256536521,
+   "sha256": "aeca1a6c70aa8a36533d4d20434129beec55b8bcace23708e249cbd340827327",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-004.swmm524.outputs.zip"
   }
  },
  "A1D-005": {
   "hydra-uds": {
-   "bytes": 23222,
+   "bytes": 23221,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "c9be99d1e8b46233d1582c9efc1e3332f7323d62dfd10a865ed1763aa6c834fc",
+   "run": 45256536506,
+   "sha256": "dad437228fe6cf783a879a88574da29ec648404ba24757ee61806d1ecb95336c",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-005.hydra-uds.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 14103,
+   "bytes": 14060,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "91794c2e520f10012b9849f075199a5b10221563fb1505e4b6528bda5c6dea6d",
+   "run": 45256536521,
+   "sha256": "94576eceafcdd002418f0c9f9d7bf897c000ac36f79338aaa9b68037be83ba27",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-005.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 14111,
+   "bytes": 14113,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "4c370f39bddbad21d35d41dae2e5e010383752025028571c0c1941e6e0361a59",
+   "run": 45256536506,
+   "sha256": "9dcb68aa201776da3b1dacf795f83100d81725ff7986d8e57e6f9fd38f18fe08",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-005.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
-   "bytes": 15154,
+   "bytes": 15160,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "d0e4ec2243df4c6c8953ab3953c6f630d371d6bb1bcb6f4b6db8583b6a4713fe",
+   "run": 45256536506,
+   "sha256": "f5242688f84ef3bfead059ab7dc36508cd325071f6a0ffc96b5ef02852a04cf6",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-005.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 14049,
+   "bytes": 14004,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "331dd3a54f06d56929255b4687fc3a0199aaba7a6733cb143df93f53ebaae7ff",
+   "run": 45256536521,
+   "sha256": "d60579ed7bd7e8edb485f2a4613c52e08ea8caa9b122088b85ec4ff2c1b057c2",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-005.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 14066,
+   "bytes": 14019,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "5d4032f9ac156f9092c6fbb1fbd92751e27fd52ce051f6e5a4102ad428a93e52",
+   "run": 45256536521,
+   "sha256": "db66752a07e43cb84666a5655c3b21a61c73e849931040bb518c3cd3abef1135",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1D-005.swmm524.outputs.zip"
   }
  },
@@ -304,10 +304,10 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.basilisk.outputs.zip"
   },
   "hydra-uds": {
-   "bytes": 782663,
+   "bytes": 782659,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "c38eb5553fe001fa87402436a5073bdb49047a1798140ae652b725ce6aba5f62",
+   "run": 45256536506,
+   "sha256": "ec25daa1c0619b82c5772c1a538b673d8be74dc808f1887a22c07489b6eda8df",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.hydra-uds.outputs.zip"
   },
   "landlab": {
@@ -339,59 +339,59 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 684661,
+   "bytes": 684266,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "76aa18a7f0cf660424fedcd552eaf85538fe2aff45e85a1aeda76fe1fc23cd83",
+   "run": 45256536521,
+   "sha256": "04845c2515254616cf6eedf9c1c9fa176400fa49475b63c34c8117cb066e087a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 684259,
+   "bytes": 684258,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "733d4abd52e4de0f59fb7a83d12f22456b0b6d40beafba0ab78eb087b4b57f6b",
+   "run": 45256536506,
+   "sha256": "cf1a243d082a7593c056f7424b47ceb6a0236b2789e649ab5ad74595a2686a8a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
-   "bytes": 709625,
+   "bytes": 709613,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "5aa3cdea3e029da65036540e20ec39e6446e28e4ed22cc9a28103207148a44c2",
+   "run": 45256536506,
+   "sha256": "2d953408d9872c53fb7c5846156bf974483eb8a98b7c86d67924efe680d65cf3",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 683502,
+   "bytes": 683131,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "f62f4d348731dba59cc588e3e0e6085559465810750d08769ef2588ed7173fb9",
+   "run": 45256536521,
+   "sha256": "a0285de0d8112d0c75f1027e0f8070c1ca834cda0e4b734345f15edd779fa857",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 683682,
+   "bytes": 683263,
    "date": "2026-11-23",
-   "run": 45229046250,
-   "sha256": "6e52962268e4e24cb9fb10230b52c9c6e5544c9aac32577f72425dc881829450",
+   "run": 45256536521,
+   "sha256": "adc3c169dee3aab65d98add457a1f17a2c6c1eff779730c0fa2aa42c67fd7a57",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.swmm524.outputs.zip"
   },
   "swmm524-converged": {
-   "bytes": 683192,
+   "bytes": 683191,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "e3e160b1625ec3b7254507b0f65e741310808da7109eef79a8e93728bca704c9",
+   "run": 45256536506,
+   "sha256": "a30a3c6c8f59c9e6cf2d94416d0de2ed91b7b8a385afbc0ff144b4176f6b4b9f",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.swmm524-converged.outputs.zip"
   },
   "swmm524-defaults": {
-   "bytes": 683870,
+   "bytes": 683869,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "426df5d059fb9f8d80dfbf78e923f641d544207fa3761122b3eb49ae974378f5",
+   "run": 45256536506,
+   "sha256": "3a56effc840ca8adc56621fe78ac674cc454837dc5d4c1a5bac097e252213784",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.swmm524-defaults.outputs.zip"
   },
   "telemac": {
-   "bytes": 30525,
+   "bytes": 30526,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "a58af56d2609939da892dea7d6c8240fad4e3fb1ffe9f2785fd3995ef5d304f7",
+   "run": 45256536506,
+   "sha256": "3a18fdd92f058e831a9b8ffd767b8dbc7b95cd381a696170431b2277707a07c4",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-001.telemac.outputs.zip"
   }
  },
@@ -434,8 +434,8 @@
   "hydra-uds": {
    "bytes": 129928,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "12ff916bd9fce51b9dd4958b87a3d86ab2b73f5f7826f3648a26130a08f97878",
+   "run": 45256536506,
+   "sha256": "b796a1d4feae0d86266baad3e189fe5e65c6db37d838eb1d217dce23f092d1d2",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.hydra-uds.outputs.zip"
   },
   "hydronet-fvm": {
@@ -474,59 +474,59 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 145469,
+   "bytes": 150561,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "a340bd197369d8aafb1afd9419b92706d570d3d719b07e48822a9c2642650d37",
+   "run": 45256536521,
+   "sha256": "8a093bec56d66b387af44e9b2a3be6e7c8a31bd1cd3a4e656c46c6d35e0f16b4",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 150441,
+   "bytes": 150445,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "cd296be04fe8136ae86a16381c42472bdfbe002f15d1ac0edb1bf4deb188acc0",
+   "run": 45256536506,
+   "sha256": "dd1404469f61c4107820c9ac6f928b28221d29aafe1a50c618c8b20f87d7cae2",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
    "bytes": 158908,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "33a123b92ad0365e98d56a84ed72752b299a0cb0a938185e5810e43580fc70f2",
+   "run": 45256536506,
+   "sha256": "2ca1f49a4f0a67c933fbd60b6542f9fcd85f67a8909d1094df33170157e92f30",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 149595,
+   "bytes": 154541,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "6129b57fe47ed269fc53862f23fed08dcd445740dfdfb21a4dad72c81616e149",
+   "run": 45256536521,
+   "sha256": "1734019b2f5349adb10f6fdbec3a3d6a0747255490ff104657fe6ff86c2d3886",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 149739,
+   "bytes": 154592,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "123e05c980898ae96baf425d30527c48763ad539597d28cf83c8169b2aa8cee4",
+   "run": 45256536521,
+   "sha256": "e31223308e7ff3d8cc4b30d85af77a3ac9d2134e299704e699cf7beb245fafbf",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.swmm524.outputs.zip"
   },
   "swmm524-converged": {
-   "bytes": 154427,
+   "bytes": 154418,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "643d2bfa0e6e66912ada2ee72d8729e6012bbe5f31aba17aba3c3f0a45f720ff",
+   "run": 45256536506,
+   "sha256": "b1eaa138013bc909121698ec197e79d7573dfd93da67f4e109db46f528dfd16f",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.swmm524-converged.outputs.zip"
   },
   "swmm524-defaults": {
-   "bytes": 166211,
+   "bytes": 166205,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "dcc182dd4cf600ac5e74eede53b3a1c20be3e6f6ac2923b7ae36a921499f3372",
+   "run": 45256536506,
+   "sha256": "6f61af46191cd7946b33aadbd15fdead75bc56e61a6f7b424f22271efc013c5b",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.swmm524-defaults.outputs.zip"
   },
   "telemac": {
-   "bytes": 134575,
+   "bytes": 134571,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "fb36ec4f254829df7c47645825ce6440685e2b2b6793dd4f206f2f1288e09bd5",
+   "run": 45256536506,
+   "sha256": "c83ad044a93aa60f0266dc8140d43affbc9264fabf6a3dbb84d9e5be1a641ef5",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-010.telemac.outputs.zip"
   }
  },
@@ -567,10 +567,10 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.hecras-em.outputs.zip"
   },
   "hydra-uds": {
-   "bytes": 145156,
+   "bytes": 145162,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "66a0709c229356087b023b619424af61c2b15ff4f707686b1cce894185730aed",
+   "run": 45256536506,
+   "sha256": "8cfde847143fa49f1ee0f97f1ba7bf8f844da815badae81b289ea5ce87746a22",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.hydra-uds.outputs.zip"
   },
   "hydronet-fvm": {
@@ -609,59 +609,59 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 176306,
+   "bytes": 156694,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "3496dfa5647bbb66c1037c3177131b8d63992de1407f42eb81a1585e33498b8a",
+   "run": 45256536521,
+   "sha256": "bf61e098e2248baa4d85e212e1e73994059bf8fbb087f8570c955274ec57067d",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 164797,
+   "bytes": 164811,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "541cdf5078630797c033747b239b379f0493a1d1ad3f771d8bdccddd1f119b19",
+   "run": 45256536506,
+   "sha256": "4ba1be5a0caaffc33cc2af818d2ea44eea9cd91ebf1cb365c0adc20d0a8b467a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
    "bytes": 174807,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "a9b95102766952109eb3b913e1e7aeab78d077d955dad00dbf470027510266eb",
+   "run": 45256536506,
+   "sha256": "0b8f1ed2c0cc775a306d625204fe0c858b32028974588ee4d871163afcb225cc",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 179260,
+   "bytes": 159152,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "4e7e1dabddc9149a03a1ef59b456832feb517033b6d1b0434e45d39a4acbb5ff",
+   "run": 45256536521,
+   "sha256": "44e54f2f545c044ce96f4ec515c7eb9e69cd8814d7cc3aeeadff167e79bbcf7e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 179310,
+   "bytes": 159212,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "17826120fac3e264542b1facdd4a7a27340aa399aaeedc4e405a1c47e14da10a",
+   "run": 45256536521,
+   "sha256": "ae5f6aa50b1966ef0b9eef8609e4a9c2cacf0acabcaff64bde84587f5cfef0a0",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.swmm524.outputs.zip"
   },
   "swmm524-converged": {
-   "bytes": 167604,
+   "bytes": 167600,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "ae29fb984e048786c7c2aabecda7254846faa3186296927d1504acf36b4e68cf",
+   "run": 45256536506,
+   "sha256": "b2835b5c1484f25caa925339ff17173e5c7c974ae2faa2f682b025620a3e54d4",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.swmm524-converged.outputs.zip"
   },
   "swmm524-defaults": {
-   "bytes": 180002,
+   "bytes": 180005,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "49d54c31a6f0ec0ade938e2f12903969a6f9be156694c9991305371dee901fd9",
+   "run": 45256536506,
+   "sha256": "5a370fcfa17993a4c511c8612686115964cd5bd8467f158b6d47231c3f16c9a9",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.swmm524-defaults.outputs.zip"
   },
   "telemac": {
-   "bytes": 111079,
+   "bytes": 111075,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "29c72314800b6f5443cee10af0b2ec9ca0769592e11c28f345e4cceecd21c297",
+   "run": 45256536506,
+   "sha256": "0cf98543ef5e038b9e51aa5155cb78651a25dfc276a93aff36024efa6e3f0b64",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-011.telemac.outputs.zip"
   }
  },
@@ -681,66 +681,66 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.basilisk.outputs.zip"
   },
   "hydra-uds": {
-   "bytes": 1014802,
+   "bytes": 1014807,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "137564e397a6fb0d935fa697bff3bd63359197fddcffdd4ea25d355cf5c328d3",
+   "run": 45256536506,
+   "sha256": "efe45741079794691fdc864a72e0a423fdc88a2dac7c23cad626ea9c5a45d660",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.hydra-uds.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 921569,
+   "bytes": 893376,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "435ac113dfc8a348ea741fff7ee4cc6d0222214a3b5545b70f8ac188fc75f849",
+   "run": 45256536521,
+   "sha256": "0e4704f5b466848ea6f7941f468c247e1404545499f35407215c2b041a01983c",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 891693,
+   "bytes": 891689,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "b6466ebdb6cfa79611f62032fe483fca02c65b6bf260edc4a316b5f0e41699c8",
+   "run": 45256536506,
+   "sha256": "cf0c399a66a4dcbbdda2921795682d65c808f5cd76647cda8421fbe85583c643",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
-   "bytes": 850527,
+   "bytes": 850521,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "5406a45b2a284afab9c00d0e8d2d40160ed5309fb0241d3d1735c08e53c012c4",
+   "run": 45256536506,
+   "sha256": "fe5fedc62428d9e37fa84313b5dcecd2974fe367104b8967ae6437df50005163",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 921026,
+   "bytes": 893851,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "dd72349768d8941033eb858a4f98bd6bfa50643ea7ffd137073388c5f82a7146",
+   "run": 45256536521,
+   "sha256": "3a833b9adb0b4351b9b491d20fe4a7d4d430b5e59dc25f9c26af9e7646d00370",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 921111,
+   "bytes": 893821,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "0be6129b96896475fd11da9b5252a87ad0922250501210e9921044d2df37e914",
+   "run": 45256536521,
+   "sha256": "a324851820aec34075379b7f5d27696f761016004bf9720723a93d8336602740",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.swmm524.outputs.zip"
   },
   "swmm524-converged": {
-   "bytes": 891416,
+   "bytes": 891417,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "4c3d24be963297a8013f440f962950172621a7995249c0f86bb80c60d945f193",
+   "run": 45256536506,
+   "sha256": "8480de0987d8384900a77128d9876196c5f8e7c28cdafbad08a412877d55231c",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.swmm524-converged.outputs.zip"
   },
   "swmm524-defaults": {
-   "bytes": 926996,
+   "bytes": 926997,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "51bc1e5ad08db896ad82ab0efabaff5feea9e9a43050a47e39784195b7b3cc44",
+   "run": 45256536506,
+   "sha256": "313ffe897af05437d43ec9c49e49342dd24530d3edad989ce347e94efed518d1",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.swmm524-defaults.outputs.zip"
   },
   "telemac": {
-   "bytes": 29281,
+   "bytes": 29283,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "e9135abc8c192ff1f02cbec4619151ab09e74357942e6f2affe1e840c307d0a4",
+   "run": 45256536506,
+   "sha256": "72d5afee807dd1342c33502486e2881ed50e791d7f6ae906e41c2e74ac4443cf",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-020.telemac.outputs.zip"
   }
  },
@@ -753,10 +753,10 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.basilisk.outputs.zip"
   },
   "hydra-uds": {
-   "bytes": 219103,
+   "bytes": 219102,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "9f3b4e4fb6fba2f5856b2006b199d9d57b6b5f7a4497bf254ec7d7bd854fcc87",
+   "run": 45256536506,
+   "sha256": "53994334e7cd5da6cb7e9121c0dd914dbfacc0ac03eb27f958db8442ed73860e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.hydra-uds.outputs.zip"
   },
   "landlab": {
@@ -788,59 +788,59 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 208714,
+   "bytes": 172423,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "f9ce702d0dc73e39f7f7095eb70e421a5c41d6a23662b0130ed9b3e5500ddb26",
+   "run": 45256536521,
+   "sha256": "568ddace38d24be6dd89b06608552c02a65a85f239cf9e12d55cdb229639c774",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 193818,
+   "bytes": 193820,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "2389f8f60b0b33b7696ac5ec418530853cfa27bb96ed4177ba3ec2a7103a9946",
+   "run": 45256536506,
+   "sha256": "25e76bff72006d063bba2772396f7b3706ad02dfcfcb861af3af4371bb36656e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
-   "bytes": 97532,
+   "bytes": 97533,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "8bc28b3e2987683bd6760a5b55310a1f6e885699b2af5da19ff77fbe4df64b1d",
+   "run": 45256536506,
+   "sha256": "1cebfec5409d01a1e690817e84d456448b735085168fcac834de02e800c6b416",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 205235,
+   "bytes": 172967,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "aed54d0ddc68c4ed3a333815c824fad0a2e172377b63e659bc233523ebc23f2d",
+   "run": 45256536521,
+   "sha256": "3859a6f1bce817ba932a399aa9e1d55937eb845c142b1f9903b87df0cfb046ed",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 205515,
+   "bytes": 173039,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "5aadb273efd38460b6982e8ab311e10716153f4231a35989c70e56f2b9315168",
+   "run": 45256536521,
+   "sha256": "9507f8d7c1eed1ff304fdf0031df8cc0966840c1cf37121eb7317caf87f673b5",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.swmm524.outputs.zip"
   },
   "swmm524-converged": {
    "bytes": 173067,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "97c5b423f90e998b0c95f57644bafb075601bab3af4a1b9bf9a8d192f2dfcd75",
+   "run": 45256536506,
+   "sha256": "d5540dbfa79b43ff25567304294879ac92771caeadd54b8bf30a6896f200259c",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.swmm524-converged.outputs.zip"
   },
   "swmm524-defaults": {
-   "bytes": 208128,
+   "bytes": 208113,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "3d0c5310a10d727457b82853896a11881ed3decd38d8be41c91e01b9f94ef6ee",
+   "run": 45256536506,
+   "sha256": "0a5bbc1ea619655d324946d546c871f29392ce89e60961abd4cb7b39947041cc",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.swmm524-defaults.outputs.zip"
   },
   "telemac": {
-   "bytes": 35524,
+   "bytes": 35522,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "7175f21abb2f4dc171855ff5e7f4fefe8e952d51ab7ea24519c1083a38a982aa",
+   "run": 45256536506,
+   "sha256": "6996872fb6ce7fe01087f9a6e64b058221daaf66f990d0db02b7f4d9b14fdf30",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-040.telemac.outputs.zip"
   }
  },
@@ -853,10 +853,10 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.basilisk.outputs.zip"
   },
   "hydra-uds": {
-   "bytes": 218469,
+   "bytes": 218465,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "361de5f1c9f2215847b05818140df2041f86d7ddd7f329ffff0590bedf9ff598",
+   "run": 45256536506,
+   "sha256": "7d41eedc9c0a8eecc06d0a27260d67b73009155e68543839afb1563949460cd3",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.hydra-uds.outputs.zip"
   },
   "landlab": {
@@ -888,59 +888,59 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 209780,
+   "bytes": 207486,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "79f4ae48bf0ca317433fff68e5ad9f9068da99ba9c1c2618d1db6646a753981d",
+   "run": 45256536521,
+   "sha256": "7d19d9d83ea85b05b720dcb22d6fb981ff9df90f4dec7f4162790a3730a75d1c",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 206753,
+   "bytes": 206756,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "16584f9eb92ad2d329537f7a638e101a250d7e4422b61256ec550e57c0012a7f",
+   "run": 45256536506,
+   "sha256": "724efc955bf10e5302fbfcb81716f33adc5ac10d57d0968abf9f0daeee09dfd4",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
-   "bytes": 71503,
+   "bytes": 71496,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "9b1fa519cd25cd88cd1d24bb6f8df5141fd52f014be76c9b3f8d1522d06bb73c",
+   "run": 45256536506,
+   "sha256": "72877e8c75f3c7cbb795b258fa79bdc2c814286b3c607bd4083df77b09a39c7e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 206979,
+   "bytes": 202685,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "91eadca926592b8129e7f41c71ce86addc6ae8009cad6b1afb3299a5f1f4a92a",
+   "run": 45256536521,
+   "sha256": "bbcfa7757e2fe029e50e8e13b13fef4349d7261e220ae47436cb72cecc8cfce8",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 207273,
+   "bytes": 202870,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "8c74979df22a2bf65ca9063a9d757b0a8725bd69b46178f95a118589a280f6aa",
+   "run": 45256536521,
+   "sha256": "6cf7cc5a2ebdf6c89a19a4682ac8c1a1e103f28f61a975fa0ba58e15c4bbabcc",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.swmm524.outputs.zip"
   },
   "swmm524-converged": {
-   "bytes": 205072,
+   "bytes": 205073,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "ee664d3d3a50b47231b718ae842f219e033a42fff1e7bba8e8cdac55cf0c6fc5",
+   "run": 45256536506,
+   "sha256": "90ebf719dc365d8c5eec233b2412d5b8182ec036d6174fa0c04e3ccd5045a69a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.swmm524-converged.outputs.zip"
   },
   "swmm524-defaults": {
-   "bytes": 208075,
+   "bytes": 208076,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "e027b8e06c63fbfeee330a216c10b9fa8aad332bea00f13ff0394a9dbfdf88e7",
+   "run": 45256536506,
+   "sha256": "345d3cf098536b793174b909ad14ee2346591fd63be43ec8e44266df02e62ab2",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.swmm524-defaults.outputs.zip"
   },
   "telemac": {
-   "bytes": 35740,
+   "bytes": 35744,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "c81a9c30eec1ced6830ecf125e67d4f6531fcc973bda8e9dc0c6f576a57b125e",
+   "run": 45256536506,
+   "sha256": "32a1c7dd752220bc79a8442f6e7d0ce9061925e96dcb4bca9d47e05dfbad8432",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-041.telemac.outputs.zip"
   }
  },
@@ -953,10 +953,10 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.basilisk.outputs.zip"
   },
   "hydra-uds": {
-   "bytes": 215396,
+   "bytes": 215403,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "28485d9badef94e3ddf4db7850af4d44d1735ed4d4cbaf0436da58792e3b91cb",
+   "run": 45256536506,
+   "sha256": "93dd89632b746a6d2e027c86dc962e2a4acabd00aaf7c8467f1b74a8926aeb4a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.hydra-uds.outputs.zip"
   },
   "landlab": {
@@ -988,59 +988,59 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 208862,
+   "bytes": 202828,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "41c03ce8c4412d0e9343cf04725fcde2a1896211870c2c111e4351e1c0d4422a",
+   "run": 45256536521,
+   "sha256": "ac0e43b4048dbe43d885106c53476ebd2a8f893b20ac005b551a3174c23297e5",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 203676,
+   "bytes": 203675,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "092345dfd586ee0127105e4bb44272e3247a61639a6efb13a8657d4b1dfda7b9",
+   "run": 45256536506,
+   "sha256": "cff481485f7bc4e3f7c794e6f911d9df3955228797a6b777fb51458b69e238df",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
-   "bytes": 112929,
+   "bytes": 112926,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "5ae2bff5c6878fa54d2ca1a45d81a609fcfd3fb6d707edc3310ef1074cc90768",
+   "run": 45256536506,
+   "sha256": "8f7838a06193b09ce7c41dd6a93c012c173c17b863fc590a626e94c065ae687e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 208825,
+   "bytes": 204317,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "81fdabd841c814f9ecd651fa8d05b09bd1a70f77c313e215db2cc861ca6d5205",
+   "run": 45256536521,
+   "sha256": "21ef119b7d7a57d1c1a655fd1c6ab8f479dd3ddb0f8af2507daf7c104c11e930",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 209093,
+   "bytes": 204366,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "3182af14558664723d29345d4db771c765fc2564368c3234506184b5a9b5e2af",
+   "run": 45256536521,
+   "sha256": "f8b4169ca2f81867c0dfc18562a04072e36e36d7c2f8f5d77c8fcb07ac828025",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.swmm524.outputs.zip"
   },
   "swmm524-converged": {
-   "bytes": 204162,
+   "bytes": 204161,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "052a05de044dec1fe1e81480bc8b2ed02ffa7af254b896bd1a3b8e79479468cc",
+   "run": 45256536506,
+   "sha256": "817b25b42bef49815cf7b6838748a03337d3288116c5901c366063afa5b42419",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.swmm524-converged.outputs.zip"
   },
   "swmm524-defaults": {
-   "bytes": 207920,
+   "bytes": 207921,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "0cdb9aad74b5e694f89a4533541dc24d1a1cdc9c1b880d28b39cb3614d904e1f",
+   "run": 45256536506,
+   "sha256": "26431ae2e7b186cc877b6325919fd7e12e4417b07b3fa582bb91b775597cffb4",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.swmm524-defaults.outputs.zip"
   },
   "telemac": {
-   "bytes": 39972,
+   "bytes": 39971,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "805d900b62264844a05f7aeb08b170fe1efe74210bc3bc154e8d475c3aeeeef4",
+   "run": 45256536506,
+   "sha256": "249705aec862492534fcfe0a2cdc642097fd9498cbd56307ec6d13416b7cbb8d",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-042.telemac.outputs.zip"
   }
  },
@@ -1060,10 +1060,10 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.geoclaw.outputs.zip"
   },
   "hydra-uds": {
-   "bytes": 312981,
+   "bytes": 312988,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "6b47d8710cd03d8ebaf8cde64f4f46b5e7b8fd3cdbc6d265ef445a8616c55431",
+   "run": 45256536506,
+   "sha256": "4c13791244a58a2aff26367c2d058ce5bcbef4e238733ccf9ea7ebe8d1c4630e",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.hydra-uds.outputs.zip"
   },
   "landlab": {
@@ -1095,59 +1095,59 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.lisflood-fv1.outputs.zip"
   },
   "openswmm-dw": {
-   "bytes": 287717,
+   "bytes": 287719,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "ef8a8c3ff7006056dd8ea171b1fb3f5000609d09754c6ee04d97de77fd06dfa2",
+   "run": 45256536521,
+   "sha256": "5625361d10d0c068996223c83f84b4d0c67a4e6e91b49d9c737f33eaf7823d83",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.openswmm-dw.outputs.zip"
   },
   "openswmm-dw-converged": {
-   "bytes": 287722,
+   "bytes": 287723,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "dc7af21f7ca937511ea10d3df6b136c52839998fe1b91e61f212306bed83414e",
+   "run": 45256536506,
+   "sha256": "dbb5d8952503beae27788e34544f440ebf90e5a9061fc560fd1859c3bb0b1842",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.openswmm-dw-converged.outputs.zip"
   },
   "openswmm-fv": {
-   "bytes": 367972,
+   "bytes": 367966,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "e16b78eae70ecab4942c540abba6b25417047eb34d5bae9e567ddf53e83baad0",
+   "run": 45256536506,
+   "sha256": "975502166aabe6936596767dc9956a3b015d3c47a44787289a9dbc9d0ba487e9",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.openswmm-fv.outputs.zip"
   },
   "swmm515": {
-   "bytes": 289826,
+   "bytes": 289825,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "6cf5a66047e25e3906591ac6cc988f3f51239a25c8768eadc618920c6e70f4f2",
+   "run": 45256536521,
+   "sha256": "094875da52badd2770a57909eb0b1ce57eb6a7e4bdcf9234bd652fcfa85ab8cf",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.swmm515.outputs.zip"
   },
   "swmm524": {
-   "bytes": 289883,
+   "bytes": 289879,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "859f6642237d319e1fb5771a1ca7e35a9b18a54b1397724d16819288a9e16490",
+   "run": 45256536521,
+   "sha256": "5d92a25de25ea8b350d97e1016ddfd7453ef36c4695c03a0f7abbc42078fb15f",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.swmm524.outputs.zip"
   },
   "swmm524-converged": {
-   "bytes": 289890,
+   "bytes": 289889,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "6cb340dc836695012a63a836df660066834e3a76f11952750b1e62ed3e7ce921",
+   "run": 45256536506,
+   "sha256": "f9f449d3617228e8642edf4c2f6f12be822f0bf1f996ce2cbf305073ce72b3ff",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.swmm524-converged.outputs.zip"
   },
   "swmm524-defaults": {
-   "bytes": 289894,
+   "bytes": 289886,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "d5ce429184186871bf296f244e4bc603be9dccd7fc82af05176332615fd6778c",
+   "run": 45256536506,
+   "sha256": "d021c18d1ee12c5a2bb279bad8a62baaf11b630299d8911d1d17a0c58e828291",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.swmm524-defaults.outputs.zip"
   },
   "telemac": {
-   "bytes": 28806,
+   "bytes": 28809,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "1ef26558fa929994046ca34ab707beea09dd105afc972b888a52c7099c660805",
+   "run": 45256536506,
+   "sha256": "800493f5cc9ebd814e161a3ca552e82e6e21b5aafc6a3a57e42d1f4552ed7de8",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1F-043.telemac.outputs.zip"
   }
  },
@@ -1176,10 +1176,10 @@
  },
  "A1P-001": {
   "epanet22": {
-   "bytes": 2738,
+   "bytes": 2737,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "db861802ca695717610dcba66eb96be485f5bb3e1a4c730e2e2c4d0b1c414006",
+   "run": 45256536506,
+   "sha256": "ca6b81dac6e5629fa8433797f4f934350a4c58c4c23b55172b4145284e74a20d",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1P-001.epanet22.outputs.zip"
   }
  },
@@ -1187,24 +1187,24 @@
   "epanet22": {
    "bytes": 2751,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "db561f818be0854da6dd54ae80ae350f7baae22ea7916fffaffbd5a0ddbdbf79",
+   "run": 45256536506,
+   "sha256": "0adf01576a77a938e2f6a165ff49ac9533baf9894087bf6a9e94a823e3fbcdbe",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1P-010.epanet22.outputs.zip"
   },
   "wntr": {
-   "bytes": 2789,
+   "bytes": 2791,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "05e66dbf9c6a0cb6e3110f581d0da222b0a672f6a7b286668dff08da417bf59d",
+   "run": 45256536506,
+   "sha256": "d0d343c214fd31143dc5a0f106e5a83c19bdf2cc361ef4dbc8a97ea22a0c04dc",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1P-010.wntr.outputs.zip"
   }
  },
  "A1P-030": {
   "epanet22": {
-   "bytes": 409475,
+   "bytes": 409471,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "7a33a25a8eb244bd7c232fd0136f684f361e26a3a2ba97aaf5b07bb583b0e14f",
+   "run": 45256536506,
+   "sha256": "82ab37cff1537ffcbfe00cb98634b292aab504b778d29c79c20a0a2012181714",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A1P-030.epanet22.outputs.zip"
   }
  },
@@ -1266,10 +1266,10 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-001.lisflood-fv1.outputs.zip"
   },
   "telemac": {
-   "bytes": 1463031,
+   "bytes": 1463038,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "3983679a7a5e3eb539740c1f2a5c8bbdae6ba2e215487af34474476c554a3f40",
+   "run": 45256536506,
+   "sha256": "b62f47e4118cfa0ddec9efe2798166bfc25dca78d497dbfdd3832b5e1f7543f2",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-001.telemac.outputs.zip"
   }
  },
@@ -1319,8 +1319,8 @@
   "telemac": {
    "bytes": 107243,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "c236a131cbafafec7226e9b56dbfd86d0241e9c24acfcabd384be0e81317f1c4",
+   "run": 45256536506,
+   "sha256": "940d636c2fb660616cd17ddf64244e3531c8f091a46ee12c18c318e474f5ab9f",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-010.telemac.outputs.zip"
   }
  },
@@ -1340,10 +1340,10 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-020.basilisk.outputs.zip"
   },
   "telemac": {
-   "bytes": 462279,
+   "bytes": 462281,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "76f03593b590f3621699f85f99211dbb345e9bcf6f17e7e0f88dc072c449209c",
+   "run": 45256536506,
+   "sha256": "adda1dc20dc27e02192a836fab563190fb063933ef5d00adb07480dc26f22b7a",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2A-020.telemac.outputs.zip"
   }
  },
@@ -1372,8 +1372,8 @@
   "telemac": {
    "bytes": 8105107,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "f2d1881b28ace2f856eb533075f5c1852b956f13749ff60b9cf0e11c5ce96da8",
+   "run": 45256536506,
+   "sha256": "6f93e4c6a19882f10693e989cd0cd147c5220b7fc19b30dc2e977823f5661635",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA1.telemac.outputs.zip"
   }
  },
@@ -1416,10 +1416,10 @@
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA4.lisflood-fv1.outputs.zip"
   },
   "telemac": {
-   "bytes": 1470092,
+   "bytes": 1470089,
    "date": "2026-11-23",
-   "run": 45229046344,
-   "sha256": "0c7cacbabe27a530b0498b6ae8e7c65bd2cbb7a55ad932f7fffbc48965014883",
+   "run": 45256536506,
+   "sha256": "d25e99e5ac2fcd0013bdd57d3cf4a85b0edb2855680d8020592ce800d250fb6f",
    "url": "https://github.com/scott-jeffers/benchmark1d2d/releases/download/run-files/A2C-EA4.telemac.outputs.zip"
   }
  },
