@@ -7,8 +7,8 @@ proposed set-up in `setups/`, re-run by the suite and shown **beside** the suite
 
 The numbers are the score: the largest error over a test's checks, as a percentage of its
 accuracy band (100 % = at the edge of the band). "Before" is the published suite result;
-"after" is the set-up run locally (the same runners, the same engine versions) and re-run by
-`setups.yml` in CI.
+"after" is the set-up re-run by `setups.yml` in CI, with the same runners and the same engine
+versions (SWMM-family numbers are from local runs of the same runner until CI publishes its own).
 
 ## What was changed, and why it works
 
@@ -57,9 +57,9 @@ as it is in a real gully.
 
 | Test | Two triangles: before → after | Four triangles: before → after |
 |---|---|---|
-| A12-010 surcharge onto street | 0.5 → 0.8 | 11.5 → 10.3 |
-| A12-011 yard draining into pipe | 23.7 → **11.4** (all checks pass) | 29.0 → 17.4 |
-| A12-012 surcharge and return | 0.2 → 0.2 | 0.25 → 0.24 |
+| A12-010 surcharge onto street | 0.5 → 0.5 | 11.5 → 11.5 |
+| A12-011 yard draining into pipe | 23.7 → **11.4** (all checks pass) | 29.0 → 14.9 |
+| A12-012 surcharge and return | 0.2 → 0.2 | 0.25 → 0.25 |
 
 On two triangles per square, every check of all three tests now passes. On four triangles the
 street depth in A12-010 stays 8 mm high: that comes from the mesh, not the coupling.
@@ -86,14 +86,14 @@ adds no diffusion) and `cfl 0.3` instead of 0.7 (set-up `lisflood-acc-bump-diffu
 | Test | Published | Set-up |
 |---|---|---|
 | A1F-040 | 58.7 | 31.8 |
-| A1F-041 | 51.5 | 33.7 |
-| A1F-042 | 64.2 | 40.3 |
+| A1F-041 | 51.5 | 41.6 |
+| A1F-042 | 64.2 | 42.9 |
 
-The error falls by roughly 40 % but stays outside the band, because the missing term is
+The error falls by a fifth to a half but stays outside the band, because the missing term is
 structural. On the dry-bed dam break (A1F-010), `theta 0.7` made things worse (28 → 33) and
 `cfl 0.3` made no difference, so the set-up leaves that test alone.
 
-### HEC-RAS 7.0.1 2D: dam-break time step and tolerances (CI only)
+### HEC-RAS 7.0.1 2D: dam-break time step and tolerances
 
 **Problem.** On the dry-bed dam break (A1F-010) the front lags 58–97 m. The open finite-volume
 codes are within 2–6 m (score 15.4 with SWE-EM, 25.9 with SWE-ELM).
@@ -102,9 +102,20 @@ codes are within 2–6 m (score 15.4 with SWE-EM, 25.9 with SWE-ELM).
 a Courant number at or below 1. The set-ups `hecras-em-dam-break` and `hecras-elm-dam-break` cap
 the adaptive step at Courant 0.5 (minimum 0.2) and tighten the 2D water-surface and volume
 tolerances from 0.01 to 0.001, with up to 40 iterations. HEC-RAS runs only on Windows, so these
-are run by the new `hecras` job of `setups.yml`. The site shows the result when that job
-finishes. The equation set itself is not something a set-up can change: the suite already scores
-both.
+run in the new `hecras` job of `setups.yml`.
+
+| Test | SWE-EM: before → after | SWE-ELM: before → after |
+|---|---|---|
+| A1F-010 dry-bed dam break | 15.4 → **7.2** (front lag 58 m → 27 m) | 25.9 → 26.0 (lag 97 m → 98 m) |
+| A1F-011 wet-bed dam break | 1.4 → 1.0 | 0.9 → 1.0 |
+
+With full momentum (SWE-EM), the smaller step and tighter tolerances halve the front's lag.
+With the default SWE-ELM equations, nothing changes, so that error comes from the equation set,
+not the step. A set-up cannot change the equation set (the suite already scores both). An expert
+modelling a dam break in HEC-RAS should choose SWE-EM, as HEC advises.
+
+A further set-up, `hecras-em-dam-break-fine-step`, halves the Courant cap again (0.25) to see
+whether the remaining 27 m lag keeps shrinking.
 
 ## What no setting fixes, and why
 
