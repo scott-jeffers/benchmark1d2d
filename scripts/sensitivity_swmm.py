@@ -61,6 +61,23 @@ def main() -> int:
     run = _runner()
     cases = sys.argv[1:] or list(run.CASES)
     results: dict[str, dict[str, dict]] = {c: {} for c in cases}
+    def write(partial: bool) -> dict:
+        env = {}
+        for c, by in results.items():
+            done = {k: v for k, v in by.items() if v.get("completed") and v.get("percent_difference") is not None}
+            if not done:
+                continue
+            lo = min(done, key=lambda k: done[k]["percent_difference"])
+            hi = max(done, key=lambda k: done[k]["percent_difference"])
+            env[c] = {"low": done[lo]["percent_difference"], "low_variant": lo, "high": done[hi]["percent_difference"], "high_variant": hi,
+                      "published": (by.get("published") or {}).get("percent_difference"), "variants": by}
+        target = OUT.with_suffix(".partial.json") if partial else OUT
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps({"model": "swmm524", "engine": "EPA SWMM 5.2.4 (swmm-toolkit 0.17.0)", "date": date.today().isoformat(),
+                                      "script": "scripts/sensitivity_swmm.py", "variants": {k: v[0] for k, v in VARIANTS.items()},
+                                      "tests": env}, indent=1) + "\n", encoding="utf-8")
+        return env
+
     with tempfile.TemporaryDirectory() as tdn:
         run.OUT = Path(tdn)
         for name, (_, opts) in VARIANTS.items():
@@ -80,19 +97,9 @@ def main() -> int:
                                     "observed_order": conv.get("observed_order"),
                                     "engine_flagged": bool(rep.get("flagged")),
                                     "steps_not_converging_pct": rep.get("steps_not_converging_pct")}
-    env = {}
-    for c, by in results.items():
-        done = {k: v for k, v in by.items() if v.get("completed") and v.get("percent_difference") is not None}
-        if not done:
-            continue
-        lo = min(done, key=lambda k: done[k]["percent_difference"])
-        hi = max(done, key=lambda k: done[k]["percent_difference"])
-        env[c] = {"low": done[lo]["percent_difference"], "low_variant": lo, "high": done[hi]["percent_difference"], "high_variant": hi,
-                  "published": (by.get("published") or {}).get("percent_difference"), "variants": by}
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({"model": "swmm524", "engine": "EPA SWMM 5.2.4 (swmm-toolkit 0.17.0)", "date": date.today().isoformat(),
-                               "script": "scripts/sensitivity_swmm.py",
-                               "variants": {k: v[0] for k, v in VARIANTS.items()}, "tests": env}, indent=1) + "\n", encoding="utf-8")
+            write(partial=True)  # an interrupted sweep keeps every finished variant
+    env = write(partial=False)
+    OUT.with_suffix(".partial.json").unlink(missing_ok=True)
     for c, e in env.items():
         print(f"{c}: {e['low']:.3g} % ({e['low_variant']}) to {e['high']:.3g} % ({e['high_variant']}); published {e['published']}")
     return 0

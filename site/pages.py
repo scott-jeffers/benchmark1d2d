@@ -142,6 +142,9 @@ def tier_badge(key: str) -> str:
     return f'<span class="tier tier-{t.lower()}" title="{esc(what)}">{esc(t)} · {esc(name)}</span>'
 
 
+CASES_OPEN = '<div class="muted small">Tests: '
+
+
 def config_block(key: str, depth: int = 1) -> str:
     """The model's configuration: tier, who set it, and every setting changed from the engine's default."""
     rec = CONFIG.get(key)
@@ -153,7 +156,7 @@ def config_block(key: str, depth: int = 1) -> str:
         f'<tr><td>{esc(ch["setting"])}</td><td>{esc(ch["value"])}</td><td>{esc("" if ch.get("default") is None else ch["default"])}</td>'
         f'<td>{("<b>Required by the case.</b> " if ch.get("required_by_case") else "<b>Selects the method tested.</b> " if ch.get("selects_method") else "")}'
         f'{esc(ch["reason"])}{(" <span class=muted>(" + esc(ch["source"]) + ")</span>") if ch.get("source") else ""}'
-        f'{("<div class=\"muted small\">Tests: " + esc(", ".join(ch["cases"])) + "</div>") if ch.get("cases") else ""}</td></tr>'
+        f'{(CASES_OPEN + esc(", ".join(ch["cases"])) + "</div>") if ch.get("cases") else ""}</td></tr>'
         for ch in rec["changed_from_default"])
     table = (f'<div class="table-scroll"><table class="data"><thead><tr><th>Setting</th><th>Value</th><th>Default</th><th>Why</th></tr></thead>'
              f'<tbody>{rows}</tbody></table></div>') if rows else '<p class="small">No setting is listed as changed from the engine\'s default.</p>'
@@ -659,7 +662,8 @@ LOGO = ('<svg viewBox="0 0 34 22" aria-hidden="true"><path class="w" d="M1 8 C7 
 def layout(title: str, body: str, active: str, depth: int = 0, description: str = "", scripts: str = "", math: bool = False,
            og_image: str = "assets/og/home.png", path: str = "") -> str:
     up = "../" * depth
-    nav = "".join(f'<a href="{up}{href}"{" aria-current=\"page\"" if href == active else ""}>{label}</a>' for href, label in NAV)
+    current = ' aria-current="page"'
+    nav = "".join(f'<a href="{up}{href}"{current if href == active else ""}>{label}</a>' for href, label in NAV)
     foot = "".join(f'<a href="{up}{href}">{label}</a>' for href, label in FOOT)
     built = datetime.now(timezone.utc).strftime("%d %b %Y")
     full_title = SITE_NAME if title == SITE_NAME else f"{title} · {SITE_NAME}"
@@ -776,6 +780,11 @@ def solver_page(key: str, manifests: list[dict], runs: dict) -> str:
     s = SOLVER[key]
     mine = [(m, runs[m["test_id"]][key]) for m in manifests if key in (runs.get(m["test_id"]) or {})]
     standing = f'Ran <b>{len(mine)}</b> test{"s" if len(mine) != 1 else ""}. <a href="../profiles.html#p-{esc(key)}">Its evidence profile →</a>'
+    walls = sorted(w for w in (((c_.get("run") or {}).get("wall_seconds")) for _, c_ in mine) if isinstance(w, (int, float)))
+    if len(walls) >= 3:
+        p90 = walls[min(len(walls) - 1, int(round(0.9 * (len(walls) - 1))))]
+        standing += (f'<br><span class="muted small">Run time on the finest grids: median {esc(measures.fmt_time(walls[len(walls) // 2]))}, '
+                     f'90th percentile {esc(measures.fmt_time(p90))}, total {esc(measures.fmt_time(sum(walls)))} (shared CI runners; context, not evidence).</span>')
     versions = sorted({(c.get("solver") or {}).get("name", "") for _, c in mine})
     rows = []
     for m, c in mine:
@@ -1686,7 +1695,7 @@ def case_page(m: dict, runs: dict, exact: dict | None, profiles: dict, legacy_fi
             items_ += f"<li><b>Reference data</b>: {esc(str(m['reference'].get('availability', '')).replace('_', ' '))}.</li>"
         missing = f'<div class="callout warn"><h2>What this test still needs</h2><ul>{items_}</ul></div>'
     readme = m["_case_dir"] / "README.md"
-    readme_html = H.md(readme.read_text(encoding="utf-8")) if readme.is_file() else ""
+    readme_html = H.md(readme.read_text(encoding="utf-8"), source=readme) if readme.is_file() else ""
     notes = m["provenance"].get("adaptation_notes", "")
     readme_html = H._dedupe_paragraphs(readme_html, [m.get("description", ""), notes]).strip()
     cites = "".join(f"<li>{H.citation_text(c)}</li>" for c in m["provenance"]["citations"])
@@ -1895,7 +1904,7 @@ def how_page(manifests: list[dict], runs: dict) -> str:
 <section class="section tight">
   <h2>Go deeper</h2>
   <div class="grid">
-    <a class="card" href="method.html"><div class="kicker">Method</div><h3>Verification and validation plan</h3><p>Convergence, tolerances, promotion rules and the literature behind every test.</p></a>
+    <a class="card" href="method.html"><div class="kicker">Method</div><h3>Evidence protocol</h3><p>Three kinds of evidence, configuration tiers, convergence, promotion rules and the literature behind every test.</p></a>
     <a class="card" href="reports.html"><div class="kicker">Audit</div><h3>Reports and fixes</h3><p>Every problem found in the suite itself, and what was done about it.</p></a>
     <a class="card" href="corpus.html"><div class="kicker">Real models</div><h3>The SWMM corpus</h3><p>1,400 real SWMM models used to compare engine versions.</p></a>
     <a class="card" href="downloads.html"><div class="kicker">Data</div><h3>Downloads</h3><p>Every input, score card and schema, with fingerprints.</p></a>

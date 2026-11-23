@@ -2,7 +2,7 @@
 // model's result along the same line. Every <section class="replay"> on a page
 // is one chart; its data is the JSON <script class="chart-data"> inside it.
 // Options in the data: exact.line_only (no fill), exact.floor (bed),
-// exact.step, band [lo, hi] (shaded pass limit), symmetric (y range around 0),
+// exact.step, band [lo, hi] (shaded check limit), symmetric (y range around 0),
 // series[].dots and series[].join (markers, joined by a thin line).
 (function () {
   var NS = "http://www.w3.org/2000/svg";

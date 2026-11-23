@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.2.0",
+  "test_id": "A1F-300_ea_w5105_river_analytic",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_class": "verification_analytic",
+  "evidence": "verification",
+  "capabilities": [
+    "steady_open_channel",
+    "flood_waves"
+  ],
+  "title": "EA W5-105 river benchmarks: quasi-steady profiles and monoclinal wave",
+  "description": "The Environment Agency's river-software benchmarks with exact answers: Test A gradually varied quasi-steady profiles (five parts) and Test F, a monoclinal flood wave.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "saint_venant_dynamic"
+    ],
+    "phenomena": [
+      "backwater",
+      "friction",
+      "monoclinal_wave"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Crowder, R. A.",
+          "Pepper, A. T.",
+          "Whitlow, C.",
+          "Sleigh, P. A.",
+          "Wright, N. G.",
+          "Tomlin, C."
+        ],
+        "year": 2004,
+        "title": "Benchmarking of hydraulic river modelling software packages",
+        "report_number": "Environment Agency R&D Technical Report W5-105/TR1 and TR2"
+      }
+    ],
+    "license": "TBD-confirm",
+    "adaptation_notes": "Draft. HydroCouple has transcribed the Test A analytical profiles from W5-105/TR1 pp. 77-78 (HydroCouple OpenSWMM benchmarks corpus, corpus/uk-ea-river (commit 3f490b5), with SHA-256 per reference file); they are not copied here until the report's reuse terms are confirmed."
+  },
+  "inputs": [
+    {
+      "path": "inputs/case.json",
+      "role": "case_parameters",
+      "format": "json",
+      "pending": {
+        "reason": "Channel geometry, roughness and boundary flows from W5-105/TR1 Tests A and F.",
+        "obtain_from": "Environment Agency W5-105/TR1; HydroCouple OpenSWMM benchmarks corpus, corpus/uk-ea-river (commit 3f490b5)"
+      }
+    }
+  ],
+  "reference": {
+    "kind": "analytic",
+    "generator": {
+      "module": "references.w5105",
+      "function": "tabulated_profile",
+      "parameters": {
+        "table": "reference/profiles.csv",
+        "note": "Pending: the W5-105 tabulated analytical levels, once the report's reuse terms are confirmed."
+      }
+    }
+  },
+  "simulation": {
+    "t_end": 86400.0,
+    "output_interval": 600.0,
+    "required_outputs": [
+      "h",
+      "Q"
+    ],
+    "mesh_refinement": {
+      "levels": [
+        40,
+        20,
+        10,
+        5
+      ],
+      "fixed_courant": 0.5
+    }
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "wse",
+        "metric": "Linf",
+        "variable": "wse",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.01,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Water surface within 1 cm of the tabulated analytical profile at every chainage. Provisional, written before any run."
+      }
+    ],
+    "pass_rule": "all_gating",
+    "convergence": {
+      "norm": "L1",
+      "variable": "h",
+      "expected_order": 1.0,
+      "min_observed_order": 0.8
+    }
+  }
+}

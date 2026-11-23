@@ -1,0 +1,127 @@
+{
+  "schema_version": "1.2.0",
+  "test_id": "A1F-310_ea_w5105_bridge_afflux",
+  "case_version": "0.1.0",
+  "status": "draft",
+  "track": "A",
+  "test_class": "validation_lab",
+  "evidence": "validation",
+  "capabilities": [
+    "structures",
+    "steady_open_channel"
+  ],
+  "data_card": {
+    "measured": "Upstream water levels in a laboratory channel with and without a bridge, at four flows; afflux is the difference at the same flow (W5-105 TR2J Table 4.1).",
+    "method": "Laboratory flume measurements reported in the Environment Agency benchmark; the instrument uncertainty is not reported.",
+    "uncertainty": "Values are published to 0.5 mm; instrument uncertainty is not reported.",
+    "known_issues": [
+      "Reuse terms of the 2004 report not yet confirmed.",
+      "Only four measured values."
+    ],
+    "exercises": "The head loss through a bridge opening: contraction, piers and expansion, against a paired no-bridge run.",
+    "cannot_tell": "With only four values, a bridge loss coefficient can be tuned to match; the test is only meaningful when the bridge is modelled from its geometry with the engine's documented method (a T0 or T1 configuration)."
+  },
+  "validation_design": {
+    "mode": "engine",
+    "declared": "2026-11-23",
+    "events": [
+      {
+        "id": "flow-1",
+        "role": "scored"
+      },
+      {
+        "id": "flow-2",
+        "role": "scored"
+      },
+      {
+        "id": "flow-3",
+        "role": "scored"
+      },
+      {
+        "id": "flow-4",
+        "role": "scored"
+      }
+    ],
+    "holdout_policy": "No calibration: the bridge is represented from its geometry with the engine's own method; a loss coefficient fitted to the measured afflux is not accepted."
+  },
+  "title": "EA W5-105 Test J: measured bridge afflux",
+  "description": "Upstream water-level rise caused by a bridge, measured in the laboratory at four flows (W5-105 Test J, TR2J Table 4.1): the depth with the bridge minus the depth without it, at the same flow.",
+  "physics": {
+    "dimensionality": "1D",
+    "flow_type": "free_surface",
+    "governing_equations": [
+      "saint_venant_steady"
+    ],
+    "phenomena": [
+      "bridge_afflux",
+      "backwater"
+    ]
+  },
+  "provenance": {
+    "citations": [
+      {
+        "authors": [
+          "Crowder, R. A.",
+          "Pepper, A. T.",
+          "Whitlow, C.",
+          "Sleigh, P. A.",
+          "Wright, N. G.",
+          "Tomlin, C."
+        ],
+        "year": 2004,
+        "title": "Benchmarking of hydraulic river modelling software packages (Test J: bridge afflux)",
+        "report_number": "Environment Agency R&D Technical Report W5-105/TR2"
+      }
+    ],
+    "license": "TBD-confirm",
+    "adaptation_notes": "Draft. HydroCouple transcribed the four measured afflux values (HydroCouple OpenSWMM benchmarks corpus, corpus/uk-ea-river/uk-river-j (commit 3f490b5); values rounded to 0.5 mm; source rights not independently verified). They are not copied here until the report's reuse terms are confirmed. A model must represent the bridge itself; an arbitrary loss coefficient fitted to the afflux is not a valid run."
+  },
+  "inputs": [
+    {
+      "path": "inputs/case.json",
+      "role": "case_parameters",
+      "format": "json",
+      "pending": {
+        "reason": "Channel and bridge geometry and the four flows from W5-105/TR2 Test J.",
+        "obtain_from": "Environment Agency W5-105/TR2; HydroCouple OpenSWMM benchmarks corpus, corpus/uk-ea-river/uk-river-j (commit 3f490b5)"
+      }
+    }
+  ],
+  "reference": {
+    "kind": "measured",
+    "data_path": "reference/afflux.csv",
+    "availability": "pending_license",
+    "include_measurement_uncertainty": true,
+    "uncertainty": {
+      "type": "absolute",
+      "value": 0.0005,
+      "units": "m",
+      "notes": "Rounding of the published values (0.5 mm); instrument uncertainty is not reported in the source."
+    }
+  },
+  "simulation": {
+    "t_end": 3600.0,
+    "output_interval": 60.0,
+    "required_outputs": [
+      "h",
+      "Q"
+    ]
+  },
+  "scoring": {
+    "criteria": [
+      {
+        "id": "afflux",
+        "metric": "Linf",
+        "variable": "wse",
+        "threshold": {
+          "op": "abs<=",
+          "value": 0.01,
+          "units": "m"
+        },
+        "gating": true,
+        "rationale": "Afflux (bridge minus no-bridge upstream level at the same flow) within 1 cm at each of the four flows. Provisional, written before any run."
+      }
+    ],
+    "pass_rule": "all_gating"
+  }
+}
